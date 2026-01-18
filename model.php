@@ -101,32 +101,28 @@ function groupPartsByDirectory($parts) {
 
 $groupedParts = groupPartsByDirectory($parts);
 
+// Check for session messages
+$message = '';
+$messageType = 'success';
+if (isset($_SESSION['success'])) {
+    $message = $_SESSION['success'];
+    $messageType = 'success';
+    unset($_SESSION['success']);
+} elseif (isset($_SESSION['error'])) {
+    $message = $_SESSION['error'];
+    $messageType = 'error';
+    unset($_SESSION['error']);
+}
+
 require_once 'includes/header.php';
 ?>
 
         <div class="page-container">
-            <div class="model-detail">
-                <?php if ($previewPath && in_array($previewType, ['stl', '3mf'])): ?>
-                <div class="model-detail-viewer" id="model-viewer">
-                    <div class="viewer-loading">Loading 3D model...</div>
-                </div>
-                <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const container = document.getElementById('model-viewer');
-                    if (container && typeof ModelViewer !== 'undefined') {
-                        const viewer = initDetailViewer(
-                            'model-viewer',
-                            '<?= htmlspecialchars($previewPath, ENT_QUOTES) ?>',
-                            '<?= htmlspecialchars($previewType, ENT_QUOTES) ?>'
-                        );
-                        if (viewer) {
-                            container.querySelector('.viewer-loading')?.remove();
-                        }
-                    }
-                });
-                </script>
-                <?php endif; ?>
+            <?php if ($message): ?>
+            <div class="alert alert-<?= $messageType ?>" style="margin-bottom: 1.5rem;"><?= htmlspecialchars($message) ?></div>
+            <?php endif; ?>
 
+            <div class="model-detail">
                 <div class="model-detail-header">
                     <div class="model-detail-thumbnail <?= ($previewPath && in_array($previewType, ['stl', '3mf'])) ? 'has-viewer' : '' ?>"
                         <?php if ($previewPath && in_array($previewType, ['stl', '3mf'])): ?>
@@ -207,6 +203,9 @@ require_once 'includes/header.php';
                                 <div class="part-actions">
                                     <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
                                     <a href="<?= htmlspecialchars($part['file_path']) ?>" class="btn btn-small btn-primary" download>Download</a>
+                                    <?php if (canDelete()): ?>
+                                    <a href="delete.php?id=<?= $model['id'] ?>&part_id=<?= $part['id'] ?>" class="btn btn-small btn-danger">Delete</a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>

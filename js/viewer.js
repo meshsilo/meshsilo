@@ -225,7 +225,7 @@ class ModelViewer {
 
 // Initialize thumbnail viewers on page load
 function initThumbnailViewers() {
-    const thumbnails = document.querySelectorAll('.model-thumbnail[data-model-url]');
+    const thumbnails = document.querySelectorAll('.model-thumbnail[data-model-url], .model-detail-thumbnail[data-model-url]');
 
     thumbnails.forEach(thumbnail => {
         const url = thumbnail.dataset.modelUrl;

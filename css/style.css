@@ -1238,7 +1238,8 @@ main {
 }
 
 /* 3D Viewer Thumbnail */
-.model-thumbnail .thumbnail-viewer {
+.model-thumbnail .thumbnail-viewer,
+.model-detail-thumbnail .thumbnail-viewer {
     position: absolute;
     top: 0;
     left: 0;
@@ -1248,7 +1249,8 @@ main {
     overflow: hidden;
 }
 
-.model-thumbnail .thumbnail-viewer canvas {
+.model-thumbnail .thumbnail-viewer canvas,
+.model-detail-thumbnail .thumbnail-viewer canvas {
     border-radius: inherit;
 }
 
