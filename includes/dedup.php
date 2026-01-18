@@ -366,7 +366,7 @@ function calculateMissingHashes() {
     while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $filePath = __DIR__ . '/../' . getRealFilePath($row);
 
-        if (file_exists($filePath)) {
+        if (file_exists($filePath) && is_file($filePath)) {
             $hash = hash_file('sha256', $filePath);
             $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
             $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
