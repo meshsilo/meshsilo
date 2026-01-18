@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS models (
     file_size INTEGER,
     file_type TEXT,           -- 'stl' or '3mf'
     description TEXT,
+    author TEXT,              -- Original creator of the model
+    collection TEXT,          -- Collection name (e.g., Gridfinity, Voron)
+    source_url TEXT,          -- Link to original source
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
