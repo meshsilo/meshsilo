@@ -94,18 +94,18 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $collectionStats[] = $row;
 }
 
-// Get top authors
+// Get top creators
 $result = $db->query('
-    SELECT author, COUNT(*) as count, SUM(file_size) as size
+    SELECT creator, COUNT(*) as count, SUM(file_size) as size
     FROM models
-    WHERE author IS NOT NULL AND author != ""
-    GROUP BY author
+    WHERE creator IS NOT NULL AND creator != ""
+    GROUP BY creator
     ORDER BY count DESC
     LIMIT 10
 ');
-$authorStats = [];
+$creatorStats = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    $authorStats[] = $row;
+    $creatorStats[] = $row;
 }
 
 // Get recent uploads (last 7 days)
@@ -395,24 +395,24 @@ require_once 'includes/header.php';
                 </section>
                 <?php endif; ?>
 
-                <?php if (!empty($authorStats)): ?>
+                <?php if (!empty($creatorStats)): ?>
                 <section class="stats-section">
-                    <h2>Top Authors</h2>
+                    <h2>Top Creators</h2>
                     <div class="stats-table-container">
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Author</th>
+                                    <th>Creator</th>
                                     <th>Models</th>
                                     <th>Size</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($authorStats as $author): ?>
+                                <?php foreach ($creatorStats as $creator): ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($author['author']) ?></td>
-                                    <td><?= number_format($author['count']) ?></td>
-                                    <td><?= formatBytes($author['size'] ?? 0) ?></td>
+                                    <td><?= htmlspecialchars($creator['creator']) ?></td>
+                                    <td><?= number_format($creator['count']) ?></td>
+                                    <td><?= formatBytes($creator['size'] ?? 0) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

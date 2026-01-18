@@ -9,7 +9,7 @@ $db = getDB();
 $result = $db->query('SELECT * FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
 $models = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    // For multi-part models, get the first part for preview
+    // For multi-part models, get the first part for preview and print types
     if ($row['part_count'] > 0) {
         $partStmt = $db->prepare('SELECT file_path, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
         $partStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
@@ -19,9 +19,20 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $row['preview_path'] = $firstPart['file_path'];
             $row['preview_type'] = $firstPart['file_type'];
         }
+
+        // Get distinct print types for this model's parts
+        $printStmt = $db->prepare('SELECT DISTINCT print_type FROM models WHERE parent_id = :parent_id AND print_type IS NOT NULL');
+        $printStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
+        $printResult = $printStmt->execute();
+        $printTypes = [];
+        while ($printRow = $printResult->fetchArray(SQLITE3_ASSOC)) {
+            $printTypes[] = $printRow['print_type'];
+        }
+        $row['print_types'] = $printTypes;
     } else {
         $row['preview_path'] = $row['file_path'];
         $row['preview_type'] = $row['file_type'];
+        $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
     }
     $models[] = $row;
 }
@@ -92,10 +103,20 @@ require_once 'includes/header.php';
                             <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
                             <?php endif; ?>
                             <span class="file-type-badge">.<?= htmlspecialchars($model['file_type'] ?? 'zip') ?></span>
+                            <?php if (!empty($model['print_types'])): ?>
+                            <div class="print-type-indicators">
+                                <?php if (in_array('fdm', $model['print_types'])): ?>
+                                <span class="print-type-badge print-type-fdm">FDM</span>
+                                <?php endif; ?>
+                                <?php if (in_array('sla', $model['print_types'])): ?>
+                                <span class="print-type-badge print-type-sla">SLA</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
                         <div class="model-info">
                             <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
-                            <p class="model-author"><?= $model['author'] ? 'by ' . htmlspecialchars($model['author']) : '' ?></p>
+                            <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
                         </div>
                     </article>
                     <?php endforeach; ?>

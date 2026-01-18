@@ -89,4 +89,78 @@ function runMigrations($db) {
         $db->exec('ALTER TABLE models ADD COLUMN part_count INTEGER DEFAULT 0');
         logInfo('Migration: Added part_count column to models table');
     }
+
+    // Check if author column needs to be renamed to creator
+    $result = $db->query("PRAGMA table_info(models)");
+    $hasAuthor = false;
+    $hasCreator = false;
+    while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($col['name'] === 'author') $hasAuthor = true;
+        if ($col['name'] === 'creator') $hasCreator = true;
+    }
+
+    if ($hasAuthor && !$hasCreator) {
+        $db->exec('ALTER TABLE models RENAME COLUMN author TO creator');
+        logInfo('Migration: Renamed author column to creator in models table');
+    }
+
+    // Check if print_type column exists
+    $result = $db->query("PRAGMA table_info(models)");
+    $hasPrintType = false;
+    while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($col['name'] === 'print_type') $hasPrintType = true;
+    }
+
+    if (!$hasPrintType) {
+        $db->exec('ALTER TABLE models ADD COLUMN print_type TEXT'); // 'fdm', 'sla', or NULL
+        logInfo('Migration: Added print_type column to models table');
+    }
+
+    // Create groups table if it doesn't exist
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT,
+            permissions TEXT,
+            is_system INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ');
+
+    // Create user_groups junction table if it doesn't exist
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS user_groups (
+            user_id INTEGER,
+            group_id INTEGER,
+            PRIMARY KEY (user_id, group_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+        )
+    ');
+
+    // Create default Admin group if it doesn't exist
+    $result = $db->query("SELECT id FROM groups WHERE name = 'Admin'");
+    if (!$result->fetchArray()) {
+        $adminPerms = json_encode(['upload', 'delete', 'edit', 'admin', 'view_stats']);
+        $stmt = $db->prepare("INSERT INTO groups (name, description, permissions, is_system) VALUES ('Admin', 'Full system access', :perms, 1)");
+        $stmt->bindValue(':perms', $adminPerms, SQLITE3_TEXT);
+        $stmt->execute();
+        logInfo('Migration: Created Admin group');
+
+        // Assign existing admin users to Admin group
+        $adminGroupId = $db->lastInsertRowID();
+        $db->exec("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT id, $adminGroupId FROM users WHERE is_admin = 1");
+        logInfo('Migration: Assigned admin users to Admin group');
+    }
+
+    // Create default Users group if it doesn't exist
+    $result = $db->query("SELECT id FROM groups WHERE name = 'Users'");
+    if (!$result->fetchArray()) {
+        $userPerms = json_encode(['upload', 'view_stats']);
+        $stmt = $db->prepare("INSERT INTO groups (name, description, permissions, is_system) VALUES ('Users', 'Default user permissions', :perms, 1)");
+        $stmt->bindValue(':perms', $userPerms, SQLITE3_TEXT);
+        $stmt->execute();
+        logInfo('Migration: Created Users group');
+    }
 }

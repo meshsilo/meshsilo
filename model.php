@@ -137,8 +137,8 @@ require_once 'includes/header.php';
                     <div class="model-detail-info">
                         <h1><?= htmlspecialchars($model['name']) ?></h1>
 
-                        <?php if ($model['author']): ?>
-                        <p class="model-author">by <?= htmlspecialchars($model['author']) ?></p>
+                        <?php if ($model['creator']): ?>
+                        <p class="model-creator">by <?= htmlspecialchars($model['creator']) ?></p>
                         <?php endif; ?>
 
                         <div class="model-meta">
@@ -199,8 +199,18 @@ require_once 'includes/header.php';
                                 <div class="part-info">
                                     <span class="file-type-badge">.<?= htmlspecialchars($part['file_type']) ?></span>
                                     <span class="part-name"><?= htmlspecialchars($part['name']) ?></span>
+                                    <?php if ($part['print_type']): ?>
+                                    <span class="print-type-badge print-type-<?= htmlspecialchars($part['print_type']) ?>"><?= strtoupper($part['print_type']) ?></span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="part-actions">
+                                    <?php if (canEdit()): ?>
+                                    <select class="print-type-select" data-part-id="<?= $part['id'] ?>" title="Print type">
+                                        <option value="" <?= !$part['print_type'] ? 'selected' : '' ?>>--</option>
+                                        <option value="fdm" <?= $part['print_type'] === 'fdm' ? 'selected' : '' ?>>FDM</option>
+                                        <option value="sla" <?= $part['print_type'] === 'sla' ? 'selected' : '' ?>>SLA</option>
+                                    </select>
+                                    <?php endif; ?>
                                     <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
                                     <a href="<?= htmlspecialchars($part['file_path']) ?>" class="btn btn-small btn-primary" download>Download</a>
                                     <?php if (canDelete()): ?>
@@ -224,5 +234,53 @@ require_once 'includes/header.php';
                 <?php endif; ?>
             </div>
         </div>
+
+        <script>
+        // Handle print type selection changes
+        document.querySelectorAll('.print-type-select').forEach(select => {
+            select.addEventListener('change', function() {
+                const partId = this.dataset.partId;
+                const printType = this.value;
+                const partItem = this.closest('.part-item');
+
+                // Create form data
+                const formData = new FormData();
+                formData.append('part_id', partId);
+                formData.append('print_type', printType);
+
+                // Send AJAX request
+                fetch('update-part.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the badge
+                        let badge = partItem.querySelector('.print-type-badge');
+                        if (printType) {
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                badge.className = 'print-type-badge';
+                                partItem.querySelector('.part-name').after(badge);
+                            }
+                            badge.className = 'print-type-badge print-type-' + printType;
+                            badge.textContent = printType.toUpperCase();
+                        } else if (badge) {
+                            badge.remove();
+                        }
+                    } else {
+                        alert('Failed to update: ' + (data.error || 'Unknown error'));
+                        // Reset select to previous value
+                        location.reload();
+                    }
+                })
+                .catch(err => {
+                    console.error('Error updating print type:', err);
+                    alert('Failed to update print type');
+                });
+            });
+        });
+        </script>
 
 <?php require_once 'includes/footer.php'; ?>

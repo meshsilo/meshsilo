@@ -46,7 +46,7 @@ function createModelFolder($folderName = null) {
 }
 
 // Helper function to save a single model file
-function saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories, $parentId = null, $originalPath = null, $folderId = null) {
+function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creator, $collection, $source_url, $selectedCategories, $parentId = null, $originalPath = null, $folderId = null) {
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
     // Only process valid model files
@@ -76,14 +76,14 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
     if (copy($tmpPath, $filePath)) {
         try {
             // Insert into database
-            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url, :parent_id, :original_path)');
+            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :creator, :collection, :source_url, :parent_id, :original_path)');
             $stmt->bindValue(':name', $name, SQLITE3_TEXT);
             $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
             $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $filename, SQLITE3_TEXT);
             $stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
             $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
             $stmt->bindValue(':description', $parentId ? '' : $description, SQLITE3_TEXT); // Only set description on parent
-            $stmt->bindValue(':author', $parentId ? '' : $author, SQLITE3_TEXT);
+            $stmt->bindValue(':creator', $parentId ? '' : $creator, SQLITE3_TEXT);
             $stmt->bindValue(':collection', $parentId ? '' : $collection, SQLITE3_TEXT);
             $stmt->bindValue(':source_url', $parentId ? '' : $source_url, SQLITE3_TEXT);
             $stmt->bindValue(':parent_id', $parentId, SQLITE3_INTEGER);
@@ -117,16 +117,16 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
 }
 
 // Helper function to create a parent model for ZIP uploads
-function createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize, $folderId) {
+function createParentModel($db, $name, $description, $creator, $collection, $source_url, $selectedCategories, $totalSize, $folderId) {
     try {
-        $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url, part_count) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url, 0)');
+        $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, creator, collection, source_url, part_count) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :creator, :collection, :source_url, 0)');
         $stmt->bindValue(':name', $name, SQLITE3_TEXT);
         $stmt->bindValue(':filename', $folderId, SQLITE3_TEXT);
         $stmt->bindValue(':file_path', 'assets/' . $folderId, SQLITE3_TEXT);
         $stmt->bindValue(':file_size', $totalSize, SQLITE3_INTEGER);
         $stmt->bindValue(':file_type', 'zip', SQLITE3_TEXT);
         $stmt->bindValue(':description', $description, SQLITE3_TEXT);
-        $stmt->bindValue(':author', $author, SQLITE3_TEXT);
+        $stmt->bindValue(':creator', $creator, SQLITE3_TEXT);
         $stmt->bindValue(':collection', $collection, SQLITE3_TEXT);
         $stmt->bindValue(':source_url', $source_url, SQLITE3_TEXT);
         $stmt->execute();
@@ -169,7 +169,7 @@ function updateParentModel($db, $parentId, $partCount, $totalSize) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? '');
-    $author = trim($_POST['author'] ?? '');
+    $creator = trim($_POST['author'] ?? '');
     $collection = trim($_POST['collection'] ?? '');
     $source_url = trim($_POST['source_url'] ?? '');
     $selectedCategories = $_POST['categories'] ?? [];
@@ -245,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $folderId = createModelFolder();
 
                         // Create parent model
-                        $parentId = createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize, $folderId);
+                        $parentId = createParentModel($db, $name, $description, $creator, $collection, $source_url, $selectedCategories, $totalSize, $folderId);
 
                         if ($parentId) {
                             // Save each file as a child of the parent, all in the same folder
@@ -292,7 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else {
                 // Handle single model file
-                if (saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories)) {
+                if (saveModelFile($db, $tmpPath, $originalName, $name, $description, $creator, $collection, $source_url, $selectedCategories)) {
                     $uploadedCount = 1;
                 } else {
                     $error = 'Failed to save uploaded file.';
@@ -361,8 +361,8 @@ require_once 'includes/header.php';
                 </div>
 
                 <div class="form-group">
-                    <label for="model-author">Author</label>
-                    <input type="text" id="model-author" name="author" class="form-input" placeholder="Original creator of the model" value="<?= htmlspecialchars($_POST['author'] ?? '') ?>">
+                    <label for="model-creator">Creator</label>
+                    <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
                 </div>
 
                 <div class="form-group">

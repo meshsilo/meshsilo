@@ -26,13 +26,13 @@ function hasPermission($permission) {
         return true;
     }
 
-    // Check user's specific permissions
+    // Check user's permissions (includes group permissions)
     $userPermissions = getUserPermissions($user['id']);
     return in_array($permission, $userPermissions);
 }
 
 /**
- * Get all permissions for a user
+ * Get all permissions for a user (combining direct and group permissions)
  */
 function getUserPermissions($userId) {
     $db = getDB();
@@ -52,16 +52,227 @@ function getUserPermissions($userId) {
         return ADMIN_PERMISSIONS;
     }
 
-    // Parse stored permissions or return defaults
-    if (!empty($user['permissions'])) {
-        return json_decode($user['permissions'], true) ?: DEFAULT_USER_PERMISSIONS;
+    $permissions = [];
+
+    // Get permissions from user's groups
+    $stmt = $db->prepare('
+        SELECT g.permissions
+        FROM groups g
+        JOIN user_groups ug ON g.id = ug.group_id
+        WHERE ug.user_id = :user_id
+    ');
+    $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($row['permissions']) {
+            $groupPerms = json_decode($row['permissions'], true);
+            if (is_array($groupPerms)) {
+                $permissions = array_merge($permissions, $groupPerms);
+            }
+        }
     }
 
-    return DEFAULT_USER_PERMISSIONS;
+    // Add direct user permissions if set
+    if (!empty($user['permissions'])) {
+        $userPerms = json_decode($user['permissions'], true);
+        if (is_array($userPerms)) {
+            $permissions = array_merge($permissions, $userPerms);
+        }
+    }
+
+    // If no permissions from groups or user, use defaults
+    if (empty($permissions)) {
+        return DEFAULT_USER_PERMISSIONS;
+    }
+
+    return array_unique($permissions);
 }
 
 /**
- * Set permissions for a user
+ * Get user's groups
+ */
+function getUserGroups($userId) {
+    $db = getDB();
+    $stmt = $db->prepare('
+        SELECT g.*
+        FROM groups g
+        JOIN user_groups ug ON g.id = ug.group_id
+        WHERE ug.user_id = :user_id
+        ORDER BY g.name
+    ');
+    $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+
+    $groups = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $groups[] = $row;
+    }
+    return $groups;
+}
+
+/**
+ * Add user to a group
+ */
+function addUserToGroup($userId, $groupId) {
+    $db = getDB();
+    try {
+        $stmt = $db->prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (:user_id, :group_id)');
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':group_id', $groupId, SQLITE3_INTEGER);
+        return $stmt->execute();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'add_user_to_group', 'user_id' => $userId, 'group_id' => $groupId]);
+        return false;
+    }
+}
+
+/**
+ * Remove user from a group
+ */
+function removeUserFromGroup($userId, $groupId) {
+    $db = getDB();
+    try {
+        $stmt = $db->prepare('DELETE FROM user_groups WHERE user_id = :user_id AND group_id = :group_id');
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':group_id', $groupId, SQLITE3_INTEGER);
+        return $stmt->execute();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'remove_user_from_group', 'user_id' => $userId, 'group_id' => $groupId]);
+        return false;
+    }
+}
+
+/**
+ * Get all groups
+ */
+function getAllGroups() {
+    $db = getDB();
+    $result = $db->query('SELECT * FROM groups ORDER BY is_system DESC, name ASC');
+    $groups = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $row['permissions_array'] = $row['permissions'] ? json_decode($row['permissions'], true) : [];
+        $groups[] = $row;
+    }
+    return $groups;
+}
+
+/**
+ * Get a single group by ID
+ */
+function getGroup($groupId) {
+    $db = getDB();
+    $stmt = $db->prepare('SELECT * FROM groups WHERE id = :id');
+    $stmt->bindValue(':id', $groupId, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    $group = $result->fetchArray(SQLITE3_ASSOC);
+    if ($group) {
+        $group['permissions_array'] = $group['permissions'] ? json_decode($group['permissions'], true) : [];
+    }
+    return $group;
+}
+
+/**
+ * Create a new group
+ */
+function createGroup($name, $description, $permissions) {
+    $db = getDB();
+    try {
+        $stmt = $db->prepare('INSERT INTO groups (name, description, permissions) VALUES (:name, :description, :permissions)');
+        $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+        $stmt->bindValue(':description', $description, SQLITE3_TEXT);
+        $stmt->bindValue(':permissions', json_encode($permissions), SQLITE3_TEXT);
+        $stmt->execute();
+        return $db->lastInsertRowID();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'create_group', 'name' => $name]);
+        return false;
+    }
+}
+
+/**
+ * Update a group
+ */
+function updateGroup($groupId, $name, $description, $permissions) {
+    $db = getDB();
+    try {
+        $stmt = $db->prepare('UPDATE groups SET name = :name, description = :description, permissions = :permissions WHERE id = :id AND is_system = 0');
+        $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+        $stmt->bindValue(':description', $description, SQLITE3_TEXT);
+        $stmt->bindValue(':permissions', json_encode($permissions), SQLITE3_TEXT);
+        $stmt->bindValue(':id', $groupId, SQLITE3_INTEGER);
+        return $stmt->execute();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'update_group', 'group_id' => $groupId]);
+        return false;
+    }
+}
+
+/**
+ * Update system group permissions only
+ */
+function updateSystemGroupPermissions($groupId, $permissions) {
+    $db = getDB();
+    try {
+        $stmt = $db->prepare('UPDATE groups SET permissions = :permissions WHERE id = :id');
+        $stmt->bindValue(':permissions', json_encode($permissions), SQLITE3_TEXT);
+        $stmt->bindValue(':id', $groupId, SQLITE3_INTEGER);
+        return $stmt->execute();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'update_system_group', 'group_id' => $groupId]);
+        return false;
+    }
+}
+
+/**
+ * Delete a group (only non-system groups)
+ */
+function deleteGroup($groupId) {
+    $db = getDB();
+    try {
+        // Check if it's a system group
+        $stmt = $db->prepare('SELECT is_system FROM groups WHERE id = :id');
+        $stmt->bindValue(':id', $groupId, SQLITE3_INTEGER);
+        $result = $stmt->execute();
+        $group = $result->fetchArray(SQLITE3_ASSOC);
+
+        if (!$group || $group['is_system']) {
+            return false; // Cannot delete system groups
+        }
+
+        $stmt = $db->prepare('DELETE FROM groups WHERE id = :id AND is_system = 0');
+        $stmt->bindValue(':id', $groupId, SQLITE3_INTEGER);
+        return $stmt->execute();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'delete_group', 'group_id' => $groupId]);
+        return false;
+    }
+}
+
+/**
+ * Get group members
+ */
+function getGroupMembers($groupId) {
+    $db = getDB();
+    $stmt = $db->prepare('
+        SELECT u.*
+        FROM users u
+        JOIN user_groups ug ON u.id = ug.user_id
+        WHERE ug.group_id = :group_id
+        ORDER BY u.username
+    ');
+    $stmt->bindValue(':group_id', $groupId, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+
+    $members = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $members[] = $row;
+    }
+    return $members;
+}
+
+/**
+ * Set permissions for a user (direct permissions)
  */
 function setUserPermissions($userId, $permissions) {
     $db = getDB();

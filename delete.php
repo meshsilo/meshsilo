@@ -217,8 +217,8 @@ require_once 'includes/header.php';
                     <?php if ($model['part_count'] > 0): ?>
                     <p>This model contains <strong><?= $model['part_count'] ?> parts</strong> that will also be deleted.</p>
                     <?php endif; ?>
-                    <?php if ($model['author']): ?>
-                    <p class="text-muted">by <?= htmlspecialchars($model['author']) ?></p>
+                    <?php if ($model['creator']): ?>
+                    <p class="text-muted">by <?= htmlspecialchars($model['creator']) ?></p>
                     <?php endif; ?>
                 </div>
 
