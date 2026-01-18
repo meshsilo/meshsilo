@@ -47,6 +47,9 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 
 // Get parts if this is a multi-part model
 $parts = [];
+$previewPath = null;
+$previewType = null;
+
 if ($model['part_count'] > 0) {
     $stmt = $db->prepare('
         SELECT * FROM models
@@ -58,6 +61,15 @@ if ($model['part_count'] > 0) {
     while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $parts[] = $row;
     }
+    // Use first part for preview
+    if (!empty($parts)) {
+        $previewPath = $parts[0]['file_path'];
+        $previewType = $parts[0]['file_type'];
+    }
+} else {
+    // Single model
+    $previewPath = $model['file_path'];
+    $previewType = $model['file_type'];
 }
 
 // Helper function to format bytes
@@ -94,12 +106,37 @@ require_once 'includes/header.php';
 
         <div class="page-container">
             <div class="model-detail">
+                <?php if ($previewPath && in_array($previewType, ['stl', '3mf'])): ?>
+                <div class="model-detail-viewer" id="model-viewer">
+                    <div class="viewer-loading">Loading 3D model...</div>
+                </div>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const container = document.getElementById('model-viewer');
+                    if (container && typeof ModelViewer !== 'undefined') {
+                        const viewer = initDetailViewer(
+                            'model-viewer',
+                            '<?= htmlspecialchars($previewPath, ENT_QUOTES) ?>',
+                            '<?= htmlspecialchars($previewType, ENT_QUOTES) ?>'
+                        );
+                        if (viewer) {
+                            container.querySelector('.viewer-loading')?.remove();
+                        }
+                    }
+                });
+                </script>
+                <?php endif; ?>
+
                 <div class="model-detail-header">
-                    <div class="model-detail-thumbnail">
+                    <div class="model-detail-thumbnail"
+                        <?php if ($previewPath && in_array($previewType, ['stl', '3mf'])): ?>
+                        data-model-url="<?= htmlspecialchars($previewPath) ?>"
+                        data-file-type="<?= htmlspecialchars($previewType) ?>"
+                        <?php endif; ?>>
                         <?php if ($model['part_count'] > 0): ?>
                         <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
                         <?php endif; ?>
-                        <span class="file-type-badge file-type-badge-large">.<?= htmlspecialchars($model['file_type']) ?></span>
+                        <span class="file-type-badge file-type-badge-large">.<?= htmlspecialchars($model['file_type'] ?? 'zip') ?></span>
                     </div>
                     <div class="model-detail-info">
                         <h1><?= htmlspecialchars($model['name']) ?></h1>

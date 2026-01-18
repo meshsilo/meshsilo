@@ -9,6 +9,20 @@ $db = getDB();
 $result = $db->query('SELECT * FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
 $models = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    // For multi-part models, get the first part for preview
+    if ($row['part_count'] > 0) {
+        $partStmt = $db->prepare('SELECT file_path, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
+        $partResult = $partStmt->execute();
+        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        if ($firstPart) {
+            $row['preview_path'] = $firstPart['file_path'];
+            $row['preview_type'] = $firstPart['file_type'];
+        }
+    } else {
+        $row['preview_path'] = $row['file_path'];
+        $row['preview_type'] = $row['file_type'];
+    }
     $models[] = $row;
 }
 
@@ -56,11 +70,15 @@ require_once 'includes/header.php';
                 <?php else: ?>
                     <?php foreach ($models as $model): ?>
                     <article class="model-card" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
-                        <div class="model-thumbnail">
+                        <div class="model-thumbnail"
+                            <?php if (!empty($model['preview_path'])): ?>
+                            data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
+                            data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
+                            <?php endif; ?>>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
                             <?php endif; ?>
-                            <span class="file-type-badge">.<?= htmlspecialchars($model['file_type']) ?></span>
+                            <span class="file-type-badge">.<?= htmlspecialchars($model['file_type'] ?? 'zip') ?></span>
                         </div>
                         <div class="model-info">
                             <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>

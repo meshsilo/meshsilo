@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $pageTitle ?? SITE_NAME ?> - <?= SITE_NAME ?></title>
     <link rel="stylesheet" href="<?= basePath('css/style.css') ?>">
+
+    <!-- Three.js for 3D model rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="<?= basePath('js/viewer.js') ?>" defer></script>
 </head>
 <body>
     <header class="site-header">
