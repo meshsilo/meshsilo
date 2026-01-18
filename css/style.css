@@ -713,6 +713,31 @@ main {
     cursor: pointer;
 }
 
+/* Alerts */
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+.alert-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid #ef4444;
+    color: #ef4444;
+}
+
+.alert-success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid #22c55e;
+    color: #22c55e;
+}
+
+/* User Name in Header */
+.user-name {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
 /* Page Container Wide */
 .page-container-wide {
     max-width: 1400px;

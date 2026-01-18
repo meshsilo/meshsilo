@@ -1,38 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Settings - Silo</title>
-    <link rel="stylesheet" href="../css/style.css">
-</head>
-<body>
-    <header class="site-header">
-        <div class="header-content">
-            <a href="/" class="logo">
-                <span class="logo-icon">&#9653;</span>
-                <span class="logo-text">Silo</span>
-            </a>
-            <nav class="main-nav">
-                <a href="/">Browse</a>
-                <a href="../categories.html">Categories</a>
-                <a href="../upload.html">Upload</a>
-            </nav>
-            <div class="header-actions">
-                <input type="search" class="search-bar" placeholder="Search models...">
-                <a href="../login.html" class="btn btn-primary">Log In</a>
-            </div>
-        </div>
-    </header>
+<?php
+require_once '../includes/config.php';
+$baseDir = '../';
+$pageTitle = 'Admin Settings';
+$activePage = '';
 
-    <main>
+// Category data - will be loaded from database later
+$categories = [
+    ['slug' => 'functional', 'name' => 'Functional'],
+    ['slug' => 'decorative', 'name' => 'Decorative'],
+    ['slug' => 'tools', 'name' => 'Tools'],
+    ['slug' => 'gaming', 'name' => 'Gaming'],
+    ['slug' => 'art', 'name' => 'Art'],
+    ['slug' => 'mechanical', 'name' => 'Mechanical'],
+];
+
+require_once '../includes/header.php';
+?>
+
         <div class="admin-layout">
             <aside class="admin-sidebar">
                 <h3>Admin</h3>
                 <nav class="admin-nav">
-                    <a href="settings.html" class="active">Site Settings</a>
+                    <a href="settings.php" class="active">Site Settings</a>
                     <a href="#">Users</a>
-                    <a href="../categories.html">Categories</a>
+                    <a href="#">Categories</a>
                     <a href="#">Collections</a>
                     <a href="#">Storage</a>
                 </nav>
@@ -41,7 +32,7 @@
             <div class="admin-content">
                 <div class="page-header">
                     <h1>Site Settings</h1>
-                    <p>Configure your Silo instance</p>
+                    <p>Configure your <?= SITE_NAME ?> instance</p>
                 </div>
 
                 <form class="settings-form">
@@ -50,12 +41,12 @@
 
                         <div class="form-group">
                             <label for="site-name">Site Name</label>
-                            <input type="text" id="site-name" name="site_name" class="form-input" value="Silo">
+                            <input type="text" id="site-name" name="site_name" class="form-input" value="<?= htmlspecialchars(SITE_NAME) ?>">
                         </div>
 
                         <div class="form-group">
                             <label for="site-description">Site Description</label>
-                            <input type="text" id="site-description" name="site_description" class="form-input" value="3D Model Storage">
+                            <input type="text" id="site-description" name="site_description" class="form-input" value="<?= htmlspecialchars(SITE_DESCRIPTION) ?>">
                         </div>
 
                         <div class="form-group">
@@ -69,26 +60,26 @@
 
                         <div class="form-group">
                             <label for="max-file-size">Max File Size (MB)</label>
-                            <input type="number" id="max-file-size" name="max_file_size" class="form-input" value="100" min="1">
+                            <input type="number" id="max-file-size" name="max_file_size" class="form-input" value="<?= MAX_FILE_SIZE / (1024 * 1024) ?>" min="1">
                         </div>
 
                         <div class="form-group">
                             <label for="allowed-formats">Allowed File Formats</label>
                             <div class="checkbox-group">
                                 <label class="checkbox-label">
-                                    <input type="checkbox" name="formats" value="stl" checked>
+                                    <input type="checkbox" name="formats[]" value="stl" <?= in_array('stl', ALLOWED_EXTENSIONS) ? 'checked' : '' ?>>
                                     <span>.stl</span>
                                 </label>
                                 <label class="checkbox-label">
-                                    <input type="checkbox" name="formats" value="3mf" checked>
+                                    <input type="checkbox" name="formats[]" value="3mf" <?= in_array('3mf', ALLOWED_EXTENSIONS) ? 'checked' : '' ?>>
                                     <span>.3mf</span>
                                 </label>
                                 <label class="checkbox-label">
-                                    <input type="checkbox" name="formats" value="obj">
+                                    <input type="checkbox" name="formats[]" value="obj">
                                     <span>.obj</span>
                                 </label>
                                 <label class="checkbox-label">
-                                    <input type="checkbox" name="formats" value="step">
+                                    <input type="checkbox" name="formats[]" value="step">
                                     <span>.step</span>
                                 </label>
                             </div>
@@ -129,12 +120,9 @@
                         <div class="form-group">
                             <label>Manage Categories</label>
                             <div class="tag-list">
-                                <span class="tag">Functional <button type="button" class="tag-remove">&times;</button></span>
-                                <span class="tag">Decorative <button type="button" class="tag-remove">&times;</button></span>
-                                <span class="tag">Tools <button type="button" class="tag-remove">&times;</button></span>
-                                <span class="tag">Gaming <button type="button" class="tag-remove">&times;</button></span>
-                                <span class="tag">Art <button type="button" class="tag-remove">&times;</button></span>
-                                <span class="tag">Mechanical <button type="button" class="tag-remove">&times;</button></span>
+                                <?php foreach ($categories as $category): ?>
+                                <span class="tag"><?= htmlspecialchars($category['name']) ?> <button type="button" class="tag-remove">&times;</button></span>
+                                <?php endforeach; ?>
                             </div>
                             <div class="input-with-button">
                                 <input type="text" id="new-category" class="form-input" placeholder="New category name">
@@ -148,7 +136,7 @@
 
                         <div class="form-group">
                             <label>Database Location</label>
-                            <p class="form-hint">db/silo.db</p>
+                            <p class="form-hint"><?= DB_PATH ?></p>
                         </div>
 
                         <div class="button-group">
@@ -164,22 +152,5 @@
                 </form>
             </div>
         </div>
-    </main>
 
-    <footer class="site-footer">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <span class="logo-icon">&#9653;</span>
-                <span class="logo-text">Silo</span>
-                <p>3D Model Storage</p>
-            </div>
-            <nav class="footer-nav">
-                <a href="#">About</a>
-                <a href="#">Contact</a>
-                <a href="#">Privacy</a>
-                <a href="#">Terms</a>
-            </nav>
-        </div>
-    </footer>
-</body>
-</html>
+<?php require_once '../includes/footer.php'; ?>

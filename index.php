@@ -1,31 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Silo - 3D Model Storage</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <header class="site-header">
-        <div class="header-content">
-            <a href="/" class="logo">
-                <span class="logo-icon">&#9653;</span>
-                <span class="logo-text">Silo</span>
-            </a>
-            <nav class="main-nav">
-                <a href="/">Browse</a>
-                <a href="categories.html">Categories</a>
-                <a href="upload.html">Upload</a>
-            </nav>
-            <div class="header-actions">
-                <input type="search" class="search-bar" placeholder="Search models...">
-                <a href="login.html" class="btn btn-primary">Log In</a>
-            </div>
-        </div>
-    </header>
+<?php
+require_once 'includes/config.php';
+$pageTitle = 'Home';
+$activePage = 'browse';
+require_once 'includes/header.php';
+?>
 
-    <main>
         <section class="hero">
             <div class="hero-content">
                 <h1>Your 3D Model Library</h1>
@@ -75,42 +54,25 @@
                 <h2>Categories</h2>
             </div>
             <div class="categories-grid">
-                <a href="#" class="category-card">
+                <a href="category.php?cat=functional" class="category-card">
                     <span class="category-name">Functional</span>
                 </a>
-                <a href="#" class="category-card">
+                <a href="category.php?cat=decorative" class="category-card">
                     <span class="category-name">Decorative</span>
                 </a>
-                <a href="#" class="category-card">
+                <a href="category.php?cat=tools" class="category-card">
                     <span class="category-name">Tools</span>
                 </a>
-                <a href="#" class="category-card">
+                <a href="category.php?cat=gaming" class="category-card">
                     <span class="category-name">Gaming</span>
                 </a>
-                <a href="#" class="category-card">
+                <a href="category.php?cat=art" class="category-card">
                     <span class="category-name">Art</span>
                 </a>
-                <a href="#" class="category-card">
+                <a href="category.php?cat=mechanical" class="category-card">
                     <span class="category-name">Mechanical</span>
                 </a>
             </div>
         </section>
-    </main>
 
-    <footer class="site-footer">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <span class="logo-icon">&#9653;</span>
-                <span class="logo-text">Silo</span>
-                <p>3D Model Storage</p>
-            </div>
-            <nav class="footer-nav">
-                <a href="#">About</a>
-                <a href="#">Contact</a>
-                <a href="#">Privacy</a>
-                <a href="#">Terms</a>
-            </nav>
-        </div>
-    </footer>
-</body>
-</html>
+<?php require_once 'includes/footer.php'; ?>
