@@ -350,6 +350,71 @@ function getDeduplicationStats() {
 }
 
 /**
+ * Calculate content-based hash for a file
+ * For 3MF files, extracts and hashes the actual model content (ignoring ZIP metadata)
+ * For other files, uses standard file hash
+ */
+function calculateContentHash($filePath) {
+    if (!file_exists($filePath) || !is_file($filePath)) {
+        return null;
+    }
+
+    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+    // For 3MF files, hash the content inside the ZIP archive
+    if ($extension === '3mf') {
+        return calculate3mfContentHash($filePath);
+    }
+
+    // For other files, use standard file hash
+    return hash_file('sha256', $filePath);
+}
+
+/**
+ * Calculate content-based hash for 3MF files
+ * 3MF files are ZIP archives - we hash the actual model content, not the ZIP metadata
+ */
+function calculate3mfContentHash($filePath) {
+    $zip = new ZipArchive();
+    if ($zip->open($filePath) !== true) {
+        // If can't open as ZIP, fall back to file hash
+        return hash_file('sha256', $filePath);
+    }
+
+    $contentToHash = '';
+
+    // Get list of all files in the archive, sorted for consistency
+    $files = [];
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $files[] = $zip->getNameIndex($i);
+    }
+    sort($files);
+
+    // Hash the content of each file (excluding metadata-only files)
+    foreach ($files as $fileName) {
+        // Skip files that only contain metadata
+        $lowerName = strtolower($fileName);
+        if (strpos($lowerName, '_rels/') === 0) continue;
+        if ($lowerName === '[content_types].xml') continue;
+
+        $content = $zip->getFromName($fileName);
+        if ($content !== false) {
+            // Add filename and content to hash input for consistency
+            $contentToHash .= $fileName . ':' . strlen($content) . ':' . $content;
+        }
+    }
+
+    $zip->close();
+
+    if (empty($contentToHash)) {
+        // Fallback if no content found
+        return hash_file('sha256', $filePath);
+    }
+
+    return hash('sha256', $contentToHash);
+}
+
+/**
  * Calculate and store hashes for all files that don't have one
  */
 function calculateMissingHashes() {
@@ -367,15 +432,51 @@ function calculateMissingHashes() {
         $filePath = __DIR__ . '/../' . getRealFilePath($row);
 
         if (file_exists($filePath) && is_file($filePath)) {
-            $hash = hash_file('sha256', $filePath);
-            $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
-            $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
-            $stmt->execute();
-            $updated++;
+            $hash = calculateContentHash($filePath);
+            if ($hash) {
+                $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
+                $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+                $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+                $stmt->execute();
+                $updated++;
+            }
         }
     }
 
     logInfo('Calculated missing hashes', ['count' => $updated]);
+    return $updated;
+}
+
+/**
+ * Recalculate hashes for all 3MF files using content-based hashing
+ * Use this to update existing hashes after implementing content-based hashing
+ */
+function recalculate3mfHashes() {
+    $db = getDB();
+
+    $result = $db->query('
+        SELECT id, file_path, dedup_path
+        FROM models
+        WHERE file_path IS NOT NULL
+          AND (file_path LIKE "%.3mf" OR dedup_path LIKE "%.3mf")
+    ');
+
+    $updated = 0;
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $filePath = __DIR__ . '/../' . getRealFilePath($row);
+
+        if (file_exists($filePath) && is_file($filePath)) {
+            $hash = calculateContentHash($filePath);
+            if ($hash) {
+                $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
+                $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+                $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+                $stmt->execute();
+                $updated++;
+            }
+        }
+    }
+
+    logInfo('Recalculated 3MF hashes', ['count' => $updated]);
     return $updated;
 }

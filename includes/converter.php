@@ -4,6 +4,8 @@
  * Converts STL files to 3MF format for better compression
  */
 
+require_once __DIR__ . '/dedup.php';
+
 class STLConverter {
     private $vertices = [];
     private $triangles = [];
@@ -353,8 +355,8 @@ function convertPartTo3MF($partId) {
             // Update database - use case-insensitive replacement for file_path
             $newDbFilePath = preg_replace('/\.stl$/i', '.3mf', $part['file_path']);
 
-            // Calculate new file hash
-            $newFileHash = hash_file('sha256', $newFilePath);
+            // Calculate new file hash (content-based for 3MF)
+            $newFileHash = calculateContentHash($newFilePath);
 
             $stmt = $db->prepare('
                 UPDATE models

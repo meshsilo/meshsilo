@@ -100,6 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
         // Calculate missing file hashes
         $count = calculateMissingHashes();
         $message = "Calculated hashes for $count files.";
+    } elseif ($action === 'recalculate_3mf_hashes') {
+        // Recalculate 3MF hashes using content-based hashing
+        $count = recalculate3mfHashes();
+        $message = "Recalculated content-based hashes for $count 3MF files.";
     } elseif ($action === 'run_dedup_scan') {
         // Run deduplication scan
         $result = runDeduplicationScan();
@@ -438,6 +442,10 @@ require_once 'includes/header.php';
                         <button type="submit" class="btn btn-secondary btn-small">Calculate Missing Hashes</button>
                     </form>
                     <?php endif; ?>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="recalculate_3mf_hashes">
+                        <button type="submit" class="btn btn-secondary btn-small" title="Recalculate hashes for 3MF files using content-based hashing (ignores ZIP timestamps)">Recalculate 3MF Hashes</button>
+                    </form>
                     <?php if ($dedupStats['potential_duplicates'] > 0): ?>
                     <form method="POST" style="display: inline;">
                         <input type="hidden" name="action" value="run_dedup_scan">

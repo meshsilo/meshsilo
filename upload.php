@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/converter.php';
+require_once 'includes/dedup.php';
 
 // Check upload permission
 requirePermission(PERM_UPLOAD);
@@ -58,8 +59,8 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
 
     $fileSize = filesize($tmpPath);
 
-    // Calculate file hash for deduplication
-    $fileHash = hash_file('sha256', $tmpPath);
+    // Calculate file hash for deduplication (content-based for 3MF files)
+    $fileHash = calculateContentHash($tmpPath);
 
     // Create folder for standalone uploads (not parts of a ZIP)
     if (!$folderId) {
