@@ -33,8 +33,20 @@ $message = '';
 $error = '';
 $uploadedCount = 0;
 
+// Helper function to create a model folder
+function createModelFolder($folderName = null) {
+    $folderId = $folderName ?? uniqid();
+    $folderPath = UPLOAD_PATH . $folderId . '/';
+
+    if (!file_exists($folderPath)) {
+        mkdir($folderPath, 0755, true);
+    }
+
+    return $folderId;
+}
+
 // Helper function to save a single model file
-function saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories, $parentId = null, $originalPath = null) {
+function saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories, $parentId = null, $originalPath = null, $folderId = null) {
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
     // Only process valid model files
@@ -45,18 +57,29 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
 
     $fileSize = filesize($tmpPath);
 
-    // Generate unique filename
-    $filename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
-    $filePath = UPLOAD_PATH . $filename;
+    // Create folder for standalone uploads (not parts of a ZIP)
+    if (!$folderId) {
+        $folderId = createModelFolder();
+    }
 
-    // Copy file to assets
+    // Generate unique filename and store in folder
+    $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
+    $folderPath = UPLOAD_PATH . $folderId . '/';
+    $filePath = $folderPath . $filename;
+
+    // Ensure folder exists
+    if (!file_exists($folderPath)) {
+        mkdir($folderPath, 0755, true);
+    }
+
+    // Copy file to assets folder
     if (copy($tmpPath, $filePath)) {
         try {
             // Insert into database
             $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url, :parent_id, :original_path)');
             $stmt->bindValue(':name', $name, SQLITE3_TEXT);
             $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
-            $stmt->bindValue(':file_path', 'assets/' . $filename, SQLITE3_TEXT);
+            $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $filename, SQLITE3_TEXT);
             $stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
             $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
             $stmt->bindValue(':description', $parentId ? '' : $description, SQLITE3_TEXT); // Only set description on parent
@@ -79,7 +102,7 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
                 }
             }
 
-            logInfo('Model uploaded successfully', ['model_id' => $modelId, 'name' => $name, 'file' => $filename, 'parent_id' => $parentId]);
+            logInfo('Model uploaded successfully', ['model_id' => $modelId, 'name' => $name, 'file' => $filename, 'folder' => $folderId, 'parent_id' => $parentId]);
             return $modelId;
         } catch (Exception $e) {
             logException($e, ['action' => 'save_model', 'name' => $name]);
@@ -94,10 +117,12 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
 }
 
 // Helper function to create a parent model for ZIP uploads
-function createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize) {
+function createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize, $folderId) {
     try {
-        $stmt = $db->prepare('INSERT INTO models (name, file_size, file_type, description, author, collection, source_url, part_count) VALUES (:name, :file_size, :file_type, :description, :author, :collection, :source_url, 0)');
+        $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url, part_count) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url, 0)');
         $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+        $stmt->bindValue(':filename', $folderId, SQLITE3_TEXT);
+        $stmt->bindValue(':file_path', 'assets/' . $folderId, SQLITE3_TEXT);
         $stmt->bindValue(':file_size', $totalSize, SQLITE3_INTEGER);
         $stmt->bindValue(':file_type', 'zip', SQLITE3_TEXT);
         $stmt->bindValue(':description', $description, SQLITE3_TEXT);
@@ -216,23 +241,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Calculate total size
                         $totalSize = array_sum(array_column($modelFiles, 'size'));
 
+                        // Create a folder for this model
+                        $folderId = createModelFolder();
+
                         // Create parent model
-                        $parentId = createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize);
+                        $parentId = createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize, $folderId);
 
                         if ($parentId) {
-                            // Save each file as a child of the parent
+                            // Save each file as a child of the parent, all in the same folder
                             foreach ($modelFiles as $modelFile) {
                                 $partName = pathinfo($modelFile['filename'], PATHINFO_FILENAME);
-                                if (saveModelFile($db, $modelFile['path'], $modelFile['filename'], $partName, '', '', '', '', [], $parentId, $modelFile['relative_path'])) {
+                                if (saveModelFile($db, $modelFile['path'], $modelFile['filename'], $partName, '', '', '', '', [], $parentId, $modelFile['relative_path'], $folderId)) {
                                     $uploadedCount++;
                                 }
                             }
 
                             // Update parent with final part count
                             updateParentModel($db, $parentId, $uploadedCount, $totalSize);
-                            logInfo('ZIP extraction complete', ['file' => $originalName, 'parent_id' => $parentId, 'parts' => $uploadedCount]);
+                            logInfo('ZIP extraction complete', ['file' => $originalName, 'parent_id' => $parentId, 'parts' => $uploadedCount, 'folder' => $folderId]);
                         } else {
                             $error = 'Failed to create model entry.';
+                            // Clean up empty folder if parent creation failed
+                            if (is_dir(UPLOAD_PATH . $folderId)) {
+                                rmdir(UPLOAD_PATH . $folderId);
+                            }
                         }
                     }
 
