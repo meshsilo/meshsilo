@@ -9,6 +9,87 @@ $activePage = 'stats';
 
 $db = getDB();
 
+$message = '';
+$messageType = 'success';
+
+// Handle file cleanup actions (requires admin permission)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'delete_missing') {
+        // Delete a single missing file entry from database
+        $modelId = (int)($_POST['model_id'] ?? 0);
+        if ($modelId) {
+            $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
+            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->execute();
+            $message = 'Removed missing file entry from database.';
+            logInfo('Removed missing file from database', ['model_id' => $modelId]);
+        }
+    } elseif ($action === 'delete_all_missing') {
+        // Delete all missing file entries
+        $result = $db->query('SELECT id, file_path FROM models WHERE parent_id IS NULL');
+        $deletedCount = 0;
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $filePath = UPLOAD_PATH . $row['file_path'];
+            // For multi-part models, check if folder exists
+            if (is_dir($filePath)) continue;
+            // For single files
+            $singlePath = __DIR__ . '/' . $row['file_path'];
+            if (file_exists($singlePath)) continue;
+
+            // Check child parts too
+            $childStmt = $db->prepare('SELECT file_path FROM models WHERE parent_id = :parent_id LIMIT 1');
+            $childStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
+            $childResult = $childStmt->execute();
+            $child = $childResult->fetchArray(SQLITE3_ASSOC);
+            if ($child && file_exists(__DIR__ . '/' . $child['file_path'])) continue;
+
+            // Delete this entry and its children
+            $stmt = $db->prepare('DELETE FROM models WHERE id = :id OR parent_id = :id');
+            $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+            $stmt->execute();
+            $deletedCount++;
+        }
+        $message = "Removed $deletedCount missing file entries from database.";
+        logInfo('Removed all missing files from database', ['count' => $deletedCount]);
+    } elseif ($action === 'delete_orphan') {
+        // Delete a single orphaned file from disk
+        $filename = $_POST['filename'] ?? '';
+        if ($filename && !str_contains($filename, '..') && !str_contains($filename, '/')) {
+            $filePath = UPLOAD_PATH . $filename;
+            if (file_exists($filePath) && is_file($filePath)) {
+                unlink($filePath);
+                $message = 'Deleted orphaned file from disk.';
+                logInfo('Deleted orphaned file', ['filename' => $filename]);
+            }
+        }
+    } elseif ($action === 'delete_all_orphans') {
+        // Delete all orphaned files from disk
+        $assetsPath = realpath(UPLOAD_PATH);
+        if ($assetsPath && is_dir($assetsPath)) {
+            $dbFilenames = [];
+            $result = $db->query('SELECT filename FROM models');
+            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                $dbFilenames[] = $row['filename'];
+            }
+
+            $deletedCount = 0;
+            $iterator = new DirectoryIterator($assetsPath);
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
+                    if (!in_array($file->getFilename(), $dbFilenames)) {
+                        unlink($file->getPathname());
+                        $deletedCount++;
+                    }
+                }
+            }
+            $message = "Deleted $deletedCount orphaned files from disk.";
+            logInfo('Deleted all orphaned files', ['count' => $deletedCount]);
+        }
+    }
+}
+
 // Get model count
 $result = $db->query('SELECT COUNT(*) as count FROM models');
 $modelCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
@@ -214,6 +295,10 @@ require_once 'includes/header.php';
                 <h1>Statistics</h1>
                 <p>Overview of your 3D model library</p>
             </div>
+
+            <?php if ($message): ?>
+            <div class="alert alert-<?= $messageType ?>"><?= htmlspecialchars($message) ?></div>
+            <?php endif; ?>
 
             <div class="stats-grid">
                 <div class="stat-card stat-card-large">
@@ -524,6 +609,12 @@ require_once 'includes/header.php';
                 <section class="stats-section stats-section-danger">
                     <h2>Missing Files</h2>
                     <p class="section-description">These models exist in the database but their files are missing from disk.</p>
+                    <?php if (isAdmin()): ?>
+                    <form method="POST" style="margin-bottom: 1rem;">
+                        <input type="hidden" name="action" value="delete_all_missing">
+                        <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Delete all <?= count($missingFiles) ?> missing file entries from the database?');">Remove All from Database</button>
+                    </form>
+                    <?php endif; ?>
                     <div class="stats-table-container">
                         <table class="stats-table">
                             <thead>
@@ -531,6 +622,7 @@ require_once 'includes/header.php';
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>Filename</th>
+                                    <?php if (isAdmin()): ?><th>Actions</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
@@ -539,6 +631,15 @@ require_once 'includes/header.php';
                                     <td><?= $file['id'] ?></td>
                                     <td><?= htmlspecialchars($file['name']) ?></td>
                                     <td class="text-muted"><?= htmlspecialchars($file['filename']) ?></td>
+                                    <?php if (isAdmin()): ?>
+                                    <td>
+                                        <form method="POST" style="display: inline;">
+                                            <input type="hidden" name="action" value="delete_missing">
+                                            <input type="hidden" name="model_id" value="<?= $file['id'] ?>">
+                                            <button type="submit" class="btn btn-danger btn-small">Remove</button>
+                                        </form>
+                                    </td>
+                                    <?php endif; ?>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -551,12 +652,19 @@ require_once 'includes/header.php';
                 <section class="stats-section stats-section-warning">
                     <h2>Orphaned Files</h2>
                     <p class="section-description">These files exist on disk but have no database entry. They may be safe to delete.</p>
+                    <?php if (isAdmin()): ?>
+                    <form method="POST" style="margin-bottom: 1rem;">
+                        <input type="hidden" name="action" value="delete_all_orphans">
+                        <button type="submit" class="btn btn-warning btn-small" onclick="return confirm('Delete all <?= count($orphanedFiles) ?> orphaned files from disk? This cannot be undone.');">Delete All from Disk</button>
+                    </form>
+                    <?php endif; ?>
                     <div class="stats-table-container">
                         <table class="stats-table">
                             <thead>
                                 <tr>
                                     <th>Filename</th>
                                     <th>Size</th>
+                                    <?php if (isAdmin()): ?><th>Actions</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
@@ -564,6 +672,15 @@ require_once 'includes/header.php';
                                 <tr>
                                     <td class="text-muted"><?= htmlspecialchars($file['filename']) ?></td>
                                     <td><?= formatBytes($file['size']) ?></td>
+                                    <?php if (isAdmin()): ?>
+                                    <td>
+                                        <form method="POST" style="display: inline;">
+                                            <input type="hidden" name="action" value="delete_orphan">
+                                            <input type="hidden" name="filename" value="<?= htmlspecialchars($file['filename']) ?>">
+                                            <button type="submit" class="btn btn-warning btn-small">Delete</button>
+                                        </form>
+                                    </td>
+                                    <?php endif; ?>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

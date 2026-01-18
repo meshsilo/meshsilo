@@ -823,6 +823,15 @@ main {
     background-color: #dc2626;
 }
 
+.btn-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
+}
+
 /* Stats Grid */
 .stats-grid {
     display: grid;
