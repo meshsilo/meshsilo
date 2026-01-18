@@ -163,4 +163,85 @@ function runMigrations($db) {
         $stmt->execute();
         logInfo('Migration: Created Users group');
     }
+
+    // Check if original_size column exists for conversion tracking
+    $result = $db->query("PRAGMA table_info(models)");
+    $hasOriginalSize = false;
+    while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($col['name'] === 'original_size') $hasOriginalSize = true;
+    }
+
+    if (!$hasOriginalSize) {
+        $db->exec('ALTER TABLE models ADD COLUMN original_size INTEGER'); // Original size before conversion
+        logInfo('Migration: Added original_size column to models table');
+    }
+
+    // Create settings table if it doesn't exist
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ');
+
+    // Initialize default settings
+    $defaultSettings = [
+        'auto_convert_stl' => '0',
+        'site_name' => 'Silo',
+        'site_description' => 'Your 3D Model Library',
+        'models_per_page' => '20',
+        'allow_registration' => '1',
+        'require_approval' => '0'
+    ];
+
+    foreach ($defaultSettings as $key => $value) {
+        $stmt = $db->prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (:key, :value)');
+        $stmt->bindValue(':key', $key, SQLITE3_TEXT);
+        $stmt->bindValue(':value', $value, SQLITE3_TEXT);
+        $stmt->execute();
+    }
+}
+
+// Get a setting value
+function getSetting($key, $default = null) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT value FROM settings WHERE key = :key');
+        $stmt->bindValue(':key', $key, SQLITE3_TEXT);
+        $result = $stmt->execute();
+        $row = $result->fetchArray(SQLITE3_ASSOC);
+        return $row ? $row['value'] : $default;
+    } catch (Exception $e) {
+        return $default;
+    }
+}
+
+// Set a setting value
+function setSetting($key, $value) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (:key, :value, CURRENT_TIMESTAMP)');
+        $stmt->bindValue(':key', $key, SQLITE3_TEXT);
+        $stmt->bindValue(':value', $value, SQLITE3_TEXT);
+        return $stmt->execute();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'set_setting', 'key' => $key]);
+        return false;
+    }
+}
+
+// Get all settings
+function getAllSettings() {
+    try {
+        $db = getDB();
+        $result = $db->query('SELECT key, value FROM settings');
+        $settings = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $settings[$row['key']] = $row['value'];
+        }
+        return $settings;
+    } catch (Exception $e) {
+        return [];
+    }
 }

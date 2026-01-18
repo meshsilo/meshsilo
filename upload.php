@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/converter.php';
 
 // Check upload permission
 requirePermission(PERM_UPLOAD);
@@ -103,6 +104,20 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
             }
 
             logInfo('Model uploaded successfully', ['model_id' => $modelId, 'name' => $name, 'file' => $filename, 'folder' => $folderId, 'parent_id' => $parentId]);
+
+            // Auto-convert STL to 3MF if enabled
+            if ($extension === 'stl' && getSetting('auto_convert_stl', '0') === '1') {
+                $convertResult = convertPartTo3MF($modelId);
+                if ($convertResult['success']) {
+                    logInfo('Auto-converted STL to 3MF', [
+                        'model_id' => $modelId,
+                        'original_size' => $convertResult['original_size'],
+                        'new_size' => $convertResult['new_size'],
+                        'savings' => $convertResult['savings']
+                    ]);
+                }
+            }
+
             return $modelId;
         } catch (Exception $e) {
             logException($e, ['action' => 'save_model', 'name' => $name]);

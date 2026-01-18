@@ -1095,6 +1095,57 @@ main {
     border-color: #ef4444;
 }
 
+.stats-section-conversion {
+    border-color: #22c55e;
+}
+
+/* Conversion Stats Grid */
+.conversion-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.conversion-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem;
+    background-color: var(--color-bg);
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.conversion-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.conversion-stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.conversion-stat-highlight {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid #22c55e;
+}
+
+.conversion-stat-highlight .conversion-stat-value {
+    color: #22c55e;
+}
+
+.conversion-detail {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
 .section-description {
     color: var(--color-text-muted);
     font-size: 0.875rem;
@@ -1564,6 +1615,22 @@ main {
 .print-type-select:focus {
     outline: none;
     border-color: var(--color-primary);
+}
+
+/* Conversion Savings Badge */
+.conversion-savings {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius);
+    font-size: 0.625rem;
+    font-weight: 700;
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border: 1px solid #22c55e;
+}
+
+.convert-btn {
+    white-space: nowrap;
 }
 
 /* Model Card Print Type Indicators */

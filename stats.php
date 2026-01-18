@@ -134,6 +134,22 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $monthlyUploads[] = $row;
 }
 
+// Get conversion statistics
+$result = $db->query('
+    SELECT
+        COUNT(*) as converted_count,
+        SUM(original_size) as total_original_size,
+        SUM(file_size) as total_converted_size,
+        SUM(original_size - file_size) as total_savings
+    FROM models
+    WHERE original_size IS NOT NULL AND original_size > 0
+');
+$conversionStats = $result->fetchArray(SQLITE3_ASSOC);
+
+// Get count of STL files that could be converted
+$result = $db->query('SELECT COUNT(*) as count FROM models WHERE file_type = "stl"');
+$stlCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+
 // Get oldest and newest models
 $result = $db->query('SELECT name, created_at FROM models ORDER BY created_at ASC LIMIT 1');
 $oldestModel = $result->fetchArray(SQLITE3_ASSOC);
@@ -222,6 +238,39 @@ require_once 'includes/header.php';
                     <div class="stat-label">Users (<?= $adminUsers ?> admin)</div>
                 </div>
             </div>
+
+            <!-- Conversion Statistics -->
+            <?php if ($conversionStats['converted_count'] > 0 || $stlCount > 0): ?>
+            <section class="stats-section stats-section-full stats-section-conversion">
+                <h2>File Conversion</h2>
+                <div class="conversion-stats-grid">
+                    <div class="conversion-stat">
+                        <span class="conversion-stat-value"><?= number_format($conversionStats['converted_count'] ?? 0) ?></span>
+                        <span class="conversion-stat-label">Files Converted</span>
+                    </div>
+                    <div class="conversion-stat">
+                        <span class="conversion-stat-value"><?= number_format($stlCount) ?></span>
+                        <span class="conversion-stat-label">STL Files Remaining</span>
+                    </div>
+                    <?php if ($conversionStats['total_savings'] > 0): ?>
+                    <div class="conversion-stat conversion-stat-highlight">
+                        <span class="conversion-stat-value"><?= formatBytes($conversionStats['total_savings']) ?></span>
+                        <span class="conversion-stat-label">Total Space Saved</span>
+                    </div>
+                    <div class="conversion-stat">
+                        <span class="conversion-stat-value"><?= round(($conversionStats['total_savings'] / $conversionStats['total_original_size']) * 100, 1) ?>%</span>
+                        <span class="conversion-stat-label">Average Reduction</span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php if ($conversionStats['total_savings'] > 0): ?>
+                <p class="conversion-detail">
+                    Original size: <?= formatBytes($conversionStats['total_original_size']) ?> &rarr;
+                    Converted size: <?= formatBytes($conversionStats['total_converted_size']) ?>
+                </p>
+                <?php endif; ?>
+            </section>
+            <?php endif; ?>
 
             <!-- System Health -->
             <?php

@@ -11,12 +11,13 @@ $models = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     // For multi-part models, get the first part for preview and print types
     if ($row['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT file_path, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt = $db->prepare('SELECT file_path, file_type, file_size FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
         $partStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
         $partResult = $partStmt->execute();
         $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
         if ($firstPart) {
-            $row['preview_path'] = $firstPart['file_path'];
+            // Add cache buster to prevent stale model files after conversion
+            $row['preview_path'] = $firstPart['file_path'] . '?v=' . ($firstPart['file_size'] ?? time());
             $row['preview_type'] = $firstPart['file_type'];
         }
 
@@ -30,7 +31,8 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         }
         $row['print_types'] = $printTypes;
     } else {
-        $row['preview_path'] = $row['file_path'];
+        // Add cache buster for single models
+        $row['preview_path'] = $row['file_path'] . '?v=' . ($row['file_size'] ?? time());
         $row['preview_type'] = $row['file_type'];
         $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
     }

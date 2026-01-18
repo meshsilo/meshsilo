@@ -63,12 +63,13 @@ if ($model['part_count'] > 0) {
     }
     // Use first part for preview
     if (!empty($parts)) {
-        $previewPath = $parts[0]['file_path'];
+        // Add cache buster to prevent stale model files after conversion
+        $previewPath = $parts[0]['file_path'] . '?v=' . ($parts[0]['file_size'] ?? time());
         $previewType = $parts[0]['file_type'];
     }
 } else {
-    // Single model
-    $previewPath = $model['file_path'];
+    // Single model - add cache buster
+    $previewPath = $model['file_path'] . '?v=' . ($model['file_size'] ?? time());
     $previewType = $model['file_type'];
 }
 
@@ -210,6 +211,12 @@ require_once 'includes/header.php';
                                         <option value="fdm" <?= $part['print_type'] === 'fdm' ? 'selected' : '' ?>>FDM</option>
                                         <option value="sla" <?= $part['print_type'] === 'sla' ? 'selected' : '' ?>>SLA</option>
                                     </select>
+                                    <?php if ($part['file_type'] === 'stl'): ?>
+                                    <button type="button" class="btn btn-small btn-secondary convert-btn" data-part-id="<?= $part['id'] ?>" title="Convert to 3MF for better compression">Convert</button>
+                                    <?php endif; ?>
+                                    <?php if ($part['original_size'] && $part['file_type'] === '3mf'): ?>
+                                    <span class="conversion-savings" title="Saved by converting to 3MF">-<?= round((1 - $part['file_size'] / $part['original_size']) * 100) ?>%</span>
+                                    <?php endif; ?>
                                     <?php endif; ?>
                                     <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
                                     <a href="<?= htmlspecialchars($part['file_path']) ?>" class="btn btn-small btn-primary" download>Download</a>
@@ -236,6 +243,86 @@ require_once 'includes/header.php';
         </div>
 
         <script>
+        // Handle conversion button clicks
+        document.querySelectorAll('.convert-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const partId = this.dataset.partId;
+                const partItem = this.closest('.part-item');
+                const originalText = this.textContent;
+
+                // First, estimate the savings
+                this.textContent = 'Checking...';
+                this.disabled = true;
+
+                try {
+                    const estimateResponse = await fetch(`convert-part.php?action=estimate&part_id=${partId}`);
+                    const estimate = await estimateResponse.json();
+
+                    if (!estimate.success) {
+                        alert('Cannot estimate conversion: ' + (estimate.error || 'Unknown error'));
+                        this.textContent = originalText;
+                        this.disabled = false;
+                        return;
+                    }
+
+                    if (!estimate.worth_converting) {
+                        alert('Converting this file would not save space. Keeping original STL.');
+                        this.textContent = originalText;
+                        this.disabled = false;
+                        return;
+                    }
+
+                    // Format sizes for display
+                    const formatBytes = (bytes) => {
+                        if (bytes < 1024) return bytes + ' B';
+                        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+                    };
+
+                    const confirmed = confirm(
+                        `Convert to 3MF?\n\n` +
+                        `Current size: ${formatBytes(estimate.original_size)}\n` +
+                        `Estimated new size: ${formatBytes(estimate.estimated_size)}\n` +
+                        `Estimated savings: ${formatBytes(estimate.estimated_savings)} (${estimate.estimated_savings_percent}%)\n\n` +
+                        `This will replace the STL file with a 3MF file.`
+                    );
+
+                    if (!confirmed) {
+                        this.textContent = originalText;
+                        this.disabled = false;
+                        return;
+                    }
+
+                    // Perform the conversion
+                    this.textContent = 'Converting...';
+
+                    const formData = new FormData();
+                    formData.append('action', 'convert');
+                    formData.append('part_id', partId);
+
+                    const convertResponse = await fetch('convert-part.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await convertResponse.json();
+
+                    if (result.success) {
+                        // Reload the page to show updated file info
+                        location.reload();
+                    } else {
+                        alert('Conversion failed: ' + (result.error || 'Unknown error'));
+                        this.textContent = originalText;
+                        this.disabled = false;
+                    }
+                } catch (err) {
+                    console.error('Conversion error:', err);
+                    alert('Failed to convert file');
+                    this.textContent = originalText;
+                    this.disabled = false;
+                }
+            });
+        });
+
         // Handle print type selection changes
         document.querySelectorAll('.print-type-select').forEach(select => {
             select.addEventListener('change', function() {

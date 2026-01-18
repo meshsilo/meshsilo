@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS models (
     original_path TEXT,       -- Original path within ZIP for sorting
     part_count INTEGER DEFAULT 0,  -- Number of parts (for parent models)
     print_type TEXT,          -- 'fdm', 'sla', or NULL
+    original_size INTEGER,    -- Original file size before conversion
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
@@ -90,3 +91,19 @@ INSERT INTO groups (name, description, permissions, is_system) VALUES
 
 -- Assign admin user to Admin group
 INSERT INTO user_groups (user_id, group_id) VALUES (1, 1);
+
+-- Settings table for configurable options
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Default settings
+INSERT INTO settings (key, value) VALUES
+    ('auto_convert_stl', '0'),
+    ('site_name', 'Silo'),
+    ('site_description', 'Your 3D Model Library'),
+    ('models_per_page', '20'),
+    ('allow_registration', '1'),
+    ('require_approval', '0');
