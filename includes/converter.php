@@ -353,12 +353,16 @@ function convertPartTo3MF($partId) {
             // Update database - use case-insensitive replacement for file_path
             $newDbFilePath = preg_replace('/\.stl$/i', '.3mf', $part['file_path']);
 
+            // Calculate new file hash
+            $newFileHash = hash_file('sha256', $newFilePath);
+
             $stmt = $db->prepare('
                 UPDATE models
                 SET filename = :filename,
                     file_path = :file_path,
                     file_type = :file_type,
                     file_size = :file_size,
+                    file_hash = :file_hash,
                     original_size = :original_size
                 WHERE id = :id
             ');
@@ -366,6 +370,7 @@ function convertPartTo3MF($partId) {
             $stmt->bindValue(':file_path', $newDbFilePath, SQLITE3_TEXT);
             $stmt->bindValue(':file_type', '3mf', SQLITE3_TEXT);
             $stmt->bindValue(':file_size', $result['new_size'], SQLITE3_INTEGER);
+            $stmt->bindValue(':file_hash', $newFileHash, SQLITE3_TEXT);
             $stmt->bindValue(':original_size', $result['original_size'], SQLITE3_INTEGER);
             $stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
             $stmt->execute();

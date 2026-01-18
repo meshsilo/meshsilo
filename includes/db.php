@@ -176,6 +176,18 @@ function runMigrations($db) {
         logInfo('Migration: Added original_size column to models table');
     }
 
+    // Check if file_hash column exists
+    $result = $db->query("PRAGMA table_info(models)");
+    $hasFileHash = false;
+    while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($col['name'] === 'file_hash') $hasFileHash = true;
+    }
+
+    if (!$hasFileHash) {
+        $db->exec('ALTER TABLE models ADD COLUMN file_hash TEXT'); // SHA256 hash for deduplication
+        logInfo('Migration: Added file_hash column to models table');
+    }
+
     // Create settings table if it doesn't exist
     $db->exec('
         CREATE TABLE IF NOT EXISTS settings (

@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS models (
     part_count INTEGER DEFAULT 0,  -- Number of parts (for parent models)
     print_type TEXT,          -- 'fdm', 'sla', or NULL
     original_size INTEGER,    -- Original file size before conversion
+    file_hash TEXT,           -- SHA256 hash for deduplication
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE

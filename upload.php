@@ -58,6 +58,9 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
 
     $fileSize = filesize($tmpPath);
 
+    // Calculate file hash for deduplication
+    $fileHash = hash_file('sha256', $tmpPath);
+
     // Create folder for standalone uploads (not parts of a ZIP)
     if (!$folderId) {
         $folderId = createModelFolder();
@@ -77,12 +80,13 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
     if (copy($tmpPath, $filePath)) {
         try {
             // Insert into database
-            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :creator, :collection, :source_url, :parent_id, :original_path)');
+            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash, description, creator, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :file_hash, :description, :creator, :collection, :source_url, :parent_id, :original_path)');
             $stmt->bindValue(':name', $name, SQLITE3_TEXT);
             $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
             $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $filename, SQLITE3_TEXT);
             $stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
             $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
+            $stmt->bindValue(':file_hash', $fileHash, SQLITE3_TEXT);
             $stmt->bindValue(':description', $parentId ? '' : $description, SQLITE3_TEXT); // Only set description on parent
             $stmt->bindValue(':creator', $parentId ? '' : $creator, SQLITE3_TEXT);
             $stmt->bindValue(':collection', $parentId ? '' : $collection, SQLITE3_TEXT);
