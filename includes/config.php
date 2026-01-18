@@ -10,7 +10,8 @@ define('DB_PATH', __DIR__ . '/../db/silo.db');
 // Upload Configuration
 define('UPLOAD_PATH', __DIR__ . '/../assets/');
 define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB
-define('ALLOWED_EXTENSIONS', ['stl', '3mf']);
+define('MODEL_EXTENSIONS', ['stl', '3mf']);
+define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'zip']);
 
 // Helper function to get base path for includes
 function basePath($path = '') {
@@ -18,6 +19,10 @@ function basePath($path = '') {
     return ($baseDir ?? '') . $path;
 }
 
-// Include database and authentication
+// Include logging, database and authentication
+require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
+
+// Set up error handling
+setupErrorHandler();

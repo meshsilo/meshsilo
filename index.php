@@ -21,7 +21,12 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 
 $message = '';
 if (isset($_GET['uploaded'])) {
-    $message = 'Model uploaded successfully!';
+    $count = (int)$_GET['uploaded'];
+    if ($count === 1) {
+        $message = 'Model uploaded successfully!';
+    } else {
+        $message = $count . ' models uploaded successfully!';
+    }
 }
 
 require_once 'includes/header.php';

@@ -17,3 +17,7 @@ Thumbs.db
 
 # PHP
 *.log
+
+# Logs directory
+logs/*
+!logs/.gitkeep

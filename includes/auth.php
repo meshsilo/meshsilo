@@ -19,6 +19,11 @@ function getCurrentUser() {
 
 // Redirect to login if not authenticated (unless on public page)
 if (!isLoggedIn() && !in_array($currentPage, $publicPages)) {
+    logWarning('Unauthorized access attempt', [
+        'page' => $currentPage,
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+    ]);
     header('Location: ' . ($GLOBALS['baseDir'] ?? '') . 'login.php');
     exit;
 }

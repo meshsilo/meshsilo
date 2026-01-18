@@ -27,6 +27,65 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 
 $message = '';
 $error = '';
+$uploadedCount = 0;
+
+// Helper function to save a model file
+function saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories) {
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+    // Only process valid model files
+    if (!in_array($extension, MODEL_EXTENSIONS)) {
+        logWarning('Invalid model extension rejected', ['file' => $originalName, 'extension' => $extension]);
+        return false;
+    }
+
+    $fileSize = filesize($tmpPath);
+
+    // Generate unique filename
+    $filename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
+    $filePath = UPLOAD_PATH . $filename;
+
+    // Copy file to assets
+    if (copy($tmpPath, $filePath)) {
+        try {
+            // Insert into database
+            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url)');
+            $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+            $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
+            $stmt->bindValue(':file_path', 'assets/' . $filename, SQLITE3_TEXT);
+            $stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
+            $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
+            $stmt->bindValue(':description', $description, SQLITE3_TEXT);
+            $stmt->bindValue(':author', $author, SQLITE3_TEXT);
+            $stmt->bindValue(':collection', $collection, SQLITE3_TEXT);
+            $stmt->bindValue(':source_url', $source_url, SQLITE3_TEXT);
+            $stmt->execute();
+
+            $modelId = $db->lastInsertRowID();
+
+            // Link categories
+            if (!empty($selectedCategories)) {
+                foreach ($selectedCategories as $categoryId) {
+                    $stmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
+                    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+                    $stmt->bindValue(':category_id', (int)$categoryId, SQLITE3_INTEGER);
+                    $stmt->execute();
+                }
+            }
+
+            logInfo('Model uploaded successfully', ['model_id' => $modelId, 'name' => $name, 'file' => $filename]);
+            return true;
+        } catch (Exception $e) {
+            logException($e, ['action' => 'save_model', 'name' => $name]);
+            // Clean up the copied file since DB insert failed
+            unlink($filePath);
+            return false;
+        }
+    }
+
+    logError('Failed to copy uploaded file', ['source' => $tmpPath, 'destination' => $filePath]);
+    return false;
+}
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -44,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please select a file to upload.';
     } elseif ($_FILES['model_file']['error'] !== UPLOAD_ERR_OK) {
         $error = 'File upload failed. Error code: ' . $_FILES['model_file']['error'];
+        logError('File upload failed', ['error_code' => $_FILES['model_file']['error'], 'file' => $_FILES['model_file']['name'] ?? 'unknown']);
     } else {
         $file = $_FILES['model_file'];
         $originalName = $file['name'];
@@ -56,56 +116,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validate extension
         if (!in_array($extension, ALLOWED_EXTENSIONS)) {
             $error = 'Invalid file type. Allowed: ' . implode(', ', ALLOWED_EXTENSIONS);
+            logWarning('Invalid file type rejected', ['file' => $originalName, 'extension' => $extension]);
         } elseif ($fileSize > MAX_FILE_SIZE) {
             $error = 'File too large. Maximum size: ' . (MAX_FILE_SIZE / 1024 / 1024) . 'MB';
+            logWarning('File too large rejected', ['file' => $originalName, 'size' => $fileSize, 'max' => MAX_FILE_SIZE]);
         } else {
-            // Generate unique filename
-            $filename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
-            $filePath = UPLOAD_PATH . $filename;
+            // Handle ZIP files
+            if ($extension === 'zip') {
+                $zip = new ZipArchive();
+                if ($zip->open($tmpPath) === true) {
+                    // Create temp directory for extraction
+                    $extractDir = sys_get_temp_dir() . '/silo_' . uniqid();
+                    mkdir($extractDir, 0755, true);
 
-            // Move uploaded file
-            if (move_uploaded_file($tmpPath, $filePath)) {
-                // Insert into database
-                $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url)');
-                $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-                $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
-                $stmt->bindValue(':file_path', 'assets/' . $filename, SQLITE3_TEXT);
-                $stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
-                $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
-                $stmt->bindValue(':description', $description, SQLITE3_TEXT);
-                $stmt->bindValue(':author', $author, SQLITE3_TEXT);
-                $stmt->bindValue(':collection', $collection, SQLITE3_TEXT);
-                $stmt->bindValue(':source_url', $source_url, SQLITE3_TEXT);
-                $stmt->execute();
+                    $zip->extractTo($extractDir);
+                    $zip->close();
 
-                $modelId = $db->lastInsertRowID();
+                    // Find all model files in the extracted directory
+                    $iterator = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($extractDir, RecursiveDirectoryIterator::SKIP_DOTS)
+                    );
 
-                // Link categories
-                if (!empty($selectedCategories)) {
-                    foreach ($selectedCategories as $categoryId) {
-                        $stmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
-                        $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-                        $stmt->bindValue(':category_id', (int)$categoryId, SQLITE3_INTEGER);
-                        $stmt->execute();
+                    foreach ($iterator as $fileInfo) {
+                        if ($fileInfo->isFile()) {
+                            $fileExt = strtolower($fileInfo->getExtension());
+                            if (in_array($fileExt, MODEL_EXTENSIONS)) {
+                                $modelName = $name;
+                                // If multiple files, append the filename
+                                $baseName = pathinfo($fileInfo->getFilename(), PATHINFO_FILENAME);
+                                if ($uploadedCount > 0 || iterator_count(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($extractDir, RecursiveDirectoryIterator::SKIP_DOTS))) > 1) {
+                                    $modelName = $name . ' - ' . $baseName;
+                                }
+
+                                if (saveModelFile($db, $fileInfo->getPathname(), $fileInfo->getFilename(), $modelName, $description, $author, $collection, $source_url, $selectedCategories)) {
+                                    $uploadedCount++;
+                                }
+                            }
+                        }
                     }
-                }
 
-                // Add collection to collections table if it doesn't exist
-                if (!empty($collection)) {
-                    try {
-                        $stmt = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
-                        $stmt->bindValue(':name', $collection, SQLITE3_TEXT);
-                        $stmt->execute();
-                    } catch (Exception $e) {
-                        // Ignore if already exists
+                    // Clean up temp directory
+                    $files = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($extractDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::CHILD_FIRST
+                    );
+                    foreach ($files as $fileInfo) {
+                        if ($fileInfo->isDir()) {
+                            rmdir($fileInfo->getRealPath());
+                        } else {
+                            unlink($fileInfo->getRealPath());
+                        }
                     }
-                }
+                    rmdir($extractDir);
 
-                // Redirect to model page or home
-                header('Location: index.php?uploaded=1');
-                exit;
+                    if ($uploadedCount === 0) {
+                        $error = 'No valid model files (.stl, .3mf) found in the ZIP archive.';
+                        logWarning('No valid models in ZIP', ['file' => $originalName]);
+                    } else {
+                        logInfo('ZIP extraction complete', ['file' => $originalName, 'models_imported' => $uploadedCount]);
+                    }
+                } else {
+                    $error = 'Failed to open ZIP file.';
+                    logError('Failed to open ZIP file', ['file' => $originalName]);
+                }
             } else {
-                $error = 'Failed to save uploaded file.';
+                // Handle single model file
+                if (saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories)) {
+                    $uploadedCount = 1;
+                } else {
+                    $error = 'Failed to save uploaded file.';
+                    logError('Failed to save single model file', ['file' => $originalName, 'name' => $name]);
+                }
+            }
+
+            // Add collection to collections table if it doesn't exist
+            if ($uploadedCount > 0 && !empty($collection)) {
+                try {
+                    $stmt = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
+                    $stmt->bindValue(':name', $collection, SQLITE3_TEXT);
+                    $stmt->execute();
+                } catch (Exception $e) {
+                    // Ignore if already exists
+                }
+            }
+
+            // Redirect on success
+            if ($uploadedCount > 0) {
+                header('Location: index.php?uploaded=' . $uploadedCount);
+                exit;
             }
         }
     }
@@ -132,9 +230,10 @@ require_once 'includes/header.php';
                         <p class="dropzone-subtext">or</p>
                         <label class="btn btn-primary file-select-btn">
                             Browse Files
-                            <input type="file" name="model_file" id="model_file" accept=".stl,.3mf" hidden>
+                            <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.zip" hidden>
                         </label>
-                        <p class="dropzone-hint">Supported formats: .stl, .3mf (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
+                        <p class="dropzone-hint">Supported: .stl, .3mf, .zip (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
+                        <p class="dropzone-hint">ZIP files will be unpacked and all model files imported</p>
                         <p class="file-name-display" id="file-name-display"></p>
                     </div>
                 </div>
@@ -142,6 +241,7 @@ require_once 'includes/header.php';
                 <div class="form-group">
                     <label for="model-name">Model Name <span class="required">*</span></label>
                     <input type="text" id="model-name" name="name" class="form-input" placeholder="Enter model name" required value="<?= htmlspecialchars($_POST['name'] ?? '') ?>">
+                    <small class="form-help">For ZIP files with multiple models, the filename will be appended</small>
                 </div>
 
                 <div class="form-group">

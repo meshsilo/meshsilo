@@ -24,8 +24,12 @@ Silo/
 │   └── settings.php       # Admin settings
 ├── includes/
 │   ├── config.php         # Site configuration
+│   ├── logger.php         # Error logging utilities
+│   ├── db.php             # Database connection
+│   ├── auth.php           # Authentication middleware
 │   ├── header.php         # Shared header/nav
 │   └── footer.php         # Shared footer
+├── logs/                  # Error logs (gitignored)
 ├── css/style.css          # Styles
 ├── assets/                # Uploaded 3D model files
 ├── db/schema.sql          # Database schema
@@ -42,3 +46,16 @@ php -S localhost:8000
 ## Database
 
 Models table stores metadata; actual files go in `assets/`. See `db/schema.sql` for full schema.
+
+## Logging
+
+Error logging is configured in `includes/logger.php`. Logs are written to `logs/error.log`.
+
+Available functions:
+- `logError($message, $context)` - Log errors
+- `logWarning($message, $context)` - Log warnings
+- `logInfo($message, $context)` - Log info messages
+- `logDebug($message, $context)` - Log debug messages
+- `logException($e, $context)` - Log exceptions with stack trace
+
+Logs auto-rotate at 5MB.

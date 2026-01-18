@@ -23,10 +23,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'is_admin' => $user['is_admin']
             ];
 
+            logInfo('User logged in', [
+                'user_id' => $user['id'],
+                'username' => $user['username'],
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+            ]);
+
             header('Location: index.php');
             exit;
         } else {
             $error = 'Invalid username or password.';
+            logWarning('Failed login attempt', [
+                'username' => $username,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+            ]);
         }
     }
 }
