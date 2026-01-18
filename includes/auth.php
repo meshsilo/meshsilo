@@ -17,8 +17,8 @@ function getCurrentUser() {
     return $_SESSION['user'] ?? null;
 }
 
-// Redirect to login if not authenticated (unless on public page)
-if (!isLoggedIn() && !in_array($currentPage, $publicPages)) {
+// Redirect to login if not authenticated (unless on public page or CLI)
+if (php_sapi_name() !== 'cli' && !isLoggedIn() && !in_array($currentPage, $publicPages)) {
     logWarning('Unauthorized access attempt', [
         'page' => $currentPage,
         'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
