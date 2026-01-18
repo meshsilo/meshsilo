@@ -187,7 +187,25 @@ require_once 'includes/header.php';
 
                 <?php if (!empty($parts)): ?>
                 <div class="model-parts">
-                    <h2>Parts (<?= count($parts) ?>)</h2>
+                    <div class="parts-header">
+                        <h2>Parts (<?= count($parts) ?>)</h2>
+                        <?php if (canEdit() || canDelete()): ?>
+                        <div class="mass-actions" id="parts-mass-actions" style="display: none;">
+                            <span class="mass-selection-count"><span id="selected-count">0</span> selected</span>
+                            <?php if (canEdit()): ?>
+                            <select id="mass-print-type" class="form-input form-input-small">
+                                <option value="">Set Print Type...</option>
+                                <option value="fdm">FDM</option>
+                                <option value="sla">SLA</option>
+                                <option value="">Clear</option>
+                            </select>
+                            <?php endif; ?>
+                            <?php if (canDelete()): ?>
+                            <button type="button" class="btn btn-danger btn-small" id="mass-delete-parts">Delete Selected</button>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
 
                     <?php foreach ($groupedParts as $dir => $dirParts): ?>
                     <div class="parts-group">
@@ -196,7 +214,10 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                         <div class="parts-list">
                             <?php foreach ($dirParts as $part): ?>
-                            <div class="part-item" data-part-path="<?= htmlspecialchars($part['file_path']) ?>?v=<?= $part['file_size'] ?? time() ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="<?= htmlspecialchars($part['file_path']) ?>?v=<?= $part['file_size'] ?? time() ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                                <?php if (canEdit() || canDelete()): ?>
+                                <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>">
+                                <?php endif; ?>
                                 <div class="part-info part-preview-trigger" title="Click to preview">
                                     <span class="file-type-badge">.<?= htmlspecialchars($part['file_type']) ?></span>
                                     <span class="part-name"><?= htmlspecialchars($part['name']) ?></span>
@@ -450,6 +471,93 @@ require_once 'includes/header.php';
                 });
             });
         });
+
+        // Mass action handling
+        const partCheckboxes = document.querySelectorAll('.part-checkbox');
+        const massActionsBar = document.getElementById('parts-mass-actions');
+        const selectedCountEl = document.getElementById('selected-count');
+        const massPrintType = document.getElementById('mass-print-type');
+        const massDeleteBtn = document.getElementById('mass-delete-parts');
+
+        function updateMassActionsVisibility() {
+            const checkedBoxes = document.querySelectorAll('.part-checkbox:checked');
+            const count = checkedBoxes.length;
+
+            if (massActionsBar) {
+                massActionsBar.style.display = count > 0 ? 'flex' : 'none';
+            }
+            if (selectedCountEl) {
+                selectedCountEl.textContent = count;
+            }
+        }
+
+        function getSelectedPartIds() {
+            return Array.from(document.querySelectorAll('.part-checkbox:checked')).map(cb => cb.value);
+        }
+
+        partCheckboxes.forEach(cb => {
+            cb.addEventListener('change', updateMassActionsVisibility);
+        });
+
+        if (massPrintType) {
+            massPrintType.addEventListener('change', async function() {
+                const printType = this.value;
+                if (printType === '') return;
+
+                const ids = getSelectedPartIds();
+                if (ids.length === 0) return;
+
+                const formData = new FormData();
+                formData.append('action', 'set_print_type');
+                formData.append('print_type', printType === 'Clear' ? '' : printType);
+                ids.forEach(id => formData.append('ids[]', id));
+
+                try {
+                    const response = await fetch('mass-action.php', { method: 'POST', body: formData });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (err) {
+                    console.error('Mass action error:', err);
+                    alert('Failed to perform mass action');
+                }
+
+                this.value = '';
+            });
+        }
+
+        if (massDeleteBtn) {
+            massDeleteBtn.addEventListener('click', async function() {
+                const ids = getSelectedPartIds();
+                if (ids.length === 0) return;
+
+                if (!confirm(`Delete ${ids.length} selected parts? This cannot be undone.`)) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('action', 'delete_parts');
+                ids.forEach(id => formData.append('ids[]', id));
+
+                try {
+                    const response = await fetch('mass-action.php', { method: 'POST', body: formData });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (err) {
+                    console.error('Mass delete error:', err);
+                    alert('Failed to delete parts');
+                }
+            });
+        }
         </script>
 
 <?php require_once 'includes/footer.php'; ?>

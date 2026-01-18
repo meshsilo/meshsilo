@@ -1548,6 +1548,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.75rem;
     padding: 0.75rem;
     background-color: var(--color-bg);
     border-radius: var(--radius);
@@ -1881,4 +1882,46 @@ main {
 
 .part-preview-trigger:hover .part-name {
     text-decoration: underline;
+}
+
+/* Mass Actions */
+.parts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.parts-header h2 {
+    margin: 0;
+}
+
+.mass-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius);
+}
+
+.mass-selection-count {
+    font-size: 0.875rem;
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+.form-input-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.part-checkbox {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+    flex-shrink: 0;
 }
