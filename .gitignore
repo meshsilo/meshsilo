@@ -1,0 +1,19 @@
+# Database
+db/*.db
+
+# Uploaded assets
+assets/*
+!assets/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PHP
+*.log
