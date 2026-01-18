@@ -1,0 +1,186 @@
+<?php
+require_once 'includes/config.php';
+
+$db = getDB();
+
+// Get model ID from URL
+$modelId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if (!$modelId) {
+    header('Location: index.php');
+    exit;
+}
+
+// Get model details
+$stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
+$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$model = $result->fetchArray(SQLITE3_ASSOC);
+
+if (!$model) {
+    header('Location: index.php');
+    exit;
+}
+
+// If this is a child model, redirect to its parent
+if ($model['parent_id']) {
+    header('Location: model.php?id=' . $model['parent_id']);
+    exit;
+}
+
+$pageTitle = $model['name'];
+$activePage = 'browse';
+
+// Get categories for this model
+$stmt = $db->prepare('
+    SELECT c.* FROM categories c
+    JOIN model_categories mc ON c.id = mc.category_id
+    WHERE mc.model_id = :model_id
+    ORDER BY c.name
+');
+$stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$categories = [];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $categories[] = $row;
+}
+
+// Get parts if this is a multi-part model
+$parts = [];
+if ($model['part_count'] > 0) {
+    $stmt = $db->prepare('
+        SELECT * FROM models
+        WHERE parent_id = :parent_id
+        ORDER BY original_path ASC
+    ');
+    $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $parts[] = $row;
+    }
+}
+
+// Helper function to format bytes
+function formatBytes($bytes, $precision = 2) {
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= pow(1024, $pow);
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+// Group parts by directory
+function groupPartsByDirectory($parts) {
+    $grouped = [];
+    foreach ($parts as $part) {
+        $path = $part['original_path'] ?? $part['name'];
+        $dir = dirname($path);
+        if ($dir === '.') {
+            $dir = 'Root';
+        }
+        if (!isset($grouped[$dir])) {
+            $grouped[$dir] = [];
+        }
+        $grouped[$dir][] = $part;
+    }
+    return $grouped;
+}
+
+$groupedParts = groupPartsByDirectory($parts);
+
+require_once 'includes/header.php';
+?>
+
+        <div class="page-container">
+            <div class="model-detail">
+                <div class="model-detail-header">
+                    <div class="model-detail-thumbnail">
+                        <?php if ($model['part_count'] > 0): ?>
+                        <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
+                        <?php endif; ?>
+                        <span class="file-type-badge file-type-badge-large">.<?= htmlspecialchars($model['file_type']) ?></span>
+                    </div>
+                    <div class="model-detail-info">
+                        <h1><?= htmlspecialchars($model['name']) ?></h1>
+
+                        <?php if ($model['author']): ?>
+                        <p class="model-author">by <?= htmlspecialchars($model['author']) ?></p>
+                        <?php endif; ?>
+
+                        <div class="model-meta">
+                            <span class="meta-item">
+                                <strong>Size:</strong> <?= formatBytes($model['file_size'] ?? 0) ?>
+                            </span>
+                            <?php if ($model['collection']): ?>
+                            <span class="meta-item">
+                                <strong>Collection:</strong> <?= htmlspecialchars($model['collection']) ?>
+                            </span>
+                            <?php endif; ?>
+                            <span class="meta-item">
+                                <strong>Added:</strong> <?= date('M j, Y', strtotime($model['created_at'])) ?>
+                            </span>
+                        </div>
+
+                        <?php if (!empty($categories)): ?>
+                        <div class="model-categories">
+                            <?php foreach ($categories as $cat): ?>
+                            <a href="category.php?id=<?= $cat['id'] ?>" class="category-tag"><?= htmlspecialchars($cat['name']) ?></a>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if ($model['source_url']): ?>
+                        <p class="model-source">
+                            <a href="<?= htmlspecialchars($model['source_url']) ?>" target="_blank" rel="noopener">View Original Source</a>
+                        </p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <?php if ($model['description']): ?>
+                <div class="model-description">
+                    <h2>Description</h2>
+                    <p><?= nl2br(htmlspecialchars($model['description'])) ?></p>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($parts)): ?>
+                <div class="model-parts">
+                    <h2>Parts (<?= count($parts) ?>)</h2>
+
+                    <?php foreach ($groupedParts as $dir => $dirParts): ?>
+                    <div class="parts-group">
+                        <?php if ($dir !== 'Root' && count($groupedParts) > 1): ?>
+                        <h3 class="parts-group-header"><?= htmlspecialchars($dir) ?></h3>
+                        <?php endif; ?>
+                        <div class="parts-list">
+                            <?php foreach ($dirParts as $part): ?>
+                            <div class="part-item">
+                                <div class="part-info">
+                                    <span class="file-type-badge">.<?= htmlspecialchars($part['file_type']) ?></span>
+                                    <span class="part-name"><?= htmlspecialchars($part['name']) ?></span>
+                                </div>
+                                <div class="part-actions">
+                                    <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
+                                    <a href="<?= htmlspecialchars($part['file_path']) ?>" class="btn btn-small btn-primary" download>Download</a>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+
+                    <div class="parts-actions">
+                        <a href="download-all.php?id=<?= $model['id'] ?>" class="btn btn-primary">Download All Parts</a>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="model-download">
+                    <a href="<?= htmlspecialchars($model['file_path']) ?>" class="btn btn-primary btn-large" download>Download Model</a>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+<?php require_once 'includes/footer.php'; ?>

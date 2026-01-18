@@ -5,8 +5,8 @@ $activePage = 'browse';
 
 $db = getDB();
 
-// Get recent models
-$result = $db->query('SELECT * FROM models ORDER BY created_at DESC LIMIT 8');
+// Get recent models (only parent/standalone models, not parts)
+$result = $db->query('SELECT * FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
 $models = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $models[] = $row;
@@ -57,6 +57,9 @@ require_once 'includes/header.php';
                     <?php foreach ($models as $model): ?>
                     <article class="model-card" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
                         <div class="model-thumbnail">
+                            <?php if ($model['part_count'] > 0): ?>
+                            <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
+                            <?php endif; ?>
                             <span class="file-type-badge">.<?= htmlspecialchars($model['file_type']) ?></span>
                         </div>
                         <div class="model-info">

@@ -18,16 +18,20 @@ INSERT INTO users (username, email, password, is_admin) VALUES
 CREATE TABLE IF NOT EXISTS models (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    file_path TEXT NOT NULL,  -- Relative path within assets/
+    filename TEXT,            -- NULL for parent models (ZIP containers)
+    file_path TEXT,           -- Relative path within assets/, NULL for parents
     file_size INTEGER,
-    file_type TEXT,           -- 'stl' or '3mf'
+    file_type TEXT,           -- 'stl', '3mf', or 'zip' for parent models
     description TEXT,
     author TEXT,              -- Original creator of the model
     collection TEXT,          -- Collection name (e.g., Gridfinity, Voron)
     source_url TEXT,          -- Link to original source
+    parent_id INTEGER,        -- References parent model for multi-part uploads
+    original_path TEXT,       -- Original path within ZIP for sorting
+    part_count INTEGER DEFAULT 0,  -- Number of parts (for parent models)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS categories (

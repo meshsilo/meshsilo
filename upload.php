@@ -33,8 +33,8 @@ $message = '';
 $error = '';
 $uploadedCount = 0;
 
-// Helper function to save a model file
-function saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories) {
+// Helper function to save a single model file
+function saveModelFile($db, $tmpPath, $originalName, $name, $description, $author, $collection, $source_url, $selectedCategories, $parentId = null, $originalPath = null) {
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
     // Only process valid model files
@@ -53,22 +53,24 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
     if (copy($tmpPath, $filePath)) {
         try {
             // Insert into database
-            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url)');
+            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, author, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :author, :collection, :source_url, :parent_id, :original_path)');
             $stmt->bindValue(':name', $name, SQLITE3_TEXT);
             $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
             $stmt->bindValue(':file_path', 'assets/' . $filename, SQLITE3_TEXT);
             $stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
             $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
-            $stmt->bindValue(':description', $description, SQLITE3_TEXT);
-            $stmt->bindValue(':author', $author, SQLITE3_TEXT);
-            $stmt->bindValue(':collection', $collection, SQLITE3_TEXT);
-            $stmt->bindValue(':source_url', $source_url, SQLITE3_TEXT);
+            $stmt->bindValue(':description', $parentId ? '' : $description, SQLITE3_TEXT); // Only set description on parent
+            $stmt->bindValue(':author', $parentId ? '' : $author, SQLITE3_TEXT);
+            $stmt->bindValue(':collection', $parentId ? '' : $collection, SQLITE3_TEXT);
+            $stmt->bindValue(':source_url', $parentId ? '' : $source_url, SQLITE3_TEXT);
+            $stmt->bindValue(':parent_id', $parentId, SQLITE3_INTEGER);
+            $stmt->bindValue(':original_path', $originalPath, SQLITE3_TEXT);
             $stmt->execute();
 
             $modelId = $db->lastInsertRowID();
 
-            // Link categories
-            if (!empty($selectedCategories)) {
+            // Link categories only for standalone models (not parts)
+            if (!$parentId && !empty($selectedCategories)) {
                 foreach ($selectedCategories as $categoryId) {
                     $stmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
                     $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
@@ -77,8 +79,8 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
                 }
             }
 
-            logInfo('Model uploaded successfully', ['model_id' => $modelId, 'name' => $name, 'file' => $filename]);
-            return true;
+            logInfo('Model uploaded successfully', ['model_id' => $modelId, 'name' => $name, 'file' => $filename, 'parent_id' => $parentId]);
+            return $modelId;
         } catch (Exception $e) {
             logException($e, ['action' => 'save_model', 'name' => $name]);
             // Clean up the copied file since DB insert failed
@@ -89,6 +91,53 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $autho
 
     logError('Failed to copy uploaded file', ['source' => $tmpPath, 'destination' => $filePath]);
     return false;
+}
+
+// Helper function to create a parent model for ZIP uploads
+function createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize) {
+    try {
+        $stmt = $db->prepare('INSERT INTO models (name, file_size, file_type, description, author, collection, source_url, part_count) VALUES (:name, :file_size, :file_type, :description, :author, :collection, :source_url, 0)');
+        $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+        $stmt->bindValue(':file_size', $totalSize, SQLITE3_INTEGER);
+        $stmt->bindValue(':file_type', 'zip', SQLITE3_TEXT);
+        $stmt->bindValue(':description', $description, SQLITE3_TEXT);
+        $stmt->bindValue(':author', $author, SQLITE3_TEXT);
+        $stmt->bindValue(':collection', $collection, SQLITE3_TEXT);
+        $stmt->bindValue(':source_url', $source_url, SQLITE3_TEXT);
+        $stmt->execute();
+
+        $parentId = $db->lastInsertRowID();
+
+        // Link categories to parent
+        if (!empty($selectedCategories)) {
+            foreach ($selectedCategories as $categoryId) {
+                $stmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
+                $stmt->bindValue(':model_id', $parentId, SQLITE3_INTEGER);
+                $stmt->bindValue(':category_id', (int)$categoryId, SQLITE3_INTEGER);
+                $stmt->execute();
+            }
+        }
+
+        return $parentId;
+    } catch (Exception $e) {
+        logException($e, ['action' => 'create_parent_model', 'name' => $name]);
+        return false;
+    }
+}
+
+// Helper function to update parent model's part count and total size
+function updateParentModel($db, $parentId, $partCount, $totalSize) {
+    try {
+        $stmt = $db->prepare('UPDATE models SET part_count = :part_count, file_size = :file_size WHERE id = :id');
+        $stmt->bindValue(':part_count', $partCount, SQLITE3_INTEGER);
+        $stmt->bindValue(':file_size', $totalSize, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $parentId, SQLITE3_INTEGER);
+        $stmt->execute();
+        return true;
+    } catch (Exception $e) {
+        logException($e, ['action' => 'update_parent_model', 'parent_id' => $parentId]);
+        return false;
+    }
 }
 
 // Handle form submission
@@ -136,7 +185,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $zip->extractTo($extractDir);
                     $zip->close();
 
-                    // Find all model files in the extracted directory
+                    // First pass: collect all model files with their paths
+                    $modelFiles = [];
                     $iterator = new RecursiveIteratorIterator(
                         new RecursiveDirectoryIterator($extractDir, RecursiveDirectoryIterator::SKIP_DOTS)
                     );
@@ -145,17 +195,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($fileInfo->isFile()) {
                             $fileExt = strtolower($fileInfo->getExtension());
                             if (in_array($fileExt, MODEL_EXTENSIONS)) {
-                                $modelName = $name;
-                                // If multiple files, append the filename
-                                $baseName = pathinfo($fileInfo->getFilename(), PATHINFO_FILENAME);
-                                if ($uploadedCount > 0 || iterator_count(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($extractDir, RecursiveDirectoryIterator::SKIP_DOTS))) > 1) {
-                                    $modelName = $name . ' - ' . $baseName;
-                                }
+                                // Get relative path from extract directory
+                                $relativePath = str_replace($extractDir . '/', '', $fileInfo->getPathname());
+                                $modelFiles[] = [
+                                    'path' => $fileInfo->getPathname(),
+                                    'filename' => $fileInfo->getFilename(),
+                                    'relative_path' => $relativePath,
+                                    'size' => $fileInfo->getSize()
+                                ];
+                            }
+                        }
+                    }
 
-                                if (saveModelFile($db, $fileInfo->getPathname(), $fileInfo->getFilename(), $modelName, $description, $author, $collection, $source_url, $selectedCategories)) {
+                    // Sort files by their relative path to maintain directory structure
+                    usort($modelFiles, function($a, $b) {
+                        return strcmp($a['relative_path'], $b['relative_path']);
+                    });
+
+                    if (!empty($modelFiles)) {
+                        // Calculate total size
+                        $totalSize = array_sum(array_column($modelFiles, 'size'));
+
+                        // Create parent model
+                        $parentId = createParentModel($db, $name, $description, $author, $collection, $source_url, $selectedCategories, $totalSize);
+
+                        if ($parentId) {
+                            // Save each file as a child of the parent
+                            foreach ($modelFiles as $modelFile) {
+                                $partName = pathinfo($modelFile['filename'], PATHINFO_FILENAME);
+                                if (saveModelFile($db, $modelFile['path'], $modelFile['filename'], $partName, '', '', '', '', [], $parentId, $modelFile['relative_path'])) {
                                     $uploadedCount++;
                                 }
                             }
+
+                            // Update parent with final part count
+                            updateParentModel($db, $parentId, $uploadedCount, $totalSize);
+                            logInfo('ZIP extraction complete', ['file' => $originalName, 'parent_id' => $parentId, 'parts' => $uploadedCount]);
+                        } else {
+                            $error = 'Failed to create model entry.';
                         }
                     }
 
@@ -173,11 +250,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     rmdir($extractDir);
 
-                    if ($uploadedCount === 0) {
+                    if ($uploadedCount === 0 && empty($error)) {
                         $error = 'No valid model files (.stl, .3mf) found in the ZIP archive.';
                         logWarning('No valid models in ZIP', ['file' => $originalName]);
-                    } else {
-                        logInfo('ZIP extraction complete', ['file' => $originalName, 'models_imported' => $uploadedCount]);
                     }
                 } else {
                     $error = 'Failed to open ZIP file.';
