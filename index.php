@@ -34,6 +34,8 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 
 $message = '';
+$messageType = 'success';
+
 if (isset($_GET['uploaded'])) {
     $count = (int)$_GET['uploaded'];
     if ($count === 1) {
@@ -43,11 +45,22 @@ if (isset($_GET['uploaded'])) {
     }
 }
 
+// Check for session messages
+if (isset($_SESSION['success'])) {
+    $message = $_SESSION['success'];
+    $messageType = 'success';
+    unset($_SESSION['success']);
+} elseif (isset($_SESSION['error'])) {
+    $message = $_SESSION['error'];
+    $messageType = 'error';
+    unset($_SESSION['error']);
+}
+
 require_once 'includes/header.php';
 ?>
 
         <?php if ($message): ?>
-        <div class="alert alert-success" style="max-width: 1400px; margin: 1rem auto;"><?= htmlspecialchars($message) ?></div>
+        <div class="alert alert-<?= $messageType ?>" style="max-width: 1400px; margin: 1rem auto;"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
 
         <section class="hero">

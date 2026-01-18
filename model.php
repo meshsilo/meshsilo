@@ -128,7 +128,7 @@ require_once 'includes/header.php';
                 <?php endif; ?>
 
                 <div class="model-detail-header">
-                    <div class="model-detail-thumbnail"
+                    <div class="model-detail-thumbnail <?= ($previewPath && in_array($previewType, ['stl', '3mf'])) ? 'has-viewer' : '' ?>"
                         <?php if ($previewPath && in_array($previewType, ['stl', '3mf'])): ?>
                         data-model-url="<?= htmlspecialchars($previewPath) ?>"
                         data-file-type="<?= htmlspecialchars($previewType) ?>"
@@ -171,6 +171,12 @@ require_once 'includes/header.php';
                         <p class="model-source">
                             <a href="<?= htmlspecialchars($model['source_url']) ?>" target="_blank" rel="noopener">View Original Source</a>
                         </p>
+                        <?php endif; ?>
+
+                        <?php if (canDelete()): ?>
+                        <div class="model-actions">
+                            <a href="delete.php?id=<?= $model['id'] ?>" class="btn btn-danger btn-small">Delete Model</a>
+                        </div>
                         <?php endif; ?>
                     </div>
                 </div>

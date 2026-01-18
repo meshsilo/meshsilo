@@ -247,10 +247,15 @@ function initThumbnailViewers() {
         });
 
         // Load model
-        viewer.loadModel(url, fileType).catch(err => {
-            console.warn('Failed to load thumbnail model:', err);
-            viewerContainer.remove();
-        });
+        viewer.loadModel(url, fileType)
+            .then(() => {
+                // Add class to hide file type badge when 3D viewer is active
+                thumbnail.classList.add('has-viewer');
+            })
+            .catch(err => {
+                console.warn('Failed to load thumbnail model:', err);
+                viewerContainer.remove();
+            });
     });
 }
 

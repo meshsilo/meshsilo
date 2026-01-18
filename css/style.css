@@ -1291,6 +1291,49 @@ main {
     font-size: 0.875rem;
 }
 
+/* Hide file type badge when 3D viewer is present */
+.model-thumbnail.has-viewer .file-type-badge,
+.model-detail-thumbnail.has-viewer .file-type-badge {
+    display: none;
+}
+
+/* Delete Confirmation Page */
+.delete-confirm {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.delete-confirm h1 {
+    margin-bottom: 1.5rem;
+}
+
+.delete-model-info {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.delete-model-info h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.delete-form .form-actions {
+    justify-content: center;
+    border-top: none;
+    padding-top: 0;
+}
+
+/* Model Actions */
+.model-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
 /* Model Detail Page */
 .model-detail {
     max-width: 900px;
