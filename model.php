@@ -196,8 +196,8 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                         <div class="parts-list">
                             <?php foreach ($dirParts as $part): ?>
-                            <div class="part-item">
-                                <div class="part-info">
+                            <div class="part-item" data-part-path="<?= htmlspecialchars($part['file_path']) ?>?v=<?= $part['file_size'] ?? time() ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                                <div class="part-info part-preview-trigger" title="Click to preview">
                                     <span class="file-type-badge">.<?= htmlspecialchars($part['file_type']) ?></span>
                                     <span class="part-name"><?= htmlspecialchars($part['name']) ?></span>
                                     <?php if ($part['print_type']): ?>
@@ -242,7 +242,89 @@ require_once 'includes/header.php';
             </div>
         </div>
 
+        <!-- Part Preview Modal -->
+        <div id="part-preview-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3 id="preview-part-name">Part Preview</h3>
+                    <button type="button" class="modal-close" onclick="closePartPreview()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="part-preview-container" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+
         <script>
+        // Part preview modal
+        let partPreviewViewer = null;
+
+        function openPartPreview(path, type, name) {
+            const modal = document.getElementById('part-preview-modal');
+            const container = document.getElementById('part-preview-container');
+            const nameEl = document.getElementById('preview-part-name');
+
+            nameEl.textContent = name;
+            modal.style.display = 'flex';
+
+            // Clear previous viewer
+            if (partPreviewViewer) {
+                partPreviewViewer.dispose();
+                partPreviewViewer = null;
+            }
+            container.innerHTML = '';
+
+            // Create new viewer
+            partPreviewViewer = new ModelViewer(container, {
+                autoRotate: true,
+                interactive: true,
+                backgroundColor: 0x1e293b
+            });
+
+            partPreviewViewer.loadModel(path, type).catch(err => {
+                console.error('Failed to load part:', err);
+                container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--color-text-muted);">Failed to load 3D preview</p>';
+            });
+        }
+
+        function closePartPreview() {
+            const modal = document.getElementById('part-preview-modal');
+            modal.style.display = 'none';
+
+            if (partPreviewViewer) {
+                partPreviewViewer.dispose();
+                partPreviewViewer = null;
+            }
+        }
+
+        // Close modal on background click
+        document.getElementById('part-preview-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePartPreview();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePartPreview();
+            }
+        });
+
+        // Add click handlers to part items
+        document.querySelectorAll('.part-preview-trigger').forEach(trigger => {
+            trigger.addEventListener('click', function(e) {
+                const partItem = this.closest('.part-item');
+                const path = partItem.dataset.partPath;
+                const type = partItem.dataset.partType;
+                const name = partItem.dataset.partName;
+
+                if (path && type) {
+                    openPartPreview(path, type, name);
+                }
+            });
+        });
+
         // Handle conversion button clicks
         document.querySelectorAll('.convert-btn').forEach(btn => {
             btn.addEventListener('click', async function() {
