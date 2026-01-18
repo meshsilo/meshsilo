@@ -1,8 +1,9 @@
 <?php
 require_once '../includes/config.php';
+$baseDir = '../';
 
 // Require admin permission
-requirePermission(PERM_ADMIN);
+requirePermission(PERM_ADMIN, $baseDir . 'index.php');
 
 $pageTitle = 'Manage Groups';
 $activePage = 'admin';
@@ -139,20 +140,20 @@ require_once '../includes/header.php';
 <?php require_once '../includes/admin-sidebar.php'; ?>
 
             <div class="admin-content">
-            <div class="page-header">
-                <h1>Manage Groups</h1>
-                <p>Create and manage permission groups</p>
-            </div>
+                <div class="page-header">
+                    <h1>Manage Groups</h1>
+                    <p>Create and manage permission groups</p>
+                </div>
 
-            <?php if ($message): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
-            <?php endif; ?>
+                <?php if ($message): ?>
+                <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+                <?php endif; ?>
 
-            <?php if ($error): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
+                <?php if ($error): ?>
+                <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+                <?php endif; ?>
 
-            <div class="admin-grid">
+                <div class="admin-grid">
                 <!-- Group List -->
                 <section class="admin-section">
                     <h2>Groups</h2>
@@ -315,7 +316,7 @@ require_once '../includes/header.php';
                     </form>
                     <?php endif; ?>
                 </section>
-            </div>
+                </div>
             </div>
         </div>
 
