@@ -50,3 +50,10 @@ INSERT INTO categories (name) VALUES
     ('Gaming'),
     ('Art'),
     ('Mechanical');
+
+CREATE TABLE IF NOT EXISTS collections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

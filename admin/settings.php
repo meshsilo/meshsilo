@@ -3,31 +3,13 @@ require_once '../includes/config.php';
 $baseDir = '../';
 $pageTitle = 'Admin Settings';
 $activePage = '';
-
-// Category data - will be loaded from database later
-$categories = [
-    ['slug' => 'functional', 'name' => 'Functional'],
-    ['slug' => 'decorative', 'name' => 'Decorative'],
-    ['slug' => 'tools', 'name' => 'Tools'],
-    ['slug' => 'gaming', 'name' => 'Gaming'],
-    ['slug' => 'art', 'name' => 'Art'],
-    ['slug' => 'mechanical', 'name' => 'Mechanical'],
-];
+$adminPage = 'settings';
 
 require_once '../includes/header.php';
 ?>
 
         <div class="admin-layout">
-            <aside class="admin-sidebar">
-                <h3>Admin</h3>
-                <nav class="admin-nav">
-                    <a href="settings.php" class="active">Site Settings</a>
-                    <a href="#">Users</a>
-                    <a href="#">Categories</a>
-                    <a href="#">Collections</a>
-                    <a href="#">Storage</a>
-                </nav>
-            </aside>
+<?php require_once '../includes/admin-sidebar.php'; ?>
 
             <div class="admin-content">
                 <div class="page-header">
@@ -111,37 +93,6 @@ require_once '../includes/header.php';
                                 <span class="toggle-switch"></span>
                                 <span>Require admin approval for new accounts</span>
                             </label>
-                        </div>
-                    </section>
-
-                    <section class="settings-section">
-                        <h2>Categories</h2>
-
-                        <div class="form-group">
-                            <label>Manage Categories</label>
-                            <div class="tag-list">
-                                <?php foreach ($categories as $category): ?>
-                                <span class="tag"><?= htmlspecialchars($category['name']) ?> <button type="button" class="tag-remove">&times;</button></span>
-                                <?php endforeach; ?>
-                            </div>
-                            <div class="input-with-button">
-                                <input type="text" id="new-category" class="form-input" placeholder="New category name">
-                                <button type="button" class="btn btn-secondary">Add</button>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="settings-section">
-                        <h2>Database</h2>
-
-                        <div class="form-group">
-                            <label>Database Location</label>
-                            <p class="form-hint"><?= DB_PATH ?></p>
-                        </div>
-
-                        <div class="button-group">
-                            <button type="button" class="btn btn-secondary">Export Database</button>
-                            <button type="button" class="btn btn-secondary">Backup Now</button>
                         </div>
                     </section>
 
