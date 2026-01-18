@@ -16,7 +16,12 @@
             <nav class="main-nav">
                 <a href="<?= basePath('index.php') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
                 <a href="<?= basePath('categories.php') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
+                <?php if (canUpload()): ?>
                 <a href="<?= basePath('upload.php') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
+                <?php endif; ?>
+                <?php if (canViewStats()): ?>
+                <a href="<?= basePath('stats.php') ?>" <?= ($activePage ?? '') === 'stats' ? 'class="active"' : '' ?>>Stats</a>
+                <?php endif; ?>
             </nav>
             <div class="header-actions">
                 <input type="search" class="search-bar" placeholder="Search models...">

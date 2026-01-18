@@ -1,5 +1,9 @@
 <?php
 require_once 'includes/config.php';
+
+// Check upload permission
+requirePermission(PERM_UPLOAD);
+
 $pageTitle = 'Upload Model';
 $activePage = 'upload';
 

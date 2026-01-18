@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
+    permissions TEXT,  -- JSON array of permissions
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

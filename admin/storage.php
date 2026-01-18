@@ -1,6 +1,10 @@
 <?php
 require_once '../includes/config.php';
 $baseDir = '../';
+
+// Require admin permission
+requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+
 $pageTitle = 'Storage Settings';
 $activePage = '';
 $adminPage = 'storage';

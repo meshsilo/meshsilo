@@ -18,6 +18,9 @@ function getDB() {
                 $db->exec($schema);
                 logInfo('Database initialized', ['path' => $dbPath]);
             }
+
+            // Run migrations
+            runMigrations($db);
         } catch (Exception $e) {
             logException($e, ['action' => 'database_connect', 'path' => $dbPath]);
             throw $e;
@@ -44,4 +47,22 @@ function getUserByLogin($login) {
 // Verify password
 function verifyPassword($password, $hash) {
     return password_verify($password, $hash);
+}
+
+// Run database migrations
+function runMigrations($db) {
+    // Check if permissions column exists in users table
+    $result = $db->query("PRAGMA table_info(users)");
+    $hasPermissions = false;
+    while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($col['name'] === 'permissions') {
+            $hasPermissions = true;
+            break;
+        }
+    }
+
+    if (!$hasPermissions) {
+        $db->exec('ALTER TABLE users ADD COLUMN permissions TEXT');
+        logInfo('Migration: Added permissions column to users table');
+    }
 }
