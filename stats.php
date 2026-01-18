@@ -28,28 +28,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
             logInfo('Removed missing file from database', ['model_id' => $modelId]);
         }
     } elseif ($action === 'delete_all_missing') {
-        // Delete all missing file entries
-        $result = $db->query('SELECT id, file_path FROM models WHERE parent_id IS NULL');
+        // Delete all missing file entries (parts with missing files)
+        $result = $db->query('SELECT id, file_path, dedup_path FROM models WHERE file_path IS NOT NULL');
         $deletedCount = 0;
+        $idsToDelete = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $filePath = UPLOAD_PATH . $row['file_path'];
-            // For multi-part models, check if folder exists
-            if (is_dir($filePath)) continue;
-            // For single files
-            $singlePath = __DIR__ . '/' . $row['file_path'];
-            if (file_exists($singlePath)) continue;
+            $filePath = __DIR__ . '/' . getRealFilePath($row);
+            if (!file_exists($filePath) || !is_file($filePath)) {
+                $idsToDelete[] = $row['id'];
+            }
+        }
 
-            // Check child parts too
-            $childStmt = $db->prepare('SELECT file_path FROM models WHERE parent_id = :parent_id LIMIT 1');
-            $childStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
-            $childResult = $childStmt->execute();
-            $child = $childResult->fetchArray(SQLITE3_ASSOC);
-            if ($child && file_exists(__DIR__ . '/' . $child['file_path'])) continue;
+        // Delete the missing entries
+        foreach ($idsToDelete as $id) {
+            // Get parent_id to update part count later
+            $stmt = $db->prepare('SELECT parent_id FROM models WHERE id = :id');
+            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+            $parentResult = $stmt->execute();
+            $parentRow = $parentResult->fetchArray(SQLITE3_ASSOC);
 
-            // Delete this entry and its children
-            $stmt = $db->prepare('DELETE FROM models WHERE id = :id OR parent_id = :id');
-            $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+            $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
+            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
             $stmt->execute();
+
+            // Update parent's part count if this was a child
+            if ($parentRow && $parentRow['parent_id']) {
+                $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :parent_id) WHERE id = :parent_id');
+                $stmt->bindValue(':parent_id', $parentRow['parent_id'], SQLITE3_INTEGER);
+                $stmt->execute();
+            }
+
             $deletedCount++;
         }
         $message = "Removed $deletedCount missing file entries from database.";
@@ -266,11 +274,11 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 
 // Check for missing files (files in DB but not on disk)
-$result = $db->query('SELECT id, name, filename FROM models');
+$result = $db->query('SELECT id, name, filename, file_path, dedup_path FROM models WHERE file_path IS NOT NULL');
 $missingFiles = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    $filePath = UPLOAD_PATH . $row['filename'];
-    if (!file_exists($filePath)) {
+    $filePath = __DIR__ . '/' . getRealFilePath($row);
+    if (!file_exists($filePath) || !is_file($filePath)) {
         $missingFiles[] = $row;
     }
 }
@@ -710,7 +718,7 @@ require_once 'includes/header.php';
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
-                                    <th>Filename</th>
+                                    <th>File Path</th>
                                     <?php if (isAdmin()): ?><th>Actions</th><?php endif; ?>
                                 </tr>
                             </thead>
@@ -719,7 +727,7 @@ require_once 'includes/header.php';
                                 <tr>
                                     <td><?= $file['id'] ?></td>
                                     <td><?= htmlspecialchars($file['name']) ?></td>
-                                    <td class="text-muted"><?= htmlspecialchars($file['filename']) ?></td>
+                                    <td class="text-muted"><?= htmlspecialchars(getRealFilePath($file)) ?></td>
                                     <?php if (isAdmin()): ?>
                                     <td>
                                         <form method="POST" style="display: inline;">
