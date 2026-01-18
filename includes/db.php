@@ -188,6 +188,18 @@ function runMigrations($db) {
         logInfo('Migration: Added file_hash column to models table');
     }
 
+    // Check if dedup_path column exists
+    $result = $db->query("PRAGMA table_info(models)");
+    $hasDedupPath = false;
+    while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($col['name'] === 'dedup_path') $hasDedupPath = true;
+    }
+
+    if (!$hasDedupPath) {
+        $db->exec('ALTER TABLE models ADD COLUMN dedup_path TEXT'); // Path to deduplicated file
+        logInfo('Migration: Added dedup_path column to models table');
+    }
+
     // Create settings table if it doesn't exist
     $db->exec('
         CREATE TABLE IF NOT EXISTS settings (

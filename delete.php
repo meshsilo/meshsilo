@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/dedup.php';
 
 // Require delete permission
 requirePermission(PERM_DELETE);
@@ -62,6 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         if ($part) {
             // Delete individual part
             $filePath = __DIR__ . '/' . $part['file_path'];
+            $dedupPath = !empty($part['dedup_path']) ? __DIR__ . '/' . $part['dedup_path'] : null;
+
+            // Check if this part uses a deduplicated file
+            $canDeleteDedup = $dedupPath && canDeleteDedupFile($part['dedup_path']);
 
             // Delete from database
             $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
@@ -74,7 +79,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             $stmt->execute();
 
             // Delete file from disk
-            if (file_exists($filePath)) {
+            if ($dedupPath) {
+                // File is deduplicated - only delete if no other parts reference it
+                if ($canDeleteDedup && file_exists($dedupPath)) {
+                    unlink($dedupPath);
+                }
+            } elseif (file_exists($filePath)) {
+                // Non-deduplicated file
                 unlink($filePath);
 
                 // Check if folder is empty and clean up
@@ -98,14 +109,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         } else {
             // Delete entire model
             $filesToDelete = [];
+            $dedupFilesToCheck = []; // Track dedup files that may need deletion
 
             // If multi-part model, get all parts first
             if ($model['part_count'] > 0) {
-                $stmt = $db->prepare('SELECT file_path FROM models WHERE parent_id = :parent_id');
+                $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = :parent_id');
                 $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
                 $result = $stmt->execute();
                 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-                    if ($row['file_path']) {
+                    if (!empty($row['dedup_path'])) {
+                        // Track dedup path for later check
+                        $dedupFilesToCheck[$row['dedup_path']] = true;
+                    } elseif ($row['file_path']) {
                         $filesToDelete[] = __DIR__ . '/' . $row['file_path'];
                     }
                 }
@@ -116,7 +131,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                 $stmt->execute();
             } else {
                 // Single model - add its file
-                if ($model['file_path']) {
+                if (!empty($model['dedup_path'])) {
+                    $dedupFilesToCheck[$model['dedup_path']] = true;
+                } elseif ($model['file_path']) {
                     $filesToDelete[] = __DIR__ . '/' . $model['file_path'];
                 }
             }
@@ -131,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
             $stmt->execute();
 
-            // Delete files from disk
+            // Delete non-deduplicated files from disk
             $foldersToCheck = [];
             foreach ($filesToDelete as $filePath) {
                 if (file_exists($filePath)) {
@@ -140,6 +157,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                     $folder = dirname($filePath);
                     if (!in_array($folder, $foldersToCheck)) {
                         $foldersToCheck[] = $folder;
+                    }
+                }
+            }
+
+            // Delete deduplicated files only if no other parts reference them
+            foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
+                if (canDeleteDedupFile($dedupPath)) {
+                    $fullPath = __DIR__ . '/' . $dedupPath;
+                    if (file_exists($fullPath)) {
+                        unlink($fullPath);
                     }
                 }
             }

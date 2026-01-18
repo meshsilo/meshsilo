@@ -1,0 +1,381 @@
+<?php
+/**
+ * File Deduplication System
+ *
+ * Handles deduplication of identical files based on SHA256 hash.
+ * Deduplicated files are stored in assets/_dedup/ folder.
+ */
+
+define('DEDUP_FOLDER', 'assets/_dedup/');
+
+/**
+ * Get the real file path for a model (handles deduplicated files)
+ */
+function getRealFilePath($model) {
+    if (!empty($model['dedup_path'])) {
+        return $model['dedup_path'];
+    }
+    return $model['file_path'];
+}
+
+/**
+ * Find all files with duplicate hashes
+ * @return array Array of hashes that have duplicates, with count
+ */
+function findDuplicateHashes() {
+    $db = getDB();
+    $result = $db->query('
+        SELECT file_hash, COUNT(*) as count, SUM(file_size) as total_size
+        FROM models
+        WHERE file_hash IS NOT NULL
+          AND file_hash != ""
+          AND parent_id IS NOT NULL
+        GROUP BY file_hash
+        HAVING COUNT(*) > 1
+        ORDER BY count DESC
+    ');
+
+    $duplicates = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $duplicates[] = $row;
+    }
+    return $duplicates;
+}
+
+/**
+ * Get all parts with a specific hash
+ */
+function getPartsByHash($hash) {
+    $db = getDB();
+    $stmt = $db->prepare('
+        SELECT m.*, p.name as parent_name
+        FROM models m
+        LEFT JOIN models p ON m.parent_id = p.id
+        WHERE m.file_hash = :hash
+        ORDER BY m.id
+    ');
+    $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+    $result = $stmt->execute();
+
+    $parts = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $parts[] = $row;
+    }
+    return $parts;
+}
+
+/**
+ * Deduplicate files with a specific hash
+ * Keeps the first file and points all others to it
+ * @return array Result with success status and details
+ */
+function deduplicateByHash($hash) {
+    $db = getDB();
+    $parts = getPartsByHash($hash);
+
+    if (count($parts) < 2) {
+        return ['success' => false, 'error' => 'Not enough duplicates to deduplicate'];
+    }
+
+    // Ensure dedup folder exists
+    $dedupFolder = __DIR__ . '/../' . DEDUP_FOLDER;
+    if (!file_exists($dedupFolder)) {
+        mkdir($dedupFolder, 0755, true);
+    }
+
+    // Find the first part with an existing file to use as the master
+    $masterPart = null;
+    $masterFilePath = null;
+
+    foreach ($parts as $part) {
+        $filePath = __DIR__ . '/../' . getRealFilePath($part);
+        if (file_exists($filePath)) {
+            $masterPart = $part;
+            $masterFilePath = $filePath;
+            break;
+        }
+    }
+
+    if (!$masterPart) {
+        return ['success' => false, 'error' => 'No valid file found for this hash'];
+    }
+
+    // Create deduplicated file path using hash
+    $extension = pathinfo($masterPart['filename'], PATHINFO_EXTENSION);
+    $dedupFilename = $hash . '.' . $extension;
+    $dedupPath = DEDUP_FOLDER . $dedupFilename;
+    $dedupFullPath = __DIR__ . '/../' . $dedupPath;
+
+    // Copy file to dedup folder if not already there
+    if (!file_exists($dedupFullPath)) {
+        if (!copy($masterFilePath, $dedupFullPath)) {
+            return ['success' => false, 'error' => 'Failed to copy file to dedup folder'];
+        }
+    }
+
+    // Update all parts to point to the deduplicated file
+    $deletedCount = 0;
+    $spaceSaved = 0;
+
+    foreach ($parts as $part) {
+        $originalPath = __DIR__ . '/../' . $part['file_path'];
+
+        // Update database to point to dedup file
+        $stmt = $db->prepare('UPDATE models SET dedup_path = :dedup_path WHERE id = :id');
+        $stmt->bindValue(':dedup_path', $dedupPath, SQLITE3_TEXT);
+        $stmt->bindValue(':id', $part['id'], SQLITE3_INTEGER);
+        $stmt->execute();
+
+        // Delete original file if it exists and is not the dedup file
+        if (file_exists($originalPath) && realpath($originalPath) !== realpath($dedupFullPath)) {
+            $spaceSaved += filesize($originalPath);
+            unlink($originalPath);
+            $deletedCount++;
+
+            // Try to remove empty parent folder
+            $parentFolder = dirname($originalPath);
+            if (is_dir($parentFolder) && count(glob($parentFolder . '/*')) === 0) {
+                @rmdir($parentFolder);
+            }
+        }
+    }
+
+    logInfo('Deduplicated files by hash', [
+        'hash' => $hash,
+        'parts_count' => count($parts),
+        'files_deleted' => $deletedCount,
+        'space_saved' => $spaceSaved
+    ]);
+
+    return [
+        'success' => true,
+        'parts_count' => count($parts),
+        'files_deleted' => $deletedCount,
+        'space_saved' => $spaceSaved,
+        'dedup_path' => $dedupPath
+    ];
+}
+
+/**
+ * Run full deduplication scan
+ * @return array Summary of deduplication results
+ */
+function runDeduplicationScan() {
+    $duplicates = findDuplicateHashes();
+
+    $totalSpaceSaved = 0;
+    $totalFilesDeleted = 0;
+    $hashesProcessed = 0;
+
+    foreach ($duplicates as $dup) {
+        $result = deduplicateByHash($dup['file_hash']);
+        if ($result['success']) {
+            $totalSpaceSaved += $result['space_saved'];
+            $totalFilesDeleted += $result['files_deleted'];
+            $hashesProcessed++;
+        }
+    }
+
+    logInfo('Deduplication scan complete', [
+        'hashes_processed' => $hashesProcessed,
+        'files_deleted' => $totalFilesDeleted,
+        'space_saved' => $totalSpaceSaved
+    ]);
+
+    return [
+        'success' => true,
+        'hashes_processed' => $hashesProcessed,
+        'files_deleted' => $totalFilesDeleted,
+        'space_saved' => $totalSpaceSaved
+    ];
+}
+
+/**
+ * Check if a deduplicated file can be safely deleted
+ * (only if no other parts reference it)
+ */
+function canDeleteDedupFile($dedupPath) {
+    $db = getDB();
+    $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
+    $stmt->bindValue(':path', $dedupPath, SQLITE3_TEXT);
+    $result = $stmt->execute();
+    $row = $result->fetchArray(SQLITE3_ASSOC);
+
+    return $row['count'] <= 1;
+}
+
+/**
+ * Get the count of references to a deduplicated file
+ */
+function getDedupReferenceCount($dedupPath) {
+    $db = getDB();
+    $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
+    $stmt->bindValue(':path', $dedupPath, SQLITE3_TEXT);
+    $result = $stmt->execute();
+    $row = $result->fetchArray(SQLITE3_ASSOC);
+
+    return $row['count'];
+}
+
+/**
+ * Migrate a deduplicated file back to its original location
+ * Used when a file only has one reference left
+ */
+function migrateDedupBack($modelId) {
+    $db = getDB();
+
+    // Get the model
+    $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
+    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    $model = $result->fetchArray(SQLITE3_ASSOC);
+
+    if (!$model || empty($model['dedup_path'])) {
+        return ['success' => false, 'error' => 'Model not found or not deduplicated'];
+    }
+
+    $dedupPath = __DIR__ . '/../' . $model['dedup_path'];
+    $originalPath = __DIR__ . '/../' . $model['file_path'];
+
+    // Check if this is the only reference
+    if (getDedupReferenceCount($model['dedup_path']) > 1) {
+        return ['success' => false, 'error' => 'File still has multiple references'];
+    }
+
+    // Ensure original folder exists
+    $originalFolder = dirname($originalPath);
+    if (!file_exists($originalFolder)) {
+        mkdir($originalFolder, 0755, true);
+    }
+
+    // Move file back
+    if (file_exists($dedupPath)) {
+        if (rename($dedupPath, $originalPath)) {
+            // Clear dedup_path in database
+            $stmt = $db->prepare('UPDATE models SET dedup_path = NULL WHERE id = :id');
+            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->execute();
+
+            logInfo('Migrated dedup file back', ['model_id' => $modelId]);
+            return ['success' => true];
+        }
+    }
+
+    return ['success' => false, 'error' => 'Failed to migrate file'];
+}
+
+/**
+ * Run cleanup scan - migrate files back that only have one reference
+ */
+function runDedupCleanupScan() {
+    $db = getDB();
+
+    // Find dedup paths with only one reference
+    $result = $db->query('
+        SELECT dedup_path, COUNT(*) as count, MIN(id) as model_id
+        FROM models
+        WHERE dedup_path IS NOT NULL
+        GROUP BY dedup_path
+        HAVING COUNT(*) = 1
+    ');
+
+    $migratedCount = 0;
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $result2 = migrateDedupBack($row['model_id']);
+        if ($result2['success']) {
+            $migratedCount++;
+        }
+    }
+
+    logInfo('Dedup cleanup scan complete', ['migrated' => $migratedCount]);
+
+    return [
+        'success' => true,
+        'migrated' => $migratedCount
+    ];
+}
+
+/**
+ * Get deduplication statistics
+ */
+function getDeduplicationStats() {
+    $db = getDB();
+
+    // Count deduplicated files
+    $result = $db->query('SELECT COUNT(DISTINCT dedup_path) as count FROM models WHERE dedup_path IS NOT NULL');
+    $dedupFileCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+
+    // Count parts using deduplicated files
+    $result = $db->query('SELECT COUNT(*) as count FROM models WHERE dedup_path IS NOT NULL');
+    $dedupPartCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+
+    // Calculate space saved (parts using dedup - actual dedup files)
+    $result = $db->query('
+        SELECT SUM(file_size) as total
+        FROM models
+        WHERE dedup_path IS NOT NULL
+    ');
+    $virtualSize = $result->fetchArray(SQLITE3_ASSOC)['total'] ?? 0;
+
+    // Get actual size of dedup folder
+    $dedupFolder = __DIR__ . '/../' . DEDUP_FOLDER;
+    $actualSize = 0;
+    if (is_dir($dedupFolder)) {
+        $iterator = new DirectoryIterator($dedupFolder);
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $actualSize += $file->getSize();
+            }
+        }
+    }
+
+    $spaceSaved = $virtualSize - $actualSize;
+
+    // Find potential duplicates (not yet deduplicated)
+    $duplicates = findDuplicateHashes();
+    $potentialSavings = 0;
+    foreach ($duplicates as $dup) {
+        // Space saved would be (count - 1) * average file size
+        $avgSize = $dup['total_size'] / $dup['count'];
+        $potentialSavings += ($dup['count'] - 1) * $avgSize;
+    }
+
+    return [
+        'dedup_file_count' => $dedupFileCount,
+        'dedup_part_count' => $dedupPartCount,
+        'space_saved' => max(0, $spaceSaved),
+        'potential_duplicates' => count($duplicates),
+        'potential_savings' => $potentialSavings
+    ];
+}
+
+/**
+ * Calculate and store hashes for all files that don't have one
+ */
+function calculateMissingHashes() {
+    $db = getDB();
+
+    $result = $db->query('
+        SELECT id, file_path, dedup_path
+        FROM models
+        WHERE (file_hash IS NULL OR file_hash = "")
+          AND file_path IS NOT NULL
+    ');
+
+    $updated = 0;
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $filePath = __DIR__ . '/../' . getRealFilePath($row);
+
+        if (file_exists($filePath)) {
+            $hash = hash_file('sha256', $filePath);
+            $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
+            $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+            $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+            $stmt->execute();
+            $updated++;
+        }
+    }
+
+    logInfo('Calculated missing hashes', ['count' => $updated]);
+    return $updated;
+}

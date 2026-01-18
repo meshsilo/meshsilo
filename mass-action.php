@@ -3,6 +3,7 @@
  * AJAX endpoint for mass actions on models and parts
  */
 require_once 'includes/config.php';
+require_once 'includes/dedup.php';
 
 header('Content-Type: application/json');
 
@@ -77,21 +78,37 @@ try {
 
             // Delete the parts and their files
             foreach ($ids as $id) {
-                $stmt = $db->prepare('SELECT file_path, parent_id FROM models WHERE id = ?');
+                $stmt = $db->prepare('SELECT file_path, dedup_path, parent_id FROM models WHERE id = ?');
                 $stmt->bindValue(1, $id, SQLITE3_INTEGER);
                 $result = $stmt->execute();
                 $part = $result->fetchArray(SQLITE3_ASSOC);
 
-                if ($part && $part['file_path']) {
-                    $filePath = __DIR__ . '/' . $part['file_path'];
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
+                if ($part) {
+                    // Check if file can be deleted before removing from DB
+                    $canDeleteDedup = !empty($part['dedup_path']) && canDeleteDedupFile($part['dedup_path']);
+
+                    // Delete from database first
+                    $stmt = $db->prepare('DELETE FROM models WHERE id = ?');
+                    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+                    $stmt->execute();
+
+                    // Now delete the file
+                    if (!empty($part['dedup_path'])) {
+                        // Deduplicated file - only delete if no other references
+                        if ($canDeleteDedup) {
+                            $dedupPath = __DIR__ . '/' . $part['dedup_path'];
+                            if (file_exists($dedupPath)) {
+                                unlink($dedupPath);
+                            }
+                        }
+                    } elseif ($part['file_path']) {
+                        // Regular file
+                        $filePath = __DIR__ . '/' . $part['file_path'];
+                        if (file_exists($filePath)) {
+                            unlink($filePath);
+                        }
                     }
                 }
-
-                $stmt = $db->prepare('DELETE FROM models WHERE id = ?');
-                $stmt->bindValue(1, $id, SQLITE3_INTEGER);
-                $stmt->execute();
             }
 
             // Update parent model part counts
@@ -119,37 +136,33 @@ try {
 
             foreach ($ids as $id) {
                 // Get model info
-                $stmt = $db->prepare('SELECT file_path, part_count FROM models WHERE id = ? AND parent_id IS NULL');
+                $stmt = $db->prepare('SELECT file_path, dedup_path, part_count FROM models WHERE id = ? AND parent_id IS NULL');
                 $stmt->bindValue(1, $id, SQLITE3_INTEGER);
                 $result = $stmt->execute();
                 $model = $result->fetchArray(SQLITE3_ASSOC);
 
                 if (!$model) continue;
 
-                // Delete child parts first
-                $stmt = $db->prepare('SELECT file_path FROM models WHERE parent_id = ?');
+                $filesToDelete = [];
+                $dedupFilesToCheck = [];
+
+                // Collect files to delete from child parts
+                $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = ?');
                 $stmt->bindValue(1, $id, SQLITE3_INTEGER);
                 $result = $stmt->execute();
                 while ($part = $result->fetchArray(SQLITE3_ASSOC)) {
-                    if ($part['file_path']) {
-                        $filePath = __DIR__ . '/' . $part['file_path'];
-                        if (file_exists($filePath)) {
-                            unlink($filePath);
-                        }
+                    if (!empty($part['dedup_path'])) {
+                        $dedupFilesToCheck[$part['dedup_path']] = true;
+                    } elseif ($part['file_path']) {
+                        $filesToDelete[] = __DIR__ . '/' . $part['file_path'];
                     }
                 }
 
-                // Delete model's own file if exists
-                if ($model['file_path']) {
-                    $filePath = __DIR__ . '/' . $model['file_path'];
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                    }
-                    // Try to remove folder
-                    $folderPath = dirname($filePath);
-                    if (is_dir($folderPath)) {
-                        @rmdir($folderPath);
-                    }
+                // Collect model's own file
+                if (!empty($model['dedup_path'])) {
+                    $dedupFilesToCheck[$model['dedup_path']] = true;
+                } elseif ($model['file_path']) {
+                    $filesToDelete[] = __DIR__ . '/' . $model['file_path'];
                 }
 
                 // Delete from database (cascade will handle children)
@@ -162,6 +175,35 @@ try {
                 $stmt = $db->prepare('DELETE FROM model_categories WHERE model_id = ?');
                 $stmt->bindValue(1, $id, SQLITE3_INTEGER);
                 $stmt->execute();
+
+                // Now delete regular files
+                $foldersToCheck = [];
+                foreach ($filesToDelete as $filePath) {
+                    if (file_exists($filePath)) {
+                        unlink($filePath);
+                        $folder = dirname($filePath);
+                        if (!in_array($folder, $foldersToCheck)) {
+                            $foldersToCheck[] = $folder;
+                        }
+                    }
+                }
+
+                // Delete dedup files only if no other parts reference them
+                foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
+                    if (canDeleteDedupFile($dedupPath)) {
+                        $fullPath = __DIR__ . '/' . $dedupPath;
+                        if (file_exists($fullPath)) {
+                            unlink($fullPath);
+                        }
+                    }
+                }
+
+                // Clean up empty folders
+                foreach ($foldersToCheck as $folder) {
+                    if (is_dir($folder) && count(scandir($folder)) === 2) {
+                        @rmdir($folder);
+                    }
+                }
             }
 
             $affected = count($ids);

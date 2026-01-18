@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/dedup.php';
 
 $db = getDB();
 
@@ -64,12 +65,13 @@ if ($model['part_count'] > 0) {
     // Use first part for preview
     if (!empty($parts)) {
         // Add cache buster to prevent stale model files after conversion
-        $previewPath = $parts[0]['file_path'] . '?v=' . ($parts[0]['file_size'] ?? time());
+        // Use getRealFilePath to handle deduplicated files
+        $previewPath = getRealFilePath($parts[0]) . '?v=' . ($parts[0]['file_size'] ?? time());
         $previewType = $parts[0]['file_type'];
     }
 } else {
     // Single model - add cache buster
-    $previewPath = $model['file_path'] . '?v=' . ($model['file_size'] ?? time());
+    $previewPath = getRealFilePath($model) . '?v=' . ($model['file_size'] ?? time());
     $previewType = $model['file_type'];
 }
 
@@ -214,7 +216,7 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                         <div class="parts-list">
                             <?php foreach ($dirParts as $part): ?>
-                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="<?= htmlspecialchars($part['file_path']) ?>?v=<?= $part['file_size'] ?? time() ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="<?= htmlspecialchars(getRealFilePath($part)) ?>?v=<?= $part['file_size'] ?? time() ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
                                 <?php if (canEdit() || canDelete()): ?>
                                 <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>">
                                 <?php endif; ?>
@@ -240,7 +242,7 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                     <?php endif; ?>
                                     <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
-                                    <a href="<?= htmlspecialchars($part['file_path']) ?>" class="btn btn-small btn-primary" download>Download</a>
+                                    <a href="download.php?id=<?= $part['id'] ?>" class="btn btn-small btn-primary">Download</a>
                                     <?php if (canDelete()): ?>
                                     <a href="delete.php?id=<?= $model['id'] ?>&part_id=<?= $part['id'] ?>" class="btn btn-small btn-danger">Delete</a>
                                     <?php endif; ?>
@@ -257,7 +259,7 @@ require_once 'includes/header.php';
                 </div>
                 <?php else: ?>
                 <div class="model-download">
-                    <a href="<?= htmlspecialchars($model['file_path']) ?>" class="btn btn-primary btn-large" download>Download Model</a>
+                    <a href="download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
                 </div>
                 <?php endif; ?>
             </div>

@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/dedup.php';
 
 // Require view stats permission
 requirePermission(PERM_VIEW_STATS);
@@ -86,6 +87,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
             }
             $message = "Deleted $deletedCount orphaned files from disk.";
             logInfo('Deleted all orphaned files', ['count' => $deletedCount]);
+        }
+    } elseif ($action === 'calculate_hashes') {
+        // Calculate missing file hashes
+        $count = calculateMissingHashes();
+        $message = "Calculated hashes for $count files.";
+    } elseif ($action === 'run_dedup_scan') {
+        // Run deduplication scan
+        $result = runDeduplicationScan();
+        if ($result['success']) {
+            $message = "Deduplication complete: {$result['hashes_processed']} duplicate sets processed, {$result['files_deleted']} files removed, " . formatBytes($result['space_saved']) . " saved.";
+        } else {
+            $message = 'Deduplication scan failed.';
+            $messageType = 'error';
+        }
+    } elseif ($action === 'run_dedup_cleanup') {
+        // Run cleanup scan (migrate single-reference files back)
+        $result = runDedupCleanupScan();
+        if ($result['success']) {
+            $message = "Cleanup complete: {$result['migrated']} files migrated back to original locations.";
         }
     }
 }
@@ -277,6 +297,13 @@ if ($assetsPath && is_dir($assetsPath)) {
     }
 }
 
+// Get deduplication statistics
+$dedupStats = getDeduplicationStats();
+
+// Count files without hashes
+$result = $db->query('SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = "") AND file_path IS NOT NULL');
+$filesWithoutHash = $result->fetchArray(SQLITE3_ASSOC)['count'];
+
 // Helper function to format bytes
 function formatBytes($bytes, $precision = 2) {
     $units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -356,6 +383,68 @@ require_once 'includes/header.php';
                 <?php endif; ?>
             </section>
             <?php endif; ?>
+
+            <!-- File Deduplication -->
+            <section class="stats-section stats-section-full stats-section-dedup">
+                <h2>File Deduplication</h2>
+                <p class="section-description">
+                    Deduplication saves disk space by storing only one copy of identical files.
+                </p>
+                <div class="dedup-stats-grid">
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($dedupStats['dedup_file_count']) ?></span>
+                        <span class="dedup-stat-label">Deduplicated Files</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($dedupStats['dedup_part_count']) ?></span>
+                        <span class="dedup-stat-label">Parts Using Dedup</span>
+                    </div>
+                    <?php if ($dedupStats['space_saved'] > 0): ?>
+                    <div class="dedup-stat dedup-stat-highlight">
+                        <span class="dedup-stat-value"><?= formatBytes($dedupStats['space_saved']) ?></span>
+                        <span class="dedup-stat-label">Space Saved</span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($dedupStats['potential_duplicates'] > 0): ?>
+                    <div class="dedup-stat dedup-stat-warning">
+                        <span class="dedup-stat-value"><?= number_format($dedupStats['potential_duplicates']) ?></span>
+                        <span class="dedup-stat-label">Potential Duplicates</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= formatBytes($dedupStats['potential_savings']) ?></span>
+                        <span class="dedup-stat-label">Potential Savings</span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($filesWithoutHash > 0): ?>
+                    <div class="dedup-stat dedup-stat-info">
+                        <span class="dedup-stat-value"><?= number_format($filesWithoutHash) ?></span>
+                        <span class="dedup-stat-label">Files Without Hash</span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php if (isAdmin()): ?>
+                <div class="dedup-actions">
+                    <?php if ($filesWithoutHash > 0): ?>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="calculate_hashes">
+                        <button type="submit" class="btn btn-secondary btn-small">Calculate Missing Hashes</button>
+                    </form>
+                    <?php endif; ?>
+                    <?php if ($dedupStats['potential_duplicates'] > 0): ?>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="run_dedup_scan">
+                        <button type="submit" class="btn btn-primary btn-small" onclick="return confirm('This will deduplicate <?= $dedupStats['potential_duplicates'] ?> duplicate file sets, potentially saving <?= formatBytes($dedupStats['potential_savings']) ?>. Continue?');">Run Deduplication</button>
+                    </form>
+                    <?php endif; ?>
+                    <?php if ($dedupStats['dedup_file_count'] > 0): ?>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="run_dedup_cleanup">
+                        <button type="submit" class="btn btn-secondary btn-small" title="Move files back if only one part references them">Run Cleanup</button>
+                    </form>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+            </section>
 
             <!-- System Health -->
             <?php
