@@ -2,8 +2,34 @@
 require_once 'includes/config.php';
 $pageTitle = 'Home';
 $activePage = 'browse';
+
+$db = getDB();
+
+// Get recent models
+$result = $db->query('SELECT * FROM models ORDER BY created_at DESC LIMIT 8');
+$models = [];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $models[] = $row;
+}
+
+// Get categories with model counts
+$result = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
+$categories = [];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $categories[] = $row;
+}
+
+$message = '';
+if (isset($_GET['uploaded'])) {
+    $message = 'Model uploaded successfully!';
+}
+
 require_once 'includes/header.php';
 ?>
+
+        <?php if ($message): ?>
+        <div class="alert alert-success" style="max-width: 1400px; margin: 1rem auto;"><?= htmlspecialchars($message) ?></div>
+        <?php endif; ?>
 
         <section class="hero">
             <div class="hero-content">
@@ -15,37 +41,26 @@ require_once 'includes/header.php';
         <section class="models-section">
             <div class="section-header">
                 <h2>Recent Models</h2>
-                <a href="#" class="view-all">View All</a>
+                <?php if (count($models) > 4): ?>
+                <a href="browse.php" class="view-all">View All</a>
+                <?php endif; ?>
             </div>
             <div class="models-grid">
-                <article class="model-card">
-                    <div class="model-thumbnail"></div>
-                    <div class="model-info">
-                        <h3 class="model-title">Benchy</h3>
-                        <p class="model-author">by demo_user</p>
-                    </div>
-                </article>
-                <article class="model-card">
-                    <div class="model-thumbnail"></div>
-                    <div class="model-info">
-                        <h3 class="model-title">Phone Stand</h3>
-                        <p class="model-author">by demo_user</p>
-                    </div>
-                </article>
-                <article class="model-card">
-                    <div class="model-thumbnail"></div>
-                    <div class="model-info">
-                        <h3 class="model-title">Cable Organizer</h3>
-                        <p class="model-author">by demo_user</p>
-                    </div>
-                </article>
-                <article class="model-card">
-                    <div class="model-thumbnail"></div>
-                    <div class="model-info">
-                        <h3 class="model-title">Desk Hook</h3>
-                        <p class="model-author">by demo_user</p>
-                    </div>
-                </article>
+                <?php if (empty($models)): ?>
+                    <p class="text-muted">No models yet. <a href="upload.php">Upload your first model!</a></p>
+                <?php else: ?>
+                    <?php foreach ($models as $model): ?>
+                    <article class="model-card" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                        <div class="model-thumbnail">
+                            <span class="file-type-badge">.<?= htmlspecialchars($model['file_type']) ?></span>
+                        </div>
+                        <div class="model-info">
+                            <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
+                            <p class="model-author"><?= $model['author'] ? 'by ' . htmlspecialchars($model['author']) : '' ?></p>
+                        </div>
+                    </article>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </section>
 
@@ -54,24 +69,12 @@ require_once 'includes/header.php';
                 <h2>Categories</h2>
             </div>
             <div class="categories-grid">
-                <a href="category.php?cat=functional" class="category-card">
-                    <span class="category-name">Functional</span>
+                <?php foreach ($categories as $category): ?>
+                <a href="category.php?id=<?= $category['id'] ?>" class="category-card">
+                    <span class="category-name"><?= htmlspecialchars($category['name']) ?></span>
+                    <span class="category-count"><?= $category['model_count'] ?> models</span>
                 </a>
-                <a href="category.php?cat=decorative" class="category-card">
-                    <span class="category-name">Decorative</span>
-                </a>
-                <a href="category.php?cat=tools" class="category-card">
-                    <span class="category-name">Tools</span>
-                </a>
-                <a href="category.php?cat=gaming" class="category-card">
-                    <span class="category-name">Gaming</span>
-                </a>
-                <a href="category.php?cat=art" class="category-card">
-                    <span class="category-name">Art</span>
-                </a>
-                <a href="category.php?cat=mechanical" class="category-card">
-                    <span class="category-name">Mechanical</span>
-                </a>
+                <?php endforeach; ?>
             </div>
         </section>
 

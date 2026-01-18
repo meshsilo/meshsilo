@@ -207,6 +207,23 @@ main {
 .model-thumbnail {
     aspect-ratio: 4/3;
     background: linear-gradient(135deg, var(--color-surface-hover) 0%, var(--color-bg) 100%);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-type-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .model-info {
@@ -238,6 +255,9 @@ main {
     padding: 1.5rem;
     text-align: center;
     transition: background-color 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .category-card:hover {
@@ -247,6 +267,11 @@ main {
 
 .category-name {
     font-weight: 500;
+}
+
+.category-card .category-count {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
 }
 
 /* Footer */
@@ -360,6 +385,20 @@ main {
     margin-top: 1rem;
     font-size: 0.875rem;
     color: var(--color-text-muted);
+}
+
+.file-name-display {
+    margin-top: 0.75rem;
+    font-weight: 500;
+}
+
+.upload-dropzone.dragover {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+.required {
+    color: #ef4444;
 }
 
 /* Form Elements */
