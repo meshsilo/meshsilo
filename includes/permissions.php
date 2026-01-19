@@ -1,16 +1,31 @@
 <?php
-// Permission constants
+// Permission constants - Basic
 define('PERM_UPLOAD', 'upload');
 define('PERM_DELETE', 'delete');
 define('PERM_EDIT', 'edit');
-define('PERM_ADMIN', 'admin');
 define('PERM_VIEW_STATS', 'view_stats');
 
+// Permission constants - Features
+define('PERM_CONVERT', 'convert');          // Convert STL to 3MF
+
+// Permission constants - Admin functions
+define('PERM_MANAGE_USERS', 'manage_users');
+define('PERM_MANAGE_GROUPS', 'manage_groups');
+define('PERM_MANAGE_CATEGORIES', 'manage_categories');
+define('PERM_MANAGE_COLLECTIONS', 'manage_collections');
+define('PERM_MANAGE_SETTINGS', 'manage_settings');
+define('PERM_VIEW_LOGS', 'view_logs');
+define('PERM_ADMIN', 'admin');              // Full admin (all permissions)
+
 // Default permissions for regular users
-define('DEFAULT_USER_PERMISSIONS', [PERM_UPLOAD, PERM_VIEW_STATS]);
+define('DEFAULT_USER_PERMISSIONS', [PERM_UPLOAD, PERM_VIEW_STATS, PERM_CONVERT]);
 
 // Admin has all permissions
-define('ADMIN_PERMISSIONS', [PERM_UPLOAD, PERM_DELETE, PERM_EDIT, PERM_ADMIN, PERM_VIEW_STATS]);
+define('ADMIN_PERMISSIONS', [
+    PERM_UPLOAD, PERM_DELETE, PERM_EDIT, PERM_VIEW_STATS, PERM_CONVERT,
+    PERM_MANAGE_USERS, PERM_MANAGE_GROUPS, PERM_MANAGE_CATEGORIES,
+    PERM_MANAGE_COLLECTIONS, PERM_MANAGE_SETTINGS, PERM_VIEW_LOGS, PERM_ADMIN
+]);
 
 /**
  * Check if current user has a specific permission
@@ -334,14 +349,96 @@ function canViewStats() {
 }
 
 /**
+ * Check if user can convert files
+ */
+function canConvert() {
+    return hasPermission(PERM_CONVERT);
+}
+
+/**
+ * Check if user can manage users
+ */
+function canManageUsers() {
+    return hasPermission(PERM_MANAGE_USERS) || hasPermission(PERM_ADMIN);
+}
+
+/**
+ * Check if user can manage groups
+ */
+function canManageGroups() {
+    return hasPermission(PERM_MANAGE_GROUPS) || hasPermission(PERM_ADMIN);
+}
+
+/**
+ * Check if user can manage categories
+ */
+function canManageCategories() {
+    return hasPermission(PERM_MANAGE_CATEGORIES) || hasPermission(PERM_ADMIN);
+}
+
+/**
+ * Check if user can manage collections
+ */
+function canManageCollections() {
+    return hasPermission(PERM_MANAGE_COLLECTIONS) || hasPermission(PERM_ADMIN);
+}
+
+/**
+ * Check if user can manage settings
+ */
+function canManageSettings() {
+    return hasPermission(PERM_MANAGE_SETTINGS) || hasPermission(PERM_ADMIN);
+}
+
+/**
+ * Check if user can view logs
+ */
+function canViewLogs() {
+    return hasPermission(PERM_VIEW_LOGS) || hasPermission(PERM_ADMIN);
+}
+
+/**
  * Get list of all available permissions with descriptions
  */
 function getAllPermissions() {
     return [
+        // Basic permissions
         PERM_UPLOAD => 'Upload new models',
         PERM_DELETE => 'Delete models',
         PERM_EDIT => 'Edit model details',
         PERM_VIEW_STATS => 'View statistics',
-        PERM_ADMIN => 'Full admin access'
+        PERM_CONVERT => 'Convert STL to 3MF',
+        // Admin permissions
+        PERM_MANAGE_USERS => 'Manage users',
+        PERM_MANAGE_GROUPS => 'Manage groups',
+        PERM_MANAGE_CATEGORIES => 'Manage categories',
+        PERM_MANAGE_COLLECTIONS => 'Manage collections',
+        PERM_MANAGE_SETTINGS => 'Manage site settings',
+        PERM_VIEW_LOGS => 'View system logs',
+        PERM_ADMIN => 'Full admin access (all permissions)'
+    ];
+}
+
+/**
+ * Get permissions grouped by category
+ */
+function getPermissionsByCategory() {
+    return [
+        'Basic' => [
+            PERM_UPLOAD => 'Upload new models',
+            PERM_DELETE => 'Delete models',
+            PERM_EDIT => 'Edit model details',
+            PERM_VIEW_STATS => 'View statistics',
+            PERM_CONVERT => 'Convert STL to 3MF',
+        ],
+        'Administration' => [
+            PERM_MANAGE_USERS => 'Manage users',
+            PERM_MANAGE_GROUPS => 'Manage groups',
+            PERM_MANAGE_CATEGORIES => 'Manage categories',
+            PERM_MANAGE_COLLECTIONS => 'Manage collections',
+            PERM_MANAGE_SETTINGS => 'Manage site settings',
+            PERM_VIEW_LOGS => 'View system logs',
+            PERM_ADMIN => 'Full admin access (all permissions)'
+        ]
     ];
 }

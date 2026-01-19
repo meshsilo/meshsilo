@@ -15,5 +15,32 @@
             </nav>
         </div>
     </footer>
+
+    <script>
+    // Collapsible sections
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.settings-section h2').forEach(header => {
+            header.addEventListener('click', function() {
+                const section = this.closest('.settings-section');
+                section.classList.toggle('collapsed');
+
+                // Save state to localStorage
+                const sectionId = section.id || this.textContent.trim();
+                const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
+                collapsedSections[sectionId] = section.classList.contains('collapsed');
+                localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
+            });
+        });
+
+        // Restore collapsed state from localStorage
+        const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
+        document.querySelectorAll('.settings-section').forEach(section => {
+            const sectionId = section.id || section.querySelector('h2')?.textContent.trim();
+            if (sectionId && collapsedSections[sectionId]) {
+                section.classList.add('collapsed');
+            }
+        });
+    });
+    </script>
 </body>
 </html>

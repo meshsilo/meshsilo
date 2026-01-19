@@ -13,18 +13,20 @@ $activePage = 'collections';
 $db = getDB();
 
 // Get all collections with model counts
-// This includes both collections from the collections table and any collection names used in models
+// This includes collections from the collections table AND any ad-hoc collection names used in models
 $result = $db->query('
-    SELECT
-        COALESCE(c.name, m.collection) as name,
-        c.description,
-        COUNT(DISTINCT m.id) as count
+    SELECT c.name, c.description, COUNT(m.id) as count
+    FROM collections c
+    LEFT JOIN models m ON m.collection = c.name AND m.parent_id IS NULL
+    GROUP BY c.id
+    UNION
+    SELECT m.collection as name, NULL as description, COUNT(*) as count
     FROM models m
-    LEFT JOIN collections c ON c.name = m.collection
     WHERE m.collection IS NOT NULL
       AND m.collection != ""
       AND m.parent_id IS NULL
-    GROUP BY COALESCE(c.name, m.collection)
+      AND m.collection NOT IN (SELECT name FROM collections)
+    GROUP BY m.collection
     ORDER BY count DESC, name
 ');
 
@@ -43,7 +45,7 @@ require_once 'includes/header.php';
             </div>
 
             <?php if (empty($collections)): ?>
-            <p class="text-muted">No collections yet. Collections are created when you assign models to a collection during upload.</p>
+            <p class="text-muted">No collections yet. Create collections in the admin panel or assign models to a collection during upload.</p>
             <?php else: ?>
             <div class="collections-grid">
                 <?php foreach ($collections as $collection): ?>

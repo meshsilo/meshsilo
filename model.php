@@ -135,7 +135,7 @@ require_once 'includes/header.php';
                         <?php if ($model['part_count'] > 0): ?>
                         <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
                         <?php endif; ?>
-                        <span class="file-type-badge file-type-badge-large">.<?= htmlspecialchars($model['file_type'] ?? 'zip') ?></span>
+                        <span class="file-type-badge file-type-badge-large">.<?= htmlspecialchars($previewType ?? $model['file_type'] ?? 'stl') ?></span>
                     </div>
                     <div class="model-detail-info">
                         <h1><?= htmlspecialchars($model['name']) ?></h1>
@@ -255,7 +255,17 @@ require_once 'includes/header.php';
 
                     <div class="parts-actions">
                         <a href="download-all.php?id=<?= $model['id'] ?>" class="btn btn-primary">Download All Parts</a>
+                        <?php if (canUpload()): ?>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
+                        <input type="file" id="add-part-file" accept=".stl,.3mf" multiple hidden onchange="uploadParts(this.files)">
+                        <?php endif; ?>
                     </div>
+                </div>
+                <?php elseif (canUpload()): ?>
+                <div class="model-download">
+                    <a href="download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
+                    <input type="file" id="add-part-file" accept=".stl,.3mf" multiple hidden onchange="uploadParts(this.files)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
@@ -559,6 +569,69 @@ require_once 'includes/header.php';
                     alert('Failed to delete parts');
                 }
             });
+        }
+
+        // Upload parts function
+        async function uploadParts(files) {
+            if (!files || files.length === 0) return;
+
+            const modelId = <?= $model['id'] ?>;
+            let successCount = 0;
+            let errorCount = 0;
+
+            // Show loading indicator
+            const addBtn = document.querySelector('button[onclick*="add-part-file"]');
+            const originalText = addBtn ? addBtn.textContent : '';
+            if (addBtn) {
+                addBtn.textContent = 'Uploading...';
+                addBtn.disabled = true;
+            }
+
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('model_id', modelId);
+                formData.append('part_file', file);
+
+                try {
+                    const response = await fetch('add-part.php', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        console.error('Upload failed for', file.name, ':', result.error);
+                    }
+                } catch (err) {
+                    errorCount++;
+                    console.error('Upload error for', file.name, ':', err);
+                }
+            }
+
+            // Reset file input
+            document.getElementById('add-part-file').value = '';
+
+            // Restore button
+            if (addBtn) {
+                addBtn.textContent = originalText;
+                addBtn.disabled = false;
+            }
+
+            // Show result and reload
+            if (successCount > 0) {
+                if (errorCount > 0) {
+                    alert(`Uploaded ${successCount} files. ${errorCount} files failed.`);
+                }
+                location.reload();
+            } else if (errorCount > 0) {
+                alert(`Upload failed. ${errorCount} files could not be uploaded.`);
+            }
         }
         </script>
 

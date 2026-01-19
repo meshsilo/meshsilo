@@ -209,7 +209,7 @@ require_once '../includes/header.php';
                                 <?php foreach ($users as $user): ?>
                                 <tr>
                                     <td>
-                                        <?= htmlspecialchars($user['username']) ?>
+                                        <a href="user.php?id=<?= $user['id'] ?>" class="user-link"><?= htmlspecialchars($user['username']) ?></a>
                                         <?php if ($user['is_admin']): ?>
                                         <span class="badge badge-admin">Admin</span>
                                         <?php endif; ?>
@@ -236,13 +236,12 @@ require_once '../includes/header.php';
                                     </td>
                                     <td><?= date('M j, Y', strtotime($user['created_at'])) ?></td>
                                     <td>
+                                        <a href="user.php?id=<?= $user['id'] ?>" class="btn btn-small btn-secondary">Edit</a>
                                         <?php if ($user['id'] !== getCurrentUser()['id']): ?>
                                         <form method="post" style="display:inline;" onsubmit="return confirm('Delete this user? This cannot be undone.');">
                                             <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
                                             <button type="submit" name="delete_user" class="btn btn-small btn-danger">Delete</button>
                                         </form>
-                                        <?php else: ?>
-                                        <span class="text-muted">Current user</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>

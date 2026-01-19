@@ -102,7 +102,7 @@ require_once 'includes/header.php';
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
                             <?php endif; ?>
-                            <span class="file-type-badge">.<?= htmlspecialchars($model['file_type'] ?? 'zip') ?></span>
+                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
                             <?php if (!empty($model['print_types'])): ?>
                             <div class="print-type-indicators">
                                 <?php if (in_array('fdm', $model['print_types'])): ?>
