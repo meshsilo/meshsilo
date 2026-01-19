@@ -5,6 +5,9 @@ db/*.db
 assets/*
 !assets/.gitkeep
 
+# Local configuration
+config.local.php
+
 # IDE
 .idea/
 .vscode/
@@ -21,3 +24,7 @@ Thumbs.db
 # Logs directory
 logs/*
 !logs/.gitkeep
+
+# Development files
+.claude/
+todo.txt
