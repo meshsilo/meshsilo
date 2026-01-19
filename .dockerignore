@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Local configuration (will be generated or mounted)
+config.local.php
+
+# Runtime data (should be mounted as volumes)
+assets/*
+!assets/.gitkeep
+db/*
+!db/.gitkeep
+!db/schema.sql
+logs/*
+!logs/.gitkeep
+
+# Documentation (not needed in container)
+*.md
+!README.md
+LICENSE
+todo.txt
+
+# Development files
+.claude
+*.log
+
+# Docker files (don't include in build context recursively)
+docker-compose*.yml
+
+# OS files
+.DS_Store
+Thumbs.db

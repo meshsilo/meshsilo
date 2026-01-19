@@ -71,7 +71,14 @@ Silo/
 ├── images/                # UI images/icons
 ├── config.local.php       # Local configuration (gitignored)
 ├── .htaccess              # Apache configuration
-└── nginx.conf.example     # Nginx configuration example
+├── nginx.conf.example     # Nginx configuration example
+├── Dockerfile             # Docker container build file
+├── docker-compose.yml     # Docker Compose configuration
+└── docker/                # Docker configuration files
+    ├── nginx.conf         # Nginx config for container
+    ├── php-fpm.conf       # PHP-FPM pool configuration
+    ├── supervisord.conf   # Process supervisor config
+    └── entrypoint.sh      # Container startup script
 ```
 
 ## Installation

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  silo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: silo:latest
+    container_name: silo
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # Persistent data volumes
+      - silo_assets:/var/www/silo/assets
+      - silo_db:/var/www/silo/db
+      - silo_logs:/var/www/silo/logs
+      # Optional: Mount custom config file
+      # - ./config.local.php:/var/www/silo/config.local.php:ro
+    environment:
+      # Database Configuration (sqlite or mysql)
+      - SILO_DB_TYPE=sqlite
+      # For MySQL, uncomment and configure:
+      # - SILO_DB_TYPE=mysql
+      # - SILO_DB_HOST=db
+      # - SILO_DB_NAME=silo
+      # - SILO_DB_USER=silo
+      # - SILO_DB_PASS=your_password
+
+      # Site Configuration
+      - SILO_SITE_NAME=Silo
+      - SILO_SITE_DESCRIPTION=3D Print File Manager
+      # Set this to your external URL if using reverse proxy
+      # - SILO_SITE_URL=https://silo.example.com
+
+      # File Upload Settings (in bytes, default 100MB)
+      - SILO_MAX_UPLOAD_SIZE=104857600
+      - SILO_ALLOWED_EXTENSIONS=stl,3mf
+
+      # Deduplication
+      - SILO_DEDUP_ENABLED=true
+
+      # OIDC/SSO Configuration (optional)
+      # - SILO_OIDC_PROVIDER_URL=https://auth.example.com
+      # - SILO_OIDC_CLIENT_ID=silo
+      # - SILO_OIDC_CLIENT_SECRET=your_client_secret
+      # - SILO_OIDC_REDIRECT_URI=https://silo.example.com/oidc-callback.php
+      # - SILO_OIDC_SCOPES=openid profile email
+      # - SILO_OIDC_USERNAME_CLAIM=preferred_username
+      # - SILO_OIDC_AUTO_REGISTER=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Example with MySQL database
+# Uncomment to use MySQL instead of SQLite
+#
+#   db:
+#     image: mysql:8.0
+#     container_name: silo-db
+#     restart: unless-stopped
+#     environment:
+#       - MYSQL_ROOT_PASSWORD=root_password
+#       - MYSQL_DATABASE=silo
+#       - MYSQL_USER=silo
+#       - MYSQL_PASSWORD=your_password
+#     volumes:
+#       - silo_mysql:/var/lib/mysql
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+volumes:
+  silo_assets:
+    driver: local
+  silo_db:
+    driver: local
+  silo_logs:
+    driver: local
+  # silo_mysql:
+  #   driver: local

@@ -47,6 +47,76 @@ A self-hosted web-based Digital Asset Manager (DAM) for 3D print files (.stl, .3
 
 ## Installation
 
+### Docker (Recommended)
+
+The easiest way to run Silo is using Docker. Multi-architecture images are available for both `amd64` and `arm64`.
+
+#### Quick Start with Docker Compose
+
+1. Download the docker-compose file:
+   ```bash
+   curl -O https://raw.githubusercontent.com/Azurith93/Silo/main/docker-compose.yml
+   ```
+
+2. Start the container:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. Access Silo at `http://localhost:8080` and complete the installation wizard.
+
+#### Docker Run
+
+```bash
+docker run -d \
+  --name silo \
+  -p 8080:80 \
+  -v silo_assets:/var/www/silo/assets \
+  -v silo_db:/var/www/silo/db \
+  -v silo_logs:/var/www/silo/logs \
+  -e SILO_DB_TYPE=sqlite \
+  -e SILO_SITE_NAME=Silo \
+  ghcr.io/azurith93/silo:latest
+```
+
+#### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SILO_DB_TYPE` | Database type: `sqlite` or `mysql` | `sqlite` |
+| `SILO_DB_HOST` | MySQL host (if using MySQL) | `localhost` |
+| `SILO_DB_NAME` | MySQL database name | `silo` |
+| `SILO_DB_USER` | MySQL username | `silo` |
+| `SILO_DB_PASS` | MySQL password | - |
+| `SILO_SITE_NAME` | Site name displayed in UI | `Silo` |
+| `SILO_SITE_DESCRIPTION` | Site description | `3D Print File Manager` |
+| `SILO_SITE_URL` | External URL (for reverse proxy) | - |
+| `SILO_MAX_UPLOAD_SIZE` | Max upload size in bytes | `104857600` (100MB) |
+| `SILO_ALLOWED_EXTENSIONS` | Allowed file extensions | `stl,3mf` |
+| `SILO_DEDUP_ENABLED` | Enable file deduplication | `true` |
+
+##### OIDC/SSO Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SILO_OIDC_PROVIDER_URL` | OIDC provider URL | - |
+| `SILO_OIDC_CLIENT_ID` | OIDC client ID | - |
+| `SILO_OIDC_CLIENT_SECRET` | OIDC client secret | - |
+| `SILO_OIDC_REDIRECT_URI` | OIDC redirect URI | - |
+| `SILO_OIDC_SCOPES` | OIDC scopes | `openid profile email` |
+| `SILO_OIDC_USERNAME_CLAIM` | Claim for username | `preferred_username` |
+| `SILO_OIDC_AUTO_REGISTER` | Auto-register OIDC users | `true` |
+
+#### Docker Volumes
+
+| Volume | Description |
+|--------|-------------|
+| `/var/www/silo/assets` | Uploaded 3D model files |
+| `/var/www/silo/db` | SQLite database file |
+| `/var/www/silo/logs` | Application logs |
+
+### Manual Installation
+
 1. Clone the repository to your web server:
    ```bash
    git clone https://github.com/Azurith93/Silo.git
