@@ -4,7 +4,7 @@ class ModelViewer {
         this.container = container;
         this.options = {
             backgroundColor: 0x1e293b,
-            modelColor: 0xf1f5f9,
+            modelColor: 0xffffff,
             autoRotate: options.autoRotate ?? true,
             interactive: options.interactive ?? false,
             ...options
@@ -39,17 +39,21 @@ class ModelViewer {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Lighting - brighter for white models
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         this.scene.add(ambientLight);
 
-        const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+        const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
         directionalLight1.position.set(1, 1, 1);
         this.scene.add(directionalLight1);
 
-        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
         directionalLight2.position.set(-1, -1, -1);
         this.scene.add(directionalLight2);
+
+        const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.4);
+        directionalLight3.position.set(0, -1, 0);
+        this.scene.add(directionalLight3);
 
         // Controls (if interactive)
         if (this.options.interactive && typeof THREE.OrbitControls !== 'undefined') {
