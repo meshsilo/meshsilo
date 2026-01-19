@@ -1,0 +1,54 @@
+# Silo Apache Configuration
+# Enable this file by ensuring mod_rewrite is enabled
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # If you're running Silo in a subdirectory, uncomment and set the base path
+    # RewriteBase /silo/
+
+    # Don't rewrite requests for files or directories that exist
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Rewrite all other requests to index.php with the route parameter
+    RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]
+</IfModule>
+
+# Protect sensitive directories
+<IfModule mod_authz_core.c>
+    <DirectoryMatch "^/.*/\.(git|claude)">
+        Require all denied
+    </DirectoryMatch>
+</IfModule>
+
+# Protect database files
+<FilesMatch "\.(db|sqlite|sql)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# Protect log files
+<FilesMatch "\.log$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# Protect config files
+<FilesMatch "^config\.local\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Disable directory listing
+Options -Indexes

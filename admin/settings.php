@@ -48,6 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $oidcClientSecret = trim($_POST['oidc_client_secret'] ?? '');
     $oidcButtonText = trim($_POST['oidc_button_text'] ?? 'Sign in with SSO');
 
+    // URL settings
+    $siteUrl = trim($_POST['site_url'] ?? '');
+    $forceSiteUrl = isset($_POST['force_site_url']) ? '1' : '0';
+
     setSetting('auto_convert_stl', $autoConvert);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
@@ -62,6 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setSetting('oidc_client_secret', $oidcClientSecret);
     }
     setSetting('oidc_button_text', $oidcButtonText);
+    setSetting('site_url', $siteUrl);
+    setSetting('force_site_url', $forceSiteUrl);
 
     logInfo('Settings updated', [
         'auto_convert_stl' => $autoConvert,
@@ -117,6 +123,27 @@ require_once '../includes/header.php';
                         <div class="form-group">
                             <label for="models-per-page">Models Per Page</label>
                             <input type="number" id="models-per-page" name="models_per_page" class="form-input" value="20" min="1" max="100">
+                        </div>
+                    </section>
+
+                    <section class="settings-section">
+                        <h2>URL &amp; Reverse Proxy</h2>
+
+                        <div class="form-group">
+                            <label for="site_url">Site URL</label>
+                            <input type="url" id="site_url" name="site_url" class="form-input"
+                                placeholder="https://silo.example.com"
+                                value="<?= htmlspecialchars($settings['site_url'] ?? '') ?>">
+                            <p class="form-help">The full URL where Silo is accessible. Required if using a reverse proxy.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" name="force_site_url" <?= ($settings['force_site_url'] ?? '0') === '1' ? 'checked' : '' ?>>
+                                <span class="toggle-switch"></span>
+                                <span>Only allow access via configured URL</span>
+                            </label>
+                            <p class="form-help">When enabled, requests from other URLs will be rejected.</p>
                         </div>
                     </section>
 

@@ -1,11 +1,18 @@
 <?php
-// Site Configuration
-define('SITE_NAME', 'Silo');
-define('SITE_DESCRIPTION', '3D Model Storage');
-define('SITE_URL', '/');
+// Load local configuration if exists
+if (file_exists(__DIR__ . '/../config.local.php')) {
+    require_once __DIR__ . '/../config.local.php';
+}
 
-// Database Configuration
-define('DB_PATH', __DIR__ . '/../db/silo.db');
+// Site Configuration (defaults, can be overridden in config.local.php)
+if (!defined('SITE_NAME')) define('SITE_NAME', 'Silo');
+if (!defined('SITE_DESCRIPTION')) define('SITE_DESCRIPTION', '3D Model Storage');
+if (!defined('SITE_URL')) define('SITE_URL', '/');
+if (!defined('FORCE_SITE_URL')) define('FORCE_SITE_URL', false);
+
+// Database Configuration (defaults to SQLite)
+if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
+if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../db/silo.db');
 
 // Upload Configuration
 define('UPLOAD_PATH', __DIR__ . '/../assets/');
