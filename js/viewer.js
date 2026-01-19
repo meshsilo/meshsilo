@@ -84,9 +84,10 @@ class ModelViewer {
                     // Ensure normals are computed correctly
                     geometry.computeVertexNormals();
 
-                    const material = new THREE.MeshBasicMaterial({
-                        color: 0xcccccc,
-                        wireframe: false
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x888888,
+                        specular: 0x222222,
+                        shininess: 20
                     });
 
                     this.model = new THREE.Mesh(geometry, material);
@@ -118,9 +119,10 @@ class ModelViewer {
                             if (child.geometry) {
                                 child.geometry.computeVertexNormals();
                             }
-                            child.material = new THREE.MeshBasicMaterial({
-                                color: 0xcccccc,
-                                wireframe: false
+                            child.material = new THREE.MeshPhongMaterial({
+                                color: 0x888888,
+                                specular: 0x222222,
+                                shininess: 20
                             });
                         }
                     });
