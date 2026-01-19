@@ -32,6 +32,24 @@ class DatabaseStatement {
         $this->params = [];
         return new DatabaseResult($this->stmt);
     }
+
+    // Convenience method: execute and fetch single column
+    public function fetchColumn($column = 0) {
+        $result = $this->execute();
+        return $result->fetchColumn($column);
+    }
+
+    // Convenience method: execute and fetch single row
+    public function fetch($mode = PDO::FETCH_ASSOC) {
+        $result = $this->execute();
+        return $result->fetch($mode);
+    }
+
+    // Convenience method: execute and fetch as array (SQLite3 compat)
+    public function fetchArray($mode = SQLITE3_ASSOC) {
+        $result = $this->execute();
+        return $result->fetchArray($mode);
+    }
 }
 
 // Result wrapper for SQLite3 API compatibility
