@@ -2,7 +2,7 @@
 session_start();
 
 // Pages that don't require authentication
-$publicPages = ['login.php'];
+$publicPages = ['login.php', 'oidc-callback.php'];
 
 // Get current page filename
 $currentPage = basename($_SERVER['PHP_SELF']);

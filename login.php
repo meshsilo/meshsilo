@@ -3,6 +3,12 @@ require_once 'includes/config.php';
 
 $error = '';
 
+// Check for OIDC error from callback
+if (isset($_SESSION['oidc_error'])) {
+    $error = $_SESSION['oidc_error'];
+    unset($_SESSION['oidc_error']);
+}
+
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
@@ -36,7 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logWarning('Failed login attempt', [
                 'username' => $username,
                 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+                'user_found' => $user ? 'yes' : 'no'
             ]);
         }
     }
@@ -86,6 +93,15 @@ require_once 'includes/header.php';
 
                     <button type="submit" class="btn btn-primary btn-full">Log In</button>
                 </form>
+
+                <?php if (isOIDCEnabled()): ?>
+                <div class="auth-divider">
+                    <span>or</span>
+                </div>
+                <a href="<?= htmlspecialchars(getOIDCAuthUrl()) ?>" class="btn btn-secondary btn-full btn-oidc">
+                    <?= htmlspecialchars(getSetting('oidc_button_text', 'Sign in with SSO')) ?>
+                </a>
+                <?php endif; ?>
             </div>
         </div>
 

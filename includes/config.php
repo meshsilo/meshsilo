@@ -19,11 +19,12 @@ function basePath($path = '') {
     return ($baseDir ?? '') . $path;
 }
 
-// Include logging, database, authentication and permissions
+// Include logging, database, authentication, permissions and OIDC
 require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/permissions.php';
+require_once __DIR__ . '/oidc.php';
 
 // Set up error handling
 setupErrorHandler();

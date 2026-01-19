@@ -200,6 +200,18 @@ function runMigrations($db) {
         logInfo('Migration: Added dedup_path column to models table');
     }
 
+    // Check if oidc_id column exists in users table
+    $result = $db->query("PRAGMA table_info(users)");
+    $hasOidcId = false;
+    while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
+        if ($col['name'] === 'oidc_id') $hasOidcId = true;
+    }
+
+    if (!$hasOidcId) {
+        $db->exec('ALTER TABLE users ADD COLUMN oidc_id TEXT'); // OIDC subject identifier
+        logInfo('Migration: Added oidc_id column to users table');
+    }
+
     // Create settings table if it doesn't exist
     $db->exec('
         CREATE TABLE IF NOT EXISTS settings (
@@ -216,7 +228,17 @@ function runMigrations($db) {
         'site_description' => 'Your 3D Model Library',
         'models_per_page' => '20',
         'allow_registration' => '1',
-        'require_approval' => '0'
+        'require_approval' => '0',
+        'enable_categories' => '1',
+        'enable_collections' => '1',
+        'allowed_extensions' => 'stl,3mf,zip',
+        'auto_deduplication' => '0',
+        'last_deduplication' => '',
+        'oidc_enabled' => '0',
+        'oidc_provider_url' => '',
+        'oidc_client_id' => '',
+        'oidc_client_secret' => '',
+        'oidc_button_text' => 'Sign in with SSO'
     ];
 
     foreach ($defaultSettings as $key => $value) {
@@ -268,4 +290,27 @@ function getAllSettings() {
     } catch (Exception $e) {
         return [];
     }
+}
+
+// Get allowed file extensions (configurable via settings)
+function getAllowedExtensions() {
+    $setting = getSetting('allowed_extensions', 'stl,3mf,zip');
+    return array_map('trim', explode(',', $setting));
+}
+
+// Get model extensions (non-zip file types that can be 3D rendered)
+function getModelExtensions() {
+    $allowed = getAllowedExtensions();
+    // Filter out 'zip' as it's a container, not a model format
+    return array_filter($allowed, fn($ext) => $ext !== 'zip');
+}
+
+// Check if an extension is allowed
+function isExtensionAllowed($extension) {
+    return in_array(strtolower($extension), getAllowedExtensions());
+}
+
+// Check if an extension is a model format (not a container like zip)
+function isModelExtension($extension) {
+    return in_array(strtolower($extension), getModelExtensions());
 }
