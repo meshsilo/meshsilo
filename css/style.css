@@ -456,6 +456,46 @@ main {
     margin-top: 0.25rem;
 }
 
+/* Code textarea for configuration editing */
+.code-textarea {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 200px;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+/* PHP values display */
+.php-values {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+    background-color: var(--color-bg);
+    padding: 1rem;
+    border-radius: var(--radius);
+}
+
+.php-value {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.php-value span {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.php-value code {
+    background-color: var(--color-surface);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
 /* Checkbox Group */
 .checkbox-group {
     display: flex;

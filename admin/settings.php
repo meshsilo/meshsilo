@@ -20,6 +20,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_oidc'])) {
     exit;
 }
 
+// Handle php.ini save request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
+    $phpIniPath = __DIR__ . '/../php.ini';
+    $content = $_POST['phpini_content'] ?? '';
+
+    // Basic validation - check for valid ini format
+    $lines = explode("\n", $content);
+    $valid = true;
+    foreach ($lines as $lineNum => $line) {
+        $line = trim($line);
+        // Skip empty lines and comments
+        if (empty($line) || $line[0] === ';' || $line[0] === '#') {
+            continue;
+        }
+        // Check for valid directive format (key = value)
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*.+$/', $line)) {
+            $error = "Invalid syntax on line " . ($lineNum + 1) . ": " . htmlspecialchars($line);
+            $valid = false;
+            break;
+        }
+    }
+
+    if ($valid) {
+        if (is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)))) {
+            if (file_put_contents($phpIniPath, $content) !== false) {
+                $message = 'PHP configuration saved successfully. Restart the web server for changes to take effect.';
+                logInfo('php.ini updated', ['by' => getCurrentUser()['username']]);
+            } else {
+                $error = 'Failed to write php.ini file.';
+            }
+        } else {
+            $error = 'php.ini file is not writable.';
+        }
+    }
+}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
@@ -314,6 +350,50 @@ require_once '../includes/header.php';
                         <button type="button" class="btn btn-secondary">Reset to Defaults</button>
                         <button type="submit" class="btn btn-primary">Save Settings</button>
                     </div>
+                </form>
+
+                <?php
+                $phpIniPath = __DIR__ . '/../php.ini';
+                $phpIniContent = file_exists($phpIniPath) ? file_get_contents($phpIniPath) : "; Silo PHP Configuration\nupload_max_filesize = 100M\npost_max_size = 105M\nmax_execution_time = 300\nmemory_limit = 256M\n";
+                $phpIniWritable = is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)));
+                ?>
+
+                <form class="settings-form" method="POST" style="margin-top: 2rem;">
+                    <section class="settings-section">
+                        <h2>PHP Configuration</h2>
+                        <p class="form-help" style="margin-bottom: 1rem;">
+                            Edit the php.ini file to configure PHP settings like upload limits and memory.
+                            Changes require a web server restart to take effect.
+                        </p>
+
+                        <?php if (!$phpIniWritable): ?>
+                        <div class="alert alert-error">
+                            The php.ini file is not writable. Check file permissions.
+                        </div>
+                        <?php endif; ?>
+
+                        <div class="form-group">
+                            <label for="phpini_content">php.ini Contents</label>
+                            <textarea id="phpini_content" name="phpini_content" class="form-input code-textarea" rows="12" <?= !$phpIniWritable ? 'readonly' : '' ?>><?= htmlspecialchars($phpIniContent) ?></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Current PHP Values</label>
+                            <div class="php-values">
+                                <div class="php-value"><span>upload_max_filesize:</span> <code><?= ini_get('upload_max_filesize') ?></code></div>
+                                <div class="php-value"><span>post_max_size:</span> <code><?= ini_get('post_max_size') ?></code></div>
+                                <div class="php-value"><span>max_execution_time:</span> <code><?= ini_get('max_execution_time') ?>s</code></div>
+                                <div class="php-value"><span>memory_limit:</span> <code><?= ini_get('memory_limit') ?></code></div>
+                            </div>
+                            <p class="form-help">These are the currently active PHP values. They may differ from the file if the server hasn't been restarted.</p>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 1rem;">
+                            <button type="submit" name="save_phpini" value="1" class="btn btn-primary" <?= !$phpIniWritable ? 'disabled' : '' ?>>
+                                Save PHP Configuration
+                            </button>
+                        </div>
+                    </section>
                 </form>
             </div>
         </div>
