@@ -2510,3 +2510,153 @@ main {
 .checkbox-small input[type="checkbox"]:disabled + span {
     opacity: 0.5;
 }
+
+/* Dropdown Menus */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.dropdown-arrow {
+    font-size: 0.7em;
+    transition: transform 0.15s;
+}
+
+.dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    min-width: 180px;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+
+.dropdown.open .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    transition: background-color 0.15s;
+}
+
+.dropdown-item:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.dropdown-item.active {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+/* Open In Slicer Dropdown */
+.open-in-dropdown {
+    flex-shrink: 0;
+}
+
+.open-in-dropdown .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+.open-in-dropdown-large .dropdown-menu {
+    min-width: 200px;
+}
+
+.slicer-download-hint {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    margin-left: 0.35rem;
+}
+
+.slicer-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Part actions adjustments for dropdown */
+.part-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.part-actions .dropdown {
+    order: -1;
+}
+
+/* Model download section */
+.model-download {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+}
+
+/* Slicer Grid (Admin Settings) */
+.slicer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.slicer-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.slicer-option:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-surface-hover);
+}
+
+.slicer-option input[type="checkbox"]:checked + span {
+    color: var(--color-primary);
+}
+
+.slicer-protocol-badge {
+    margin-left: auto;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.15rem 0.35rem;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 3px;
+}

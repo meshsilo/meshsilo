@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/dedup.php';
+require_once 'includes/slicers.php';
 
 $db = getDB();
 
@@ -242,6 +243,30 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                     <?php endif; ?>
                                     <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
+                                    <?php
+                                    $partSlicers = getSlicersForFormat($part['file_type']);
+                                    if (!empty($partSlicers)):
+                                    ?>
+                                    <div class="dropdown open-in-dropdown">
+                                        <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="Open in slicer software">
+                                            Open in <span class="dropdown-arrow">&#9662;</span>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <?php foreach ($partSlicers as $slicerKey => $slicer): ?>
+                                            <a href="#" class="dropdown-item slicer-link"
+                                               data-slicer="<?= htmlspecialchars($slicerKey) ?>"
+                                               data-part-id="<?= $part['id'] ?>"
+                                               data-has-protocol="<?= !empty($slicer['protocol']) ? '1' : '0' ?>"
+                                               title="<?= htmlspecialchars($slicer['description']) ?>">
+                                                <?= htmlspecialchars($slicer['name']) ?>
+                                                <?php if (empty($slicer['protocol'])): ?>
+                                                <span class="slicer-download-hint">(download)</span>
+                                                <?php endif; ?>
+                                            </a>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
                                     <a href="actions/download.php?id=<?= $part['id'] ?>" class="btn btn-small btn-primary">Download</a>
                                     <?php if (canDelete()): ?>
                                     <a href="actions/delete.php?id=<?= $model['id'] ?>&part_id=<?= $part['id'] ?>" class="btn btn-small btn-danger">Delete</a>
@@ -263,12 +288,60 @@ require_once 'includes/header.php';
                 </div>
                 <?php elseif (canUpload()): ?>
                 <div class="model-download">
+                    <?php
+                    $modelSlicers = getSlicersForFormat($model['file_type'] ?? 'stl');
+                    if (!empty($modelSlicers)):
+                    ?>
+                    <div class="dropdown open-in-dropdown open-in-dropdown-large">
+                        <button type="button" class="btn btn-secondary btn-large dropdown-toggle" title="Open in slicer software">
+                            Open in <span class="dropdown-arrow">&#9662;</span>
+                        </button>
+                        <div class="dropdown-menu">
+                            <?php foreach ($modelSlicers as $slicerKey => $slicer): ?>
+                            <a href="#" class="dropdown-item slicer-link"
+                               data-slicer="<?= htmlspecialchars($slicerKey) ?>"
+                               data-part-id="<?= $model['id'] ?>"
+                               data-has-protocol="<?= !empty($slicer['protocol']) ? '1' : '0' ?>"
+                               title="<?= htmlspecialchars($slicer['description']) ?>">
+                                <?= htmlspecialchars($slicer['name']) ?>
+                                <?php if (empty($slicer['protocol'])): ?>
+                                <span class="slicer-download-hint">(download)</span>
+                                <?php endif; ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <a href="actions/download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
                     <input type="file" id="add-part-file" accept=".stl,.3mf" multiple hidden onchange="uploadParts(this.files)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
+                    <?php
+                    $modelSlicers = getSlicersForFormat($model['file_type'] ?? 'stl');
+                    if (!empty($modelSlicers)):
+                    ?>
+                    <div class="dropdown open-in-dropdown open-in-dropdown-large">
+                        <button type="button" class="btn btn-secondary btn-large dropdown-toggle" title="Open in slicer software">
+                            Open in <span class="dropdown-arrow">&#9662;</span>
+                        </button>
+                        <div class="dropdown-menu">
+                            <?php foreach ($modelSlicers as $slicerKey => $slicer): ?>
+                            <a href="#" class="dropdown-item slicer-link"
+                               data-slicer="<?= htmlspecialchars($slicerKey) ?>"
+                               data-part-id="<?= $model['id'] ?>"
+                               data-has-protocol="<?= !empty($slicer['protocol']) ? '1' : '0' ?>"
+                               title="<?= htmlspecialchars($slicer['description']) ?>">
+                                <?= htmlspecialchars($slicer['name']) ?>
+                                <?php if (empty($slicer['protocol'])): ?>
+                                <span class="slicer-download-hint">(download)</span>
+                                <?php endif; ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <a href="actions/download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
                 </div>
                 <?php endif; ?>
@@ -633,6 +706,71 @@ require_once 'includes/header.php';
                 alert(`Upload failed. ${errorCount} files could not be uploaded.`);
             }
         }
+
+        // Slicer protocol definitions (must match includes/slicers.php)
+        const slicerProtocols = {
+            'bambustudio': 'bambustudio://open?file={url}',
+            'orcaslicer': 'orcaslicer://open?file={url}',
+            'prusaslicer': 'prusaslicer://open?file={url}',
+            'cura': 'cura://open?file={url}',
+            'superslicer': 'superslicer://open?file={url}'
+        };
+
+        // Dropdown toggle handling
+        document.querySelectorAll('.dropdown-toggle').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dropdown = this.closest('.dropdown');
+                const wasOpen = dropdown.classList.contains('open');
+
+                // Close all other dropdowns
+                document.querySelectorAll('.dropdown.open').forEach(d => {
+                    d.classList.remove('open');
+                });
+
+                // Toggle this dropdown
+                if (!wasOpen) {
+                    dropdown.classList.add('open');
+                }
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown.open').forEach(d => {
+                    d.classList.remove('open');
+                });
+            }
+        });
+
+        // Handle slicer link clicks
+        document.querySelectorAll('.slicer-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const slicer = this.dataset.slicer;
+                const partId = this.dataset.partId;
+                const hasProtocol = this.dataset.hasProtocol === '1';
+
+                // Build the download URL
+                const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+                const downloadUrl = `${baseUrl}/actions/download.php?id=${partId}`;
+
+                if (hasProtocol && slicerProtocols[slicer]) {
+                    // Open using slicer's URL protocol
+                    const slicerUrl = slicerProtocols[slicer].replace('{url}', encodeURIComponent(downloadUrl));
+                    window.location.href = slicerUrl;
+                } else {
+                    // No protocol support - just download the file
+                    // User will need to open it manually in their slicer
+                    window.location.href = downloadUrl;
+                }
+
+                // Close the dropdown
+                this.closest('.dropdown').classList.remove('open');
+            });
+        });
         </script>
 
 <?php require_once 'includes/footer.php'; ?>
