@@ -16,6 +16,7 @@ class ModelViewer {
         this.controls = null;
         this.model = null;
         this.animationId = null;
+        this.isReady = false;
 
         this.init();
     }
@@ -63,8 +64,9 @@ class ModelViewer {
         this.resizeObserver = new ResizeObserver(() => this.onResize());
         this.resizeObserver.observe(this.container);
 
-        // Start animation
-        this.animate();
+        // Don't start animation until model is loaded to prevent flashing
+        // Render one frame with just the background
+        this.renderer.render(this.scene, this.camera);
     }
 
     async loadSTL(url) {
@@ -85,6 +87,7 @@ class ModelViewer {
                     this.model = new THREE.Mesh(geometry, material);
                     this.centerAndScaleModel();
                     this.scene.add(this.model);
+                    this.startAnimation();
                     resolve(this.model);
                 },
                 undefined,
@@ -117,12 +120,20 @@ class ModelViewer {
 
                     this.centerAndScaleModel();
                     this.scene.add(this.model);
+                    this.startAnimation();
                     resolve(this.model);
                 },
                 undefined,
                 (error) => reject(error)
             );
         });
+    }
+
+    startAnimation() {
+        if (!this.isReady) {
+            this.isReady = true;
+            this.animate();
+        }
     }
 
     async loadModel(url, fileType) {
@@ -181,9 +192,16 @@ class ModelViewer {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
 
+        if (width === 0 || height === 0) return;
+
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
+
+        // Re-render if model is loaded
+        if (this.isReady) {
+            this.renderer.render(this.scene, this.camera);
+        }
     }
 
     animate() {
