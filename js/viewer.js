@@ -81,10 +81,12 @@ class ModelViewer {
                 (geometry) => {
                     this.clearModel();
 
-                    const material = new THREE.MeshStandardMaterial({
-                        color: 0xffffff,
-                        metalness: 0.1,
-                        roughness: 0.5
+                    // Ensure normals are computed correctly
+                    geometry.computeVertexNormals();
+
+                    const material = new THREE.MeshBasicMaterial({
+                        color: 0xcccccc,
+                        wireframe: false
                     });
 
                     this.model = new THREE.Mesh(geometry, material);
@@ -113,10 +115,12 @@ class ModelViewer {
                     // Apply material to all meshes
                     this.model.traverse((child) => {
                         if (child.isMesh) {
-                            child.material = new THREE.MeshStandardMaterial({
-                                color: 0xffffff,
-                                metalness: 0.1,
-                                roughness: 0.5
+                            if (child.geometry) {
+                                child.geometry.computeVertexNormals();
+                            }
+                            child.material = new THREE.MeshBasicMaterial({
+                                color: 0xcccccc,
+                                wireframe: false
                             });
                         }
                     });
