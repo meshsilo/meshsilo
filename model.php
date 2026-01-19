@@ -174,7 +174,7 @@ require_once 'includes/header.php';
 
                         <?php if (canDelete()): ?>
                         <div class="model-actions">
-                            <a href="delete.php?id=<?= $model['id'] ?>" class="btn btn-danger btn-small">Delete Model</a>
+                            <a href="actions/delete.php?id=<?= $model['id'] ?>" class="btn btn-danger btn-small">Delete Model</a>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -242,9 +242,9 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                     <?php endif; ?>
                                     <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
-                                    <a href="download.php?id=<?= $part['id'] ?>" class="btn btn-small btn-primary">Download</a>
+                                    <a href="actions/download.php?id=<?= $part['id'] ?>" class="btn btn-small btn-primary">Download</a>
                                     <?php if (canDelete()): ?>
-                                    <a href="delete.php?id=<?= $model['id'] ?>&part_id=<?= $part['id'] ?>" class="btn btn-small btn-danger">Delete</a>
+                                    <a href="actions/delete.php?id=<?= $model['id'] ?>&part_id=<?= $part['id'] ?>" class="btn btn-small btn-danger">Delete</a>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -254,7 +254,7 @@ require_once 'includes/header.php';
                     <?php endforeach; ?>
 
                     <div class="parts-actions">
-                        <a href="download-all.php?id=<?= $model['id'] ?>" class="btn btn-primary">Download All Parts</a>
+                        <a href="actions/download-all.php?id=<?= $model['id'] ?>" class="btn btn-primary">Download All Parts</a>
                         <?php if (canUpload()): ?>
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
                         <input type="file" id="add-part-file" accept=".stl,.3mf" multiple hidden onchange="uploadParts(this.files)">
@@ -263,13 +263,13 @@ require_once 'includes/header.php';
                 </div>
                 <?php elseif (canUpload()): ?>
                 <div class="model-download">
-                    <a href="download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
+                    <a href="actions/download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
                     <input type="file" id="add-part-file" accept=".stl,.3mf" multiple hidden onchange="uploadParts(this.files)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
-                    <a href="download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
+                    <a href="actions/download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
                 </div>
                 <?php endif; ?>
             </div>
@@ -370,7 +370,7 @@ require_once 'includes/header.php';
                 this.disabled = true;
 
                 try {
-                    const estimateResponse = await fetch(`convert-part.php?action=estimate&part_id=${partId}`);
+                    const estimateResponse = await fetch(`actions/convert-part.php?action=estimate&part_id=${partId}`);
                     const estimate = await estimateResponse.json();
 
                     if (!estimate.success) {
@@ -415,7 +415,7 @@ require_once 'includes/header.php';
                     formData.append('action', 'convert');
                     formData.append('part_id', partId);
 
-                    const convertResponse = await fetch('convert-part.php', {
+                    const convertResponse = await fetch('actions/convert-part.php', {
                         method: 'POST',
                         body: formData
                     });
@@ -451,7 +451,7 @@ require_once 'includes/header.php';
                 formData.append('print_type', printType);
 
                 // Send AJAX request
-                fetch('update-part.php', {
+                fetch('actions/update-part.php', {
                     method: 'POST',
                     body: formData
                 })
@@ -525,7 +525,7 @@ require_once 'includes/header.php';
                 ids.forEach(id => formData.append('ids[]', id));
 
                 try {
-                    const response = await fetch('mass-action.php', { method: 'POST', body: formData });
+                    const response = await fetch('actions/mass-action.php', { method: 'POST', body: formData });
                     const result = await response.json();
 
                     if (result.success) {
@@ -556,7 +556,7 @@ require_once 'includes/header.php';
                 ids.forEach(id => formData.append('ids[]', id));
 
                 try {
-                    const response = await fetch('mass-action.php', { method: 'POST', body: formData });
+                    const response = await fetch('actions/mass-action.php', { method: 'POST', body: formData });
                     const result = await response.json();
 
                     if (result.success) {
@@ -593,7 +593,7 @@ require_once 'includes/header.php';
                 formData.append('part_file', file);
 
                 try {
-                    const response = await fetch('add-part.php', {
+                    const response = await fetch('actions/add-part.php', {
                         method: 'POST',
                         body: formData,
                         headers: {

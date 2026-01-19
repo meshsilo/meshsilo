@@ -1,6 +1,7 @@
 <?php
-require_once 'includes/config.php';
-require_once 'includes/dedup.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/dedup.php';
+$baseDir = '../';
 
 // Require delete permission
 requirePermission(PERM_DELETE);
@@ -12,7 +13,7 @@ $modelId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $partId = isset($_GET['part_id']) ? (int)$_GET['part_id'] : 0;
 
 if (!$modelId) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -24,13 +25,13 @@ $model = $result->fetchArray(SQLITE3_ASSOC);
 
 if (!$model) {
     $_SESSION['error'] = 'Model not found.';
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
 // If this is a child model accessed directly, redirect to parent
 if ($model['parent_id']) {
-    header('Location: model.php?id=' . $model['parent_id']);
+    header('Location: ../model.php?id=' . $model['parent_id']);
     exit;
 }
 
@@ -45,7 +46,7 @@ if ($partId) {
 
     if (!$part) {
         $_SESSION['error'] = 'Part not found.';
-        header('Location: model.php?id=' . $modelId);
+        header('Location: ../model.php?id=' . $modelId);
         exit;
     }
 }
@@ -55,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
         $_SESSION['error'] = 'Invalid request.';
-        header('Location: model.php?id=' . $modelId);
+        header('Location: ../model.php?id=' . $modelId);
         exit;
     }
 
@@ -103,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             ]);
 
             $_SESSION['success'] = 'Part "' . $part['name'] . '" has been deleted.';
-            header('Location: model.php?id=' . $modelId);
+            header('Location: ../model.php?id=' . $modelId);
             exit;
 
         } else {
@@ -185,14 +186,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             ]);
 
             $_SESSION['success'] = 'Model "' . $model['name'] . '" has been deleted.';
-            header('Location: index.php');
+            header('Location: ../index.php');
             exit;
         }
 
     } catch (Exception $e) {
         logException($e, ['action' => $part ? 'delete_part' : 'delete_model', 'model_id' => $modelId, 'part_id' => $partId]);
         $_SESSION['error'] = 'Failed to delete ' . ($part ? 'part' : 'model') . '.';
-        header('Location: model.php?id=' . $modelId);
+        header('Location: ../model.php?id=' . $modelId);
         exit;
     }
 }
@@ -205,7 +206,7 @@ if (empty($_SESSION['csrf_token'])) {
 $pageTitle = $part ? 'Delete Part' : 'Delete ' . $model['name'];
 $activePage = 'browse';
 
-require_once 'includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
         <div class="page-container">
@@ -227,7 +228,7 @@ require_once 'includes/header.php';
                     <input type="hidden" name="confirm_delete" value="1">
 
                     <div class="form-actions">
-                        <a href="model.php?id=<?= $modelId ?>" class="btn btn-secondary">Cancel</a>
+                        <a href="../model.php?id=<?= $modelId ?>" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-danger">Delete Part</button>
                     </div>
                 </form>
@@ -254,7 +255,7 @@ require_once 'includes/header.php';
                     <input type="hidden" name="confirm_delete" value="1">
 
                     <div class="form-actions">
-                        <a href="model.php?id=<?= $modelId ?>" class="btn btn-secondary">Cancel</a>
+                        <a href="../model.php?id=<?= $modelId ?>" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-danger">Delete Model</button>
                     </div>
                 </form>
@@ -262,4 +263,4 @@ require_once 'includes/header.php';
             </div>
         </div>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

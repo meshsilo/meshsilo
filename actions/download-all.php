@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/config.php';
+require_once __DIR__ . '/../includes/config.php';
 
 $db = getDB();
 
@@ -7,7 +7,7 @@ $db = getDB();
 $modelId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$modelId) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -18,7 +18,7 @@ $result = $stmt->execute();
 $model = $result->fetchArray(SQLITE3_ASSOC);
 
 if (!$model) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -32,7 +32,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 
 if (empty($parts)) {
-    header('Location: model.php?id=' . $modelId);
+    header('Location: ../model.php?id=' . $modelId);
     exit;
 }
 
@@ -43,12 +43,12 @@ $zipPath = sys_get_temp_dir() . '/' . uniqid('silo_download_') . '.zip';
 $zip = new ZipArchive();
 if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
     logError('Failed to create download ZIP', ['model_id' => $modelId]);
-    header('Location: model.php?id=' . $modelId);
+    header('Location: ../model.php?id=' . $modelId);
     exit;
 }
 
 foreach ($parts as $part) {
-    $filePath = __DIR__ . '/' . $part['file_path'];
+    $filePath = __DIR__ . '/../' . $part['file_path'];
     if (file_exists($filePath)) {
         // Use original path structure if available, otherwise just filename
         $zipEntryPath = $part['original_path'] ?? $part['filename'];
@@ -74,6 +74,6 @@ if (file_exists($zipPath)) {
     exit;
 } else {
     logError('Download ZIP not found', ['model_id' => $modelId, 'zip_path' => $zipPath]);
-    header('Location: model.php?id=' . $modelId);
+    header('Location: ../model.php?id=' . $modelId);
     exit;
 }

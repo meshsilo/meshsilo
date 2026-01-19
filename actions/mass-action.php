@@ -2,8 +2,8 @@
 /**
  * AJAX endpoint for mass actions on models and parts
  */
-require_once 'includes/config.php';
-require_once 'includes/dedup.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/dedup.php';
 
 header('Content-Type: application/json');
 
@@ -96,14 +96,14 @@ try {
                     if (!empty($part['dedup_path'])) {
                         // Deduplicated file - only delete if no other references
                         if ($canDeleteDedup) {
-                            $dedupPath = __DIR__ . '/' . $part['dedup_path'];
+                            $dedupPath = __DIR__ . '/../' . $part['dedup_path'];
                             if (file_exists($dedupPath)) {
                                 unlink($dedupPath);
                             }
                         }
                     } elseif ($part['file_path']) {
                         // Regular file
-                        $filePath = __DIR__ . '/' . $part['file_path'];
+                        $filePath = __DIR__ . '/../' . $part['file_path'];
                         if (file_exists($filePath)) {
                             unlink($filePath);
                         }
@@ -154,7 +154,7 @@ try {
                     if (!empty($part['dedup_path'])) {
                         $dedupFilesToCheck[$part['dedup_path']] = true;
                     } elseif ($part['file_path']) {
-                        $filesToDelete[] = __DIR__ . '/' . $part['file_path'];
+                        $filesToDelete[] = __DIR__ . '/../' . $part['file_path'];
                     }
                 }
 
@@ -162,7 +162,7 @@ try {
                 if (!empty($model['dedup_path'])) {
                     $dedupFilesToCheck[$model['dedup_path']] = true;
                 } elseif ($model['file_path']) {
-                    $filesToDelete[] = __DIR__ . '/' . $model['file_path'];
+                    $filesToDelete[] = __DIR__ . '/../' . $model['file_path'];
                 }
 
                 // Delete from database (cascade will handle children)
@@ -191,7 +191,7 @@ try {
                 // Delete dedup files only if no other parts reference them
                 foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
                     if (canDeleteDedupFile($dedupPath)) {
-                        $fullPath = __DIR__ . '/' . $dedupPath;
+                        $fullPath = __DIR__ . '/../' . $dedupPath;
                         if (file_exists($fullPath)) {
                             unlink($fullPath);
                         }

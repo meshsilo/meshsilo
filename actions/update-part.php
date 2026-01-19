@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/config.php';
+require_once __DIR__ . '/../includes/config.php';
 
 // Require edit permission
 requirePermission(PERM_EDIT);

@@ -29,12 +29,14 @@ Silo/
 ├── logout.php             # Logout handler
 ├── install.php            # Installation wizard
 ├── oidc-callback.php      # OIDC authentication callback
-├── delete.php             # Delete model/parts handler
-├── download.php           # Download single file
-├── download-all.php       # Download all parts as zip
-├── convert-part.php       # Convert STL to 3MF
-├── update-part.php        # Update part metadata
-├── mass-action.php        # Bulk actions on parts
+├── actions/               # Action handlers
+│   ├── delete.php         # Delete model/parts handler
+│   ├── download.php       # Download single file
+│   ├── download-all.php   # Download all parts as zip
+│   ├── convert-part.php   # Convert STL to 3MF
+│   ├── update-part.php    # Update part metadata
+│   ├── mass-action.php    # Bulk actions on parts
+│   └── add-part.php       # Add parts to existing model
 ├── admin/                 # Admin pages (require admin permission)
 │   ├── settings.php       # Site settings (including OIDC, php.ini)
 │   ├── categories.php     # Manage categories

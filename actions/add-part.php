@@ -2,8 +2,8 @@
 /**
  * Add parts to an existing model
  */
-require_once 'includes/config.php';
-require_once 'includes/dedup.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/dedup.php';
 
 // Require upload permission
 if (!canUpload()) {
@@ -13,7 +13,7 @@ if (!canUpload()) {
         echo json_encode(['success' => false, 'error' => 'Permission denied']);
         exit;
     }
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -29,7 +29,7 @@ if (!$modelId) {
         echo json_encode(['success' => false, 'error' => 'Model ID required']);
         exit;
     }
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -46,7 +46,7 @@ if (!$model) {
         echo json_encode(['success' => false, 'error' => 'Model not found']);
         exit;
     }
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -81,7 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
     }
 
     // Create directory for model if it doesn't exist
-    $modelDir = 'assets/' . substr(md5($model['name'] . $model['id']), 0, 12);
+    $relativeDir = 'assets/' . substr(md5($model['name'] . $model['id']), 0, 12);
+    $modelDir = __DIR__ . '/../' . $relativeDir;
     if (!file_exists($modelDir)) {
         mkdir($modelDir, 0755, true);
     }
@@ -90,11 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
     $filename = $file['name'];
     $baseName = pathinfo($filename, PATHINFO_FILENAME);
     $destPath = $modelDir . '/' . $filename;
+    $relativePath = $relativeDir . '/' . $filename;
 
     // Handle filename collision
     $counter = 1;
     while (file_exists($destPath)) {
-        $destPath = $modelDir . '/' . $baseName . '_' . $counter . '.' . $extension;
+        $newFilename = $baseName . '_' . $counter . '.' . $extension;
+        $destPath = $modelDir . '/' . $newFilename;
+        $relativePath = $relativeDir . '/' . $newFilename;
         $counter++;
     }
 
@@ -121,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         ');
         $stmt->bindValue(':name', pathinfo($filename, PATHINFO_FILENAME), SQLITE3_TEXT);
         $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
-        $stmt->bindValue(':file_path', $destPath, SQLITE3_TEXT);
+        $stmt->bindValue(':file_path', $relativePath, SQLITE3_TEXT);
         $stmt->bindValue(':file_size', filesize($destPath), SQLITE3_INTEGER);
         $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
         $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
@@ -166,5 +170,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
 }
 
 // If not POST, redirect to model page
-header('Location: model.php?id=' . $modelId);
+header('Location: ../model.php?id=' . $modelId);
 exit;
