@@ -382,7 +382,7 @@ require_once 'includes/header.php';
 
             // Create new viewer
             partPreviewViewer = new ModelViewer(container, {
-                autoRotate: true,
+                autoRotate: false,
                 interactive: true,
                 backgroundColor: 0x1e293b
             });
