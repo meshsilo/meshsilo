@@ -52,7 +52,7 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
     // Only process valid model files
-    if (!in_array($extension, MODEL_EXTENSIONS)) {
+    if (!isModelExtension($extension)) {
         logWarning('Invalid model extension rejected', ['file' => $originalName, 'extension' => $extension]);
         return false;
     }
@@ -212,8 +212,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
         // Validate extension
-        if (!in_array($extension, ALLOWED_EXTENSIONS)) {
-            $error = 'Invalid file type. Allowed: ' . implode(', ', ALLOWED_EXTENSIONS);
+        if (!isExtensionAllowed($extension)) {
+            $error = 'Invalid file type. Allowed: ' . implode(', ', getAllowedExtensions());
             logWarning('Invalid file type rejected', ['file' => $originalName, 'extension' => $extension]);
         } elseif ($fileSize > MAX_FILE_SIZE) {
             $error = 'File too large. Maximum size: ' . (MAX_FILE_SIZE / 1024 / 1024) . 'MB';
@@ -239,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     foreach ($iterator as $fileInfo) {
                         if ($fileInfo->isFile()) {
                             $fileExt = strtolower($fileInfo->getExtension());
-                            if (in_array($fileExt, MODEL_EXTENSIONS)) {
+                            if (isModelExtension($fileExt)) {
                                 // Get relative path from extract directory
                                 $relativePath = str_replace($extractDir . '/', '', $fileInfo->getPathname());
                                 $modelFiles[] = [

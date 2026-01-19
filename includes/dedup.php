@@ -10,12 +10,24 @@ define('DEDUP_FOLDER', 'assets/_dedup/');
 
 /**
  * Get the real file path for a model (handles deduplicated files)
+ * Returns the path as stored in database (includes assets/ prefix)
+ * Use this for URLs
  */
 function getRealFilePath($model) {
     if (!empty($model['dedup_path'])) {
         return $model['dedup_path'];
     }
     return $model['file_path'];
+}
+
+/**
+ * Get the absolute filesystem path for a model file
+ * Use this for file operations (file_exists, unlink, etc.)
+ */
+function getAbsoluteFilePath($model) {
+    $relativePath = getRealFilePath($model);
+    // Paths in DB include 'assets/' prefix, construct absolute path
+    return __DIR__ . '/../' . $relativePath;
 }
 
 /**

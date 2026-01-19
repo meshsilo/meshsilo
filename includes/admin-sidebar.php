@@ -7,5 +7,6 @@
                     <a href="<?= basePath('admin/categories.php') ?>" <?= ($adminPage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
                     <a href="<?= basePath('admin/collections.php') ?>" <?= ($adminPage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
                     <a href="<?= basePath('admin/storage.php') ?>" <?= ($adminPage ?? '') === 'storage' ? 'class="active"' : '' ?>>Storage</a>
+                    <a href="<?= basePath('admin/stats.php') ?>" <?= ($adminPage ?? '') === 'stats' ? 'class="active"' : '' ?>>Statistics</a>
                 </nav>
             </aside>

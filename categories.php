@@ -1,18 +1,42 @@
 <?php
 require_once 'includes/config.php';
+
+// Check if categories are enabled
+if (getSetting('enable_categories', '1') !== '1') {
+    header('Location: index.php');
+    exit;
+}
+
 $pageTitle = 'Categories';
 $activePage = 'categories';
-require_once 'includes/header.php';
 
-// Category data - will be loaded from database later
-$categories = [
-    ['slug' => 'functional', 'name' => 'Functional', 'icon' => '&#9881;', 'count' => 24],
-    ['slug' => 'decorative', 'name' => 'Decorative', 'icon' => '&#10022;', 'count' => 18],
-    ['slug' => 'tools', 'name' => 'Tools', 'icon' => '&#9874;', 'count' => 12],
-    ['slug' => 'gaming', 'name' => 'Gaming', 'icon' => '&#9918;', 'count' => 31],
-    ['slug' => 'art', 'name' => 'Art', 'icon' => '&#9733;', 'count' => 15],
-    ['slug' => 'mechanical', 'name' => 'Mechanical', 'icon' => '&#9211;', 'count' => 9],
+$db = getDB();
+
+// Load categories from database with model counts
+$result = $db->query('
+    SELECT c.id, c.name, COUNT(mc.model_id) as count
+    FROM categories c
+    LEFT JOIN model_categories mc ON c.id = mc.category_id
+    LEFT JOIN models m ON mc.model_id = m.id AND m.parent_id IS NULL
+    GROUP BY c.id
+    ORDER BY c.name
+');
+
+$categories = [];
+$icons = [
+    'Functional' => '&#9881;',
+    'Decorative' => '&#10022;',
+    'Tools' => '&#9874;',
+    'Gaming' => '&#9918;',
+    'Art' => '&#9733;',
+    'Mechanical' => '&#9211;',
 ];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $row['icon'] = $icons[$row['name']] ?? '&#128193;';
+    $categories[] = $row;
+}
+
+require_once 'includes/header.php';
 ?>
 
         <div class="page-container-wide">
@@ -23,7 +47,7 @@ $categories = [
 
             <div class="categories-grid-large">
                 <?php foreach ($categories as $category): ?>
-                <a href="category.php?cat=<?= htmlspecialchars($category['slug']) ?>" class="category-card-large">
+                <a href="category.php?id=<?= $category['id'] ?>" class="category-card-large">
                     <div class="category-icon"><?= $category['icon'] ?></div>
                     <h2 class="category-name"><?= htmlspecialchars($category['name']) ?></h2>
                     <p class="category-count"><?= $category['count'] ?> models</p>

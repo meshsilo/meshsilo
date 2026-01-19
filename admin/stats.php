@@ -1,12 +1,14 @@
 <?php
-require_once 'includes/config.php';
-require_once 'includes/dedup.php';
+require_once '../includes/config.php';
+require_once '../includes/dedup.php';
+$baseDir = '../';
 
-// Require view stats permission
-requirePermission(PERM_VIEW_STATS);
+// Require admin permission
+requirePermission(PERM_ADMIN, $baseDir . 'index.php');
 
 $pageTitle = 'Statistics';
-$activePage = 'stats';
+$activePage = 'admin';
+$adminPage = 'stats';
 
 $db = getDB();
 
@@ -29,11 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
         }
     } elseif ($action === 'delete_all_missing') {
         // Delete all missing file entries (parts with missing files)
-        $result = $db->query('SELECT id, file_path, dedup_path FROM models WHERE file_path IS NOT NULL');
+        // Exclude parent models (ZIP containers) which have folder paths, not file paths
+        $result = $db->query('SELECT id, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL');
         $deletedCount = 0;
         $idsToDelete = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $filePath = __DIR__ . '/' . getRealFilePath($row);
+            // Skip parent models (ZIP containers) - they don't have actual files
+            if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
+                continue;
+            }
+            $filePath = getAbsoluteFilePath($row);
             if (!file_exists($filePath) || !is_file($filePath)) {
                 $idsToDelete[] = $row['id'];
             }
@@ -162,8 +169,8 @@ $userStats = $result->fetchArray(SQLITE3_ASSOC);
 $totalUsers = $userStats['total'] ?? 0;
 $adminUsers = $userStats['admins'] ?? 0;
 
-// Get models by file type
-$result = $db->query('SELECT file_type, COUNT(*) as count, SUM(file_size) as size FROM models GROUP BY file_type ORDER BY count DESC');
+// Get models by file type (exclude parent models/ZIP containers which are just organizational entries)
+$result = $db->query('SELECT file_type, COUNT(*) as count, SUM(file_size) as size FROM models WHERE NOT (file_type = "zip" AND part_count > 0) GROUP BY file_type ORDER BY count DESC');
 $fileTypes = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $fileTypes[] = $row;
@@ -278,10 +285,15 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 
 // Check for missing files (files in DB but not on disk)
-$result = $db->query('SELECT id, name, filename, file_path, dedup_path FROM models WHERE file_path IS NOT NULL');
+// Exclude parent models (ZIP containers) which have folder paths, not file paths
+$result = $db->query('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL');
 $missingFiles = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    $filePath = __DIR__ . '/' . getRealFilePath($row);
+    // Skip parent models (ZIP containers) - they don't have actual files
+    if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
+        continue;
+    }
+    $filePath = getAbsoluteFilePath($row);
     if (!file_exists($filePath) || !is_file($filePath)) {
         $missingFiles[] = $row;
     }
@@ -326,14 +338,17 @@ function formatBytes($bytes, $precision = 2) {
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
-require_once 'includes/header.php';
+require_once '../includes/header.php';
 ?>
 
-        <div class="page-container">
-            <div class="page-header">
-                <h1>Statistics</h1>
-                <p>Overview of your 3D model library</p>
-            </div>
+        <div class="admin-layout">
+<?php require_once '../includes/admin-sidebar.php'; ?>
+
+            <div class="admin-content">
+                <div class="page-header">
+                    <h1>Statistics</h1>
+                    <p>Overview of your 3D model library</p>
+                </div>
 
             <?php if ($message): ?>
             <div class="alert alert-<?= $messageType ?>"><?= htmlspecialchars($message) ?></div>
@@ -529,7 +544,7 @@ require_once 'includes/header.php';
 
             <div class="stats-sections">
                 <section class="stats-section">
-                    <h2>Models by File Type</h2>
+                    <h2>Parts by File Type</h2>
                     <div class="stats-table-container">
                         <table class="stats-table">
                             <thead>
@@ -796,4 +811,4 @@ require_once 'includes/header.php';
             </div>
         </div>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

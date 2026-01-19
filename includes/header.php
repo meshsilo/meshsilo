@@ -8,10 +8,12 @@
 
     <!-- Three.js for 3D model rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="<?= basePath('js/viewer.js') ?>" defer></script>
+    <script src="<?= basePath('js/main.js') ?>" defer></script>
 </head>
 <body>
     <header class="site-header">
@@ -22,12 +24,14 @@
             </a>
             <nav class="main-nav">
                 <a href="<?= basePath('index.php') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
+                <?php if (getSetting('enable_categories', '1') === '1'): ?>
                 <a href="<?= basePath('categories.php') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
+                <?php endif; ?>
+                <?php if (getSetting('enable_collections', '1') === '1'): ?>
+                <a href="<?= basePath('collections.php') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
+                <?php endif; ?>
                 <?php if (canUpload()): ?>
                 <a href="<?= basePath('upload.php') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
-                <?php endif; ?>
-                <?php if (canViewStats()): ?>
-                <a href="<?= basePath('stats.php') ?>" <?= ($activePage ?? '') === 'stats' ? 'class="active"' : '' ?>>Stats</a>
                 <?php endif; ?>
             </nav>
             <div class="header-actions">
