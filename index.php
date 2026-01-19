@@ -87,9 +87,6 @@ require_once 'includes/header.php';
         <section class="models-section">
             <div class="section-header">
                 <h2>Recent Models</h2>
-                <?php if (count($models) > 4): ?>
-                <a href="browse.php" class="view-all">View All</a>
-                <?php endif; ?>
             </div>
             <div class="models-grid">
                 <?php if (empty($models)): ?>

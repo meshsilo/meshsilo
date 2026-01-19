@@ -6,6 +6,7 @@
 // SQLite3 type constants for compatibility
 if (!defined('SQLITE3_TEXT')) define('SQLITE3_TEXT', 3);
 if (!defined('SQLITE3_INTEGER')) define('SQLITE3_INTEGER', 1);
+if (!defined('SQLITE3_NULL')) define('SQLITE3_NULL', 5);
 if (!defined('SQLITE3_ASSOC')) define('SQLITE3_ASSOC', 1);
 
 // Statement wrapper for SQLite3 API compatibility
@@ -111,6 +112,19 @@ class Database {
     // SQLite3 compatibility shim
     public function lastInsertRowID() {
         return $this->lastInsertId();
+    }
+
+    // Get the number of rows changed by the last statement
+    public function changes() {
+        if ($this->type === 'mysql') {
+            // MySQL uses ROW_COUNT()
+            $result = $this->pdo->query('SELECT ROW_COUNT()');
+            return (int) $result->fetchColumn();
+        } else {
+            // SQLite uses changes()
+            $result = $this->pdo->query('SELECT changes()');
+            return (int) $result->fetchColumn();
+        }
     }
 }
 
