@@ -4,7 +4,7 @@ class ModelViewer {
         this.container = container;
         this.options = {
             backgroundColor: 0x1e293b,
-            modelColor: 0x3b82f6,
+            modelColor: 0xf1f5f9,
             autoRotate: options.autoRotate ?? true,
             interactive: options.interactive ?? false,
             ...options
