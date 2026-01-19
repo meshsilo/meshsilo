@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="<?= basePath('js/viewer.js') ?>" defer></script>
+    <script src="<?= basePath('js/viewer.js') ?>?v=2" defer></script>
     <script src="<?= basePath('js/main.js') ?>" defer></script>
 </head>
 <body>

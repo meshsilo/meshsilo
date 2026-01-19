@@ -81,11 +81,10 @@ class ModelViewer {
                 (geometry) => {
                     this.clearModel();
 
-                    const material = new THREE.MeshPhongMaterial({
-                        color: this.options.modelColor,
-                        specular: 0x444444,
-                        shininess: 30,
-                        flatShading: false
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        metalness: 0.1,
+                        roughness: 0.5
                     });
 
                     this.model = new THREE.Mesh(geometry, material);
@@ -114,10 +113,10 @@ class ModelViewer {
                     // Apply material to all meshes
                     this.model.traverse((child) => {
                         if (child.isMesh) {
-                            child.material = new THREE.MeshPhongMaterial({
-                                color: this.options.modelColor,
-                                specular: 0x444444,
-                                shininess: 30
+                            child.material = new THREE.MeshStandardMaterial({
+                                color: 0xffffff,
+                                metalness: 0.1,
+                                roughness: 0.5
                             });
                         }
                     });
