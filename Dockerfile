@@ -10,7 +10,7 @@ LABEL description="Silo - Digital Asset Manager for 3D print files"
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install nginx, PHP, and required extensions
-RUN apt-get update && apt-get install -y software-properties-common && sudo apt update && add-apt-repository ppa:ondrej/php && apt-get install -y \
+RUN apt-get update && apt-get install -y software-properties-common && apt update && add-apt-repository ppa:ondrej/php && apt-get install -y \
     nginx \
     php8.1-fpm \
     php8.1-sqlite3 \
