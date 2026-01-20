@@ -1,7 +1,7 @@
 # Silo - 3D Print File Manager
 # Ubuntu-based Docker image with nginx and PHP-FPM
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 LABEL maintainer="Azurith93"
 LABEL description="Silo - Digital Asset Manager for 3D print files"
