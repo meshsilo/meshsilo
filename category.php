@@ -98,7 +98,7 @@ require_once 'includes/header.php';
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
                             <?php if ($model['part_count'] > 0): ?>
-                            <span class="part-count-badge"><?= $model['part_count'] ?> parts</span>
+                            <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
                             <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
                             <?php if (!empty($model['print_types'])): ?>

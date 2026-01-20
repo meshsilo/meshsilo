@@ -136,7 +136,7 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
     return false;
 }
 
-// Helper function to create a parent model for ZIP uploads
+// Helper function to create a parent model for multi-part uploads
 function createParentModel($db, $name, $description, $creator, $collection, $source_url, $selectedCategories, $totalSize, $folderId) {
     try {
         $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, creator, collection, source_url, part_count) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :creator, :collection, :source_url, 0)');
@@ -144,7 +144,7 @@ function createParentModel($db, $name, $description, $creator, $collection, $sou
         $stmt->bindValue(':filename', $folderId, SQLITE3_TEXT);
         $stmt->bindValue(':file_path', 'assets/' . $folderId, SQLITE3_TEXT);
         $stmt->bindValue(':file_size', $totalSize, SQLITE3_INTEGER);
-        $stmt->bindValue(':file_type', 'zip', SQLITE3_TEXT);
+        $stmt->bindValue(':file_type', 'parent', SQLITE3_TEXT);
         $stmt->bindValue(':description', $description, SQLITE3_TEXT);
         $stmt->bindValue(':creator', $creator, SQLITE3_TEXT);
         $stmt->bindValue(':collection', $collection, SQLITE3_TEXT);
@@ -311,12 +311,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     logError('Failed to open ZIP file', ['file' => $originalName]);
                 }
             } else {
-                // Handle single model file
-                if (saveModelFile($db, $tmpPath, $originalName, $name, $description, $creator, $collection, $source_url, $selectedCategories)) {
-                    $uploadedCount = 1;
+                // Handle single model file - create parent with child part (like ZIP)
+                $fileSize = filesize($tmpPath);
+
+                // Create a folder for this model
+                $folderId = createModelFolder();
+
+                // Create parent model
+                $parentId = createParentModel($db, $name, $description, $creator, $collection, $source_url, $selectedCategories, $fileSize, $folderId);
+
+                if ($parentId) {
+                    // Save the file as a child part
+                    $partName = pathinfo($originalName, PATHINFO_FILENAME);
+                    if (saveModelFile($db, $tmpPath, $originalName, $partName, '', '', '', '', [], $parentId, $originalName, $folderId)) {
+                        $uploadedCount = 1;
+                        // Update parent with part count
+                        updateParentModel($db, $parentId, 1, $fileSize);
+                        logInfo('Single file upload complete', ['file' => $originalName, 'parent_id' => $parentId, 'folder' => $folderId]);
+                    } else {
+                        $error = 'Failed to save uploaded file.';
+                        logError('Failed to save single model file', ['file' => $originalName, 'name' => $name]);
+                        // Clean up parent if part save failed
+                        $db->exec('DELETE FROM models WHERE id = ' . $parentId);
+                        if (is_dir(UPLOAD_PATH . $folderId)) {
+                            rmdir(UPLOAD_PATH . $folderId);
+                        }
+                    }
                 } else {
-                    $error = 'Failed to save uploaded file.';
-                    logError('Failed to save single model file', ['file' => $originalName, 'name' => $name]);
+                    $error = 'Failed to create model entry.';
+                    // Clean up empty folder
+                    if (is_dir(UPLOAD_PATH . $folderId)) {
+                        rmdir(UPLOAD_PATH . $folderId);
+                    }
                 }
             }
 
