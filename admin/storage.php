@@ -56,6 +56,12 @@ $threemfFiles = countFiles($assetsPath, ['3mf']);
 // Get model count from database
 $modelCount = $db->querySingle('SELECT COUNT(*) FROM models');
 
+// Get storage usage breakdown
+$usageByCategory = getStorageUsageByCategory();
+$usageByUser = getStorageUsageByUser();
+$totalUsage = getTotalStorageUsage();
+$dedupSavings = getDedupStorageSavings();
+
 // Handle actions
 $message = '';
 $error = '';
@@ -156,6 +162,102 @@ require_once '../includes/header.php';
                                 </tr>
                             </tbody>
                         </table>
+                    </section>
+
+                    <?php if ($dedupSavings['saved_size'] > 0): ?>
+                    <section class="settings-section">
+                        <h2>Deduplication Savings</h2>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value"><?= formatBytes($dedupSavings['total_size']) ?></div>
+                                <div class="stat-label">Original Size (if no dedup)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value"><?= formatBytes($dedupSavings['actual_size']) ?></div>
+                                <div class="stat-label">Actual Storage Used</div>
+                            </div>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-value"><?= formatBytes($dedupSavings['saved_size']) ?></div>
+                                <div class="stat-label">Space Saved</div>
+                            </div>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-value"><?= $dedupSavings['saved_percent'] ?>%</div>
+                                <div class="stat-label">Savings Rate</div>
+                            </div>
+                        </div>
+                    </section>
+                    <?php endif; ?>
+
+                    <section class="settings-section">
+                        <h2>Storage by Category</h2>
+                        <?php if (empty($usageByCategory)): ?>
+                        <p class="text-muted">No categories found</p>
+                        <?php else: ?>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Models</th>
+                                    <th>Size</th>
+                                    <th style="width: 40%;">Usage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $maxSize = max(array_column($usageByCategory, 'total_size') ?: [1]);
+                                foreach ($usageByCategory as $cat):
+                                    $percent = $maxSize > 0 ? ($cat['total_size'] / $maxSize * 100) : 0;
+                                ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($cat['name']) ?></td>
+                                    <td><?= $cat['model_count'] ?></td>
+                                    <td><?= formatBytes($cat['total_size'] ?? 0) ?></td>
+                                    <td>
+                                        <div class="progress-bar">
+                                            <div class="progress-bar-fill" style="width: <?= $percent ?>%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php endif; ?>
+                    </section>
+
+                    <section class="settings-section">
+                        <h2>Storage by User</h2>
+                        <?php if (empty($usageByUser)): ?>
+                        <p class="text-muted">No users found</p>
+                        <?php else: ?>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Models</th>
+                                    <th>Size</th>
+                                    <th style="width: 40%;">Usage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $maxUserSize = max(array_column($usageByUser, 'total_size') ?: [1]);
+                                foreach ($usageByUser as $usr):
+                                    $percent = $maxUserSize > 0 ? ($usr['total_size'] / $maxUserSize * 100) : 0;
+                                ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($usr['username'] ?? 'Unknown') ?></td>
+                                    <td><?= $usr['model_count'] ?></td>
+                                    <td><?= formatBytes($usr['total_size'] ?? 0) ?></td>
+                                    <td>
+                                        <div class="progress-bar">
+                                            <div class="progress-bar-fill" style="width: <?= $percent ?>%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php endif; ?>
                     </section>
 
                     <section class="settings-section">

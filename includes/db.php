@@ -623,6 +623,133 @@ function runMigrations($db) {
         logInfo('Migration: Added printed_at column to models table');
     }
 
+    // =====================
+    // Priority 3 & 4 Feature Migrations
+    // =====================
+
+    // Migration: Print queue table
+    if (!tableExists($db, 'print_queue')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE print_queue (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                model_id INT NOT NULL,
+                priority INT DEFAULT 0,
+                notes TEXT,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_queue (user_id, model_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE print_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
+                priority INTEGER DEFAULT 0,
+                notes TEXT,
+                added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, model_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created print_queue table');
+    }
+
+    // Migration: Model versions table
+    if (!tableExists($db, 'model_versions')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE model_versions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_id INT NOT NULL,
+                version_number INT NOT NULL,
+                file_path VARCHAR(500),
+                file_size BIGINT,
+                file_hash VARCHAR(64),
+                changelog TEXT,
+                created_by INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE model_versions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id INTEGER NOT NULL,
+                version_number INTEGER NOT NULL,
+                file_path TEXT,
+                file_size INTEGER,
+                file_hash TEXT,
+                changelog TEXT,
+                created_by INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+            )');
+        }
+        logInfo('Migration: Created model_versions table');
+    }
+
+    // Migration: Related models table
+    if (!tableExists($db, 'related_models')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE related_models (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_id INT NOT NULL,
+                related_model_id INT NOT NULL,
+                relationship_type VARCHAR(50) DEFAULT "related",
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_relation (model_id, related_model_id),
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (related_model_id) REFERENCES models(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE related_models (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id INTEGER NOT NULL,
+                related_model_id INTEGER NOT NULL,
+                relationship_type TEXT DEFAULT "related",
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (model_id, related_model_id),
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (related_model_id) REFERENCES models(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created related_models table');
+    }
+
+    // Migration: Add dimension columns to models
+    if (!columnExists($db, 'models', 'dim_x')) {
+        $db->exec('ALTER TABLE models ADD COLUMN dim_x REAL');
+        $db->exec('ALTER TABLE models ADD COLUMN dim_y REAL');
+        $db->exec('ALTER TABLE models ADD COLUMN dim_z REAL');
+        $db->exec('ALTER TABLE models ADD COLUMN dim_unit TEXT DEFAULT "mm"');
+        logInfo('Migration: Added dimension columns to models table');
+    }
+
+    // Migration: Add sort_order column for part ordering
+    if (!columnExists($db, 'models', 'sort_order')) {
+        $db->exec('ALTER TABLE models ADD COLUMN sort_order INTEGER DEFAULT 0');
+        logInfo('Migration: Added sort_order column to models table');
+    }
+
+    // Migration: Add current_version to models
+    if (!columnExists($db, 'models', 'current_version')) {
+        $db->exec('ALTER TABLE models ADD COLUMN current_version INTEGER DEFAULT 1');
+        logInfo('Migration: Added current_version column to models table');
+    }
+
+    // Migration: Add thumbnail_path to models (for custom thumbnails)
+    if (!columnExists($db, 'models', 'thumbnail_path')) {
+        if ($type === 'mysql') {
+            $db->exec('ALTER TABLE models ADD COLUMN thumbnail_path VARCHAR(500)');
+        } else {
+            $db->exec('ALTER TABLE models ADD COLUMN thumbnail_path TEXT');
+        }
+        logInfo('Migration: Added thumbnail_path column to models table');
+    }
+
     // Migration: Add permissions column to users
     if (!columnExists($db, 'users', 'permissions')) {
         $db->exec('ALTER TABLE users ADD COLUMN permissions TEXT');
@@ -1298,4 +1425,352 @@ function getLicenseOptions() {
 function getLicenseName($key) {
     $options = getLicenseOptions();
     return $options[$key] ?? $key;
+}
+
+// =====================
+// Print Queue Functions
+// =====================
+
+function isInPrintQueue($userId, $modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT id FROM print_queue WHERE user_id = :user_id AND model_id = :model_id');
+        $stmt->execute([':user_id' => $userId, ':model_id' => $modelId]);
+        return $stmt->fetch() !== false;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function addToPrintQueue($userId, $modelId, $priority = 0, $notes = '') {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('INSERT OR REPLACE INTO print_queue (user_id, model_id, priority, notes) VALUES (:user_id, :model_id, :priority, :notes)');
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':model_id' => $modelId,
+            ':priority' => $priority,
+            ':notes' => $notes
+        ]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function removeFromPrintQueue($userId, $modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('DELETE FROM print_queue WHERE user_id = :user_id AND model_id = :model_id');
+        $stmt->execute([':user_id' => $userId, ':model_id' => $modelId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function togglePrintQueue($userId, $modelId) {
+    if (isInPrintQueue($userId, $modelId)) {
+        removeFromPrintQueue($userId, $modelId);
+        return false;
+    } else {
+        addToPrintQueue($userId, $modelId);
+        return true;
+    }
+}
+
+function getUserPrintQueue($userId, $limit = 100) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            SELECT pq.*, m.name as model_name, m.file_path, m.print_type,
+                   c.name as category_name
+            FROM print_queue pq
+            JOIN models m ON pq.model_id = m.id
+            LEFT JOIN categories c ON m.category_id = c.id
+            WHERE pq.user_id = :user_id AND m.parent_id IS NULL
+            ORDER BY pq.priority DESC, pq.added_at DESC
+            LIMIT :limit
+        ');
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+function updatePrintQueuePriority($userId, $modelId, $priority) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('UPDATE print_queue SET priority = :priority WHERE user_id = :user_id AND model_id = :model_id');
+        $stmt->execute([':priority' => $priority, ':user_id' => $userId, ':model_id' => $modelId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function getPrintQueueCount($userId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT COUNT(*) as count FROM print_queue WHERE user_id = :user_id');
+        $stmt->execute([':user_id' => $userId]);
+        $row = $stmt->fetch();
+        return $row ? (int)$row['count'] : 0;
+    } catch (Exception $e) {
+        return 0;
+    }
+}
+
+// =====================
+// Related Models Functions
+// =====================
+
+function getRelatedModels($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            SELECT rm.*, m.name, m.file_path, m.print_type, m.created_at
+            FROM related_models rm
+            JOIN models m ON rm.related_model_id = m.id
+            WHERE rm.model_id = :model_id AND m.parent_id IS NULL
+            ORDER BY rm.created_at DESC
+        ');
+        $stmt->execute([':model_id' => $modelId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+function addRelatedModel($modelId, $relatedModelId, $relationshipType = 'related') {
+    if ($modelId == $relatedModelId) return false;
+    try {
+        $db = getDB();
+        // Add relation both ways
+        $stmt = $db->prepare('INSERT OR IGNORE INTO related_models (model_id, related_model_id, relationship_type) VALUES (:model_id, :related_id, :type)');
+        $stmt->execute([':model_id' => $modelId, ':related_id' => $relatedModelId, ':type' => $relationshipType]);
+        $stmt->execute([':model_id' => $relatedModelId, ':related_id' => $modelId, ':type' => $relationshipType]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function removeRelatedModel($modelId, $relatedModelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('DELETE FROM related_models WHERE (model_id = :model_id AND related_model_id = :related_id) OR (model_id = :related_id AND related_model_id = :model_id)');
+        $stmt->execute([':model_id' => $modelId, ':related_id' => $relatedModelId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// =====================
+// Version History Functions
+// =====================
+
+function getModelVersions($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            SELECT mv.*, u.username as created_by_name
+            FROM model_versions mv
+            LEFT JOIN users u ON mv.created_by = u.id
+            WHERE mv.model_id = :model_id
+            ORDER BY mv.version_number DESC
+        ');
+        $stmt->execute([':model_id' => $modelId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog = '', $createdBy = null) {
+    try {
+        $db = getDB();
+        // Get current max version
+        $stmt = $db->prepare('SELECT MAX(version_number) as max_ver FROM model_versions WHERE model_id = :model_id');
+        $stmt->execute([':model_id' => $modelId]);
+        $row = $stmt->fetch();
+        $nextVersion = ($row && $row['max_ver']) ? $row['max_ver'] + 1 : 1;
+
+        $stmt = $db->prepare('
+            INSERT INTO model_versions (model_id, version_number, file_path, file_size, file_hash, changelog, created_by)
+            VALUES (:model_id, :version, :file_path, :file_size, :file_hash, :changelog, :created_by)
+        ');
+        $stmt->execute([
+            ':model_id' => $modelId,
+            ':version' => $nextVersion,
+            ':file_path' => $filePath,
+            ':file_size' => $fileSize,
+            ':file_hash' => $fileHash,
+            ':changelog' => $changelog,
+            ':created_by' => $createdBy
+        ]);
+
+        // Update model's current version
+        $stmt = $db->prepare('UPDATE models SET current_version = :version WHERE id = :id');
+        $stmt->execute([':version' => $nextVersion, ':id' => $modelId]);
+
+        return $nextVersion;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function getModelVersion($modelId, $versionNumber) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT * FROM model_versions WHERE model_id = :model_id AND version_number = :version');
+        $stmt->execute([':model_id' => $modelId, ':version' => $versionNumber]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+// =====================
+// Storage Usage Functions
+// =====================
+
+function getStorageUsageByCategory() {
+    try {
+        $db = getDB();
+        $stmt = $db->query('
+            SELECT c.id, c.name,
+                   COUNT(m.id) as model_count,
+                   SUM(m.original_size) as total_size
+            FROM categories c
+            LEFT JOIN models m ON m.category_id = c.id AND m.parent_id IS NULL
+            GROUP BY c.id, c.name
+            ORDER BY total_size DESC
+        ');
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+function getStorageUsageByUser() {
+    try {
+        $db = getDB();
+        $stmt = $db->query('
+            SELECT u.id, u.username,
+                   COUNT(m.id) as model_count,
+                   SUM(m.original_size) as total_size
+            FROM users u
+            LEFT JOIN models m ON m.user_id = u.id AND m.parent_id IS NULL
+            GROUP BY u.id, u.username
+            ORDER BY total_size DESC
+        ');
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+function getTotalStorageUsage() {
+    try {
+        $db = getDB();
+        $stmt = $db->query('
+            SELECT COUNT(*) as model_count,
+                   SUM(original_size) as total_size
+            FROM models
+            WHERE parent_id IS NULL
+        ');
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return ['model_count' => 0, 'total_size' => 0];
+    }
+}
+
+function getDedupStorageSavings() {
+    try {
+        $db = getDB();
+        // Get total file sizes
+        $stmt = $db->query('SELECT SUM(original_size) as total FROM models WHERE original_size > 0');
+        $totalRow = $stmt->fetch();
+        $totalSize = $totalRow ? (int)$totalRow['total'] : 0;
+
+        // Get actual deduplicated storage (unique hashes)
+        $stmt = $db->query('SELECT SUM(size) as actual FROM (SELECT file_hash, MAX(original_size) as size FROM models WHERE file_hash IS NOT NULL GROUP BY file_hash)');
+        $actualRow = $stmt->fetch();
+        $actualSize = $actualRow ? (int)$actualRow['actual'] : 0;
+
+        return [
+            'total_size' => $totalSize,
+            'actual_size' => $actualSize,
+            'saved_size' => $totalSize - $actualSize,
+            'saved_percent' => $totalSize > 0 ? round(($totalSize - $actualSize) / $totalSize * 100, 1) : 0
+        ];
+    } catch (Exception $e) {
+        return ['total_size' => 0, 'actual_size' => 0, 'saved_size' => 0, 'saved_percent' => 0];
+    }
+}
+
+// =====================
+// Part Ordering Functions
+// =====================
+
+function updatePartOrder($partId, $sortOrder) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('UPDATE models SET sort_order = :sort_order WHERE id = :id');
+        $stmt->execute([':sort_order' => $sortOrder, ':id' => $partId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function reorderParts($parentId, $partIds) {
+    try {
+        $db = getDB();
+        $db->beginTransaction();
+        foreach ($partIds as $index => $partId) {
+            $stmt = $db->prepare('UPDATE models SET sort_order = :sort_order WHERE id = :id AND parent_id = :parent_id');
+            $stmt->execute([':sort_order' => $index, ':id' => $partId, ':parent_id' => $parentId]);
+        }
+        $db->commit();
+        return true;
+    } catch (Exception $e) {
+        $db->rollBack();
+        return false;
+    }
+}
+
+// =====================
+// Model Dimensions Functions
+// =====================
+
+function updateModelDimensions($modelId, $dimX, $dimY, $dimZ, $unit = 'mm') {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('UPDATE models SET dim_x = :x, dim_y = :y, dim_z = :z, dim_unit = :unit WHERE id = :id');
+        $stmt->execute([':x' => $dimX, ':y' => $dimY, ':z' => $dimZ, ':unit' => $unit, ':id' => $modelId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function getModelDimensions($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT dim_x, dim_y, dim_z, dim_unit FROM models WHERE id = :id');
+        $stmt->execute([':id' => $modelId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && $row['dim_x'] !== null) {
+            return $row;
+        }
+        return null;
+    } catch (Exception $e) {
+        return null;
+    }
 }

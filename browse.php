@@ -173,8 +173,45 @@ require_once 'includes/header.php';
                 <p><?= number_format($totalModels) ?> model<?= $totalModels !== 1 ? 's' : '' ?> found</p>
             </div>
 
+            <?php if (isLoggedIn()): ?>
+            <!-- Batch Actions Bar (hidden by default) -->
+            <div id="batch-actions-bar" class="batch-actions-bar" style="display: none;">
+                <div class="batch-actions-left">
+                    <label class="batch-select-all">
+                        <input type="checkbox" id="select-all-models" onchange="toggleSelectAllModels(this)">
+                        <span id="selected-count">0</span> selected
+                    </label>
+                </div>
+                <div class="batch-actions-right">
+                    <button type="button" class="btn btn-small" onclick="batchAddToQueue()">Add to Queue</button>
+                    <button type="button" class="btn btn-small" onclick="batchDownload()">Download ZIP</button>
+                    <select id="batch-tag-select" class="sort-select" style="max-width: 150px;" onchange="batchApplyTag(this.value)">
+                        <option value="">Add Tag...</option>
+                        <?php foreach ($tags as $tag): ?>
+                        <option value="<?= $tag['id'] ?>"><?= htmlspecialchars($tag['name']) ?></option>
+                        <?php endforeach; ?>
+                        <option value="__new__">+ Create New Tag</option>
+                    </select>
+                    <select id="batch-category-select" class="sort-select" style="max-width: 150px;" onchange="batchApplyCategory(this.value)">
+                        <option value="">Add Category...</option>
+                        <?php foreach ($categories as $cat): ?>
+                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" class="btn btn-small" onclick="batchArchive()">Archive</button>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <div class="browse-controls">
                 <div class="browse-filters">
+                    <?php if (isLoggedIn()): ?>
+                    <label class="batch-mode-toggle" title="Enable batch selection">
+                        <input type="checkbox" id="batch-mode-checkbox" onchange="toggleBatchMode(this.checked)">
+                        Select
+                    </label>
+                    <?php endif; ?>
+
                     <select class="sort-select" onchange="location.href=this.value">
                         <option value="<?= buildUrl(['sort' => 'newest', 'page' => 1]) ?>" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
                         <option value="<?= buildUrl(['sort' => 'oldest', 'page' => 1]) ?>" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
@@ -238,7 +275,12 @@ require_once 'includes/header.php';
             <?php elseif ($view === 'list'): ?>
                 <div class="models-list">
                     <?php foreach ($models as $model): ?>
-                    <article class="model-list-item <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-list-item <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)">
+                        <?php if (isLoggedIn()): ?>
+                        <label class="model-list-checkbox" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()">
+                        </label>
+                        <?php endif; ?>
                         <div class="model-list-thumbnail"
                             <?php if (!empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
@@ -280,12 +322,17 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="models-grid">
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)">
                         <div class="model-thumbnail"
                             <?php if (!empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
+                            <?php if (isLoggedIn()): ?>
+                            <label class="model-select-checkbox" onclick="event.stopPropagation()">
+                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()">
+                            </label>
+                            <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
@@ -340,5 +387,220 @@ require_once 'includes/header.php';
             </nav>
             <?php endif; ?>
         </div>
+
+        <script>
+        let batchModeEnabled = false;
+
+        function handleModelCardClick(event, modelId) {
+            if (batchModeEnabled) {
+                // In batch mode, toggle the checkbox
+                const checkbox = event.currentTarget.querySelector('.model-checkbox');
+                if (checkbox && event.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    updateBatchSelection();
+                }
+            } else {
+                // Normal mode, navigate to model
+                window.location = 'model.php?id=' + modelId;
+            }
+        }
+
+        function toggleBatchMode(enabled) {
+            batchModeEnabled = enabled;
+            document.body.classList.toggle('batch-mode', enabled);
+            document.getElementById('batch-actions-bar').style.display = enabled ? 'flex' : 'none';
+
+            // Show/hide checkboxes
+            document.querySelectorAll('.model-select-checkbox, .model-list-checkbox').forEach(el => {
+                el.style.display = enabled ? 'block' : 'none';
+            });
+
+            if (!enabled) {
+                // Uncheck all when disabling
+                document.querySelectorAll('.model-checkbox').forEach(cb => cb.checked = false);
+                updateBatchSelection();
+            }
+        }
+
+        function toggleSelectAllModels(checkbox) {
+            document.querySelectorAll('.model-checkbox').forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateBatchSelection();
+        }
+
+        function updateBatchSelection() {
+            const checked = document.querySelectorAll('.model-checkbox:checked');
+            document.getElementById('selected-count').textContent = checked.length;
+
+            // Update select all checkbox state
+            const allCheckboxes = document.querySelectorAll('.model-checkbox');
+            const selectAllCheckbox = document.getElementById('select-all-models');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = checked.length === allCheckboxes.length && allCheckboxes.length > 0;
+                selectAllCheckbox.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
+            }
+        }
+
+        function getSelectedModelIds() {
+            return Array.from(document.querySelectorAll('.model-checkbox:checked')).map(cb => cb.value);
+        }
+
+        async function batchAddToQueue() {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'add_to_queue');
+                ids.forEach(id => formData.append('model_ids[]', id));
+
+                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`Added ${result.updated} model(s) to print queue`);
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Batch add to queue error:', err);
+                alert('Failed to add to queue');
+            }
+        }
+
+        function batchDownload() {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                return;
+            }
+            window.location = 'actions/batch-download.php?ids=' + ids.join(',');
+        }
+
+        async function batchApplyTag(tagId) {
+            const select = document.getElementById('batch-tag-select');
+            if (!tagId) {
+                select.value = '';
+                return;
+            }
+
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                select.value = '';
+                return;
+            }
+
+            let tagName = '';
+            if (tagId === '__new__') {
+                tagName = prompt('Enter new tag name:');
+                if (!tagName) {
+                    select.value = '';
+                    return;
+                }
+                tagId = '';
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'add_tag');
+                if (tagId) formData.append('tag_id', tagId);
+                if (tagName) formData.append('tag_name', tagName);
+                ids.forEach(id => formData.append('model_ids[]', id));
+
+                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`Tagged ${result.updated} model(s)`);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Batch tag error:', err);
+                alert('Failed to apply tag');
+            }
+
+            select.value = '';
+        }
+
+        async function batchApplyCategory(categoryId) {
+            const select = document.getElementById('batch-category-select');
+            if (!categoryId) {
+                select.value = '';
+                return;
+            }
+
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                select.value = '';
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'add_category');
+                formData.append('category_id', categoryId);
+                ids.forEach(id => formData.append('model_ids[]', id));
+
+                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`Added category to ${result.updated} model(s)`);
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Batch category error:', err);
+                alert('Failed to apply category');
+            }
+
+            select.value = '';
+        }
+
+        async function batchArchive() {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                return;
+            }
+
+            if (!confirm(`Archive ${ids.length} selected model(s)?`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'archive');
+                formData.append('archive', '1');
+                ids.forEach(id => formData.append('model_ids[]', id));
+
+                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`Archived ${result.updated} model(s)`);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Batch archive error:', err);
+                alert('Failed to archive');
+            }
+        }
+
+        // Initialize checkbox visibility
+        document.querySelectorAll('.model-select-checkbox, .model-list-checkbox').forEach(el => {
+            el.style.display = 'none';
+        });
+        </script>
 
 <?php require_once 'includes/footer.php'; ?>

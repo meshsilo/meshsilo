@@ -2,6 +2,7 @@
 require_once 'includes/config.php';
 require_once 'includes/dedup.php';
 require_once 'includes/slicers.php';
+require_once 'includes/dimensions.php';
 
 $db = getDB();
 
@@ -43,6 +44,13 @@ $modelTags = getModelTags($modelId);
 $isFavorited = isModelFavorited($modelId);
 $favoriteCount = getModelFavoriteCount($modelId);
 
+// Check if in print queue
+$inPrintQueue = false;
+if (isLoggedIn()) {
+    $user = getCurrentUser();
+    $inPrintQueue = isInPrintQueue($user['id'], $modelId);
+}
+
 // Get categories for this model
 $stmt = $db->prepare('
     SELECT c.* FROM categories c
@@ -56,6 +64,12 @@ $categories = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $categories[] = $row;
 }
+
+// Get model dimensions
+$dimensions = getModelDimensions($modelId);
+
+// Get related models
+$relatedModels = getRelatedModels($modelId);
 
 // Get parts if this is a multi-part model
 $parts = [];
@@ -152,9 +166,14 @@ require_once 'includes/header.php';
                         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;">
                             <h1><?= htmlspecialchars($model['name']) ?></h1>
                             <?php if (isLoggedIn()): ?>
-                            <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" onclick="toggleFavorite(<?= $model['id'] ?>, this)" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
-                                <?= $isFavorited ? '&#9829;' : '&#9825;' ?>
-                            </button>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button type="button" class="queue-btn <?= $inPrintQueue ? 'in-queue' : '' ?>" onclick="togglePrintQueue(<?= $model['id'] ?>, this)" title="<?= $inPrintQueue ? 'Remove from print queue' : 'Add to print queue' ?>">
+                                    &#128424;
+                                </button>
+                                <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" onclick="toggleFavorite(<?= $model['id'] ?>, this)" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
+                                    <?= $isFavorited ? '&#9829;' : '&#9825;' ?>
+                                </button>
+                            </div>
                             <?php endif; ?>
                         </div>
 
@@ -181,6 +200,15 @@ require_once 'includes/header.php';
                             <?php if (($model['download_count'] ?? 0) > 0): ?>
                             <span class="meta-item download-count">
                                 <strong>Downloads:</strong> <?= number_format($model['download_count']) ?>
+                            </span>
+                            <?php endif; ?>
+                            <?php if ($dimensions): ?>
+                            <span class="meta-item dimensions">
+                                <strong>Dimensions:</strong> <?= htmlspecialchars(formatDimensions($dimensions['dim_x'], $dimensions['dim_y'], $dimensions['dim_z'], $dimensions['dim_unit'])) ?>
+                            </span>
+                            <?php elseif (canEdit()): ?>
+                            <span class="meta-item">
+                                <button type="button" class="btn btn-small" onclick="calculateDimensions(<?= $model['id'] ?>)" id="calc-dim-btn">Calculate Dimensions</button>
                             </span>
                             <?php endif; ?>
                         </div>
@@ -905,6 +933,63 @@ require_once 'includes/header.php';
                 }
             } catch (err) {
                 console.error('Failed to toggle favorite:', err);
+            }
+        }
+
+        // Print queue toggle
+        async function togglePrintQueue(modelId, btn) {
+            try {
+                const response = await fetch('actions/print-queue.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=toggle&model_id=' + modelId
+                });
+                const data = await response.json();
+                if (data.success) {
+                    btn.classList.toggle('in-queue', data.in_queue);
+                    btn.title = data.in_queue ? 'Remove from print queue' : 'Add to print queue';
+                }
+            } catch (err) {
+                console.error('Failed to toggle print queue:', err);
+            }
+        }
+
+        // Calculate dimensions
+        async function calculateDimensions(modelId) {
+            const btn = document.getElementById('calc-dim-btn');
+            if (btn) {
+                btn.textContent = 'Calculating...';
+                btn.disabled = true;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('model_id', modelId);
+
+                const response = await fetch('actions/calculate-dimensions.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success && data.formatted) {
+                    // Replace button with dimensions text
+                    const container = btn.parentElement;
+                    container.innerHTML = '<strong>Dimensions:</strong> ' + data.formatted;
+                } else {
+                    alert('Could not calculate dimensions: ' + (data.error || 'Unknown error'));
+                    if (btn) {
+                        btn.textContent = 'Calculate Dimensions';
+                        btn.disabled = false;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to calculate dimensions:', err);
+                alert('Failed to calculate dimensions');
+                if (btn) {
+                    btn.textContent = 'Calculate Dimensions';
+                    btn.disabled = false;
+                }
             }
         }
 

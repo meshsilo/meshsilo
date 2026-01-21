@@ -74,6 +74,7 @@ if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
                 <?php endif; ?>
                 <?php if (isLoggedIn()): ?>
                     <?php $user = getCurrentUser(); ?>
+                    <a href="<?= basePath('print-queue.php') ?>" class="btn btn-secondary" title="Print Queue">&#128424;</a>
                     <a href="<?= basePath('favorites.php') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
                     <?php if ($user['is_admin']): ?>
                         <a href="<?= basePath('admin/settings.php') ?>" class="btn btn-secondary">Admin</a>

@@ -2830,6 +2830,363 @@ main {
     margin-left: 0.25rem;
 }
 
+/* Print Queue Button */
+.queue-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    font-size: 1.25rem;
+    color: var(--color-text-muted);
+    transition: color 0.2s, transform 0.2s;
+}
+
+.queue-btn:hover {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.queue-btn.in-queue {
+    color: #3b82f6;
+}
+
+.queue-btn.in-queue:hover {
+    color: #2563eb;
+}
+
+/* Print Queue Page */
+.queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.queue-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.queue-checkbox {
+    flex-shrink: 0;
+}
+
+.queue-priority {
+    flex-shrink: 0;
+}
+
+.priority-select {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 0.875rem;
+}
+
+.queue-thumbnail {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-elevated);
+}
+
+.queue-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.queue-title {
+    display: block;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+    text-decoration: none;
+}
+
+.queue-title:hover {
+    color: var(--color-primary);
+}
+
+.queue-category {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    background: var(--color-surface-elevated);
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    margin-right: 0.5rem;
+}
+
+.queue-date {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.queue-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+/* =====================
+   Batch Selection Mode
+   ===================== */
+.batch-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    color: var(--color-text);
+}
+
+.batch-mode-toggle:hover {
+    background: var(--color-surface-elevated);
+}
+
+.batch-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.batch-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.batch-select-all {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.batch-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.model-select-checkbox {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 10;
+    display: none;
+}
+
+.model-select-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.model-list-checkbox {
+    flex-shrink: 0;
+    display: none;
+    padding-right: 0.5rem;
+}
+
+.model-list-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+body.batch-mode .model-card,
+body.batch-mode .model-list-item {
+    cursor: pointer;
+}
+
+body.batch-mode .model-card:hover,
+body.batch-mode .model-list-item:hover {
+    border-color: var(--color-primary);
+}
+
+/* =====================
+   Admin Tables
+   ===================== */
+.admin-table-container {
+    overflow-x: auto;
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.admin-table th {
+    background: var(--color-surface-elevated);
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+}
+
+.admin-table tbody tr:hover {
+    background: var(--color-surface-elevated);
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.admin-table a:hover {
+    text-decoration: underline;
+}
+
+/* =====================
+   Keyboard Shortcuts Help
+   ===================== */
+.keyboard-shortcuts-help {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 1000;
+}
+
+.keyboard-shortcuts-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard-shortcuts-btn:hover {
+    background: var(--color-surface-elevated);
+    color: var(--color-text);
+}
+
+.keyboard-shortcuts-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+}
+
+.keyboard-shortcuts-content {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.keyboard-shortcuts-content h3 {
+    margin: 0 0 1rem;
+    font-size: 1.125rem;
+}
+
+.shortcut-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.shortcut-item:last-child {
+    border-bottom: none;
+}
+
+.shortcut-key {
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.5rem;
+    font-family: monospace;
+    font-size: 0.875rem;
+}
+
+/* Keyboard navigation selection */
+.model-card.keyboard-selected,
+.model-list-item.keyboard-selected,
+.queue-item.keyboard-selected {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 8px;
+    background: var(--color-surface-elevated);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Stat card success variant */
+.stat-card-success {
+    border-color: var(--color-success);
+}
+
+.stat-card-success .stat-value {
+    color: var(--color-success);
+}
+
 /* Model card favorite indicator */
 .model-card-favorite {
     position: absolute;

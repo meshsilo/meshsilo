@@ -303,6 +303,209 @@ class CardEffects {
 }
 
 // =====================
+// Keyboard Shortcuts
+// =====================
+class KeyboardShortcuts {
+    constructor() {
+        this.currentIndex = -1;
+        this.modelCards = [];
+        this.shortcuts = {
+            'j': { description: 'Next model', action: () => this.navigate(1) },
+            'k': { description: 'Previous model', action: () => this.navigate(-1) },
+            'o': { description: 'Open selected', action: () => this.openSelected() },
+            'Enter': { description: 'Open selected', action: () => this.openSelected() },
+            'f': { description: 'Toggle favorite', action: () => this.toggleFavorite() },
+            'q': { description: 'Add to print queue', action: () => this.addToQueue() },
+            '/': { description: 'Focus search', action: (e) => { e.preventDefault(); this.focusSearch(); } },
+            'Escape': { description: 'Clear focus', action: () => this.clearFocus() },
+            '?': { description: 'Show shortcuts', action: () => this.showHelp() },
+            'g h': { description: 'Go home', action: () => window.location.href = 'index.php' },
+            'g b': { description: 'Go browse', action: () => window.location.href = 'browse.php' },
+            'g f': { description: 'Go favorites', action: () => window.location.href = 'favorites.php' },
+            'g q': { description: 'Go print queue', action: () => window.location.href = 'print-queue.php' },
+        };
+        this.pendingKey = null;
+        this.helpModal = null;
+        this.init();
+    }
+
+    init() {
+        this.updateModelCards();
+
+        document.addEventListener('keydown', (e) => this.handleKeydown(e));
+
+        // Re-index cards on page updates
+        const observer = new MutationObserver(() => this.updateModelCards());
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Create help button
+        this.createHelpButton();
+    }
+
+    updateModelCards() {
+        this.modelCards = Array.from(document.querySelectorAll('.model-card, .model-list-item, .queue-item'));
+    }
+
+    handleKeydown(e) {
+        // Ignore if typing in input fields
+        if (e.target.matches('input, textarea, select, [contenteditable]')) {
+            if (e.key === 'Escape') {
+                e.target.blur();
+            }
+            return;
+        }
+
+        // Handle two-key shortcuts (g + key)
+        if (this.pendingKey === 'g') {
+            const combo = `g ${e.key}`;
+            if (this.shortcuts[combo]) {
+                e.preventDefault();
+                this.shortcuts[combo].action(e);
+            }
+            this.pendingKey = null;
+            return;
+        }
+
+        if (e.key === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            this.pendingKey = 'g';
+            setTimeout(() => { this.pendingKey = null; }, 1000);
+            return;
+        }
+
+        // Handle single-key shortcuts
+        const key = e.shiftKey && e.key === '/' ? '?' : e.key;
+        if (this.shortcuts[key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            this.shortcuts[key].action(e);
+        }
+    }
+
+    navigate(direction) {
+        if (this.modelCards.length === 0) return;
+
+        // Remove current highlight
+        if (this.currentIndex >= 0 && this.modelCards[this.currentIndex]) {
+            this.modelCards[this.currentIndex].classList.remove('keyboard-selected');
+        }
+
+        // Update index
+        this.currentIndex += direction;
+        if (this.currentIndex < 0) this.currentIndex = this.modelCards.length - 1;
+        if (this.currentIndex >= this.modelCards.length) this.currentIndex = 0;
+
+        // Highlight new card
+        const card = this.modelCards[this.currentIndex];
+        card.classList.add('keyboard-selected');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    openSelected() {
+        if (this.currentIndex >= 0 && this.modelCards[this.currentIndex]) {
+            const card = this.modelCards[this.currentIndex];
+            const link = card.querySelector('a[href*="model.php"]') || card;
+            const modelId = card.dataset.modelId;
+            if (modelId) {
+                window.location.href = `model.php?id=${modelId}`;
+            } else if (link.href) {
+                window.location.href = link.href;
+            }
+        }
+    }
+
+    toggleFavorite() {
+        if (this.currentIndex >= 0 && this.modelCards[this.currentIndex]) {
+            const card = this.modelCards[this.currentIndex];
+            const favoriteBtn = card.querySelector('.favorite-btn, .model-card-favorite');
+            if (favoriteBtn) {
+                favoriteBtn.click();
+            } else {
+                // If on model page, try page-level favorite
+                const pageFavoriteBtn = document.querySelector('.favorite-btn');
+                if (pageFavoriteBtn) pageFavoriteBtn.click();
+            }
+        } else {
+            // Model page shortcut
+            const favoriteBtn = document.querySelector('.favorite-btn');
+            if (favoriteBtn) favoriteBtn.click();
+        }
+    }
+
+    addToQueue() {
+        if (this.currentIndex >= 0 && this.modelCards[this.currentIndex]) {
+            const card = this.modelCards[this.currentIndex];
+            const queueBtn = card.querySelector('.queue-btn');
+            if (queueBtn) queueBtn.click();
+        } else {
+            // Model page shortcut
+            const queueBtn = document.querySelector('.queue-btn');
+            if (queueBtn) queueBtn.click();
+        }
+    }
+
+    focusSearch() {
+        const searchBar = document.querySelector('.search-bar');
+        if (searchBar) {
+            searchBar.focus();
+            searchBar.select();
+        }
+    }
+
+    clearFocus() {
+        if (this.currentIndex >= 0 && this.modelCards[this.currentIndex]) {
+            this.modelCards[this.currentIndex].classList.remove('keyboard-selected');
+        }
+        this.currentIndex = -1;
+        this.hideHelp();
+    }
+
+    createHelpButton() {
+        const container = document.createElement('div');
+        container.className = 'keyboard-shortcuts-help';
+        container.innerHTML = `
+            <button type="button" class="keyboard-shortcuts-btn" title="Keyboard shortcuts (?)">?</button>
+        `;
+        container.querySelector('button').addEventListener('click', () => this.showHelp());
+        document.body.appendChild(container);
+    }
+
+    showHelp() {
+        if (this.helpModal) {
+            this.hideHelp();
+            return;
+        }
+
+        this.helpModal = document.createElement('div');
+        this.helpModal.className = 'keyboard-shortcuts-modal';
+        this.helpModal.innerHTML = `
+            <div class="keyboard-shortcuts-content">
+                <h3>Keyboard Shortcuts</h3>
+                <div class="shortcut-item"><span>Navigation</span><span class="shortcut-key">j</span> / <span class="shortcut-key">k</span></div>
+                <div class="shortcut-item"><span>Open model</span><span class="shortcut-key">o</span> or <span class="shortcut-key">Enter</span></div>
+                <div class="shortcut-item"><span>Toggle favorite</span><span class="shortcut-key">f</span></div>
+                <div class="shortcut-item"><span>Add to print queue</span><span class="shortcut-key">q</span></div>
+                <div class="shortcut-item"><span>Focus search</span><span class="shortcut-key">/</span></div>
+                <div class="shortcut-item"><span>Clear selection</span><span class="shortcut-key">Esc</span></div>
+                <div class="shortcut-item"><span>Go to Home</span><span class="shortcut-key">g h</span></div>
+                <div class="shortcut-item"><span>Go to Browse</span><span class="shortcut-key">g b</span></div>
+                <div class="shortcut-item"><span>Go to Favorites</span><span class="shortcut-key">g f</span></div>
+                <div class="shortcut-item"><span>Go to Print Queue</span><span class="shortcut-key">g q</span></div>
+                <div class="shortcut-item"><span>Show this help</span><span class="shortcut-key">?</span></div>
+            </div>
+        `;
+        this.helpModal.addEventListener('click', (e) => {
+            if (e.target === this.helpModal) this.hideHelp();
+        });
+        document.body.appendChild(this.helpModal);
+    }
+
+    hideHelp() {
+        if (this.helpModal) {
+            this.helpModal.remove();
+            this.helpModal = null;
+        }
+    }
+}
+
+// =====================
 // Initialize Everything
 // =====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -312,7 +515,8 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollAnimations: new ScrollAnimations(),
         search: new SearchHandler(),
         toasts: new ToastManager(),
-        cardEffects: new CardEffects()
+        cardEffects: new CardEffects(),
+        keyboard: new KeyboardShortcuts()
     };
 
     // Add smooth scrolling
