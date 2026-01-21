@@ -152,7 +152,7 @@ jobs:
           fi
         shell: bash
 
-      - name: Optional: Upload SBOM artifact
+      - name: Optional Upload SBOM artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
