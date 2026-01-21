@@ -1,6 +1,10 @@
             <aside class="admin-sidebar">
                 <h3>Admin</h3>
                 <nav class="admin-nav">
+                    <a href="<?= basePath('admin/license.php') ?>" <?= ($adminPage ?? '') === 'license' ? 'class="active"' : '' ?>>
+                        License
+                        <span class="tier-badge tier-<?= getLicenseTier() ?>"><?= getTierName(getLicenseTier()) ?></span>
+                    </a>
                     <a href="<?= basePath('admin/settings.php') ?>" <?= ($adminPage ?? '') === 'settings' ? 'class="active"' : '' ?>>Site Settings</a>
                     <a href="<?= basePath('admin/users.php') ?>" <?= ($adminPage ?? '') === 'users' ? 'class="active"' : '' ?>>Users</a>
                     <a href="<?= basePath('admin/groups.php') ?>" <?= ($adminPage ?? '') === 'groups' ? 'class="active"' : '' ?>>Groups</a>

@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/dedup.php';
+require_once 'includes/upgrade-prompt.php';
 
 $pageTitle = 'Print Queue';
 $activePage = 'print-queue';
@@ -11,6 +12,9 @@ if (!isLoggedIn()) {
     header('Location: login.php');
     exit;
 }
+
+// Check for Pro feature
+$hasPrintQueueFeature = hasFeature(FEATURE_PRINT_QUEUE);
 
 $db = getDB();
 $user = getCurrentUser();
@@ -43,10 +47,12 @@ require_once 'includes/header.php';
         <div class="page-container-wide">
             <div class="page-header">
                 <h1>Print Queue</h1>
-                <p><?= count($queue) ?> model<?= count($queue) !== 1 ? 's' : '' ?> to print</p>
+                <p><?= $hasPrintQueueFeature ? (count($queue) . ' model' . (count($queue) !== 1 ? 's' : '') . ' to print') : 'Queue models for printing' ?></p>
             </div>
 
-            <?php if (empty($queue)): ?>
+            <?php if (!$hasPrintQueueFeature): ?>
+                <?php renderInlineUpgradePrompt(FEATURE_PRINT_QUEUE); ?>
+            <?php elseif (empty($queue)): ?>
                 <p class="text-muted" style="text-align: center; padding: 3rem;">
                     Your print queue is empty.<br>
                     Click the printer icon on any model to add it to your queue.

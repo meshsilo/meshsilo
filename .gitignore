@@ -28,3 +28,7 @@ logs/*
 # Development files
 .claude/
 todo.txt
+
+# License tools (keep private keys secure)
+tools/*.pem
+tools/license-*.txt

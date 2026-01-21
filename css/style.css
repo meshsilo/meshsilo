@@ -3261,6 +3261,180 @@ body.batch-mode .model-list-item:hover {
     opacity: 0.5;
 }
 
+/* =====================
+   License Tier Badges
+   ===================== */
+.tier-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 0.5rem;
+}
+
+.tier-badge.tier-free {
+    background: #374151;
+    color: #d1d5db;
+}
+
+.tier-badge.tier-pro {
+    background: #1d4ed8;
+    color: #bfdbfe;
+}
+
+.tier-badge.tier-business {
+    background: #6d28d9;
+    color: #ddd6fe;
+}
+
+/* Upgrade prompt modal */
+.upgrade-prompt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.upgrade-prompt-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.upgrade-prompt {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+}
+
+.upgrade-prompt-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.upgrade-prompt h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+}
+
+.upgrade-prompt p {
+    color: var(--color-text-muted);
+    margin: 0 0 1.5rem 0;
+}
+
+.upgrade-prompt-tier {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--radius);
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.upgrade-prompt-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* Feature locked indicator */
+.feature-locked {
+    position: relative;
+}
+
+.feature-locked::after {
+    content: "PRO";
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    background: var(--color-primary);
+    color: white;
+    font-size: 0.5rem;
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+.feature-locked.business::after {
+    content: "BIZ";
+    background: #6d28d9;
+}
+
+.feature-locked-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.feature-locked:hover .feature-locked-overlay {
+    opacity: 1;
+}
+
+.feature-locked-overlay span {
+    background: var(--color-primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    font-weight: 500;
+}
+
+/* Inline upgrade prompt */
+.inline-upgrade-prompt {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: var(--color-surface);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    margin: 1rem 0;
+}
+
+.inline-upgrade-icon {
+    font-size: 2.5rem;
+    opacity: 0.5;
+}
+
+.inline-upgrade-content {
+    flex: 1;
+}
+
+.inline-upgrade-content h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+
+.inline-upgrade-content p {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
 /* Model card favorite indicator */
 .model-card-favorite {
     position: absolute;

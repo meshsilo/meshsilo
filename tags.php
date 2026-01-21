@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/upgrade-prompt.php';
 
 $pageTitle = 'Tags';
 $activePage = 'tags';
@@ -8,6 +9,9 @@ if (getSetting('enable_tags', '1') !== '1') {
     header('Location: index.php');
     exit;
 }
+
+// Check for Pro feature
+$hasTagsFeature = hasFeature(FEATURE_TAGS);
 
 $db = getDB();
 
@@ -34,7 +38,9 @@ require_once 'includes/header.php';
                 <p>Browse models by tag</p>
             </div>
 
-            <?php if (empty($tags)): ?>
+            <?php if (!$hasTagsFeature): ?>
+                <?php renderInlineUpgradePrompt(FEATURE_TAGS); ?>
+            <?php elseif (empty($tags)): ?>
                 <p class="text-muted" style="text-align: center; padding: 3rem;">No tags yet. Tags can be added when uploading or editing models.</p>
             <?php else: ?>
                 <div class="categories-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
