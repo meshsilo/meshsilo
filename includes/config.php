@@ -17,8 +17,8 @@ if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../db/silo.db');
 // Upload Configuration
 define('UPLOAD_PATH', __DIR__ . '/../assets/');
 define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB
-define('MODEL_EXTENSIONS', ['stl', '3mf']);
-define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'zip']);
+define('MODEL_EXTENSIONS', ['stl', '3mf', 'gcode']);
+define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'gcode', 'zip']);
 
 // Helper function to get base path for includes
 function basePath($path = '') {

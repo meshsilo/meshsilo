@@ -145,12 +145,194 @@ class ModelViewer {
         }
     }
 
+    async loadGCODE(url) {
+        return new Promise((resolve, reject) => {
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch GCODE');
+                    return response.text();
+                })
+                .then(gcodeText => {
+                    this.clearModel();
+
+                    const result = this.parseGCODE(gcodeText);
+                    if (!result || result.vertices.length === 0) {
+                        reject(new Error('No toolpath data found in GCODE'));
+                        return;
+                    }
+
+                    // Create group to hold all line segments
+                    this.model = new THREE.Group();
+
+                    // Create geometry for print moves (with extrusion)
+                    if (result.printVertices.length > 0) {
+                        const printGeometry = new THREE.BufferGeometry();
+                        printGeometry.setAttribute('position', new THREE.Float32BufferAttribute(result.printVertices, 3));
+                        printGeometry.setAttribute('color', new THREE.Float32BufferAttribute(result.printColors, 3));
+
+                        const printMaterial = new THREE.LineBasicMaterial({
+                            vertexColors: true,
+                            linewidth: 1
+                        });
+
+                        const printLines = new THREE.LineSegments(printGeometry, printMaterial);
+                        this.model.add(printLines);
+                    }
+
+                    // Create geometry for travel moves (no extrusion) - make them subtle
+                    if (result.travelVertices.length > 0) {
+                        const travelGeometry = new THREE.BufferGeometry();
+                        travelGeometry.setAttribute('position', new THREE.Float32BufferAttribute(result.travelVertices, 3));
+
+                        const travelMaterial = new THREE.LineBasicMaterial({
+                            color: 0x444444,
+                            linewidth: 1,
+                            transparent: true,
+                            opacity: 0.3
+                        });
+
+                        const travelLines = new THREE.LineSegments(travelGeometry, travelMaterial);
+                        this.model.add(travelLines);
+                    }
+
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                })
+                .catch(error => reject(error));
+        });
+    }
+
+    parseGCODE(gcodeText) {
+        const lines = gcodeText.split('\n');
+        const printVertices = [];
+        const printColors = [];
+        const travelVertices = [];
+
+        let currentX = 0, currentY = 0, currentZ = 0;
+        let currentE = 0;
+        let minZ = Infinity, maxZ = -Infinity;
+        let isAbsolute = true;
+        let isExtruderAbsolute = true;
+
+        // First pass: find Z range for color mapping
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith(';') || trimmed === '') continue;
+
+            const zMatch = trimmed.match(/Z([+-]?\d*\.?\d+)/i);
+            if (zMatch) {
+                const z = parseFloat(zMatch[1]);
+                if (!isNaN(z) && z > 0) {
+                    minZ = Math.min(minZ, z);
+                    maxZ = Math.max(maxZ, z);
+                }
+            }
+        }
+
+        if (minZ === Infinity) minZ = 0;
+        if (maxZ === -Infinity) maxZ = 1;
+        const zRange = maxZ - minZ || 1;
+
+        // Second pass: extract toolpath
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith(';') || trimmed === '') continue;
+
+            // Check for coordinate mode
+            if (trimmed.startsWith('G90')) {
+                isAbsolute = true;
+                continue;
+            }
+            if (trimmed.startsWith('G91')) {
+                isAbsolute = false;
+                continue;
+            }
+            if (trimmed.startsWith('M82')) {
+                isExtruderAbsolute = true;
+                continue;
+            }
+            if (trimmed.startsWith('M83')) {
+                isExtruderAbsolute = false;
+                continue;
+            }
+
+            // Parse G0/G1 moves
+            const moveMatch = trimmed.match(/^G[01]\s/i);
+            if (!moveMatch) continue;
+
+            const isRapid = trimmed.startsWith('G0');
+
+            // Extract coordinates
+            const xMatch = trimmed.match(/X([+-]?\d*\.?\d+)/i);
+            const yMatch = trimmed.match(/Y([+-]?\d*\.?\d+)/i);
+            const zMatch = trimmed.match(/Z([+-]?\d*\.?\d+)/i);
+            const eMatch = trimmed.match(/E([+-]?\d*\.?\d+)/i);
+
+            const prevX = currentX, prevY = currentY, prevZ = currentZ;
+            const prevE = currentE;
+
+            if (xMatch) {
+                const val = parseFloat(xMatch[1]);
+                currentX = isAbsolute ? val : currentX + val;
+            }
+            if (yMatch) {
+                const val = parseFloat(yMatch[1]);
+                currentY = isAbsolute ? val : currentY + val;
+            }
+            if (zMatch) {
+                const val = parseFloat(zMatch[1]);
+                currentZ = isAbsolute ? val : currentZ + val;
+            }
+            if (eMatch) {
+                const val = parseFloat(eMatch[1]);
+                currentE = isExtruderAbsolute ? val : currentE + val;
+            }
+
+            // Skip if no actual movement
+            if (prevX === currentX && prevY === currentY && prevZ === currentZ) continue;
+
+            // Determine if this is a print move (extruding) or travel move
+            const isExtruding = eMatch && (isExtruderAbsolute ? currentE > prevE : parseFloat(eMatch[1]) > 0);
+
+            if (isExtruding && !isRapid) {
+                // Print move - add to print vertices with color based on Z height
+                printVertices.push(prevX, prevZ, -prevY); // Swap Y and Z for display
+                printVertices.push(currentX, currentZ, -currentY);
+
+                // Color based on Z height (blue at bottom, red at top)
+                const t = (currentZ - minZ) / zRange;
+                const r = t;
+                const g = 0.2;
+                const b = 1 - t;
+
+                // Two vertices per segment
+                printColors.push(r, g, b);
+                printColors.push(r, g, b);
+            } else {
+                // Travel move
+                travelVertices.push(prevX, prevZ, -prevY);
+                travelVertices.push(currentX, currentZ, -currentY);
+            }
+        }
+
+        return {
+            vertices: [...printVertices, ...travelVertices],
+            printVertices,
+            printColors,
+            travelVertices
+        };
+    }
+
     async loadModel(url, fileType) {
         try {
             if (fileType === 'stl') {
                 return await this.loadSTL(url);
             } else if (fileType === '3mf') {
                 return await this.load3MF(url);
+            } else if (fileType === 'gcode') {
+                return await this.loadGCODE(url);
             }
         } catch (error) {
             console.error('Error loading model:', error);

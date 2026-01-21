@@ -3187,6 +3187,80 @@ body.batch-mode .model-list-item:hover {
     color: var(--color-success);
 }
 
+/* =====================
+   GCODE Metadata Display
+   ===================== */
+.gcode-metadata {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.gcode-metadata h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.gcode-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.gcode-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.gcode-stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.gcode-stat-value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+/* GCODE toolpath colors legend */
+.gcode-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.75rem;
+}
+
+.gcode-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.gcode-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.gcode-legend-color.print {
+    background: linear-gradient(to right, #3b82f6, #ef4444);
+}
+
+.gcode-legend-color.travel {
+    background: #444444;
+    opacity: 0.5;
+}
+
 /* Model card favorite indicator */
 .model-card-favorite {
     position: absolute;

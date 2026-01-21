@@ -105,7 +105,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES ('allow_registration', '1');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('require_approval', '0');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('enable_categories', '1');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('enable_collections', '1');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('allowed_extensions', 'stl,3mf,zip');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('allowed_extensions', 'stl,3mf,gcode,zip');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('auto_deduplication', '0');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('last_deduplication', '');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('oidc_enabled', '0');

@@ -2,6 +2,7 @@
 require_once 'includes/config.php';
 require_once 'includes/converter.php';
 require_once 'includes/dedup.php';
+require_once 'includes/gcode.php';
 
 // Check upload permission
 requirePermission(PERM_UPLOAD);
@@ -120,6 +121,14 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
                         'new_size' => $convertResult['new_size'],
                         'savings' => $convertResult['savings']
                     ]);
+                }
+            }
+
+            // Parse GCODE metadata if uploaded file is GCODE
+            if ($extension === 'gcode') {
+                $gcodeMetadata = processGCodeFile($modelId, $filePath);
+                if (!empty(array_filter($gcodeMetadata))) {
+                    logInfo('Parsed GCODE metadata', ['model_id' => $modelId, 'metadata' => $gcodeMetadata]);
                 }
             }
 
@@ -303,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     rmdir($extractDir);
 
                     if ($uploadedCount === 0 && empty($error)) {
-                        $error = 'No valid model files (.stl, .3mf) found in the ZIP archive.';
+                        $error = 'No valid model files (.stl, .3mf, .gcode) found in the ZIP archive.';
                         logWarning('No valid models in ZIP', ['file' => $originalName]);
                     }
                 } else {
@@ -387,9 +396,9 @@ require_once 'includes/header.php';
                         <p class="dropzone-subtext">or</p>
                         <label class="btn btn-primary file-select-btn">
                             Browse Files
-                            <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.zip" hidden>
+                            <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.gcode,.zip" hidden>
                         </label>
-                        <p class="dropzone-hint">Supported: .stl, .3mf, .zip (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
+                        <p class="dropzone-hint">Supported: .stl, .3mf, .gcode, .zip (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
                         <p class="dropzone-hint">ZIP files will be unpacked and all model files imported</p>
                         <p class="file-name-display" id="file-name-display"></p>
                     </div>

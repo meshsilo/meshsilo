@@ -886,7 +886,7 @@ function runMigrations($db) {
         'enable_categories' => '1',
         'enable_collections' => '1',
         'enable_tags' => '1',
-        'allowed_extensions' => 'stl,3mf,zip',
+        'allowed_extensions' => 'stl,3mf,gcode,zip',
         'auto_deduplication' => '0',
         'last_deduplication' => '',
         'oidc_enabled' => '0',
@@ -971,7 +971,7 @@ function getAllSettings() {
 
 // Get allowed file extensions (configurable via settings)
 function getAllowedExtensions() {
-    $setting = getSetting('allowed_extensions', 'stl,3mf,zip');
+    $setting = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
     return array_map('trim', explode(',', $setting));
 }
 

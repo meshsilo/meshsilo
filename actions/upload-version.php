@@ -43,11 +43,11 @@ if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
 }
 
 $file = $_FILES['version_file'];
-$allowedTypes = ['stl', '3mf'];
+$allowedTypes = ['stl', '3mf', 'gcode'];
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
 if (!in_array($ext, $allowedTypes)) {
-    echo json_encode(['success' => false, 'error' => 'Invalid file type. Only STL and 3MF allowed.']);
+    echo json_encode(['success' => false, 'error' => 'Invalid file type. Only STL, 3MF, and GCODE allowed.']);
     exit;
 }
 

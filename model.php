@@ -3,6 +3,7 @@ require_once 'includes/config.php';
 require_once 'includes/dedup.php';
 require_once 'includes/slicers.php';
 require_once 'includes/dimensions.php';
+require_once 'includes/gcode.php';
 
 $db = getDB();
 
@@ -70,6 +71,19 @@ $dimensions = getModelDimensions($modelId);
 
 // Get related models
 $relatedModels = getRelatedModels($modelId);
+
+// Get GCODE metadata if this is a GCODE file
+$gcodeMetadata = null;
+if (($model['file_type'] ?? '') === 'gcode') {
+    $gcodeMetadata = getGCodeMetadata($modelId);
+    // If no metadata stored yet, try to parse it now
+    if (!$gcodeMetadata && $model['file_path']) {
+        $filePath = getAbsoluteFilePath($model);
+        if ($filePath && file_exists($filePath)) {
+            $gcodeMetadata = processGCodeFile($modelId, $filePath);
+        }
+    }
+}
 
 // Get parts if this is a multi-part model
 $parts = [];
@@ -152,8 +166,8 @@ require_once 'includes/header.php';
 
             <div class="model-detail">
                 <div class="model-detail-header">
-                    <div class="model-detail-thumbnail <?= ($previewPath && in_array($previewType, ['stl', '3mf'])) ? 'has-viewer' : '' ?>"
-                        <?php if ($previewPath && in_array($previewType, ['stl', '3mf'])): ?>
+                    <div class="model-detail-thumbnail <?= ($previewPath && in_array($previewType, ['stl', '3mf', 'gcode'])) ? 'has-viewer' : '' ?>"
+                        <?php if ($previewPath && in_array($previewType, ['stl', '3mf', 'gcode'])): ?>
                         data-model-url="<?= htmlspecialchars($previewPath) ?>"
                         data-file-type="<?= htmlspecialchars($previewType) ?>"
                         <?php endif; ?>>
@@ -216,6 +230,69 @@ require_once 'includes/header.php';
                         <?php if ($model['license']): ?>
                         <div style="margin-top: 0.5rem;">
                             <span class="license-badge"><?= htmlspecialchars(getLicenseName($model['license'])) ?></span>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if ($gcodeMetadata && !empty(array_filter($gcodeMetadata))): ?>
+                        <div class="gcode-metadata">
+                            <h4>Print Information</h4>
+                            <div class="gcode-stats">
+                                <?php if ($gcodeMetadata['print_time_formatted']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Print Time</span>
+                                    <span class="gcode-stat-value"><?= htmlspecialchars($gcodeMetadata['print_time_formatted']) ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($gcodeMetadata['filament_used_m'] || $gcodeMetadata['filament_used_g']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Filament</span>
+                                    <span class="gcode-stat-value">
+                                        <?php if ($gcodeMetadata['filament_used_m']): ?>
+                                            <?= number_format($gcodeMetadata['filament_used_m'], 2) ?>m
+                                        <?php endif; ?>
+                                        <?php if ($gcodeMetadata['filament_used_g']): ?>
+                                            (<?= number_format($gcodeMetadata['filament_used_g'], 1) ?>g)
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($gcodeMetadata['layer_height']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Layer Height</span>
+                                    <span class="gcode-stat-value"><?= $gcodeMetadata['layer_height'] ?>mm</span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($gcodeMetadata['layer_count']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Layers</span>
+                                    <span class="gcode-stat-value"><?= number_format($gcodeMetadata['layer_count']) ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($gcodeMetadata['hotend_temp']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Nozzle Temp</span>
+                                    <span class="gcode-stat-value"><?= $gcodeMetadata['hotend_temp'] ?>°C</span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($gcodeMetadata['bed_temp']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Bed Temp</span>
+                                    <span class="gcode-stat-value"><?= $gcodeMetadata['bed_temp'] ?>°C</span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($gcodeMetadata['infill']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Infill</span>
+                                    <span class="gcode-stat-value"><?= htmlspecialchars($gcodeMetadata['infill']) ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($gcodeMetadata['slicer']): ?>
+                                <div class="gcode-stat">
+                                    <span class="gcode-stat-label">Slicer</span>
+                                    <span class="gcode-stat-value"><?= htmlspecialchars($gcodeMetadata['slicer']) ?><?php if ($gcodeMetadata['slicer_version']): ?> <?= htmlspecialchars($gcodeMetadata['slicer_version']) ?><?php endif; ?></span>
+                                </div>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <?php endif; ?>
 
@@ -382,7 +459,7 @@ require_once 'includes/header.php';
                         <a href="actions/download-all.php?id=<?= $model['id'] ?>" class="btn btn-primary">Download All Parts</a>
                         <?php if (canUpload()): ?>
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
-                        <input type="file" id="add-part-file" accept=".stl,.3mf" multiple hidden onchange="uploadParts(this.files)">
+                        <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
                         <?php endif; ?>
                     </div>
                 </div>
@@ -414,7 +491,7 @@ require_once 'includes/header.php';
                     <?php endif; ?>
                     <a href="actions/download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
-                    <input type="file" id="add-part-file" accept=".stl,.3mf" multiple hidden onchange="uploadParts(this.files)">
+                    <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
