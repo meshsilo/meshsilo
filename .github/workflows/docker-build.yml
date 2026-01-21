@@ -98,22 +98,34 @@ jobs:
           fi
         shell: bash
 
-      - name: Generate SBOM (CycloneDX) with Syft action
+      - name: Install Syft (Anchore) CLI
         if: github.event_name != 'pull_request'
-        uses: anchore/syft-action@v1
-        with:
-          image: ${{ steps.image_ref.outputs.image_ref }}
-          output: cyclonedx-json
-          output-file: sbom.cyclonedx.json
+        run: |
+          set -euo pipefail
+          echo "Installing syft (Anchore)"
+          # Use Anchore's official install script to install latest syft into /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+          syft version
+        shell: bash
+
+      - name: Generate SBOM (CycloneDX) with syft
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          IMAGE="${{ steps.image_ref.outputs.image_ref }}"
+          echo "Generating CycloneDX SBOM for $IMAGE"
+          syft "$IMAGE" -o cyclonedx-json=sbom.cyclonedx.json
+          echo "SBOM saved to sbom.cyclonedx.json"
+        shell: bash
 
       - name: Debug show SBOM and image info
         if: github.event_name != 'pull_request'
         run: |
           echo "Image: ${{ steps.image_ref.outputs.image_ref }}"
           echo "Digest: ${{ steps.push.outputs.digest }}"
-          echo "Generated SBOM:"
+          echo "Generated SBOM (first 200 lines):"
           ls -la sbom.cyclonedx.json || true
-          sed -n '1,120p' sbom.cyclonedx.json || true
+          sed -n '1,200p' sbom.cyclonedx.json || true
         shell: bash
 
       - name: Install cosign (Sigstore)
