@@ -32,3 +32,5 @@ todo.txt
 # License tools (keep private keys secure)
 tools/*.pem
 tools/license-*.txt
+CLAUDE.md
+**/CLAUDE.md
