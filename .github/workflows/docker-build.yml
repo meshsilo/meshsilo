@@ -106,7 +106,7 @@ jobs:
           output: cyclonedx-json
           output-file: sbom.cyclonedx.json
 
-      - name: Debug: show SBOM and image info
+      - name: Debug show SBOM and image info
         if: github.event_name != 'pull_request'
         run: |
           echo "Image: ${{ steps.image_ref.outputs.image_ref }}"
