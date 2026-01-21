@@ -30,8 +30,18 @@ if ($model['parent_id']) {
     exit;
 }
 
+// Record this view for recently viewed
+recordModelView($modelId);
+
 $pageTitle = $model['name'];
 $activePage = 'browse';
+
+// Get tags for this model
+$modelTags = getModelTags($modelId);
+
+// Check if favorited
+$isFavorited = isModelFavorited($modelId);
+$favoriteCount = getModelFavoriteCount($modelId);
 
 // Get categories for this model
 $stmt = $db->prepare('
@@ -139,7 +149,18 @@ require_once 'includes/header.php';
                         <span class="file-type-badge file-type-badge-large">.<?= htmlspecialchars($previewType ?? $model['file_type'] ?? 'stl') ?></span>
                     </div>
                     <div class="model-detail-info">
-                        <h1><?= htmlspecialchars($model['name']) ?></h1>
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;">
+                            <h1><?= htmlspecialchars($model['name']) ?></h1>
+                            <?php if (isLoggedIn()): ?>
+                            <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" onclick="toggleFavorite(<?= $model['id'] ?>, this)" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
+                                <?= $isFavorited ? '&#9829;' : '&#9825;' ?>
+                            </button>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if ($model['is_archived']): ?>
+                        <span class="archived-badge" style="margin-bottom: 0.5rem;">Archived</span>
+                        <?php endif; ?>
 
                         <?php if ($model['creator']): ?>
                         <p class="model-creator">by <?= htmlspecialchars($model['creator']) ?></p>
@@ -157,13 +178,44 @@ require_once 'includes/header.php';
                             <span class="meta-item">
                                 <strong>Added:</strong> <?= date('M j, Y', strtotime($model['created_at'])) ?>
                             </span>
+                            <?php if (($model['download_count'] ?? 0) > 0): ?>
+                            <span class="meta-item download-count">
+                                <strong>Downloads:</strong> <?= number_format($model['download_count']) ?>
+                            </span>
+                            <?php endif; ?>
                         </div>
+
+                        <?php if ($model['license']): ?>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="license-badge"><?= htmlspecialchars(getLicenseName($model['license'])) ?></span>
+                        </div>
+                        <?php endif; ?>
 
                         <?php if (!empty($categories)): ?>
                         <div class="model-categories">
                             <?php foreach ($categories as $cat): ?>
-                            <a href="category.php?id=<?= $cat['id'] ?>" class="category-tag"><?= htmlspecialchars($cat['name']) ?></a>
+                            <a href="browse.php?category=<?= $cat['id'] ?>" class="category-tag"><?= htmlspecialchars($cat['name']) ?></a>
                             <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($modelTags)): ?>
+                        <div class="model-tags">
+                            <?php foreach ($modelTags as $tag): ?>
+                            <a href="browse.php?tag=<?= $tag['id'] ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none;">
+                                <?= htmlspecialchars($tag['name']) ?>
+                                <?php if (canEdit()): ?>
+                                <button type="button" class="model-tag-remove" onclick="event.preventDefault(); event.stopPropagation(); removeTag(<?= $model['id'] ?>, <?= $tag['id'] ?>, this.parentElement)" title="Remove tag">&times;</button>
+                                <?php endif; ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (canEdit()): ?>
+                        <div class="tag-input-wrapper" style="position: relative; margin-top: 0.5rem;">
+                            <input type="text" id="tag-input" class="form-input" placeholder="Add tag..." style="width: 150px;">
+                            <div id="tag-suggestions" class="tag-suggestions" style="display: none;"></div>
                         </div>
                         <?php endif; ?>
 
@@ -173,9 +225,19 @@ require_once 'includes/header.php';
                         </p>
                         <?php endif; ?>
 
-                        <?php if (canDelete()): ?>
-                        <div class="model-actions">
+                        <?php if (canEdit() || canDelete()): ?>
+                        <div class="model-actions" style="margin-top: 1rem;">
+                            <?php if (canEdit()): ?>
+                            <a href="edit-model.php?id=<?= $model['id'] ?>" class="btn btn-secondary btn-small">Edit Model</a>
+                            <?php if ($model['is_archived']): ?>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="toggleArchive(<?= $model['id'] ?>, false)">Unarchive</button>
+                            <?php else: ?>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="toggleArchive(<?= $model['id'] ?>, true)">Archive</button>
+                            <?php endif; ?>
+                            <?php endif; ?>
+                            <?php if (canDelete()): ?>
                             <a href="actions/delete.php?id=<?= $model['id'] ?>" class="btn btn-danger btn-small">Delete Model</a>
+                            <?php endif; ?>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -227,9 +289,19 @@ require_once 'includes/header.php';
                                     <?php if ($part['print_type']): ?>
                                     <span class="print-type-badge print-type-<?= htmlspecialchars($part['print_type']) ?>"><?= strtoupper($part['print_type']) ?></span>
                                     <?php endif; ?>
+                                    <?php if ($part['is_printed']): ?>
+                                    <span class="printed-badge">Printed</span>
+                                    <?php endif; ?>
+                                    <?php if ($part['notes']): ?>
+                                    <span class="part-notes"><?= htmlspecialchars($part['notes']) ?></span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="part-actions">
                                     <?php if (canEdit()): ?>
+                                    <label class="printed-checkbox" title="Mark as printed">
+                                        <input type="checkbox" class="printed-toggle" data-part-id="<?= $part['id'] ?>" <?= $part['is_printed'] ? 'checked' : '' ?>>
+                                        <span>Printed</span>
+                                    </label>
                                     <select class="print-type-select" data-part-id="<?= $part['id'] ?>" title="Print type">
                                         <option value="" <?= !$part['print_type'] ? 'selected' : '' ?>>--</option>
                                         <option value="fdm" <?= $part['print_type'] === 'fdm' ? 'selected' : '' ?>>FDM</option>
@@ -557,6 +629,51 @@ require_once 'includes/header.php';
             });
         });
 
+        // Handle printed status toggle
+        document.querySelectorAll('.printed-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const partId = this.dataset.partId;
+                const isPrinted = this.checked ? '1' : '0';
+                const partItem = this.closest('.part-item');
+
+                fetch('actions/update-part.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'part_id=' + partId + '&is_printed=' + isPrinted
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the badge
+                        let badge = partItem.querySelector('.printed-badge');
+                        if (this.checked) {
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                badge.className = 'printed-badge';
+                                badge.textContent = 'Printed';
+                                const printTypeBadge = partItem.querySelector('.print-type-badge');
+                                if (printTypeBadge) {
+                                    printTypeBadge.after(badge);
+                                } else {
+                                    partItem.querySelector('.part-name').after(badge);
+                                }
+                            }
+                        } else if (badge) {
+                            badge.remove();
+                        }
+                    } else {
+                        alert('Failed to update: ' + (data.error || 'Unknown error'));
+                        this.checked = !this.checked;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error updating printed status:', err);
+                    alert('Failed to update printed status');
+                    this.checked = !this.checked;
+                });
+            });
+        });
+
         // Mass action handling
         const partCheckboxes = document.querySelectorAll('.part-checkbox');
         const massActionsBar = document.getElementById('parts-mass-actions');
@@ -771,6 +888,135 @@ require_once 'includes/header.php';
                 this.closest('.dropdown').classList.remove('open');
             });
         });
+
+        // Favorite toggle
+        async function toggleFavorite(modelId, btn) {
+            try {
+                const response = await fetch('actions/favorite.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'model_id=' + modelId
+                });
+                const data = await response.json();
+                if (data.success) {
+                    btn.classList.toggle('favorited', data.favorited);
+                    btn.innerHTML = data.favorited ? '&#9829;' : '&#9825;';
+                    btn.title = data.favorited ? 'Remove from favorites' : 'Add to favorites';
+                }
+            } catch (err) {
+                console.error('Failed to toggle favorite:', err);
+            }
+        }
+
+        // Archive toggle
+        async function toggleArchive(modelId, archive) {
+            try {
+                const response = await fetch('actions/update-model.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'model_id=' + modelId + '&is_archived=' + (archive ? '1' : '0')
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to update: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Failed to toggle archive:', err);
+                alert('Failed to update model');
+            }
+        }
+
+        // Tag management
+        const allTags = <?= json_encode(getAllTags()) ?>;
+        const tagInput = document.getElementById('tag-input');
+        const tagSuggestions = document.getElementById('tag-suggestions');
+
+        if (tagInput) {
+            tagInput.addEventListener('input', function() {
+                const value = this.value.toLowerCase().trim();
+                if (value.length < 1) {
+                    tagSuggestions.style.display = 'none';
+                    return;
+                }
+
+                const matching = allTags.filter(t => t.name.toLowerCase().includes(value));
+                if (matching.length === 0 && value.length > 0) {
+                    // Show option to create new tag
+                    tagSuggestions.innerHTML = `
+                        <div class="tag-suggestion" onclick="addTag('${value.replace(/'/g, "\\'")}')">
+                            <span class="tag-color-dot" style="background-color: #6366f1;"></span>
+                            <span>Create "${value}"</span>
+                        </div>
+                    `;
+                } else {
+                    tagSuggestions.innerHTML = matching.map(t => `
+                        <div class="tag-suggestion" onclick="addTagById(${t.id}, '${t.name.replace(/'/g, "\\'")}')">
+                            <span class="tag-color-dot" style="background-color: ${t.color};"></span>
+                            <span>${t.name}</span>
+                        </div>
+                    `).join('');
+                }
+                tagSuggestions.style.display = matching.length > 0 || value.length > 0 ? 'block' : 'none';
+            });
+
+            tagInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const value = this.value.trim();
+                    if (value) {
+                        addTag(value);
+                    }
+                }
+            });
+
+            tagInput.addEventListener('blur', function() {
+                setTimeout(() => {
+                    tagSuggestions.style.display = 'none';
+                }, 200);
+            });
+        }
+
+        async function addTag(tagName) {
+            try {
+                const response = await fetch('actions/tag.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=add&model_id=<?= $model['id'] ?>&tag_name=' + encodeURIComponent(tagName)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to add tag: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Failed to add tag:', err);
+            }
+        }
+
+        async function addTagById(tagId, tagName) {
+            await addTag(tagName);
+        }
+
+        async function removeTag(modelId, tagId, element) {
+            try {
+                const response = await fetch('actions/tag.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=remove&model_id=' + modelId + '&tag_id=' + tagId
+                });
+                const data = await response.json();
+                if (data.success) {
+                    element.remove();
+                } else {
+                    alert('Failed to remove tag: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Failed to remove tag:', err);
+            }
+        }
         </script>
 
 <?php require_once 'includes/footer.php'; ?>

@@ -35,8 +35,8 @@ class LazyModelLoader {
         const fileType = thumbnail.dataset.fileType;
         if (!url || !fileType) return;
 
-        // Add loading state
-        thumbnail.classList.add('loading');
+        // Add loading state - use lazy placeholder effect
+        thumbnail.classList.add('loading', 'lazy-load-placeholder');
 
         // Create viewer container
         const viewerContainer = document.createElement('div');
@@ -44,11 +44,15 @@ class LazyModelLoader {
         viewerContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%;';
         thumbnail.appendChild(viewerContainer);
 
+        // Get background color based on current theme
+        const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
+        const bgColor = isLightTheme ? 0xf8fafc : 0x1e293b;
+
         // Initialize viewer
         const viewer = new ModelViewer(viewerContainer, {
             autoRotate: true,
             interactive: false,
-            backgroundColor: 0x1e293b
+            backgroundColor: bgColor
         });
 
         // Load model
@@ -303,9 +307,8 @@ class CardEffects {
 // =====================
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize UI enhancements
-    // Note: LazyModelLoader is disabled as viewer.js handles 3D model initialization
     window.siloUI = {
-        // lazyLoader: new LazyModelLoader(),
+        lazyLoader: new LazyModelLoader(),
         scrollAnimations: new ScrollAnimations(),
         search: new SearchHandler(),
         toasts: new ToastManager(),

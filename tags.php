@@ -1,0 +1,51 @@
+<?php
+require_once 'includes/config.php';
+
+$pageTitle = 'Tags';
+$activePage = 'tags';
+
+if (getSetting('enable_tags', '1') !== '1') {
+    header('Location: index.php');
+    exit;
+}
+
+$db = getDB();
+
+// Get all tags with model counts
+$result = $db->query('
+    SELECT t.*, COUNT(mt.model_id) as model_count
+    FROM tags t
+    LEFT JOIN model_tags mt ON t.id = mt.tag_id
+    GROUP BY t.id
+    ORDER BY model_count DESC, t.name ASC
+');
+
+$tags = [];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $tags[] = $row;
+}
+
+require_once 'includes/header.php';
+?>
+
+        <div class="page-container-wide">
+            <div class="page-header">
+                <h1>Tags</h1>
+                <p>Browse models by tag</p>
+            </div>
+
+            <?php if (empty($tags)): ?>
+                <p class="text-muted" style="text-align: center; padding: 3rem;">No tags yet. Tags can be added when uploading or editing models.</p>
+            <?php else: ?>
+                <div class="categories-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <?php foreach ($tags as $tag): ?>
+                    <a href="browse.php?tag=<?= $tag['id'] ?>" class="category-card" style="border-left: 4px solid <?= htmlspecialchars($tag['color']) ?>;">
+                        <span class="category-name"><?= htmlspecialchars($tag['name']) ?></span>
+                        <span class="category-count"><?= $tag['model_count'] ?> model<?= $tag['model_count'] !== 1 ? 's' : '' ?></span>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+<?php require_once 'includes/footer.php'; ?>

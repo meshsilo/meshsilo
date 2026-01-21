@@ -47,6 +47,26 @@ $contentTypes = [
 ];
 $contentType = $contentTypes[$extension] ?? 'application/octet-stream';
 
+// Increment download count (for both the part and its parent if it has one)
+incrementDownloadCount($partId);
+if ($part['parent_id']) {
+    incrementDownloadCount($part['parent_id']);
+}
+
+// Log the download activity
+$modelName = $part['name'];
+if ($part['parent_id']) {
+    // Get parent model name for better context
+    $parentStmt = $db->prepare('SELECT name FROM models WHERE id = :id');
+    $parentStmt->bindValue(':id', $part['parent_id'], SQLITE3_INTEGER);
+    $parentResult = $parentStmt->execute();
+    $parent = $parentResult->fetchArray(SQLITE3_ASSOC);
+    if ($parent) {
+        $modelName = $parent['name'] . ' / ' . $part['name'];
+    }
+}
+logActivity('download', 'model', $part['parent_id'] ?? $partId, $modelName);
+
 // Send file
 header('Content-Type: ' . $contentType);
 header('Content-Disposition: attachment; filename="' . $filename . '"');

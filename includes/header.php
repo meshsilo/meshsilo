@@ -1,10 +1,19 @@
+<?php
+// Determine current theme
+$defaultTheme = getSetting('default_theme', 'dark');
+$allowUserTheme = getSetting('allow_user_theme', '1') === '1';
+$currentTheme = $defaultTheme;
+if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
+    $currentTheme = $_COOKIE['silo_theme'] === 'light' ? 'light' : 'dark';
+}
+?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="<?= htmlspecialchars($currentTheme) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $pageTitle ?? SITE_NAME ?> - <?= SITE_NAME ?></title>
-    <link rel="stylesheet" href="<?= basePath('css/style.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=2">
 
     <!-- Three.js for 3D model rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -12,8 +21,25 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="<?= basePath('js/viewer.js') ?>?v=4" defer></script>
-    <script src="<?= basePath('js/main.js') ?>" defer></script>
+    <script src="<?= basePath('js/viewer.js') ?>?v=5" defer></script>
+    <script src="<?= basePath('js/main.js') ?>?v=2" defer></script>
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.cookie = 'silo_theme=' + newTheme + ';path=/;max-age=31536000';
+            updateThemeIcon(newTheme);
+        }
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.textContent = theme === 'light' ? '\u263E' : '\u2600';
+            }
+        }
+    </script>
 </head>
 <body>
     <header class="site-header">
@@ -30,14 +56,25 @@
                 <?php if (getSetting('enable_collections', '1') === '1'): ?>
                 <a href="<?= basePath('collections.php') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
                 <?php endif; ?>
+                <?php if (getSetting('enable_tags', '1') === '1'): ?>
+                <a href="<?= basePath('tags.php') ?>" <?= ($activePage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
+                <?php endif; ?>
                 <?php if (canUpload()): ?>
                 <a href="<?= basePath('upload.php') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
                 <?php endif; ?>
             </nav>
             <div class="header-actions">
-                <input type="search" class="search-bar" placeholder="Search models...">
+                <form action="<?= basePath('browse.php') ?>" method="get" style="display: contents;">
+                    <input type="search" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
+                </form>
+                <?php if ($allowUserTheme): ?>
+                <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span id="theme-icon"><?= $currentTheme === 'light' ? '&#9790;' : '&#9728;' ?></span>
+                </button>
+                <?php endif; ?>
                 <?php if (isLoggedIn()): ?>
                     <?php $user = getCurrentUser(); ?>
+                    <a href="<?= basePath('favorites.php') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
                     <?php if ($user['is_admin']): ?>
                         <a href="<?= basePath('admin/settings.php') ?>" class="btn btn-secondary">Admin</a>
                     <?php endif; ?>

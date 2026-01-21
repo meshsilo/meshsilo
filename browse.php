@@ -1,0 +1,344 @@
+<?php
+require_once 'includes/config.php';
+require_once 'includes/dedup.php';
+
+$pageTitle = 'Browse Models';
+$activePage = 'browse';
+
+$db = getDB();
+
+// Get filter parameters
+$search = trim($_GET['q'] ?? '');
+$categoryId = (int)($_GET['category'] ?? 0);
+$tagId = (int)($_GET['tag'] ?? 0);
+$sort = $_GET['sort'] ?? getSetting('default_sort', 'newest');
+$view = $_GET['view'] ?? ($_COOKIE['silo_view'] ?? getSetting('default_view', 'grid'));
+$showArchived = isset($_GET['archived']) && $_GET['archived'] === '1';
+$page = max(1, (int)($_GET['page'] ?? 1));
+$perPage = (int)getSetting('models_per_page', 20);
+$offset = ($page - 1) * $perPage;
+
+// Save view preference
+if (isset($_GET['view'])) {
+    setcookie('silo_view', $view, time() + 31536000, '/');
+}
+
+// Build query
+$where = ['m.parent_id IS NULL'];
+$params = [];
+
+// Search filter
+if ($search !== '') {
+    $where[] = '(m.name LIKE :search OR m.description LIKE :search OR m.creator LIKE :search)';
+    $params[':search'] = '%' . $search . '%';
+}
+
+// Category filter
+if ($categoryId > 0) {
+    $where[] = 'EXISTS (SELECT 1 FROM model_categories mc WHERE mc.model_id = m.id AND mc.category_id = :category_id)';
+    $params[':category_id'] = $categoryId;
+}
+
+// Tag filter
+if ($tagId > 0) {
+    $where[] = 'EXISTS (SELECT 1 FROM model_tags mt WHERE mt.model_id = m.id AND mt.tag_id = :tag_id)';
+    $params[':tag_id'] = $tagId;
+}
+
+// Archive filter
+if (!$showArchived) {
+    $where[] = '(m.is_archived = 0 OR m.is_archived IS NULL)';
+}
+
+$whereClause = implode(' AND ', $where);
+
+// Sort options
+$orderBy = match($sort) {
+    'oldest' => 'm.created_at ASC',
+    'name' => 'm.name ASC',
+    'name_desc' => 'm.name DESC',
+    'size' => 'm.file_size DESC',
+    'size_asc' => 'm.file_size ASC',
+    'parts' => 'm.part_count DESC',
+    'downloads' => 'm.download_count DESC',
+    default => 'm.created_at DESC' // newest
+};
+
+// Get total count
+$countSql = "SELECT COUNT(*) FROM models m WHERE $whereClause";
+$countStmt = $db->prepare($countSql);
+foreach ($params as $key => $value) {
+    $countStmt->bindValue($key, $value);
+}
+$totalModels = (int)$countStmt->fetchColumn();
+$totalPages = ceil($totalModels / $perPage);
+
+// Get models
+$sql = "SELECT m.* FROM models m WHERE $whereClause ORDER BY $orderBy LIMIT :limit OFFSET :offset";
+$stmt = $db->prepare($sql);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
+$stmt->bindValue(':limit', $perPage, SQLITE3_INTEGER);
+$stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
+$result = $stmt->execute();
+
+$models = [];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    // For multi-part models, get the first part for preview
+    if ($row['part_count'] > 0) {
+        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
+        $partResult = $partStmt->execute();
+        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        if ($firstPart) {
+            $row['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+            $row['preview_type'] = $firstPart['file_type'];
+        }
+    } else {
+        $row['preview_path'] = getRealFilePath($row) . '?v=' . ($row['file_size'] ?? time());
+        $row['preview_type'] = $row['file_type'];
+    }
+
+    // Get tags for model
+    $row['tags'] = getModelTags($row['id']);
+
+    $models[] = $row;
+}
+
+// Get categories for filter dropdown
+$categories = [];
+$catResult = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
+while ($row = $catResult->fetchArray(SQLITE3_ASSOC)) {
+    $categories[] = $row;
+}
+
+// Get tags for filter dropdown
+$tags = getAllTags();
+
+// Get active filter names for display
+$activeCategory = null;
+if ($categoryId > 0) {
+    $catStmt = $db->prepare('SELECT name FROM categories WHERE id = :id');
+    $catStmt->bindValue(':id', $categoryId, SQLITE3_INTEGER);
+    $activeCategory = $catStmt->fetchColumn();
+}
+
+$activeTag = null;
+if ($tagId > 0) {
+    $tagStmt = $db->prepare('SELECT name, color FROM tags WHERE id = :id');
+    $tagStmt->bindValue(':id', $tagId, SQLITE3_INTEGER);
+    $activeTag = $tagStmt->fetch();
+}
+
+// Helper function
+function formatBytes($bytes, $precision = 2) {
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= pow(1024, $pow);
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+// Build URL helper for pagination/sorting
+function buildUrl($params = []) {
+    $current = $_GET;
+    foreach ($params as $key => $value) {
+        if ($value === null) {
+            unset($current[$key]);
+        } else {
+            $current[$key] = $value;
+        }
+    }
+    return '?' . http_build_query($current);
+}
+
+require_once 'includes/header.php';
+?>
+
+        <div class="page-container-wide">
+            <div class="page-header">
+                <h1>
+                    <?php if ($search): ?>
+                        Search: "<?= htmlspecialchars($search) ?>"
+                    <?php elseif ($activeCategory): ?>
+                        Category: <?= htmlspecialchars($activeCategory) ?>
+                    <?php elseif ($activeTag): ?>
+                        Tag: <?= htmlspecialchars($activeTag['name']) ?>
+                    <?php else: ?>
+                        All Models
+                    <?php endif; ?>
+                </h1>
+                <p><?= number_format($totalModels) ?> model<?= $totalModels !== 1 ? 's' : '' ?> found</p>
+            </div>
+
+            <div class="browse-controls">
+                <div class="browse-filters">
+                    <select class="sort-select" onchange="location.href=this.value">
+                        <option value="<?= buildUrl(['sort' => 'newest', 'page' => 1]) ?>" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
+                        <option value="<?= buildUrl(['sort' => 'oldest', 'page' => 1]) ?>" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
+                        <option value="<?= buildUrl(['sort' => 'name', 'page' => 1]) ?>" <?= $sort === 'name' ? 'selected' : '' ?>>Name A-Z</option>
+                        <option value="<?= buildUrl(['sort' => 'name_desc', 'page' => 1]) ?>" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name Z-A</option>
+                        <option value="<?= buildUrl(['sort' => 'size', 'page' => 1]) ?>" <?= $sort === 'size' ? 'selected' : '' ?>>Largest First</option>
+                        <option value="<?= buildUrl(['sort' => 'parts', 'page' => 1]) ?>" <?= $sort === 'parts' ? 'selected' : '' ?>>Most Parts</option>
+                        <option value="<?= buildUrl(['sort' => 'downloads', 'page' => 1]) ?>" <?= $sort === 'downloads' ? 'selected' : '' ?>>Most Downloads</option>
+                    </select>
+
+                    <select class="sort-select" onchange="if(this.value) location.href=this.value">
+                        <option value="">Filter by Category...</option>
+                        <?php foreach ($categories as $cat): ?>
+                        <option value="<?= buildUrl(['category' => $cat['id'], 'page' => 1]) ?>" <?= $categoryId == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?> (<?= $cat['model_count'] ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <?php if (!empty($tags)): ?>
+                    <select class="sort-select" onchange="if(this.value) location.href=this.value">
+                        <option value="">Filter by Tag...</option>
+                        <?php foreach ($tags as $tag): ?>
+                        <option value="<?= buildUrl(['tag' => $tag['id'], 'page' => 1]) ?>" <?= $tagId == $tag['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tag['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+
+                    <?php if ($search || $categoryId || $tagId): ?>
+                    <div class="active-filters">
+                        <?php if ($search): ?>
+                        <span class="active-filter">
+                            Search: <?= htmlspecialchars($search) ?>
+                            <a href="<?= buildUrl(['q' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
+                        </span>
+                        <?php endif; ?>
+                        <?php if ($activeCategory): ?>
+                        <span class="active-filter">
+                            <?= htmlspecialchars($activeCategory) ?>
+                            <a href="<?= buildUrl(['category' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
+                        </span>
+                        <?php endif; ?>
+                        <?php if ($activeTag): ?>
+                        <span class="active-filter" style="background-color: <?= htmlspecialchars($activeTag['color']) ?>">
+                            <?= htmlspecialchars($activeTag['name']) ?>
+                            <a href="<?= buildUrl(['tag' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="view-controls">
+                    <div class="view-toggle">
+                        <a href="<?= buildUrl(['view' => 'grid']) ?>" class="view-toggle-btn <?= $view === 'grid' ? 'active' : '' ?>" title="Grid view">&#9638;</a>
+                        <a href="<?= buildUrl(['view' => 'list']) ?>" class="view-toggle-btn <?= $view === 'list' ? 'active' : '' ?>" title="List view">&#9776;</a>
+                    </div>
+                </div>
+            </div>
+
+            <?php if (empty($models)): ?>
+                <p class="text-muted" style="text-align: center; padding: 3rem;">No models found. <?php if (!$search && !$categoryId && !$tagId): ?><a href="upload.php">Upload your first model!</a><?php endif; ?></p>
+            <?php elseif ($view === 'list'): ?>
+                <div class="models-list">
+                    <?php foreach ($models as $model): ?>
+                    <article class="model-list-item <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                        <div class="model-list-thumbnail"
+                            <?php if (!empty($model['preview_path'])): ?>
+                            data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
+                            data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
+                            <?php endif; ?>>
+                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
+                        </div>
+                        <div class="model-list-info">
+                            <h3 class="model-list-title"><?= htmlspecialchars($model['name']) ?></h3>
+                            <?php if ($model['creator']): ?>
+                            <p class="model-creator">by <?= htmlspecialchars($model['creator']) ?></p>
+                            <?php endif; ?>
+                            <div class="model-list-meta">
+                                <span><?= formatBytes($model['file_size'] ?? 0) ?></span>
+                                <?php if ($model['part_count'] > 0): ?>
+                                <span><?= $model['part_count'] ?> parts</span>
+                                <?php endif; ?>
+                                <span><?= date('M j, Y', strtotime($model['created_at'])) ?></span>
+                                <?php if ($model['download_count'] > 0): ?>
+                                <span class="download-count"><?= number_format($model['download_count']) ?> downloads</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($model['tags'])): ?>
+                            <div class="model-tags" style="margin-top: 0.5rem; margin-bottom: 0;">
+                                <?php foreach ($model['tags'] as $tag): ?>
+                                <span class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>"><?= htmlspecialchars($tag['name']) ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="model-list-actions" onclick="event.stopPropagation()">
+                            <?php if ($model['is_archived']): ?>
+                            <span class="archived-badge">Archived</span>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="models-grid">
+                    <?php foreach ($models as $model): ?>
+                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                        <div class="model-thumbnail"
+                            <?php if (!empty($model['preview_path'])): ?>
+                            data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
+                            data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
+                            <?php endif; ?>>
+                            <?php if ($model['part_count'] > 0): ?>
+                            <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
+                            <?php endif; ?>
+                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
+                            <?php if ($model['is_archived']): ?>
+                            <span class="archived-badge" style="position: absolute; bottom: 0.5rem; left: 0.5rem;">Archived</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="model-info">
+                            <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
+                            <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
+                            <?php if ($model['download_count'] > 0): ?>
+                            <p class="download-count" style="margin-top: 0.25rem;"><?= number_format($model['download_count']) ?> downloads</p>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($totalPages > 1): ?>
+            <nav class="pagination">
+                <?php if ($page > 1): ?>
+                <a href="<?= buildUrl(['page' => $page - 1]) ?>" class="pagination-btn">&laquo; Prev</a>
+                <?php endif; ?>
+
+                <?php
+                $startPage = max(1, $page - 2);
+                $endPage = min($totalPages, $page + 2);
+
+                if ($startPage > 1): ?>
+                <a href="<?= buildUrl(['page' => 1]) ?>" class="pagination-btn">1</a>
+                <?php if ($startPage > 2): ?>
+                <span class="pagination-ellipsis">...</span>
+                <?php endif; ?>
+                <?php endif; ?>
+
+                <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                <a href="<?= buildUrl(['page' => $i]) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                <?php endfor; ?>
+
+                <?php if ($endPage < $totalPages): ?>
+                <?php if ($endPage < $totalPages - 1): ?>
+                <span class="pagination-ellipsis">...</span>
+                <?php endif; ?>
+                <a href="<?= buildUrl(['page' => $totalPages]) ?>" class="pagination-btn"><?= $totalPages ?></a>
+                <?php endif; ?>
+
+                <?php if ($page < $totalPages): ?>
+                <a href="<?= buildUrl(['page' => $page + 1]) ?>" class="pagination-btn">Next &raquo;</a>
+                <?php endif; ?>
+            </nav>
+            <?php endif; ?>
+        </div>
+
+<?php require_once 'includes/footer.php'; ?>

@@ -492,3 +492,110 @@ function recalculate3mfHashes() {
     logInfo('Recalculated 3MF hashes', ['count' => $updated]);
     return $updated;
 }
+
+/**
+ * Check for duplicate files before upload
+ * Returns array of existing models that match the given file hash
+ */
+function findExistingByHash($hash) {
+    if (empty($hash)) {
+        return [];
+    }
+
+    $db = getDB();
+    $stmt = $db->prepare('
+        SELECT m.*, p.name as parent_name, p.id as parent_model_id
+        FROM models m
+        LEFT JOIN models p ON m.parent_id = p.id
+        WHERE m.file_hash = :hash
+        ORDER BY m.created_at DESC
+        LIMIT 10
+    ');
+    $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+    $result = $stmt->execute();
+
+    $models = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $models[] = $row;
+    }
+    return $models;
+}
+
+/**
+ * Check a temp file for duplicates before processing upload
+ * @param string $tempPath Path to the temporary uploaded file
+ * @return array ['is_duplicate' => bool, 'hash' => string, 'existing' => array]
+ */
+function checkUploadForDuplicates($tempPath) {
+    if (!file_exists($tempPath)) {
+        return ['is_duplicate' => false, 'hash' => null, 'existing' => []];
+    }
+
+    $hash = calculateContentHash($tempPath);
+    if (!$hash) {
+        return ['is_duplicate' => false, 'hash' => null, 'existing' => []];
+    }
+
+    $existing = findExistingByHash($hash);
+
+    return [
+        'is_duplicate' => !empty($existing),
+        'hash' => $hash,
+        'existing' => $existing
+    ];
+}
+
+/**
+ * Find duplicate models by name (loose matching)
+ * @param string $name Model name to check
+ * @return array Existing models with similar names
+ */
+function findSimilarByName($name) {
+    if (empty($name)) {
+        return [];
+    }
+
+    $db = getDB();
+    // Normalize name for comparison
+    $normalized = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', ' ', $name)));
+    $words = array_filter(explode(' ', $normalized));
+
+    if (empty($words)) {
+        return [];
+    }
+
+    // Search for models containing the main words
+    $where = [];
+    $params = [];
+    $i = 0;
+    foreach (array_slice($words, 0, 3) as $word) { // Use first 3 significant words
+        if (strlen($word) >= 3) {
+            $where[] = "LOWER(name) LIKE :word$i";
+            $params[":word$i"] = '%' . $word . '%';
+            $i++;
+        }
+    }
+
+    if (empty($where)) {
+        return [];
+    }
+
+    $sql = '
+        SELECT id, name, creator, created_at
+        FROM models
+        WHERE parent_id IS NULL AND (' . implode(' OR ', $where) . ')
+        ORDER BY created_at DESC
+        LIMIT 5
+    ';
+    $stmt = $db->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, SQLITE3_TEXT);
+    }
+    $result = $stmt->execute();
+
+    $models = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $models[] = $row;
+    }
+    return $models;
+}

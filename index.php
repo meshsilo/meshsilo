@@ -70,6 +70,35 @@ if (isset($_SESSION['success'])) {
     unset($_SESSION['error']);
 }
 
+// Get recently viewed models
+$recentlyViewed = getRecentlyViewed(6);
+// Enhance with preview data
+foreach ($recentlyViewed as &$rv) {
+    if ($rv['part_count'] > 0) {
+        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt->bindValue(':parent_id', $rv['id'], SQLITE3_INTEGER);
+        $partResult = $partStmt->execute();
+        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        if ($firstPart) {
+            $rv['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+            $rv['preview_type'] = $firstPart['file_type'];
+        }
+    } else {
+        $rv['preview_path'] = getRealFilePath($rv) . '?v=' . ($rv['file_size'] ?? time());
+        $rv['preview_type'] = $rv['file_type'];
+    }
+}
+unset($rv);
+
+// Get popular tags
+$popularTags = [];
+if (getSetting('enable_tags', '1') === '1') {
+    $tagResult = $db->query('SELECT t.*, COUNT(mt.model_id) as model_count FROM tags t JOIN model_tags mt ON t.id = mt.tag_id GROUP BY t.id ORDER BY model_count DESC LIMIT 10');
+    while ($row = $tagResult->fetchArray(SQLITE3_ASSOC)) {
+        $popularTags[] = $row;
+    }
+}
+
 require_once 'includes/header.php';
 ?>
 
@@ -84,16 +113,41 @@ require_once 'includes/header.php';
             </div>
         </section>
 
+        <?php if (!empty($recentlyViewed)): ?>
+        <section class="models-section recently-viewed-section">
+            <div class="section-header">
+                <h2>Recently Viewed</h2>
+            </div>
+            <div class="recently-viewed-grid">
+                <?php foreach ($recentlyViewed as $rv): ?>
+                <article class="model-card recently-viewed-card" onclick="window.location='model.php?id=<?= $rv['id'] ?>'">
+                    <div class="model-thumbnail"
+                        <?php if (!empty($rv['preview_path'])): ?>
+                        data-model-url="<?= htmlspecialchars($rv['preview_path']) ?>"
+                        data-file-type="<?= htmlspecialchars($rv['preview_type']) ?>"
+                        <?php endif; ?>>
+                        <span class="file-type-badge">.<?= htmlspecialchars($rv['preview_type'] ?? $rv['file_type'] ?? 'stl') ?></span>
+                    </div>
+                    <div class="model-info">
+                        <h3 class="model-title"><?= htmlspecialchars($rv['name']) ?></h3>
+                    </div>
+                </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php endif; ?>
+
         <section class="models-section">
             <div class="section-header">
                 <h2>Recent Models</h2>
+                <a href="browse.php" class="btn btn-secondary btn-small">View All</a>
             </div>
             <div class="models-grid">
                 <?php if (empty($models)): ?>
                     <p class="text-muted">No models yet. <a href="upload.php">Upload your first model!</a></p>
                 <?php else: ?>
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
                         <div class="model-thumbnail"
                             <?php if (!empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
@@ -124,13 +178,31 @@ require_once 'includes/header.php';
             </div>
         </section>
 
+        <?php if (!empty($popularTags)): ?>
+        <section class="models-section">
+            <div class="section-header">
+                <h2>Popular Tags</h2>
+                <a href="tags.php" class="btn btn-secondary btn-small">View All</a>
+            </div>
+            <div class="model-tags" style="padding: 0 1rem;">
+                <?php foreach ($popularTags as $tag): ?>
+                <a href="browse.php?tag=<?= $tag['id'] ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none; font-size: 0.875rem; padding: 0.5rem 1rem;">
+                    <?= htmlspecialchars($tag['name']) ?>
+                    <span style="opacity: 0.8; margin-left: 0.25rem;">(<?= $tag['model_count'] ?>)</span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php endif; ?>
+
         <section class="categories-section">
             <div class="section-header">
                 <h2>Categories</h2>
+                <a href="categories.php" class="btn btn-secondary btn-small">View All</a>
             </div>
             <div class="categories-grid">
                 <?php foreach ($categories as $category): ?>
-                <a href="category.php?id=<?= $category['id'] ?>" class="category-card">
+                <a href="browse.php?category=<?= $category['id'] ?>" class="category-card">
                     <span class="category-name"><?= htmlspecialchars($category['name']) ?></span>
                     <span class="category-count"><?= $category['model_count'] ?> models</span>
                 </a>

@@ -445,6 +445,184 @@ function runMigrations($db) {
         return;
     }
 
+    // =====================
+    // Priority 1 & 2 Feature Migrations
+    // =====================
+
+    // Migration: Tags table
+    if (!tableExists($db, 'tags')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE tags (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL UNIQUE,
+                color VARCHAR(7) DEFAULT "#6366f1",
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                color TEXT DEFAULT "#6366f1",
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )');
+        }
+        logInfo('Migration: Created tags table');
+    }
+
+    // Migration: Model-Tags junction table
+    if (!tableExists($db, 'model_tags')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE model_tags (
+                model_id INT NOT NULL,
+                tag_id INT NOT NULL,
+                PRIMARY KEY (model_id, tag_id),
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE model_tags (
+                model_id INTEGER NOT NULL,
+                tag_id INTEGER NOT NULL,
+                PRIMARY KEY (model_id, tag_id),
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created model_tags table');
+    }
+
+    // Migration: Favorites table
+    if (!tableExists($db, 'favorites')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE favorites (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                model_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_favorite (user_id, model_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE favorites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, model_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created favorites table');
+    }
+
+    // Migration: Activity log table
+    if (!tableExists($db, 'activity_log')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE activity_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                action VARCHAR(50) NOT NULL,
+                entity_type VARCHAR(50) NOT NULL,
+                entity_id INT,
+                entity_name VARCHAR(255),
+                details TEXT,
+                ip_address VARCHAR(45),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+            $db->exec('CREATE INDEX idx_activity_created ON activity_log(created_at)');
+            $db->exec('CREATE INDEX idx_activity_user ON activity_log(user_id)');
+        } else {
+            $db->exec('CREATE TABLE activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                action TEXT NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id INTEGER,
+                entity_name TEXT,
+                details TEXT,
+                ip_address TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            )');
+            $db->exec('CREATE INDEX idx_activity_created ON activity_log(created_at)');
+            $db->exec('CREATE INDEX idx_activity_user ON activity_log(user_id)');
+        }
+        logInfo('Migration: Created activity_log table');
+    }
+
+    // Migration: Recently viewed table
+    if (!tableExists($db, 'recently_viewed')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE recently_viewed (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                session_id VARCHAR(64),
+                model_id INT NOT NULL,
+                viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+            $db->exec('CREATE INDEX idx_recent_user ON recently_viewed(user_id, viewed_at)');
+            $db->exec('CREATE INDEX idx_recent_session ON recently_viewed(session_id, viewed_at)');
+        } else {
+            $db->exec('CREATE TABLE recently_viewed (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                session_id TEXT,
+                model_id INTEGER NOT NULL,
+                viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+            )');
+            $db->exec('CREATE INDEX idx_recent_user ON recently_viewed(user_id, viewed_at)');
+            $db->exec('CREATE INDEX idx_recent_session ON recently_viewed(session_id, viewed_at)');
+        }
+        logInfo('Migration: Created recently_viewed table');
+    }
+
+    // Migration: Add download_count to models
+    if (!columnExists($db, 'models', 'download_count')) {
+        $db->exec('ALTER TABLE models ADD COLUMN download_count INTEGER DEFAULT 0');
+        logInfo('Migration: Added download_count column to models table');
+    }
+
+    // Migration: Add license to models
+    if (!columnExists($db, 'models', 'license')) {
+        if ($type === 'mysql') {
+            $db->exec('ALTER TABLE models ADD COLUMN license VARCHAR(100)');
+        } else {
+            $db->exec('ALTER TABLE models ADD COLUMN license TEXT');
+        }
+        logInfo('Migration: Added license column to models table');
+    }
+
+    // Migration: Add is_archived to models
+    if (!columnExists($db, 'models', 'is_archived')) {
+        $db->exec('ALTER TABLE models ADD COLUMN is_archived INTEGER DEFAULT 0');
+        logInfo('Migration: Added is_archived column to models table');
+    }
+
+    // Migration: Add notes to models (for parts)
+    if (!columnExists($db, 'models', 'notes')) {
+        $db->exec('ALTER TABLE models ADD COLUMN notes TEXT');
+        logInfo('Migration: Added notes column to models table');
+    }
+
+    // Migration: Add is_printed to models (for parts)
+    if (!columnExists($db, 'models', 'is_printed')) {
+        $db->exec('ALTER TABLE models ADD COLUMN is_printed INTEGER DEFAULT 0');
+        logInfo('Migration: Added is_printed column to models table');
+    }
+
+    // Migration: Add printed_at to models
+    if (!columnExists($db, 'models', 'printed_at')) {
+        $db->exec('ALTER TABLE models ADD COLUMN printed_at DATETIME');
+        logInfo('Migration: Added printed_at column to models table');
+    }
+
     // Migration: Add permissions column to users
     if (!columnExists($db, 'users', 'permissions')) {
         $db->exec('ALTER TABLE users ADD COLUMN permissions TEXT');
@@ -580,6 +758,7 @@ function runMigrations($db) {
         'require_approval' => '0',
         'enable_categories' => '1',
         'enable_collections' => '1',
+        'enable_tags' => '1',
         'allowed_extensions' => 'stl,3mf,zip',
         'auto_deduplication' => '0',
         'last_deduplication' => '',
@@ -589,7 +768,16 @@ function runMigrations($db) {
         'oidc_client_secret' => '',
         'oidc_button_text' => 'Sign in with SSO',
         'site_url' => '',
-        'force_site_url' => '0'
+        'force_site_url' => '0',
+        // Theme settings
+        'default_theme' => 'dark',
+        'allow_user_theme' => '1',
+        // View settings
+        'default_view' => 'grid',
+        'default_sort' => 'newest',
+        // Activity log settings
+        'enable_activity_log' => '1',
+        'activity_log_retention_days' => '90'
     ];
 
     $keyCol = $type === 'mysql' ? '`key`' : 'key';
@@ -674,4 +862,440 @@ function isExtensionAllowed($extension) {
 // Check if an extension is a model format (not a container like zip)
 function isModelExtension($extension) {
     return in_array(strtolower($extension), getModelExtensions());
+}
+
+// =====================
+// Tag Functions
+// =====================
+
+// Get all tags
+function getAllTags() {
+    try {
+        $db = getDB();
+        $result = $db->query('SELECT * FROM tags ORDER BY name');
+        $tags = [];
+        while ($row = $result->fetch()) {
+            $tags[] = $row;
+        }
+        return $tags;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Get tags for a model
+function getModelTags($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            SELECT t.* FROM tags t
+            JOIN model_tags mt ON t.id = mt.tag_id
+            WHERE mt.model_id = :model_id
+            ORDER BY t.name
+        ');
+        $stmt->execute([':model_id' => $modelId]);
+        $tags = [];
+        while ($row = $stmt->fetch()) {
+            $tags[] = $row;
+        }
+        return $tags;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Add tag to model
+function addTagToModel($modelId, $tagId) {
+    try {
+        $db = getDB();
+        $type = $db->getType();
+        $insertIgnore = $type === 'mysql' ? 'INSERT IGNORE' : 'INSERT OR IGNORE';
+        $stmt = $db->prepare("$insertIgnore INTO model_tags (model_id, tag_id) VALUES (:model_id, :tag_id)");
+        $stmt->execute([':model_id' => $modelId, ':tag_id' => $tagId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Remove tag from model
+function removeTagFromModel($modelId, $tagId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('DELETE FROM model_tags WHERE model_id = :model_id AND tag_id = :tag_id');
+        $stmt->execute([':model_id' => $modelId, ':tag_id' => $tagId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Create a new tag
+function createTag($name, $color = '#6366f1') {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('INSERT INTO tags (name, color) VALUES (:name, :color)');
+        $stmt->execute([':name' => trim($name), ':color' => $color]);
+        return $db->lastInsertId();
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Delete a tag
+function deleteTag($tagId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('DELETE FROM tags WHERE id = :id');
+        $stmt->execute([':id' => $tagId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Get tag by name (case insensitive)
+function getTagByName($name) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT * FROM tags WHERE LOWER(name) = LOWER(:name)');
+        $stmt->execute([':name' => trim($name)]);
+        return $stmt->fetch();
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+// Get or create tag by name
+function getOrCreateTag($name, $color = '#6366f1') {
+    $tag = getTagByName($name);
+    if ($tag) {
+        return $tag['id'];
+    }
+    return createTag($name, $color);
+}
+
+// =====================
+// Favorites Functions
+// =====================
+
+// Check if model is favorited by user
+function isModelFavorited($modelId, $userId = null) {
+    if (!$userId) {
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+    }
+    if (!$userId) return false;
+
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT id FROM favorites WHERE model_id = :model_id AND user_id = :user_id');
+        $stmt->execute([':model_id' => $modelId, ':user_id' => $userId]);
+        return $stmt->fetch() !== false;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Toggle favorite status
+function toggleFavorite($modelId, $userId = null) {
+    if (!$userId) {
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+    }
+    if (!$userId) return ['success' => false, 'error' => 'Not logged in'];
+
+    try {
+        $db = getDB();
+
+        if (isModelFavorited($modelId, $userId)) {
+            $stmt = $db->prepare('DELETE FROM favorites WHERE model_id = :model_id AND user_id = :user_id');
+            $stmt->execute([':model_id' => $modelId, ':user_id' => $userId]);
+            return ['success' => true, 'favorited' => false];
+        } else {
+            $stmt = $db->prepare('INSERT INTO favorites (model_id, user_id) VALUES (:model_id, :user_id)');
+            $stmt->execute([':model_id' => $modelId, ':user_id' => $userId]);
+            return ['success' => true, 'favorited' => true];
+        }
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+// Get user's favorites
+function getUserFavorites($userId = null, $limit = 50) {
+    if (!$userId) {
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+    }
+    if (!$userId) return [];
+
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            SELECT m.* FROM models m
+            JOIN favorites f ON m.id = f.model_id
+            WHERE f.user_id = :user_id AND m.parent_id IS NULL
+            ORDER BY f.created_at DESC
+            LIMIT :limit
+        ');
+        $stmt->execute([':user_id' => $userId, ':limit' => $limit]);
+        $favorites = [];
+        while ($row = $stmt->fetch()) {
+            $favorites[] = $row;
+        }
+        return $favorites;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Get favorite count for a model
+function getModelFavoriteCount($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT COUNT(*) FROM favorites WHERE model_id = :model_id');
+        $stmt->execute([':model_id' => $modelId]);
+        return (int)$stmt->fetchColumn();
+    } catch (Exception $e) {
+        return 0;
+    }
+}
+
+// =====================
+// Activity Log Functions
+// =====================
+
+// Log an activity
+function logActivity($action, $entityType, $entityId = null, $entityName = null, $details = null) {
+    if (getSetting('enable_activity_log', '1') !== '1') {
+        return true;
+    }
+
+    try {
+        $db = getDB();
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+
+        $stmt = $db->prepare('
+            INSERT INTO activity_log (user_id, action, entity_type, entity_id, entity_name, details, ip_address)
+            VALUES (:user_id, :action, :entity_type, :entity_id, :entity_name, :details, :ip_address)
+        ');
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':action' => $action,
+            ':entity_type' => $entityType,
+            ':entity_id' => $entityId,
+            ':entity_name' => $entityName,
+            ':details' => is_array($details) ? json_encode($details) : $details,
+            ':ip_address' => $ipAddress
+        ]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Get activity log entries
+function getActivityLog($limit = 50, $offset = 0, $filters = []) {
+    try {
+        $db = getDB();
+        $where = ['1=1'];
+        $params = [];
+
+        if (!empty($filters['user_id'])) {
+            $where[] = 'al.user_id = :user_id';
+            $params[':user_id'] = $filters['user_id'];
+        }
+        if (!empty($filters['action'])) {
+            $where[] = 'al.action = :action';
+            $params[':action'] = $filters['action'];
+        }
+        if (!empty($filters['entity_type'])) {
+            $where[] = 'al.entity_type = :entity_type';
+            $params[':entity_type'] = $filters['entity_type'];
+        }
+
+        $whereClause = implode(' AND ', $where);
+
+        $stmt = $db->prepare("
+            SELECT al.*, u.username
+            FROM activity_log al
+            LEFT JOIN users u ON al.user_id = u.id
+            WHERE $whereClause
+            ORDER BY al.created_at DESC
+            LIMIT :limit OFFSET :offset
+        ");
+        $params[':limit'] = $limit;
+        $params[':offset'] = $offset;
+        $stmt->execute($params);
+
+        $activities = [];
+        while ($row = $stmt->fetch()) {
+            $activities[] = $row;
+        }
+        return $activities;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Clean old activity log entries
+function cleanActivityLog() {
+    $retentionDays = (int)getSetting('activity_log_retention_days', '90');
+    if ($retentionDays <= 0) return true;
+
+    try {
+        $db = getDB();
+        $type = $db->getType();
+
+        if ($type === 'mysql') {
+            $stmt = $db->prepare('DELETE FROM activity_log WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY)');
+        } else {
+            $stmt = $db->prepare("DELETE FROM activity_log WHERE created_at < datetime('now', '-' || :days || ' days')");
+        }
+        $stmt->execute([':days' => $retentionDays]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// =====================
+// Recently Viewed Functions
+// =====================
+
+// Record a model view
+function recordModelView($modelId) {
+    try {
+        $db = getDB();
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+        $sessionId = session_id();
+
+        // Delete existing entry for this model (user or session based)
+        if ($userId) {
+            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE model_id = :model_id AND user_id = :user_id');
+            $stmt->execute([':model_id' => $modelId, ':user_id' => $userId]);
+        } else {
+            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE model_id = :model_id AND session_id = :session_id');
+            $stmt->execute([':model_id' => $modelId, ':session_id' => $sessionId]);
+        }
+
+        // Insert new entry
+        $stmt = $db->prepare('
+            INSERT INTO recently_viewed (user_id, session_id, model_id)
+            VALUES (:user_id, :session_id, :model_id)
+        ');
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':session_id' => $sessionId,
+            ':model_id' => $modelId
+        ]);
+
+        // Limit to 50 most recent per user/session
+        if ($userId) {
+            $db->exec("DELETE FROM recently_viewed WHERE user_id = $userId AND id NOT IN (SELECT id FROM recently_viewed WHERE user_id = $userId ORDER BY viewed_at DESC LIMIT 50)");
+        } else {
+            $db->exec("DELETE FROM recently_viewed WHERE session_id = '$sessionId' AND id NOT IN (SELECT id FROM recently_viewed WHERE session_id = '$sessionId' ORDER BY viewed_at DESC LIMIT 50)");
+        }
+
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Get recently viewed models
+function getRecentlyViewed($limit = 10) {
+    try {
+        $db = getDB();
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+        $sessionId = session_id();
+
+        if ($userId) {
+            $stmt = $db->prepare('
+                SELECT m.* FROM models m
+                JOIN recently_viewed rv ON m.id = rv.model_id
+                WHERE rv.user_id = :user_id AND m.parent_id IS NULL
+                ORDER BY rv.viewed_at DESC
+                LIMIT :limit
+            ');
+            $stmt->execute([':user_id' => $userId, ':limit' => $limit]);
+        } else {
+            $stmt = $db->prepare('
+                SELECT m.* FROM models m
+                JOIN recently_viewed rv ON m.id = rv.model_id
+                WHERE rv.session_id = :session_id AND m.parent_id IS NULL
+                ORDER BY rv.viewed_at DESC
+                LIMIT :limit
+            ');
+            $stmt->execute([':session_id' => $sessionId, ':limit' => $limit]);
+        }
+
+        $models = [];
+        while ($row = $stmt->fetch()) {
+            $models[] = $row;
+        }
+        return $models;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// =====================
+// Download Count Functions
+// =====================
+
+// Increment download count
+function incrementDownloadCount($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('UPDATE models SET download_count = download_count + 1 WHERE id = :id');
+        $stmt->execute([':id' => $modelId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+// Get download count
+function getDownloadCount($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT download_count FROM models WHERE id = :id');
+        $stmt->execute([':id' => $modelId]);
+        $row = $stmt->fetch();
+        return $row ? (int)$row['download_count'] : 0;
+    } catch (Exception $e) {
+        return 0;
+    }
+}
+
+// =====================
+// License Constants
+// =====================
+
+function getLicenseOptions() {
+    return [
+        '' => 'No License Specified',
+        'cc0' => 'CC0 (Public Domain)',
+        'cc-by' => 'CC BY (Attribution)',
+        'cc-by-sa' => 'CC BY-SA (Attribution-ShareAlike)',
+        'cc-by-nc' => 'CC BY-NC (Attribution-NonCommercial)',
+        'cc-by-nc-sa' => 'CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)',
+        'cc-by-nd' => 'CC BY-ND (Attribution-NoDerivatives)',
+        'cc-by-nc-nd' => 'CC BY-NC-ND (Attribution-NonCommercial-NoDerivatives)',
+        'mit' => 'MIT License',
+        'gpl' => 'GPL (GNU General Public License)',
+        'proprietary' => 'Proprietary / All Rights Reserved',
+        'other' => 'Other'
+    ];
+}
+
+function getLicenseName($key) {
+    $options = getLicenseOptions();
+    return $options[$key] ?? $key;
 }

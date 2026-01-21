@@ -17,6 +17,52 @@
     --radius-lg: 12px;
 }
 
+/* Light Theme */
+[data-theme="light"] {
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-bg: #f8fafc;
+    --color-surface: #ffffff;
+    --color-surface-hover: #f1f5f9;
+    --color-text: #0f172a;
+    --color-text-muted: #64748b;
+    --color-border: #e2e8f0;
+}
+
+/* Ensure proper contrast for specific elements in light mode */
+[data-theme="light"] .file-type-badge {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+[data-theme="light"] .model-thumbnail {
+    background: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+}
+
+[data-theme="light"] .hero {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+[data-theme="light"] .alert-error {
+    background-color: rgba(239, 68, 68, 0.08);
+}
+
+[data-theme="light"] .alert-success {
+    background-color: rgba(34, 197, 94, 0.08);
+}
+
+[data-theme="light"] .viewer-controls .btn {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"] .toast {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .model-card::before {
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
+}
+
 body {
     font-family: system-ui, -apple-system, sans-serif;
     line-height: 1.6;
@@ -2666,4 +2712,641 @@ main {
     background-color: var(--color-primary);
     color: white;
     border-radius: 3px;
+}
+
+/* =====================
+   Tags
+   ===================== */
+.model-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.model-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background-color: var(--tag-color, #6366f1);
+    color: white;
+    transition: opacity 0.15s;
+}
+
+.model-tag:hover {
+    opacity: 0.9;
+}
+
+.model-tag-remove {
+    background: none;
+    border: none;
+    color: white;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.25rem;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.model-tag-remove:hover {
+    opacity: 1;
+}
+
+.tag-input-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.tag-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    margin-top: 0.25rem;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tag-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.tag-suggestion:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.tag-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+/* =====================
+   Favorites
+   ===================== */
+.favorite-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    font-size: 1.25rem;
+    color: var(--color-text-muted);
+    transition: color 0.15s, transform 0.15s;
+}
+
+.favorite-btn:hover {
+    color: #ef4444;
+    transform: scale(1.1);
+}
+
+.favorite-btn.favorited {
+    color: #ef4444;
+}
+
+.favorite-btn.favorited:hover {
+    color: #dc2626;
+}
+
+.favorite-count {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-left: 0.25rem;
+}
+
+/* Model card favorite indicator */
+.model-card-favorite {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    padding: 0.25rem;
+}
+
+/* =====================
+   View Toggle (Grid/List)
+   ===================== */
+.view-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.view-toggle {
+    display: flex;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.view-toggle-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.view-toggle-btn:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.view-toggle-btn.active {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+/* List View */
+.models-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.model-list-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.model-list-item:hover {
+    border-color: var(--color-primary);
+}
+
+.model-list-thumbnail {
+    width: 120px;
+    height: 90px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--color-surface-hover) 0%, var(--color-bg) 100%);
+    border-radius: var(--radius);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.model-list-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.model-list-title {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.model-list-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.model-list-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* =====================
+   Sort Controls
+   ===================== */
+.sort-select {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+}
+
+.sort-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* =====================
+   Browse Controls Bar
+   ===================== */
+.browse-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+}
+
+.browse-filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.active-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+}
+
+.active-filter-remove {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.7;
+}
+
+.active-filter-remove:hover {
+    opacity: 1;
+}
+
+/* =====================
+   Pagination
+   ===================== */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+
+.pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.75rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.pagination-btn:hover {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-primary);
+}
+
+.pagination-btn.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+    color: var(--color-text-muted);
+    padding: 0 0.5rem;
+}
+
+/* =====================
+   Theme Toggle
+   ===================== */
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    color: var(--color-text-muted);
+    font-size: 1.25rem;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-toggle:hover {
+    color: var(--color-text);
+}
+
+/* =====================
+   Download Count & Stats Display
+   ===================== */
+.download-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.download-count-icon {
+    font-size: 1rem;
+}
+
+/* =====================
+   License Badge
+   ===================== */
+.license-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--color-surface-hover);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* =====================
+   Archive Badge
+   ===================== */
+.archived-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background-color: rgba(245, 158, 11, 0.2);
+    border: 1px solid #f59e0b;
+    color: #f59e0b;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.model-card.archived {
+    opacity: 0.6;
+}
+
+.model-card.archived:hover {
+    opacity: 1;
+}
+
+/* =====================
+   Printed Status
+   ===================== */
+.printed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background-color: rgba(34, 197, 94, 0.2);
+    border: 1px solid #22c55e;
+    color: #22c55e;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.printed-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.printed-checkbox input:checked + span {
+    color: #22c55e;
+}
+
+/* =====================
+   Notes Field
+   ===================== */
+.part-notes {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+    margin-top: 0.25rem;
+}
+
+.notes-input {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+}
+
+/* =====================
+   Recently Viewed Section
+   ===================== */
+.recently-viewed-section {
+    margin-bottom: 2rem;
+}
+
+.recently-viewed-grid {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.recently-viewed-card {
+    flex: 0 0 auto;
+    width: 160px;
+}
+
+.recently-viewed-card .model-thumbnail {
+    height: 100px;
+}
+
+.recently-viewed-card .model-title {
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* =====================
+   Activity Log
+   ===================== */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.75rem;
+    background-color: var(--color-bg);
+    border-radius: var(--radius);
+}
+
+.activity-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-surface);
+    border-radius: 50%;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-text {
+    font-size: 0.875rem;
+}
+
+.activity-text strong {
+    color: var(--color-text);
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Activity icons by action type */
+.activity-icon.upload { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.activity-icon.download { background-color: rgba(37, 99, 235, 0.2); color: #2563eb; }
+.activity-icon.delete { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.activity-icon.edit { background-color: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.activity-icon.login { background-color: rgba(168, 85, 247, 0.2); color: #a855f7; }
+
+/* =====================
+   Lazy Loading Placeholder
+   ===================== */
+.lazy-load-placeholder {
+    background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface-hover) 50%, var(--color-surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* =====================
+   Duplicate Warning
+   ===================== */
+.duplicate-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid #f59e0b;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
+}
+
+.duplicate-warning-icon {
+    font-size: 1.5rem;
+    color: #f59e0b;
+}
+
+.duplicate-warning-content h4 {
+    color: #f59e0b;
+    margin-bottom: 0.25rem;
+}
+
+.duplicate-warning-content p {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.duplicate-list {
+    margin-top: 0.5rem;
+}
+
+.duplicate-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: var(--color-surface);
+    border-radius: var(--radius);
+    margin-top: 0.5rem;
+}
+
+/* =====================
+   Responsive Adjustments
+   ===================== */
+@media (max-width: 768px) {
+    .browse-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .view-controls {
+        justify-content: space-between;
+    }
+
+    .model-list-item {
+        flex-direction: column;
+    }
+
+    .model-list-thumbnail {
+        width: 100%;
+        height: 120px;
+    }
 }
