@@ -317,9 +317,24 @@ function cmdBackup($options) {
 }
 
 function cmdMigrate($options) {
-    echo "Running migrations...\n";
-    runMigrations();
-    echo "Migrations complete!\n";
+    echo "Running database migrations...\n\n";
+
+    // For detailed migration output, use cli/migrate.php
+    if (isset($options['verbose']) || isset($options['v'])) {
+        echo "For detailed migration status, run: php cli/migrate.php --status\n\n";
+    }
+
+    try {
+        $db = getDB();
+        runMigrations($db);
+        setSetting('schema_version', date('Y-m-d H:i:s'));
+        setSetting('last_migration', date('Y-m-d H:i:s'));
+        echo "Migrations complete!\n";
+        echo "Schema version updated: " . date('Y-m-d H:i:s') . "\n";
+    } catch (Exception $e) {
+        echo "Migration error: " . $e->getMessage() . "\n";
+        exit(1);
+    }
 }
 
 function cmdStats($options) {
