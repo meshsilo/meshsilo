@@ -412,41 +412,49 @@ class Asset {
 /**
  * Get asset URL with versioning
  */
-function asset(string $path): string {
-    return Asset::getInstance()->url($path);
+if (!function_exists('asset')) {
+    function asset(string $path): string {
+        return Asset::getInstance()->url($path);
+    }
 }
 
 /**
  * Get asset URL with mtime versioning
  */
-function asset_mtime(string $path): string {
-    return Asset::getInstance()->urlMtime($path);
+if (!function_exists('asset_mtime')) {
+    function asset_mtime(string $path): string {
+        return Asset::getInstance()->urlMtime($path);
+    }
 }
 
 /**
  * Register and render CSS
  */
-function asset_css(string $path, array $attributes = []): string {
-    $url = Asset::getInstance()->url($path);
-    $attrs = '';
-    foreach ($attributes as $key => $value) {
-        $attrs .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+if (!function_exists('asset_css')) {
+    function asset_css(string $path, array $attributes = []): string {
+        $url = Asset::getInstance()->url($path);
+        $attrs = '';
+        foreach ($attributes as $key => $value) {
+            $attrs .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+        }
+        return '<link rel="stylesheet" href="' . htmlspecialchars($url) . '"' . $attrs . '>';
     }
-    return '<link rel="stylesheet" href="' . htmlspecialchars($url) . '"' . $attrs . '>';
 }
 
 /**
  * Register and render JS
  */
-function asset_js(string $path, array $attributes = []): string {
-    $url = Asset::getInstance()->url($path);
-    $attrs = '';
-    foreach ($attributes as $key => $value) {
-        if ($value === true) {
-            $attrs .= ' ' . htmlspecialchars($key);
-        } else {
-            $attrs .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+if (!function_exists('asset_js')) {
+    function asset_js(string $path, array $attributes = []): string {
+        $url = Asset::getInstance()->url($path);
+        $attrs = '';
+        foreach ($attributes as $key => $value) {
+            if ($value === true) {
+                $attrs .= ' ' . htmlspecialchars($key);
+            } else {
+                $attrs .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+            }
         }
+        return '<script src="' . htmlspecialchars($url) . '"' . $attrs . '></script>';
     }
-    return '<script src="' . htmlspecialchars($url) . '"' . $attrs . '></script>';
 }

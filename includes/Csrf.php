@@ -269,16 +269,22 @@ class CsrfException extends Exception {
 }
 
 /**
- * Helper function for templates
+ * Helper functions for templates
  */
-function csrf_field(): string {
-    return Csrf::field();
+if (!function_exists('csrf_field')) {
+    function csrf_field(): string {
+        return Csrf::field();
+    }
 }
 
-function csrf_token(): string {
-    return Csrf::getToken();
+if (!function_exists('csrf_token')) {
+    function csrf_token(): string {
+        return Csrf::getToken();
+    }
 }
 
-function csrf_meta(): string {
-    return Csrf::metaTag();
+if (!function_exists('csrf_meta')) {
+    function csrf_meta(): string {
+        return Csrf::metaTag();
+    }
 }
