@@ -915,6 +915,558 @@ function runMigrations($db) {
         $stmt = $db->prepare("$insertIgnore INTO settings ($keyCol, $valueCol) VALUES (:key, :value)");
         $stmt->execute([':key' => $key, ':value' => $value]);
     }
+
+    // =====================
+    // API Keys Migration
+    // =====================
+    if (!tableExists($db, 'api_keys')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE api_keys (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                key_hash VARCHAR(64) NOT NULL UNIQUE,
+                key_prefix VARCHAR(12) NOT NULL,
+                permissions TEXT,
+                is_active TINYINT DEFAULT 1,
+                expires_at TIMESTAMP NULL,
+                last_used_at TIMESTAMP NULL,
+                request_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE api_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                key_hash TEXT NOT NULL UNIQUE,
+                key_prefix TEXT NOT NULL,
+                permissions TEXT,
+                is_active INTEGER DEFAULT 1,
+                expires_at DATETIME,
+                last_used_at DATETIME,
+                request_count INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created api_keys table');
+    }
+
+    // API Request Log Migration
+    if (!tableExists($db, 'api_request_log')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE api_request_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                api_key_id INT NOT NULL,
+                method VARCHAR(10) NOT NULL,
+                endpoint VARCHAR(255) NOT NULL,
+                ip_address VARCHAR(45),
+                user_agent VARCHAR(500),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+            $db->exec('CREATE INDEX idx_api_log_created ON api_request_log(created_at)');
+            $db->exec('CREATE INDEX idx_api_log_key ON api_request_log(api_key_id)');
+        } else {
+            $db->exec('CREATE TABLE api_request_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                api_key_id INTEGER NOT NULL,
+                method TEXT NOT NULL,
+                endpoint TEXT NOT NULL,
+                ip_address TEXT,
+                user_agent TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+            )');
+            $db->exec('CREATE INDEX idx_api_log_created ON api_request_log(created_at)');
+            $db->exec('CREATE INDEX idx_api_log_key ON api_request_log(api_key_id)');
+        }
+        logInfo('Migration: Created api_request_log table');
+    }
+
+    // =====================
+    // Webhooks Migration
+    // =====================
+    if (!tableExists($db, 'webhooks')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE webhooks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255),
+                url VARCHAR(500) NOT NULL,
+                secret VARCHAR(255),
+                events TEXT NOT NULL,
+                is_active TINYINT DEFAULT 1,
+                last_triggered_at TIMESTAMP NULL,
+                last_status_code INT,
+                failure_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE webhooks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                url TEXT NOT NULL,
+                secret TEXT,
+                events TEXT NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                last_triggered_at DATETIME,
+                last_status_code INTEGER,
+                failure_count INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )');
+        }
+        logInfo('Migration: Created webhooks table');
+    }
+
+    // Webhook Delivery Log Migration
+    if (!tableExists($db, 'webhook_deliveries')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE webhook_deliveries (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                webhook_id INT NOT NULL,
+                event VARCHAR(100) NOT NULL,
+                payload TEXT NOT NULL,
+                response_code INT,
+                response_body TEXT,
+                success TINYINT DEFAULT 0,
+                duration_ms INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+            $db->exec('CREATE INDEX idx_webhook_del_created ON webhook_deliveries(created_at)');
+        } else {
+            $db->exec('CREATE TABLE webhook_deliveries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                webhook_id INTEGER NOT NULL,
+                event TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                response_code INTEGER,
+                response_body TEXT,
+                success INTEGER DEFAULT 0,
+                duration_ms INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
+            )');
+            $db->exec('CREATE INDEX idx_webhook_del_created ON webhook_deliveries(created_at)');
+        }
+        logInfo('Migration: Created webhook_deliveries table');
+    }
+
+    // =====================
+    // Print Photos Migration
+    // =====================
+    if (!tableExists($db, 'print_photos')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE print_photos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_id INT NOT NULL,
+                user_id INT,
+                filename VARCHAR(255) NOT NULL,
+                file_path VARCHAR(500) NOT NULL,
+                caption TEXT,
+                is_primary TINYINT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE print_photos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id INTEGER NOT NULL,
+                user_id INTEGER,
+                filename TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                caption TEXT,
+                is_primary INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            )');
+        }
+        logInfo('Migration: Created print_photos table');
+    }
+
+    // =====================
+    // Printer Profiles Migration
+    // =====================
+    if (!tableExists($db, 'printers')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE printers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                name VARCHAR(255) NOT NULL,
+                manufacturer VARCHAR(255),
+                model VARCHAR(255),
+                bed_x DECIMAL(10,2),
+                bed_y DECIMAL(10,2),
+                bed_z DECIMAL(10,2),
+                print_type VARCHAR(50) DEFAULT "fdm",
+                is_default TINYINT DEFAULT 0,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE printers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT NOT NULL,
+                manufacturer TEXT,
+                model TEXT,
+                bed_x REAL,
+                bed_y REAL,
+                bed_z REAL,
+                print_type TEXT DEFAULT "fdm",
+                is_default INTEGER DEFAULT 0,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created printers table');
+    }
+
+    // =====================
+    // Print History Migration
+    // =====================
+    if (!tableExists($db, 'print_history')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE print_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_id INT NOT NULL,
+                user_id INT,
+                printer_id INT,
+                print_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                duration_minutes INT,
+                filament_used_g DECIMAL(10,2),
+                filament_type VARCHAR(100),
+                filament_color VARCHAR(100),
+                success TINYINT DEFAULT 1,
+                quality_rating INT,
+                notes TEXT,
+                settings TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (printer_id) REFERENCES printers(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE print_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id INTEGER NOT NULL,
+                user_id INTEGER,
+                printer_id INTEGER,
+                print_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                duration_minutes INTEGER,
+                filament_used_g REAL,
+                filament_type TEXT,
+                filament_color TEXT,
+                success INTEGER DEFAULT 1,
+                quality_rating INTEGER,
+                notes TEXT,
+                settings TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (printer_id) REFERENCES printers(id) ON DELETE SET NULL
+            )');
+        }
+        logInfo('Migration: Created print_history table');
+    }
+
+    // =====================
+    // Share Links Migration
+    // =====================
+    if (!tableExists($db, 'share_links')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE share_links (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_id INT NOT NULL,
+                user_id INT,
+                token VARCHAR(64) NOT NULL UNIQUE,
+                password_hash VARCHAR(255),
+                expires_at TIMESTAMP NULL,
+                max_downloads INT,
+                download_count INT DEFAULT 0,
+                is_active TINYINT DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+            $db->exec('CREATE INDEX idx_share_token ON share_links(token)');
+        } else {
+            $db->exec('CREATE TABLE share_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id INTEGER NOT NULL,
+                user_id INTEGER,
+                token TEXT NOT NULL UNIQUE,
+                password_hash TEXT,
+                expires_at DATETIME,
+                max_downloads INTEGER,
+                download_count INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            )');
+            $db->exec('CREATE INDEX idx_share_token ON share_links(token)');
+        }
+        logInfo('Migration: Created share_links table');
+    }
+
+    // =====================
+    // Smart Collections Migration
+    // =====================
+    if (!tableExists($db, 'smart_collections')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE smart_collections (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                rules TEXT NOT NULL,
+                is_public TINYINT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE smart_collections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT NOT NULL,
+                description TEXT,
+                rules TEXT NOT NULL,
+                is_public INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created smart_collections table');
+    }
+
+    // =====================
+    // Model Ratings Migration
+    // =====================
+    if (!tableExists($db, 'model_ratings')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE model_ratings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_id INT NOT NULL,
+                user_id INT NOT NULL,
+                printability INT,
+                quality INT,
+                difficulty INT,
+                review TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_rating (model_id, user_id),
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE model_ratings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                printability INTEGER,
+                quality INTEGER,
+                difficulty INTEGER,
+                review TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (model_id, user_id),
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created model_ratings table');
+    }
+
+    // =====================
+    // Folders Migration
+    // =====================
+    if (!tableExists($db, 'folders')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE folders (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                parent_id INT,
+                user_id INT,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                color VARCHAR(7),
+                sort_order INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parent_id INTEGER,
+                user_id INTEGER,
+                name TEXT NOT NULL,
+                description TEXT,
+                color TEXT,
+                sort_order INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created folders table');
+    }
+
+    // Add folder_id to models if not exists
+    if (!columnExists($db, 'models', 'folder_id')) {
+        if ($type === 'mysql') {
+            $db->exec('ALTER TABLE models ADD COLUMN folder_id INT');
+        } else {
+            $db->exec('ALTER TABLE models ADD COLUMN folder_id INTEGER');
+        }
+        logInfo('Migration: Added folder_id column to models table');
+    }
+
+    // =====================
+    // Upload Approval Queue Migration
+    // =====================
+    if (!columnExists($db, 'models', 'approval_status')) {
+        if ($type === 'mysql') {
+            $db->exec("ALTER TABLE models ADD COLUMN approval_status VARCHAR(20) DEFAULT 'approved'");
+            $db->exec('ALTER TABLE models ADD COLUMN approved_by INT');
+            $db->exec('ALTER TABLE models ADD COLUMN approved_at TIMESTAMP NULL');
+        } else {
+            $db->exec("ALTER TABLE models ADD COLUMN approval_status TEXT DEFAULT 'approved'");
+            $db->exec('ALTER TABLE models ADD COLUMN approved_by INTEGER');
+            $db->exec('ALTER TABLE models ADD COLUMN approved_at DATETIME');
+        }
+        logInfo('Migration: Added approval columns to models table');
+    }
+
+    // =====================
+    // User Storage Limits Migration
+    // =====================
+    if (!columnExists($db, 'users', 'storage_limit_mb')) {
+        $db->exec('ALTER TABLE users ADD COLUMN storage_limit_mb INTEGER DEFAULT 0');
+        $db->exec('ALTER TABLE users ADD COLUMN model_limit INTEGER DEFAULT 0');
+        logInfo('Migration: Added storage limit columns to users table');
+    }
+
+    // =====================
+    // Teams/Workspaces Tables
+    // =====================
+    if (!tableExists($db, 'teams')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE teams (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                owner_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE teams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                owner_id INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created teams table');
+    }
+
+    if (!tableExists($db, 'team_members')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE team_members (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                team_id INT NOT NULL,
+                user_id INT NOT NULL,
+                role VARCHAR(50) DEFAULT "member",
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_membership (team_id, user_id),
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE team_members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                role TEXT DEFAULT "member",
+                joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (team_id, user_id),
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created team_members table');
+    }
+
+    if (!tableExists($db, 'team_models')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE team_models (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                team_id INT NOT NULL,
+                model_id INT NOT NULL,
+                shared_by INT NOT NULL,
+                permissions VARCHAR(50) DEFAULT "read",
+                shared_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_share (team_id, model_id),
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (shared_by) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE team_models (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
+                shared_by INTEGER NOT NULL,
+                permissions TEXT DEFAULT "read",
+                shared_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (team_id, model_id),
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                FOREIGN KEY (shared_by) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created team_models table');
+    }
+
+    if (!tableExists($db, 'team_invites')) {
+        if ($type === 'mysql') {
+            $db->exec('CREATE TABLE team_invites (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                team_id INT NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                role VARCHAR(50) DEFAULT "member",
+                token VARCHAR(64) NOT NULL UNIQUE,
+                invited_by INT NOT NULL,
+                status VARCHAR(20) DEFAULT "pending",
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+                FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        } else {
+            $db->exec('CREATE TABLE team_invites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id INTEGER NOT NULL,
+                email TEXT NOT NULL,
+                role TEXT DEFAULT "member",
+                token TEXT NOT NULL UNIQUE,
+                invited_by INTEGER NOT NULL,
+                status TEXT DEFAULT "pending",
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+                FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE
+            )');
+        }
+        logInfo('Migration: Created team_invites table');
+    }
 }
 
 // Get a setting value
@@ -1773,4 +2325,210 @@ function getModelDimensions($modelId) {
     } catch (Exception $e) {
         return null;
     }
+}
+
+// =====================
+// Webhook Functions
+// =====================
+
+function getWebhookEvents() {
+    return [
+        'model.created',
+        'model.updated',
+        'model.deleted',
+        'model.downloaded',
+        'category.created',
+        'category.deleted',
+        'tag.created',
+        'tag.deleted',
+        'collection.created',
+        'collection.deleted'
+    ];
+}
+
+function getAllWebhooks() {
+    try {
+        $db = getDB();
+        $result = $db->query('SELECT * FROM webhooks ORDER BY created_at DESC');
+        $webhooks = [];
+        while ($row = $result->fetch()) {
+            $webhooks[] = $row;
+        }
+        return $webhooks;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+function getActiveWebhooksForEvent($event) {
+    try {
+        $db = getDB();
+        $result = $db->query('SELECT * FROM webhooks WHERE is_active = 1');
+        $webhooks = [];
+        while ($row = $result->fetch()) {
+            $events = json_decode($row['events'], true) ?: [];
+            if (in_array($event, $events) || in_array('*', $events)) {
+                $webhooks[] = $row;
+            }
+        }
+        return $webhooks;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+function getWebhookById($id) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT * FROM webhooks WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch() ?: null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+function createWebhook($url, $events, $secret = null, $name = null, $isActive = true) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            INSERT INTO webhooks (name, url, secret, events, is_active)
+            VALUES (:name, :url, :secret, :events, :is_active)
+        ');
+        $stmt->execute([
+            ':name' => $name,
+            ':url' => $url,
+            ':secret' => $secret,
+            ':events' => json_encode($events),
+            ':is_active' => $isActive ? 1 : 0
+        ]);
+        return $db->lastInsertId();
+    } catch (Exception $e) {
+        logException($e, ['action' => 'create_webhook']);
+        return false;
+    }
+}
+
+function updateWebhook($id, $url, $events, $secret, $name, $isActive) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            UPDATE webhooks SET name = :name, url = :url, secret = :secret,
+            events = :events, is_active = :is_active WHERE id = :id
+        ');
+        $stmt->execute([
+            ':id' => $id,
+            ':name' => $name,
+            ':url' => $url,
+            ':secret' => $secret,
+            ':events' => json_encode($events),
+            ':is_active' => $isActive ? 1 : 0
+        ]);
+        return true;
+    } catch (Exception $e) {
+        logException($e, ['action' => 'update_webhook']);
+        return false;
+    }
+}
+
+function deleteWebhookById($id) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('DELETE FROM webhooks WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function triggerWebhook($event, $payload) {
+    $webhooks = getActiveWebhooksForEvent($event);
+    if (empty($webhooks)) {
+        return;
+    }
+
+    $payload['event'] = $event;
+    $payload['timestamp'] = date('c');
+    $jsonPayload = json_encode($payload);
+
+    foreach ($webhooks as $webhook) {
+        // Run webhook delivery asynchronously if possible
+        deliverWebhook($webhook, $event, $jsonPayload);
+    }
+}
+
+function deliverWebhook($webhook, $event, $jsonPayload) {
+    $startTime = microtime(true);
+
+    $headers = [
+        'Content-Type: application/json',
+        'User-Agent: Silo-Webhook/1.0',
+        'X-Webhook-Event: ' . $event
+    ];
+
+    // Add signature if secret is set
+    if (!empty($webhook['secret'])) {
+        $signature = hash_hmac('sha256', $jsonPayload, $webhook['secret']);
+        $headers[] = 'X-Webhook-Signature: sha256=' . $signature;
+    }
+
+    $ch = curl_init($webhook['url']);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $jsonPayload,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 3
+    ]);
+
+    $response = curl_exec($ch);
+    $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    $durationMs = (int)((microtime(true) - $startTime) * 1000);
+    $success = $statusCode >= 200 && $statusCode < 300;
+
+    // Log delivery
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            INSERT INTO webhook_deliveries (webhook_id, event, payload, response_code, response_body, success, duration_ms)
+            VALUES (:webhook_id, :event, :payload, :response_code, :response_body, :success, :duration_ms)
+        ');
+        $stmt->execute([
+            ':webhook_id' => $webhook['id'],
+            ':event' => $event,
+            ':payload' => $jsonPayload,
+            ':response_code' => $statusCode,
+            ':response_body' => substr($response ?: $error, 0, 10000),
+            ':success' => $success ? 1 : 0,
+            ':duration_ms' => $durationMs
+        ]);
+
+        // Update webhook stats
+        $type = $db->getType();
+        if ($success) {
+            if ($type === 'mysql') {
+                $stmt = $db->prepare('UPDATE webhooks SET last_triggered_at = NOW(), last_status_code = :code, failure_count = 0 WHERE id = :id');
+            } else {
+                $stmt = $db->prepare('UPDATE webhooks SET last_triggered_at = CURRENT_TIMESTAMP, last_status_code = :code, failure_count = 0 WHERE id = :id');
+            }
+        } else {
+            if ($type === 'mysql') {
+                $stmt = $db->prepare('UPDATE webhooks SET last_triggered_at = NOW(), last_status_code = :code, failure_count = failure_count + 1 WHERE id = :id');
+            } else {
+                $stmt = $db->prepare('UPDATE webhooks SET last_triggered_at = CURRENT_TIMESTAMP, last_status_code = :code, failure_count = failure_count + 1 WHERE id = :id');
+            }
+        }
+        $stmt->execute([':code' => $statusCode, ':id' => $webhook['id']]);
+    } catch (Exception $e) {
+        logException($e, ['action' => 'log_webhook_delivery']);
+    }
+
+    return $success;
 }

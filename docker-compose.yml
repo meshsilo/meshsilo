@@ -48,6 +48,7 @@ services:
       # - SILO_OIDC_SCOPES=openid profile email
       # - SILO_OIDC_USERNAME_CLAIM=preferred_username
       # - SILO_OIDC_AUTO_REGISTER=true
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s

@@ -1,0 +1,180 @@
+<?php
+/**
+ * Custom File Type Support Actions
+ */
+
+require_once __DIR__ . '/../includes/config.php';
+
+header('Content-Type: application/json');
+
+if (!isLoggedIn()) {
+    echo json_encode(['success' => false, 'error' => 'Not logged in']);
+    exit;
+}
+
+$user = getCurrentUser();
+
+if (!$user['is_admin']) {
+    echo json_encode(['success' => false, 'error' => 'Admin access required']);
+    exit;
+}
+
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+switch ($action) {
+    case 'list':
+        listFileTypes();
+        break;
+    case 'add':
+        addFileType();
+        break;
+    case 'remove':
+        removeFileType();
+        break;
+    case 'get_config':
+        getFileTypeConfig();
+        break;
+    case 'save_config':
+        saveFileTypeConfig();
+        break;
+    default:
+        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+}
+
+function listFileTypes() {
+    $allowedExtensions = getAllowedExtensions();
+    $config = getFileTypeConfig();
+
+    $types = [];
+    foreach ($allowedExtensions as $ext) {
+        $types[] = [
+            'extension' => $ext,
+            'preview_handler' => $config[$ext]['preview_handler'] ?? 'none',
+            'icon' => $config[$ext]['icon'] ?? 'file',
+            'description' => $config[$ext]['description'] ?? ucfirst($ext) . ' file',
+            'is_3d' => in_array($ext, ['stl', '3mf', 'obj', 'ply', 'gltf', 'glb'])
+        ];
+    }
+
+    // Add built-in types info
+    $builtIn = [
+        'stl' => ['description' => 'STL (Stereolithography)', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        '3mf' => ['description' => '3D Manufacturing Format', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'gcode' => ['description' => 'G-Code Instructions', 'preview_handler' => 'gcode', 'icon' => 'code'],
+        'obj' => ['description' => 'Wavefront OBJ', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'step' => ['description' => 'STEP CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
+        'stp' => ['description' => 'STEP CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
+        'iges' => ['description' => 'IGES CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
+        'igs' => ['description' => 'IGES CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
+        'f3d' => ['description' => 'Fusion 360 File', 'preview_handler' => 'none', 'icon' => 'cad'],
+        'blend' => ['description' => 'Blender File', 'preview_handler' => 'none', 'icon' => '3d'],
+        'zip' => ['description' => 'ZIP Archive', 'preview_handler' => 'archive', 'icon' => 'archive']
+    ];
+
+    echo json_encode([
+        'success' => true,
+        'types' => $types,
+        'built_in_info' => $builtIn,
+        'preview_handlers' => ['none', 'three.js', 'gcode', 'image', 'archive']
+    ]);
+}
+
+function addFileType() {
+    $extension = strtolower(trim($_POST['extension'] ?? ''));
+    $description = trim($_POST['description'] ?? '');
+    $previewHandler = $_POST['preview_handler'] ?? 'none';
+
+    if (empty($extension)) {
+        echo json_encode(['success' => false, 'error' => 'Extension required']);
+        return;
+    }
+
+    // Remove leading dot if present
+    $extension = ltrim($extension, '.');
+
+    // Validate extension format
+    if (!preg_match('/^[a-z0-9]+$/', $extension)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid extension format']);
+        return;
+    }
+
+    // Get current allowed extensions
+    $current = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
+    $extensions = array_map('trim', explode(',', $current));
+
+    if (in_array($extension, $extensions)) {
+        echo json_encode(['success' => false, 'error' => 'Extension already allowed']);
+        return;
+    }
+
+    // Add new extension
+    $extensions[] = $extension;
+    setSetting('allowed_extensions', implode(',', $extensions));
+
+    // Save config
+    $config = json_decode(getSetting('file_type_config', '{}'), true) ?: [];
+    $config[$extension] = [
+        'description' => $description ?: ucfirst($extension) . ' file',
+        'preview_handler' => $previewHandler,
+        'icon' => 'file'
+    ];
+    setSetting('file_type_config', json_encode($config));
+
+    echo json_encode(['success' => true]);
+}
+
+function removeFileType() {
+    $extension = strtolower(trim($_POST['extension'] ?? ''));
+
+    if (empty($extension)) {
+        echo json_encode(['success' => false, 'error' => 'Extension required']);
+        return;
+    }
+
+    // Prevent removing built-in types
+    $builtIn = ['stl', '3mf', 'gcode', 'zip'];
+    if (in_array($extension, $builtIn)) {
+        echo json_encode(['success' => false, 'error' => 'Cannot remove built-in file type']);
+        return;
+    }
+
+    // Remove from allowed extensions
+    $current = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
+    $extensions = array_map('trim', explode(',', $current));
+    $extensions = array_filter($extensions, fn($e) => $e !== $extension);
+    setSetting('allowed_extensions', implode(',', $extensions));
+
+    // Remove config
+    $config = json_decode(getSetting('file_type_config', '{}'), true) ?: [];
+    unset($config[$extension]);
+    setSetting('file_type_config', json_encode($config));
+
+    echo json_encode(['success' => true]);
+}
+
+function getFileTypeConfig() {
+    $config = json_decode(getSetting('file_type_config', '{}'), true) ?: [];
+    echo json_encode(['success' => true, 'config' => $config]);
+}
+
+function saveFileTypeConfig() {
+    $extension = strtolower(trim($_POST['extension'] ?? ''));
+    $description = trim($_POST['description'] ?? '');
+    $previewHandler = $_POST['preview_handler'] ?? 'none';
+    $icon = $_POST['icon'] ?? 'file';
+
+    if (empty($extension)) {
+        echo json_encode(['success' => false, 'error' => 'Extension required']);
+        return;
+    }
+
+    $config = json_decode(getSetting('file_type_config', '{}'), true) ?: [];
+    $config[$extension] = [
+        'description' => $description,
+        'preview_handler' => $previewHandler,
+        'icon' => $icon
+    ];
+    setSetting('file_type_config', json_encode($config));
+
+    echo json_encode(['success' => true]);
+}

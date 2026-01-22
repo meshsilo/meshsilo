@@ -1,0 +1,442 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Silo CLI Tool
+ *
+ * Usage:
+ *   ./bin/silo [command] [options]
+ *
+ * Commands:
+ *   list          List models
+ *   upload        Upload a model file
+ *   download      Download a model
+ *   search        Search models
+ *   backup        Create database backup
+ *   migrate       Run database migrations
+ *   stats         Show statistics
+ *   dedup         Run deduplication
+ */
+
+// Bootstrap
+define('CLI_MODE', true);
+$baseDir = dirname(__DIR__);
+chdir($baseDir);
+
+// Simple autoload without session
+require_once $baseDir . '/includes/logger.php';
+require_once $baseDir . '/includes/db.php';
+
+// Parse command line arguments
+$command = $argv[1] ?? 'help';
+$args = array_slice($argv, 2);
+
+// Parse options
+$options = [];
+$positional = [];
+foreach ($args as $arg) {
+    if (strpos($arg, '--') === 0) {
+        $parts = explode('=', substr($arg, 2), 2);
+        $options[$parts[0]] = $parts[1] ?? true;
+    } elseif (strpos($arg, '-') === 0) {
+        $options[substr($arg, 1)] = true;
+    } else {
+        $positional[] = $arg;
+    }
+}
+
+// Run command
+switch ($command) {
+    case 'list':
+        cmdList($options);
+        break;
+    case 'upload':
+        cmdUpload($positional, $options);
+        break;
+    case 'download':
+        cmdDownload($positional, $options);
+        break;
+    case 'search':
+        cmdSearch($positional, $options);
+        break;
+    case 'backup':
+        cmdBackup($options);
+        break;
+    case 'migrate':
+        cmdMigrate($options);
+        break;
+    case 'stats':
+        cmdStats($options);
+        break;
+    case 'dedup':
+        cmdDedup($options);
+        break;
+    case 'help':
+    case '--help':
+    case '-h':
+    default:
+        showHelp();
+        break;
+}
+
+function showHelp() {
+    echo <<<HELP
+Silo CLI Tool
+
+Usage: ./bin/silo <command> [options]
+
+Commands:
+  list                    List models
+    --limit=N             Limit results (default: 20)
+    --offset=N            Offset for pagination
+    --sort=field          Sort by: name, date, size (default: date)
+    --json                Output as JSON
+
+  upload <file>           Upload a model file
+    --name="Name"         Model name (default: filename)
+    --category=ID         Category ID
+    --tags="tag1,tag2"    Comma-separated tags
+
+  download <id>           Download a model by ID
+    --output=path         Output path (default: current directory)
+
+  search <query>          Search models
+    --limit=N             Limit results
+    --json                Output as JSON
+
+  backup                  Create database backup
+    --output=path         Output path (default: db/backup_DATE.db)
+
+  migrate                 Run database migrations
+
+  stats                   Show library statistics
+    --json                Output as JSON
+
+  dedup                   Run file deduplication
+    --dry-run             Show what would be deduplicated
+
+  help                    Show this help message
+
+HELP;
+}
+
+function cmdList($options) {
+    $db = getDB();
+    $limit = (int)($options['limit'] ?? 20);
+    $offset = (int)($options['offset'] ?? 0);
+    $sortMap = ['name' => 'name ASC', 'date' => 'created_at DESC', 'size' => 'file_size DESC'];
+    $sort = $sortMap[$options['sort'] ?? 'date'] ?? 'created_at DESC';
+
+    $stmt = $db->prepare("
+        SELECT id, name, filename, file_type, file_size, created_at
+        FROM models WHERE parent_id IS NULL
+        ORDER BY $sort LIMIT :limit OFFSET :offset
+    ");
+    $stmt->execute([':limit' => $limit, ':offset' => $offset]);
+
+    $models = [];
+    while ($row = $stmt->fetch()) {
+        $models[] = $row;
+    }
+
+    if (isset($options['json'])) {
+        echo json_encode($models, JSON_PRETTY_PRINT) . "\n";
+    } else {
+        printf("%-6s %-40s %-10s %12s %s\n", "ID", "Name", "Type", "Size", "Created");
+        echo str_repeat("-", 90) . "\n";
+        foreach ($models as $m) {
+            printf("%-6d %-40s %-10s %12s %s\n",
+                $m['id'],
+                substr($m['name'], 0, 40),
+                strtoupper($m['file_type']),
+                formatSize($m['file_size']),
+                date('Y-m-d', strtotime($m['created_at']))
+            );
+        }
+    }
+}
+
+function cmdUpload($positional, $options) {
+    if (empty($positional[0])) {
+        echo "Error: No file specified\n";
+        echo "Usage: ./bin/silo upload <file>\n";
+        exit(1);
+    }
+
+    $filePath = $positional[0];
+    if (!file_exists($filePath)) {
+        echo "Error: File not found: $filePath\n";
+        exit(1);
+    }
+
+    $filename = basename($filePath);
+    $name = $options['name'] ?? pathinfo($filename, PATHINFO_FILENAME);
+    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    $fileSize = filesize($filePath);
+
+    // Create unique folder
+    $folderId = uniqid();
+    $uploadDir = 'assets/' . $folderId;
+    if (!mkdir($uploadDir, 0755, true)) {
+        echo "Error: Could not create upload directory\n";
+        exit(1);
+    }
+
+    // Copy file
+    $destPath = $uploadDir . '/' . $filename;
+    if (!copy($filePath, $destPath)) {
+        echo "Error: Could not copy file\n";
+        exit(1);
+    }
+
+    // Calculate hash
+    $fileHash = hash_file('sha256', $destPath);
+
+    // Insert into database
+    $db = getDB();
+    $stmt = $db->prepare('
+        INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash, original_size)
+        VALUES (:name, :filename, :file_path, :file_size, :file_type, :file_hash, :original_size)
+    ');
+    $stmt->execute([
+        ':name' => $name,
+        ':filename' => $filename,
+        ':file_path' => $folderId . '/' . $filename,
+        ':file_size' => $fileSize,
+        ':file_type' => $extension,
+        ':file_hash' => $fileHash,
+        ':original_size' => $fileSize
+    ]);
+
+    $modelId = $db->lastInsertId();
+
+    // Add tags if provided
+    if (!empty($options['tags'])) {
+        $tags = explode(',', $options['tags']);
+        foreach ($tags as $tagName) {
+            $tagName = trim($tagName);
+            if (!empty($tagName)) {
+                $tagId = getOrCreateTag($tagName);
+                if ($tagId) {
+                    addTagToModel($modelId, $tagId);
+                }
+            }
+        }
+    }
+
+    echo "Uploaded successfully!\n";
+    echo "  ID: $modelId\n";
+    echo "  Name: $name\n";
+    echo "  Size: " . formatSize($fileSize) . "\n";
+}
+
+function cmdDownload($positional, $options) {
+    if (empty($positional[0])) {
+        echo "Error: No model ID specified\n";
+        exit(1);
+    }
+
+    $modelId = (int)$positional[0];
+    $db = getDB();
+
+    $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
+    $stmt->execute([':id' => $modelId]);
+    $model = $stmt->fetch();
+
+    if (!$model) {
+        echo "Error: Model not found\n";
+        exit(1);
+    }
+
+    $sourcePath = 'assets/' . $model['file_path'];
+    if (!file_exists($sourcePath)) {
+        echo "Error: File not found on disk\n";
+        exit(1);
+    }
+
+    $outputDir = $options['output'] ?? '.';
+    $outputPath = rtrim($outputDir, '/') . '/' . $model['filename'];
+
+    if (!copy($sourcePath, $outputPath)) {
+        echo "Error: Could not copy file\n";
+        exit(1);
+    }
+
+    echo "Downloaded: $outputPath\n";
+}
+
+function cmdSearch($positional, $options) {
+    if (empty($positional[0])) {
+        echo "Error: No search query specified\n";
+        exit(1);
+    }
+
+    $query = '%' . $positional[0] . '%';
+    $limit = (int)($options['limit'] ?? 20);
+
+    $db = getDB();
+    $stmt = $db->prepare('
+        SELECT id, name, filename, file_type, file_size
+        FROM models
+        WHERE parent_id IS NULL
+        AND (name LIKE :q OR description LIKE :q OR creator LIKE :q)
+        LIMIT :limit
+    ');
+    $stmt->execute([':q' => $query, ':limit' => $limit]);
+
+    $results = [];
+    while ($row = $stmt->fetch()) {
+        $results[] = $row;
+    }
+
+    if (isset($options['json'])) {
+        echo json_encode($results, JSON_PRETTY_PRINT) . "\n";
+    } else {
+        echo "Found " . count($results) . " results:\n\n";
+        foreach ($results as $m) {
+            echo "  [{$m['id']}] {$m['name']} (" . strtoupper($m['file_type']) . ", " . formatSize($m['file_size']) . ")\n";
+        }
+    }
+}
+
+function cmdBackup($options) {
+    $dbPath = 'db/silo.db';
+    if (!file_exists($dbPath)) {
+        echo "Error: Database not found\n";
+        exit(1);
+    }
+
+    $outputPath = $options['output'] ?? 'db/backup_' . date('Y-m-d_H-i-s') . '.db';
+
+    if (!copy($dbPath, $outputPath)) {
+        echo "Error: Could not create backup\n";
+        exit(1);
+    }
+
+    echo "Backup created: $outputPath\n";
+    echo "Size: " . formatSize(filesize($outputPath)) . "\n";
+}
+
+function cmdMigrate($options) {
+    echo "Running migrations...\n";
+    runMigrations();
+    echo "Migrations complete!\n";
+}
+
+function cmdStats($options) {
+    $db = getDB();
+
+    $stats = [];
+
+    // Total models
+    $stmt = $db->query('SELECT COUNT(*) FROM models WHERE parent_id IS NULL');
+    $stats['total_models'] = (int)$stmt->fetchColumn();
+
+    // Total parts
+    $stmt = $db->query('SELECT COUNT(*) FROM models WHERE parent_id IS NOT NULL');
+    $stats['total_parts'] = (int)$stmt->fetchColumn();
+
+    // Total size
+    $stmt = $db->query('SELECT SUM(original_size) FROM models');
+    $stats['total_size'] = (int)$stmt->fetchColumn();
+
+    // By file type
+    $stmt = $db->query('SELECT file_type, COUNT(*) as count FROM models WHERE parent_id IS NULL GROUP BY file_type');
+    $stats['by_type'] = [];
+    while ($row = $stmt->fetch()) {
+        $stats['by_type'][$row['file_type']] = (int)$row['count'];
+    }
+
+    // Total users
+    $stmt = $db->query('SELECT COUNT(*) FROM users');
+    $stats['total_users'] = (int)$stmt->fetchColumn();
+
+    if (isset($options['json'])) {
+        echo json_encode($stats, JSON_PRETTY_PRINT) . "\n";
+    } else {
+        echo "Silo Statistics\n";
+        echo "---------------\n";
+        echo "Total Models: {$stats['total_models']}\n";
+        echo "Total Parts: {$stats['total_parts']}\n";
+        echo "Total Size: " . formatSize($stats['total_size']) . "\n";
+        echo "Total Users: {$stats['total_users']}\n";
+        echo "\nBy File Type:\n";
+        foreach ($stats['by_type'] as $type => $count) {
+            echo "  " . strtoupper($type) . ": $count\n";
+        }
+    }
+}
+
+function cmdDedup($options) {
+    $dryRun = isset($options['dry-run']);
+
+    echo "Scanning for duplicate files...\n";
+
+    $db = getDB();
+    $stmt = $db->query('
+        SELECT file_hash, COUNT(*) as count, GROUP_CONCAT(id) as ids
+        FROM models
+        WHERE file_hash IS NOT NULL
+        GROUP BY file_hash
+        HAVING count > 1
+    ');
+
+    $totalSaved = 0;
+    $duplicateSets = 0;
+
+    while ($row = $stmt->fetch()) {
+        $duplicateSets++;
+        $ids = explode(',', $row['ids']);
+
+        // Keep first, mark others as duplicates
+        $keepId = array_shift($ids);
+
+        // Get file info for the one we're keeping
+        $keepStmt = $db->prepare('SELECT file_path, original_size FROM models WHERE id = :id');
+        $keepStmt->execute([':id' => $keepId]);
+        $keepFile = $keepStmt->fetch();
+
+        echo "\nDuplicate set (hash: " . substr($row['file_hash'], 0, 12) . "...):\n";
+        echo "  Keep: Model #$keepId\n";
+
+        foreach ($ids as $dupId) {
+            $dupStmt = $db->prepare('SELECT file_path, original_size FROM models WHERE id = :id');
+            $dupStmt->execute([':id' => $dupId]);
+            $dupFile = $dupStmt->fetch();
+
+            $savedSize = $dupFile['original_size'];
+            $totalSaved += $savedSize;
+
+            echo "  Duplicate: Model #$dupId (" . formatSize($savedSize) . ")\n";
+
+            if (!$dryRun) {
+                // Update to use same file path as original
+                $updateStmt = $db->prepare('UPDATE models SET file_path = :path WHERE id = :id');
+                $updateStmt->execute([':path' => $keepFile['file_path'], ':id' => $dupId]);
+
+                // Delete duplicate file
+                $dupFilePath = 'assets/' . $dupFile['file_path'];
+                if (file_exists($dupFilePath) && $dupFile['file_path'] !== $keepFile['file_path']) {
+                    unlink($dupFilePath);
+                }
+            }
+        }
+    }
+
+    echo "\n";
+    if ($dryRun) {
+        echo "Dry run complete. Would save: " . formatSize($totalSaved) . "\n";
+    } else {
+        echo "Deduplication complete. Saved: " . formatSize($totalSaved) . "\n";
+    }
+    echo "Duplicate sets found: $duplicateSets\n";
+}
+
+function formatSize($bytes) {
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $i = 0;
+    while ($bytes >= 1024 && $i < count($units) - 1) {
+        $bytes /= 1024;
+        $i++;
+    }
+    return round($bytes, 2) . ' ' . $units[$i];
+}

@@ -12,5 +12,7 @@
                     <a href="<?= basePath('admin/collections.php') ?>" <?= ($adminPage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
                     <a href="<?= basePath('admin/storage.php') ?>" <?= ($adminPage ?? '') === 'storage' ? 'class="active"' : '' ?>>Storage</a>
                     <a href="<?= basePath('admin/stats.php') ?>" <?= ($adminPage ?? '') === 'stats' ? 'class="active"' : '' ?>>Statistics</a>
+                    <a href="<?= basePath('admin/api-keys.php') ?>" <?= ($adminPage ?? '') === 'api-keys' ? 'class="active"' : '' ?>>API Keys</a>
+                    <a href="<?= basePath('admin/webhooks.php') ?>" <?= ($adminPage ?? '') === 'webhooks' ? 'class="active"' : '' ?>>Webhooks</a>
                 </nav>
             </aside>
