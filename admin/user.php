@@ -15,7 +15,7 @@ $db = getDB();
 $userId = (int)($_GET['id'] ?? 0);
 
 if (!$userId) {
-    header('Location: users.php');
+    header('Location: ' . route('admin.users'));
     exit;
 }
 
@@ -26,7 +26,7 @@ $result = $stmt->execute();
 $user = $result->fetchArray(SQLITE3_ASSOC);
 
 if (!$user) {
-    header('Location: users.php?error=notfound');
+    header('Location: ' . route('admin.users', [], ['error' => 'notfound']));
     exit;
 }
 
@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logAdmin('User deleted', ['user_id' => $userId, 'username' => $user['username']]);
             logAudit('User account deleted', ['deleted_user_id' => $userId, 'deleted_username' => $user['username']]);
 
-            header('Location: users.php?deleted=1');
+            header('Location: ' . route('admin.users', [], ['deleted' => '1']));
             exit;
         }
     }
@@ -166,7 +166,7 @@ require_once '../includes/header.php';
             <div class="admin-content">
                 <div class="page-header">
                     <h1>
-                        <a href="users.php" class="back-link">&larr;</a>
+                        <a href="<?= route('admin.users') ?>" class="back-link">&larr;</a>
                         Edit User: <?= htmlspecialchars($user['username']) ?>
                         <?php if ($user['is_admin']): ?>
                         <span class="badge badge-admin">Admin</span>

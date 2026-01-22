@@ -198,7 +198,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateSelection()">
                             </td>
                             <td>
-                                <a href="../model.php?id=<?= $model['id'] ?>" target="_blank">
+                                <a href="<?= route('model.show', ['id' => $model['id']]) ?>" target="_blank">
                                     <?= htmlspecialchars($model['name']) ?>
                                 </a>
                             </td>
@@ -215,7 +215,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <a href="../edit-model.php?id=<?= $model['id'] ?>" class="btn btn-small">Edit</a>
+                                <a href="<?= route('model.edit', ['id' => $model['id']]) ?>" class="btn btn-small">Edit</a>
                                 <button type="button" class="btn btn-small btn-danger" onclick="deleteModel(<?= $model['id'] ?>, '<?= htmlspecialchars(addslashes($model['name'])) ?>')">Delete</button>
                             </td>
                         </tr>

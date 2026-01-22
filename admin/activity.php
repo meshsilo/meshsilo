@@ -134,7 +134,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </select>
 
                         <?php if ($filterAction || $filterUser || $filterEntity): ?>
-                        <a href="activity.php" class="btn btn-secondary btn-small">Clear Filters</a>
+                        <a href="<?= route('admin.activity') ?>" class="btn btn-secondary btn-small">Clear Filters</a>
                         <?php endif; ?>
                     </form>
                 </div>
@@ -178,7 +178,7 @@ require_once __DIR__ . '/../includes/header.php';
                             </div>
                         </div>
                         <?php if ($activity['entity_id'] && $activity['entity_type'] === 'model'): ?>
-                        <a href="../model.php?id=<?= $activity['entity_id'] ?>" class="btn btn-small btn-secondary" title="View">&#8594;</a>
+                        <a href="<?= route('model.show', ['id' => $activity['entity_id']]) ?>" class="btn btn-small btn-secondary" title="View">&#8594;</a>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>

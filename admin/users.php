@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $db->exec("UPDATE users SET is_admin = 1 WHERE id = $userId");
                 }
 
-                header('Location: users.php?success=1');
+                header('Location: ' . route('admin.users', [], ['success' => '1']));
                 exit;
             } catch (Exception $e) {
                 $error = 'Username or email already exists.';
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare('DELETE FROM users WHERE id = :id');
             $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
             $stmt->execute();
-            header('Location: users.php?deleted=1');
+            header('Location: ' . route('admin.users', [], ['deleted' => '1']));
             exit;
         }
     } elseif (isset($_POST['update_groups'])) {
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
             $stmt->execute();
 
-            header('Location: users.php?updated=1');
+            header('Location: ' . route('admin.users', [], ['updated' => '1']));
             exit;
         }
     }
@@ -209,7 +209,7 @@ require_once '../includes/header.php';
                                 <?php foreach ($users as $user): ?>
                                 <tr>
                                     <td>
-                                        <a href="user.php?id=<?= $user['id'] ?>" class="user-link"><?= htmlspecialchars($user['username']) ?></a>
+                                        <a href="<?= route('admin.user', ['id' => $user['id']]) ?>" class="user-link"><?= htmlspecialchars($user['username']) ?></a>
                                         <?php if ($user['is_admin']): ?>
                                         <span class="badge badge-admin">Admin</span>
                                         <?php endif; ?>
@@ -236,7 +236,7 @@ require_once '../includes/header.php';
                                     </td>
                                     <td><?= date('M j, Y', strtotime($user['created_at'])) ?></td>
                                     <td>
-                                        <a href="user.php?id=<?= $user['id'] ?>" class="btn btn-small btn-secondary">Edit</a>
+                                        <a href="<?= route('admin.user', ['id' => $user['id']]) ?>" class="btn btn-small btn-secondary">Edit</a>
                                         <?php if ($user['id'] !== getCurrentUser()['id']): ?>
                                         <form method="post" style="display:inline;" onsubmit="return confirm('Delete this user? This cannot be undone.');">
                                             <input type="hidden" name="user_id" value="<?= $user['id'] ?>">

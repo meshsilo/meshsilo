@@ -236,7 +236,7 @@ require_once '../includes/header.php';
                         </div>
 
                         <div class="form-actions">
-                            <a href="groups.php" class="btn btn-secondary">Cancel</a>
+                            <a href="<?= route('admin.groups') ?>" class="btn btn-secondary">Cancel</a>
                             <button type="submit" class="btn btn-primary">Update Group</button>
                         </div>
                     </form>

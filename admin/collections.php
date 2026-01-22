@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bindValue(':name', $name, SQLITE3_TEXT);
                 $stmt->bindValue(':description', $description, SQLITE3_TEXT);
                 $stmt->execute();
-                header('Location: collections.php?success=1');
+                header('Location: ' . route('admin.collections', [], ['success' => '1']));
                 exit;
             } catch (Exception $e) {
                 $error = 'Collection already exists.';
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $db->prepare('DELETE FROM collections WHERE id = :id');
         $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
         $stmt->execute();
-        header('Location: collections.php?deleted=1');
+        header('Location: ' . route('admin.collections', [], ['deleted' => '1']));
         exit;
     }
 }

@@ -7,7 +7,21 @@
     # If you're running Silo in a subdirectory, uncomment and set the base path
     # RewriteBase /silo/
 
+    # Redirect direct admin/*.php access to clean router URLs (SEO + security)
+    # Handles both simple URLs and URLs with query strings
+    RewriteCond %{THE_REQUEST} \s/admin/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
+    RewriteRule ^admin/([a-zA-Z0-9_-]+)\.php$ /admin/$1 [R=302,L,QSA]
+
+    # Redirect direct pages/*.php access to clean router URLs
+    RewriteCond %{THE_REQUEST} \s/pages/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
+    RewriteRule ^pages/([a-zA-Z0-9_-]+)\.php$ /$1 [R=302,L,QSA]
+
+    # Redirect direct actions/*.php access to clean router URLs
+    RewriteCond %{THE_REQUEST} \s/actions/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
+    RewriteRule ^actions/([a-zA-Z0-9_-]+)\.php$ /actions/$1 [R=302,L,QSA]
+
     # Don't rewrite requests for files or directories that exist
+    # (except for PHP files which are handled above)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
 

@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($result) {
                 $_SESSION['new_api_key'] = $result['key'];
                 $_SESSION['new_api_key_name'] = $result['name'];
-                header('Location: api-keys.php?created=1');
+                header('Location: ' . route('admin.api-keys', [], ['created' => '1']));
                 exit;
             } else {
                 $error = 'Failed to create API key';

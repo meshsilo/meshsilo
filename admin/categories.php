@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bindValue(':name', $name, SQLITE3_TEXT);
                 $stmt->execute();
                 $message = 'Category added successfully.';
-                header('Location: categories.php?success=1');
+                header('Location: ' . route('admin.categories', [], ['success' => '1']));
                 exit;
             } catch (Exception $e) {
                 $error = 'Category already exists.';
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $db->prepare('DELETE FROM categories WHERE id = :id');
         $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
         $stmt->execute();
-        header('Location: categories.php?deleted=1');
+        header('Location: ' . route('admin.categories', [], ['deleted' => '1']));
         exit;
     }
 }
