@@ -34,5 +34,28 @@ require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/oidc.php';
 require_once __DIR__ . '/license.php';
 
+// Include router and helpers (if not already loaded by front controller)
+if (!class_exists('Router')) {
+    require_once __DIR__ . '/Router.php';
+}
+require_once __DIR__ . '/helpers.php';
+
+// Load middleware interface before classes that implement it
+if (!interface_exists('MiddlewareInterface')) {
+    require_once __DIR__ . '/middleware/MiddlewareInterface.php';
+}
+require_once __DIR__ . '/SignedUrl.php';
+require_once __DIR__ . '/Events.php';
+require_once __DIR__ . '/TwoFactor.php';
+require_once __DIR__ . '/Integrity.php';
+require_once __DIR__ . '/Scheduler.php';
+
+// Load route definitions (for URL generation)
+// Only load if routes haven't been loaded yet
+$router = Router::getInstance();
+if (empty($router->getNamedRoutes())) {
+    require_once __DIR__ . '/routes.php';
+}
+
 // Set up error handling
 setupErrorHandler();

@@ -25,6 +25,10 @@ Thumbs.db
 logs/*
 !logs/.gitkeep
 
+# Cache directory
+cache/*
+!cache/.gitkeep
+
 # Development files
 .claude/
 todo.txt

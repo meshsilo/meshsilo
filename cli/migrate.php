@@ -932,5 +932,214 @@ function getMigrationList() {
                 }
             }
         ],
+        // Two-Factor Authentication
+        [
+            'name' => 'Users: two-factor authentication columns',
+            'description' => 'TOTP-based 2FA with backup codes',
+            'check' => fn($db) => columnExists($db, 'users', 'two_factor_enabled'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_secret VARCHAR(64)');
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_backup_codes TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_enabled TINYINT DEFAULT 0');
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_enabled_at TIMESTAMP NULL');
+                } else {
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_secret TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_backup_codes TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0');
+                    $db->exec('ALTER TABLE users ADD COLUMN two_factor_enabled_at DATETIME');
+                }
+            }
+        ],
+        // File Integrity
+        [
+            'name' => 'Models: integrity hash columns',
+            'description' => 'SHA-256 checksums for file integrity verification',
+            'check' => fn($db) => columnExists($db, 'models', 'integrity_hash'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('ALTER TABLE models ADD COLUMN integrity_hash VARCHAR(64)');
+                    $db->exec('ALTER TABLE models ADD COLUMN integrity_checked_at TIMESTAMP NULL');
+                } else {
+                    $db->exec('ALTER TABLE models ADD COLUMN integrity_hash TEXT');
+                    $db->exec('ALTER TABLE models ADD COLUMN integrity_checked_at DATETIME');
+                }
+            }
+        ],
+        [
+            'name' => 'Integrity log table',
+            'description' => 'Log file integrity issues (missing/corrupted files)',
+            'check' => fn($db) => tableExists($db, 'integrity_log'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE integrity_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        model_id INT NOT NULL,
+                        status VARCHAR(20) NOT NULL,
+                        message TEXT,
+                        details TEXT,
+                        resolved TINYINT DEFAULT 0,
+                        resolution TEXT,
+                        resolved_at TIMESTAMP NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_integrity_log_model ON integrity_log(model_id)');
+                    $db->exec('CREATE INDEX idx_integrity_log_created ON integrity_log(created_at)');
+                } else {
+                    $db->exec('CREATE TABLE integrity_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        model_id INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        message TEXT,
+                        details TEXT,
+                        resolved INTEGER DEFAULT 0,
+                        resolution TEXT,
+                        resolved_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_integrity_log_model ON integrity_log(model_id)');
+                    $db->exec('CREATE INDEX idx_integrity_log_created ON integrity_log(created_at)');
+                }
+            }
+        ],
+        // Scheduler
+        [
+            'name' => 'Scheduler log table',
+            'description' => 'Track scheduled task execution history',
+            'check' => fn($db) => tableExists($db, 'scheduler_log'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE scheduler_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        task_name VARCHAR(100) NOT NULL,
+                        status VARCHAR(20) NOT NULL,
+                        output TEXT,
+                        duration_ms INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_scheduler_log_task ON scheduler_log(task_name)');
+                    $db->exec('CREATE INDEX idx_scheduler_log_created ON scheduler_log(created_at)');
+                } else {
+                    $db->exec('CREATE TABLE scheduler_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        task_name TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        output TEXT,
+                        duration_ms INTEGER,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )');
+                    $db->exec('CREATE INDEX idx_scheduler_log_task ON scheduler_log(task_name)');
+                    $db->exec('CREATE INDEX idx_scheduler_log_created ON scheduler_log(created_at)');
+                }
+            }
+        ],
+        // Event System
+        [
+            'name' => 'Event log table',
+            'description' => 'Store emitted events for audit and replay',
+            'check' => fn($db) => tableExists($db, 'event_log'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE event_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        event_name VARCHAR(100) NOT NULL,
+                        user_id INT,
+                        data TEXT,
+                        ip_address VARCHAR(45),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_event_log_name ON event_log(event_name)');
+                    $db->exec('CREATE INDEX idx_event_log_user ON event_log(user_id)');
+                    $db->exec('CREATE INDEX idx_event_log_created ON event_log(created_at)');
+                } else {
+                    $db->exec('CREATE TABLE event_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        event_name TEXT NOT NULL,
+                        user_id INTEGER,
+                        data TEXT,
+                        ip_address TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_event_log_name ON event_log(event_name)');
+                    $db->exec('CREATE INDEX idx_event_log_user ON event_log(user_id)');
+                    $db->exec('CREATE INDEX idx_event_log_created ON event_log(created_at)');
+                }
+            }
+        ],
+        // Rate Limiting
+        [
+            'name' => 'Rate limit table',
+            'description' => 'Track rate limit counters per IP/key',
+            'check' => fn($db) => tableExists($db, 'rate_limits'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE rate_limits (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        identifier VARCHAR(100) NOT NULL,
+                        endpoint VARCHAR(255) NOT NULL,
+                        request_count INT DEFAULT 1,
+                        window_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_rate_limit (identifier, endpoint)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_rate_limits_window ON rate_limits(window_start)');
+                } else {
+                    $db->exec('CREATE TABLE rate_limits (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        identifier TEXT NOT NULL,
+                        endpoint TEXT NOT NULL,
+                        request_count INTEGER DEFAULT 1,
+                        window_start DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE (identifier, endpoint)
+                    )');
+                    $db->exec('CREATE INDEX idx_rate_limits_window ON rate_limits(window_start)');
+                }
+            }
+        ],
+        // Sessions table for database-backed sessions
+        [
+            'name' => 'Sessions table',
+            'description' => 'Database-backed session storage',
+            'check' => fn($db) => tableExists($db, 'sessions'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE sessions (
+                        id VARCHAR(128) PRIMARY KEY,
+                        user_id INT,
+                        data TEXT,
+                        ip_address VARCHAR(45),
+                        user_agent VARCHAR(500),
+                        last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_sessions_user ON sessions(user_id)');
+                    $db->exec('CREATE INDEX idx_sessions_activity ON sessions(last_activity)');
+                } else {
+                    $db->exec('CREATE TABLE sessions (
+                        id TEXT PRIMARY KEY,
+                        user_id INTEGER,
+                        data TEXT,
+                        ip_address TEXT,
+                        user_agent TEXT,
+                        last_activity DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_sessions_user ON sessions(user_id)');
+                    $db->exec('CREATE INDEX idx_sessions_activity ON sessions(last_activity)');
+                }
+            }
+        ],
     ];
 }

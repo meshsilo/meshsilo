@@ -44,27 +44,27 @@ if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
 <body>
     <header class="site-header">
         <div class="header-content">
-            <a href="<?= basePath('index.php') ?>" class="logo">
+            <a href="<?= route('home') ?>" class="logo">
                 <span class="logo-icon">&#9653;</span>
                 <span class="logo-text"><?= SITE_NAME ?></span>
             </a>
             <nav class="main-nav">
-                <a href="<?= basePath('index.php') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
+                <a href="<?= route('browse') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
                 <?php if (getSetting('enable_categories', '1') === '1'): ?>
-                <a href="<?= basePath('categories.php') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
+                <a href="<?= route('categories') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
                 <?php endif; ?>
                 <?php if (getSetting('enable_collections', '1') === '1'): ?>
-                <a href="<?= basePath('collections.php') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
+                <a href="<?= route('collections') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
                 <?php endif; ?>
                 <?php if (getSetting('enable_tags', '1') === '1'): ?>
-                <a href="<?= basePath('tags.php') ?>" <?= ($activePage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
+                <a href="<?= route('tags') ?>" <?= ($activePage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
                 <?php endif; ?>
                 <?php if (canUpload()): ?>
-                <a href="<?= basePath('upload.php') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
+                <a href="<?= route('upload') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
                 <?php endif; ?>
             </nav>
             <div class="header-actions">
-                <form action="<?= basePath('browse.php') ?>" method="get" style="display: contents;">
+                <form action="<?= route('browse') ?>" method="get" style="display: contents;">
                     <input type="search" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
                 </form>
                 <?php if ($allowUserTheme): ?>
@@ -74,15 +74,15 @@ if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
                 <?php endif; ?>
                 <?php if (isLoggedIn()): ?>
                     <?php $user = getCurrentUser(); ?>
-                    <a href="<?= basePath('print-queue.php') ?>" class="btn btn-secondary" title="Print Queue">&#128424;</a>
-                    <a href="<?= basePath('favorites.php') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
+                    <a href="<?= route('print-queue') ?>" class="btn btn-secondary" title="Print Queue">&#128424;</a>
+                    <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
                     <?php if ($user['is_admin']): ?>
-                        <a href="<?= basePath('admin/settings.php') ?>" class="btn btn-secondary">Admin</a>
+                        <a href="<?= route('admin.settings') ?>" class="btn btn-secondary">Admin</a>
                     <?php endif; ?>
                     <span class="user-name"><?= htmlspecialchars($user['username']) ?></span>
-                    <a href="<?= basePath('logout.php') ?>" class="btn btn-primary">Log Out</a>
+                    <a href="<?= route('logout') ?>" class="btn btn-primary">Log Out</a>
                 <?php else: ?>
-                    <a href="<?= basePath('login.php') ?>" class="btn btn-primary">Log In</a>
+                    <a href="<?= route('login') ?>" class="btn btn-primary">Log In</a>
                 <?php endif; ?>
             </div>
         </div>

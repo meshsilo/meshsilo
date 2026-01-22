@@ -1,5 +1,85 @@
 <?php
+/**
+ * Silo Front Controller
+ *
+ * All requests are routed through this file via .htaccess rewrite rules.
+ * If a route matches, it's dispatched. Otherwise, or for "/" route, the
+ * homepage is displayed.
+ */
+
+// Check if this is a routed request (not the homepage)
+$routePath = $_GET['route'] ?? '';
+$routePath = '/' . trim($routePath, '/');
+
+// Handle routing for non-homepage requests
+if ($routePath !== '/' && !empty($_GET['route'])) {
+    // Load router and config
+    require_once __DIR__ . '/includes/Router.php';
+    require_once __DIR__ . '/includes/config.php';
+    require_once __DIR__ . '/includes/helpers.php';
+
+    // Check for maintenance mode first (allow admins to bypass)
+    if (function_exists('getSetting') && getSetting('maintenance_mode', '0') === '1') {
+        if (!function_exists('isAdmin') || !isAdmin()) {
+            // Allow login route during maintenance
+            if (!in_array($routePath, ['/login', '/logout', '/oidc-callback'])) {
+                require_once __DIR__ . '/includes/middleware/MaintenanceMiddleware.php';
+                $maintenance = new MaintenanceMiddleware();
+                $maintenance->handle([]);
+            }
+        }
+    }
+
+    // Check for SEO redirects (old .php URLs)
+    if (function_exists('getSetting') && getSetting('seo_redirects', '1') === '1') {
+        require_once __DIR__ . '/includes/middleware/SeoRedirectMiddleware.php';
+        $seo = new SeoRedirectMiddleware();
+        $seo->handle([]);
+    }
+
+    // Load routes (use cache in production if available)
+    $useCache = function_exists('getSetting') && getSetting('route_caching', '0') === '1';
+    if ($useCache && Router::isCacheValid()) {
+        Router::getInstance()->loadFromCache();
+    } else {
+        require_once __DIR__ . '/includes/routes.php';
+        // Save cache if caching is enabled
+        if ($useCache) {
+            Router::getInstance()->saveToCache();
+        }
+    }
+
+    $router = Router::getInstance();
+
+    // Try to dispatch the route
+    if ($router->dispatch()) {
+        exit; // Route was handled
+    }
+
+    // Route not found - show 404
+    http_response_code(404);
+    $pageTitle = 'Page Not Found';
+    $activePage = '';
+    require_once 'includes/header.php';
+    ?>
+    <div class="page-container" style="text-align: center; padding: 4rem 1rem;">
+        <h1 style="font-size: 4rem; margin-bottom: 1rem;">404</h1>
+        <p style="font-size: 1.25rem; color: var(--text-secondary); margin-bottom: 2rem;">
+            The page you're looking for doesn't exist.
+        </p>
+        <a href="<?= route('home') ?>" class="btn btn-primary">Go to Homepage</a>
+    </div>
+    <?php
+    require_once 'includes/footer.php';
+    exit;
+}
+
+// ============================================================================
+// HOMEPAGE
+// ============================================================================
+
 require_once 'includes/config.php';
+require_once 'includes/helpers.php';
 require_once 'includes/dedup.php';
 $pageTitle = 'Home';
 $activePage = 'browse';
@@ -120,7 +200,7 @@ require_once 'includes/header.php';
             </div>
             <div class="recently-viewed-grid">
                 <?php foreach ($recentlyViewed as $rv): ?>
-                <article class="model-card recently-viewed-card" onclick="window.location='model.php?id=<?= $rv['id'] ?>'">
+                <article class="model-card recently-viewed-card" onclick="window.location='<?= route('model.show', ['id' => $rv['id']]) ?>'">
                     <div class="model-thumbnail"
                         <?php if (!empty($rv['preview_path'])): ?>
                         data-model-url="<?= htmlspecialchars($rv['preview_path']) ?>"
@@ -140,14 +220,14 @@ require_once 'includes/header.php';
         <section class="models-section">
             <div class="section-header">
                 <h2>Recent Models</h2>
-                <a href="browse.php" class="btn btn-secondary btn-small">View All</a>
+                <a href="<?= route('browse') ?>" class="btn btn-secondary btn-small">View All</a>
             </div>
             <div class="models-grid">
                 <?php if (empty($models)): ?>
-                    <p class="text-muted">No models yet. <a href="upload.php">Upload your first model!</a></p>
+                    <p class="text-muted">No models yet. <a href="<?= route('upload') ?>">Upload your first model!</a></p>
                 <?php else: ?>
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'">
                         <div class="model-thumbnail"
                             <?php if (!empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
@@ -182,11 +262,11 @@ require_once 'includes/header.php';
         <section class="models-section">
             <div class="section-header">
                 <h2>Popular Tags</h2>
-                <a href="tags.php" class="btn btn-secondary btn-small">View All</a>
+                <a href="<?= route('tags') ?>" class="btn btn-secondary btn-small">View All</a>
             </div>
             <div class="model-tags" style="padding: 0 1rem;">
                 <?php foreach ($popularTags as $tag): ?>
-                <a href="browse.php?tag=<?= $tag['id'] ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none; font-size: 0.875rem; padding: 0.5rem 1rem;">
+                <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none; font-size: 0.875rem; padding: 0.5rem 1rem;">
                     <?= htmlspecialchars($tag['name']) ?>
                     <span style="opacity: 0.8; margin-left: 0.25rem;">(<?= $tag['model_count'] ?>)</span>
                 </a>
@@ -198,11 +278,11 @@ require_once 'includes/header.php';
         <section class="categories-section">
             <div class="section-header">
                 <h2>Categories</h2>
-                <a href="categories.php" class="btn btn-secondary btn-small">View All</a>
+                <a href="<?= route('categories') ?>" class="btn btn-secondary btn-small">View All</a>
             </div>
             <div class="categories-grid">
                 <?php foreach ($categories as $category): ?>
-                <a href="browse.php?category=<?= $category['id'] ?>" class="category-card">
+                <a href="<?= route('browse', [], ['category' => $category['id']]) ?>" class="category-card">
                     <span class="category-name"><?= htmlspecialchars($category['name']) ?></span>
                     <span class="category-count"><?= $category['model_count'] ?> models</span>
                 </a>

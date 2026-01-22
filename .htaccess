@@ -43,6 +43,13 @@
     </IfModule>
 </FilesMatch>
 
+# Protect pages directory (should only be accessed via router)
+<IfModule mod_authz_core.c>
+    <Directory "pages">
+        Require all denied
+    </Directory>
+</IfModule>
+
 # Security headers
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
