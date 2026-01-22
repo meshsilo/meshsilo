@@ -816,6 +816,177 @@ class Analytics {
         }
     }
 
+    // =====================
+    // Print Analytics Methods
+    // =====================
+
+    /**
+     * Get print history statistics
+     */
+    public static function getPrintStats($period = 'month') {
+        $db = getDB();
+        $periodStart = self::getPeriodStart($period);
+
+        $stats = [];
+
+        // Total printed models (parts with is_printed = 1)
+        $stats['total_printed'] = $db->querySingle('SELECT COUNT(*) FROM models WHERE is_printed = 1');
+
+        // Printed this period
+        $stmt = $db->prepare('SELECT COUNT(*) FROM models WHERE is_printed = 1 AND printed_at >= :start');
+        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stats['printed_this_period'] = $stmt->execute()->fetchArray()[0];
+
+        // Print success rate (models marked printed vs total models)
+        $totalModels = $db->querySingle('SELECT COUNT(*) FROM models WHERE parent_id IS NOT NULL');
+        $printedModels = $db->querySingle('SELECT COUNT(*) FROM models WHERE is_printed = 1');
+        $stats['print_rate'] = $totalModels > 0 ? round(($printedModels / $totalModels) * 100, 1) : 0;
+
+        // By print type (FDM vs SLA)
+        $stmt = $db->prepare("SELECT print_type, COUNT(*) as count FROM models WHERE is_printed = 1 AND print_type IS NOT NULL GROUP BY print_type");
+        $result = $stmt->execute();
+        $stats['by_type'] = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $stats['by_type'][$row['print_type']] = $row['count'];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Get print activity time series
+     */
+    public static function getPrintTimeSeries($period = 'month', $groupBy = 'day') {
+        $db = getDB();
+        $periodStart = self::getPeriodStart($period);
+        $dateFormat = self::getDateFormat($groupBy);
+
+        $stmt = $db->prepare("
+            SELECT strftime(:format, printed_at) as period, COUNT(*) as value
+            FROM models
+            WHERE is_printed = 1 AND printed_at >= :start AND printed_at IS NOT NULL
+            GROUP BY period ORDER BY period
+        ");
+        $stmt->bindValue(':format', $dateFormat, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+
+        $result = $stmt->execute();
+        $data = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $data[] = $row;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get most printed models
+     */
+    public static function getMostPrintedModels($limit = 10) {
+        $db = getDB();
+
+        // Get models with the most printed parts
+        $stmt = $db->prepare("
+            SELECT m.id, m.name, m.part_count,
+                   (SELECT COUNT(*) FROM models p WHERE p.parent_id = m.id AND p.is_printed = 1) as printed_parts
+            FROM models m
+            WHERE m.parent_id IS NULL
+            HAVING printed_parts > 0
+            ORDER BY printed_parts DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+
+        $result = $stmt->execute();
+        $data = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $data[] = $row;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get print type distribution
+     */
+    public static function getPrintTypeDistribution() {
+        $db = getDB();
+
+        $result = $db->query("
+            SELECT print_type, COUNT(*) as count
+            FROM models
+            WHERE is_printed = 1 AND print_type IS NOT NULL
+            GROUP BY print_type
+        ");
+
+        $data = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $data[] = $row;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get material usage estimates (based on file sizes as a proxy)
+     */
+    public static function getMaterialUsageEstimate($period = 'month') {
+        $db = getDB();
+        $periodStart = self::getPeriodStart($period);
+        $dateFormat = self::getDateFormat('day');
+
+        $stmt = $db->prepare("
+            SELECT strftime(:format, printed_at) as period,
+                   SUM(CASE WHEN print_type = 'fdm' THEN file_size ELSE 0 END) as fdm_size,
+                   SUM(CASE WHEN print_type = 'sla' THEN file_size ELSE 0 END) as sla_size
+            FROM models
+            WHERE is_printed = 1 AND printed_at >= :start AND printed_at IS NOT NULL
+            GROUP BY period ORDER BY period
+        ");
+        $stmt->bindValue(':format', $dateFormat, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+
+        $result = $stmt->execute();
+        $data = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $data[] = $row;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get print queue statistics
+     */
+    public static function getPrintQueueStats($userId = null) {
+        $db = getDB();
+
+        $stats = [];
+
+        // Queue size
+        if ($userId) {
+            $stmt = $db->prepare('SELECT COUNT(*) FROM print_queue WHERE user_id = :user_id');
+            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $stats['queue_size'] = $stmt->execute()->fetchArray()[0];
+        } else {
+            $stats['queue_size'] = $db->querySingle('SELECT COUNT(*) FROM print_queue');
+        }
+
+        // Total printed from queue
+        if ($userId) {
+            $stmt = $db->prepare('SELECT COUNT(*) FROM print_queue WHERE user_id = :user_id AND is_printed = 1');
+            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $stats['completed'] = $stmt->execute()->fetchArray()[0];
+        } else {
+            $stats['completed'] = $db->querySingle('SELECT COUNT(*) FROM print_queue WHERE is_printed = 1');
+        }
+
+        // Pending
+        $stats['pending'] = $stats['queue_size'] - $stats['completed'];
+
+        return $stats;
+    }
+
     /**
      * Get saved dashboard widgets
      */

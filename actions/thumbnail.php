@@ -22,6 +22,9 @@ switch ($action) {
     case 'delete':
         deleteThumbnail();
         break;
+    case 'generate':
+        generateThumbnail();
+        break;
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
 }
@@ -127,6 +130,45 @@ function deleteThumbnail() {
     $stmt->execute([':id' => $modelId]);
 
     echo json_encode(['success' => true]);
+}
+
+function generateThumbnail() {
+    global $user;
+
+    require_once __DIR__ . '/../includes/ThumbnailGenerator.php';
+
+    $modelId = (int)($_POST['model_id'] ?? $_GET['model_id'] ?? 0);
+
+    if (!$modelId) {
+        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        return;
+    }
+
+    $db = getDB();
+    $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
+    $stmt->execute([':id' => $modelId]);
+    $model = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$model) {
+        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        return;
+    }
+
+    // Generate thumbnail
+    $thumbnailPath = ThumbnailGenerator::generateThumbnail($model);
+
+    if ($thumbnailPath) {
+        echo json_encode([
+            'success' => true,
+            'thumbnail_path' => $thumbnailPath,
+            'thumbnail_url' => 'assets/' . $thumbnailPath
+        ]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Could not generate thumbnail. Only 3MF files with embedded thumbnails are supported.'
+        ]);
+    }
 }
 
 function resizeThumbnail($filePath, $maxDimension) {

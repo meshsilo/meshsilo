@@ -174,31 +174,34 @@ require_once 'includes/header.php';
             </div>
 
             <?php if (isLoggedIn()): ?>
-            <!-- Batch Actions Bar (hidden by default) -->
-            <div id="batch-actions-bar" class="batch-actions-bar" style="display: none;">
+            <!-- Floating Batch Actions Bar -->
+            <div id="batch-actions-bar" class="floating-batch-bar" style="display: none;">
                 <div class="batch-actions-left">
                     <label class="batch-select-all">
                         <input type="checkbox" id="select-all-models" onchange="toggleSelectAllModels(this)">
                         <span id="selected-count">0</span> selected
                     </label>
+                    <button type="button" class="btn btn-small btn-ghost" onclick="clearSelection()" title="Clear selection (Esc)">Clear</button>
                 </div>
                 <div class="batch-actions-right">
-                    <button type="button" class="btn btn-small" onclick="batchAddToQueue()">Add to Queue</button>
-                    <button type="button" class="btn btn-small" onclick="batchDownload()">Download ZIP</button>
-                    <select id="batch-tag-select" class="sort-select" style="max-width: 150px;" onchange="batchApplyTag(this.value)">
-                        <option value="">Add Tag...</option>
+                    <button type="button" class="btn btn-small" onclick="batchAddToQueue()" title="Add selected to print queue">Add to Queue</button>
+                    <button type="button" class="btn btn-small" onclick="batchDownload()" title="Download selected as ZIP">Download</button>
+                    <select id="batch-tag-select" class="batch-select" onchange="batchApplyTag(this.value)">
+                        <option value="">+ Tag</option>
                         <?php foreach ($tags as $tag): ?>
                         <option value="<?= $tag['id'] ?>"><?= htmlspecialchars($tag['name']) ?></option>
                         <?php endforeach; ?>
-                        <option value="__new__">+ Create New Tag</option>
+                        <option value="__new__">Create New...</option>
                     </select>
-                    <select id="batch-category-select" class="sort-select" style="max-width: 150px;" onchange="batchApplyCategory(this.value)">
-                        <option value="">Add Category...</option>
+                    <select id="batch-category-select" class="batch-select" onchange="batchApplyCategory(this.value)">
+                        <option value="">+ Category</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <button type="button" class="btn btn-small" onclick="batchArchive()">Archive</button>
+                    <button type="button" class="btn btn-small" onclick="batchSetCreator()" title="Set creator for selected">Set Creator</button>
+                    <button type="button" class="btn btn-small" onclick="batchSetCollection()" title="Set collection for selected">Set Collection</button>
+                    <button type="button" class="btn btn-small btn-warning" onclick="batchArchive()">Archive</button>
                 </div>
             </div>
             <?php endif; ?>
@@ -390,13 +393,31 @@ require_once 'includes/header.php';
 
         <script>
         let batchModeEnabled = false;
+        let lastClickedIndex = -1;
 
         function handleModelCardClick(event, modelId) {
             if (batchModeEnabled) {
                 // In batch mode, toggle the checkbox
                 const checkbox = event.currentTarget.querySelector('.model-checkbox');
                 if (checkbox && event.target !== checkbox) {
-                    checkbox.checked = !checkbox.checked;
+                    const allCards = Array.from(document.querySelectorAll('[data-model-id]'));
+                    const currentIndex = allCards.findIndex(card => card.dataset.modelId === String(modelId));
+
+                    // Shift+click for range selection
+                    if (event.shiftKey && lastClickedIndex >= 0 && currentIndex >= 0) {
+                        const start = Math.min(lastClickedIndex, currentIndex);
+                        const end = Math.max(lastClickedIndex, currentIndex);
+                        const shouldCheck = !checkbox.checked;
+
+                        for (let i = start; i <= end; i++) {
+                            const cb = allCards[i].querySelector('.model-checkbox');
+                            if (cb) cb.checked = shouldCheck;
+                        }
+                    } else {
+                        checkbox.checked = !checkbox.checked;
+                    }
+
+                    lastClickedIndex = currentIndex;
                     updateBatchSelection();
                 }
             } else {
@@ -408,7 +429,11 @@ require_once 'includes/header.php';
         function toggleBatchMode(enabled) {
             batchModeEnabled = enabled;
             document.body.classList.toggle('batch-mode', enabled);
-            document.getElementById('batch-actions-bar').style.display = enabled ? 'flex' : 'none';
+
+            // Show floating bar only when items are selected
+            if (!enabled) {
+                document.getElementById('batch-actions-bar').style.display = 'none';
+            }
 
             // Show/hide checkboxes
             document.querySelectorAll('.model-select-checkbox, .model-list-checkbox').forEach(el => {
@@ -419,6 +444,7 @@ require_once 'includes/header.php';
                 // Uncheck all when disabling
                 document.querySelectorAll('.model-checkbox').forEach(cb => cb.checked = false);
                 updateBatchSelection();
+                lastClickedIndex = -1;
             }
         }
 
@@ -429,9 +455,23 @@ require_once 'includes/header.php';
             updateBatchSelection();
         }
 
+        function clearSelection() {
+            document.querySelectorAll('.model-checkbox').forEach(cb => cb.checked = false);
+            updateBatchSelection();
+            lastClickedIndex = -1;
+        }
+
         function updateBatchSelection() {
             const checked = document.querySelectorAll('.model-checkbox:checked');
-            document.getElementById('selected-count').textContent = checked.length;
+            const countEl = document.getElementById('selected-count');
+            const bar = document.getElementById('batch-actions-bar');
+
+            if (countEl) countEl.textContent = checked.length;
+
+            // Show/hide floating bar based on selection count
+            if (bar && batchModeEnabled) {
+                bar.style.display = checked.length > 0 ? 'flex' : 'none';
+            }
 
             // Update select all checkbox state
             const allCheckboxes = document.querySelectorAll('.model-checkbox');
@@ -445,6 +485,25 @@ require_once 'includes/header.php';
         function getSelectedModelIds() {
             return Array.from(document.querySelectorAll('.model-checkbox:checked')).map(cb => cb.value);
         }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Only handle shortcuts when batch mode is enabled
+            if (!batchModeEnabled) return;
+
+            // Ctrl/Cmd + A: Select all
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                e.preventDefault();
+                document.querySelectorAll('.model-checkbox').forEach(cb => cb.checked = true);
+                updateBatchSelection();
+            }
+
+            // Escape: Clear selection
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                clearSelection();
+            }
+        });
 
         async function batchAddToQueue() {
             const ids = getSelectedModelIds();
@@ -594,6 +653,68 @@ require_once 'includes/header.php';
             } catch (err) {
                 console.error('Batch archive error:', err);
                 alert('Failed to archive');
+            }
+        }
+
+        async function batchSetCreator() {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                return;
+            }
+
+            const creator = prompt(`Set creator for ${ids.length} selected model(s):\n(Leave empty to clear)`);
+            if (creator === null) return; // Cancelled
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'set_creator');
+                formData.append('creator', creator);
+                ids.forEach(id => formData.append('model_ids[]', id));
+
+                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`Updated creator on ${result.updated} model(s)`);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Batch set creator error:', err);
+                alert('Failed to set creator');
+            }
+        }
+
+        async function batchSetCollection() {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                return;
+            }
+
+            const collection = prompt(`Set collection for ${ids.length} selected model(s):\n(Leave empty to clear)`);
+            if (collection === null) return; // Cancelled
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'set_collection');
+                formData.append('collection', collection);
+                ids.forEach(id => formData.append('model_ids[]', id));
+
+                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`Updated collection on ${result.updated} model(s)`);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Batch set collection error:', err);
+                alert('Failed to set collection');
             }
         }
 

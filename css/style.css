@@ -3955,3 +3955,665 @@ body.batch-mode .model-list-item:hover {
         height: 120px;
     }
 }
+
+/* =====================
+   Share Modal Styles
+   ===================== */
+.share-create-section,
+.share-links-section {
+    margin-bottom: 1.5rem;
+}
+
+.share-create-section h4,
+.share-links-section h4 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.share-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.share-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 500px) {
+    .share-form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.share-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.share-link-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--color-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+}
+
+.share-link-item.expired {
+    opacity: 0.5;
+}
+
+.share-link-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.share-link-url {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.share-url-input {
+    flex: 1;
+    min-width: 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    cursor: text;
+}
+
+.share-url-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.share-link-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.share-meta-item {
+    display: inline-block;
+}
+
+.share-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: var(--radius);
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+@media (max-width: 600px) {
+    .share-link-item {
+        flex-direction: column;
+    }
+
+    .share-link-url {
+        flex-wrap: wrap;
+    }
+
+    .share-url-input {
+        width: 100%;
+    }
+}
+
+/* =====================
+   Floating Batch Actions Bar
+   ===================== */
+.floating-batch-bar {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 100;
+    max-width: calc(100vw - 2rem);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.batch-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.batch-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.batch-select-all {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.batch-select {
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.375rem 0.5rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    min-width: 100px;
+}
+
+.batch-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--color-text-muted);
+}
+
+.btn-ghost:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.btn-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
+}
+
+@media (max-width: 768px) {
+    .floating-batch-bar {
+        bottom: 1rem;
+        left: 1rem;
+        right: 1rem;
+        transform: none;
+        flex-direction: column;
+        padding: 1rem;
+    }
+
+    .batch-actions-left,
+    .batch-actions-right {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* =====================
+   Cost Estimation Card
+   ===================== */
+.cost-estimate-card {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.cost-estimate-card h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cost-estimate-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+}
+
+.cost-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.cost-item-main {
+    grid-column: 1 / -1;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.cost-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.cost-value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.cost-value-main {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.cost-estimate-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+}
+
+/* =====================
+   Mobile-Optimized Upload
+   ===================== */
+
+/* Upload buttons row */
+.upload-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Mobile-only elements (hidden on desktop) */
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-only {
+        display: inline-flex;
+    }
+}
+
+/* Upload progress styles */
+.upload-progress {
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: var(--color-surface);
+    border-radius: var(--radius);
+}
+
+.upload-progress .progress-bar {
+    height: 12px;
+    background: var(--color-bg);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.upload-progress .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), #22c55e);
+    border-radius: 6px;
+    transition: width 0.2s ease;
+}
+
+.progress-text {
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* Advanced options collapsible */
+.advanced-options {
+    margin: 1.5rem 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.advanced-toggle {
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    user-select: none;
+}
+
+.advanced-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.advanced-toggle::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 6px solid var(--color-text-muted);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    transition: transform 0.2s;
+}
+
+.advanced-options[open] .advanced-toggle::before {
+    transform: rotate(90deg);
+}
+
+.advanced-content {
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Mobile upload form optimizations */
+@media (max-width: 768px) {
+    .upload-dropzone {
+        padding: 2rem 1rem;
+    }
+
+    .dropzone-icon {
+        font-size: 2.5rem;
+    }
+
+    .dropzone-text {
+        font-size: 1rem;
+    }
+
+    .form-input,
+    .form-textarea {
+        font-size: 16px; /* Prevents iOS zoom on focus */
+        min-height: 44px; /* Touch-friendly */
+    }
+
+    .btn {
+        min-height: 44px;
+        padding: 0.75rem 1.25rem;
+        font-size: 1rem;
+    }
+
+    .file-select-btn {
+        padding: 0.75rem 1.5rem;
+    }
+
+    .checkbox-label {
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Desktop: Always show advanced options expanded */
+    .advanced-options {
+        border: none;
+        background: transparent;
+    }
+}
+
+/* Desktop: Don't show as collapsible */
+@media (min-width: 769px) {
+    .advanced-options {
+        border: none;
+        background: transparent;
+    }
+
+    .advanced-toggle {
+        display: none;
+    }
+
+    .advanced-content {
+        padding: 0;
+        border-top: none;
+    }
+}
+
+/* =====================
+   Mesh Status Display
+   ===================== */
+.mesh-status-card {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.mesh-status-card.mesh-ok {
+    border-color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.08);
+}
+
+.mesh-status-card.mesh-issues {
+    border-color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.08);
+}
+
+.mesh-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.mesh-badge-ok {
+    background-color: #22c55e;
+    color: white;
+}
+
+.mesh-badge-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.mesh-text {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    flex: 1;
+}
+
+.mesh-status-card .btn {
+    margin-left: auto;
+}
+
+/* =====================
+   3D Model Annotations
+   ===================== */
+.annotation-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.annotation-label {
+    position: absolute;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.5rem;
+    max-width: 200px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 0.875rem;
+    z-index: 10;
+}
+
+.annotation-label-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.annotation-number {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.annotation-author {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.annotation-content {
+    color: var(--color-text);
+    line-height: 1.4;
+}
+
+/* Annotation Controls Panel */
+.annotation-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.annotation-panel h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.annotation-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.annotation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.annotation-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background-color: var(--color-bg);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.annotation-item:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.annotation-item-number {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.annotation-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.annotation-item-text {
+    font-size: 0.875rem;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+}
+
+.annotation-item-meta {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.annotation-item-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* Add Annotation Form */
+.annotation-form {
+    display: none;
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--color-bg);
+    border-radius: var(--radius);
+}
+
+.annotation-form.active {
+    display: block;
+}
+
+.annotation-form .form-group {
+    margin-bottom: 0.75rem;
+}
+
+.annotation-form textarea {
+    min-height: 60px;
+    resize: vertical;
+}
+
+.color-picker-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.color-picker-row input[type="color"] {
+    width: 40px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+}

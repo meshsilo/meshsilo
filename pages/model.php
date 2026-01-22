@@ -4,6 +4,8 @@ require_once 'includes/dedup.php';
 require_once 'includes/slicers.php';
 require_once 'includes/dimensions.php';
 require_once 'includes/gcode.php';
+require_once 'includes/VolumeCalculator.php';
+require_once 'includes/MeshAnalyzer.php';
 
 $db = getDB();
 
@@ -71,6 +73,16 @@ $dimensions = getModelDimensions($modelId);
 
 // Get related models
 $relatedModels = getRelatedModels($modelId);
+
+// Get volume and cost estimate
+$modelVolume = null;
+$costEstimate = null;
+if (!in_array($model['file_type'] ?? '', ['gcode'])) {
+    $modelVolume = VolumeCalculator::getModelVolume($model);
+    if ($modelVolume) {
+        $costEstimate = VolumeCalculator::estimateCost($modelVolume);
+    }
+}
 
 // Get GCODE metadata if this is a GCODE file
 $gcodeMetadata = null;
@@ -296,6 +308,85 @@ require_once 'includes/header.php';
                         </div>
                         <?php endif; ?>
 
+                        <?php if ($costEstimate): ?>
+                        <div class="cost-estimate-card">
+                            <h4>Estimated Print Cost</h4>
+                            <div class="cost-estimate-grid">
+                                <div class="cost-item">
+                                    <span class="cost-label">Volume</span>
+                                    <span class="cost-value"><?= number_format($costEstimate['volume_cm3'], 1) ?> cm&sup3;</span>
+                                </div>
+                                <div class="cost-item">
+                                    <span class="cost-label">Weight</span>
+                                    <span class="cost-value"><?= number_format($costEstimate['weight_grams'], 0) ?>g (<?= strtoupper($costEstimate['material']) ?>)</span>
+                                </div>
+                                <div class="cost-item cost-item-main">
+                                    <span class="cost-label">Est. Cost (<?= $costEstimate['infill_factor'] ?>% infill)</span>
+                                    <span class="cost-value cost-value-main"><?= $costEstimate['currency'] === 'USD' ? '$' : '' ?><?= number_format($costEstimate['estimated_cost'], 2) ?><?= $costEstimate['currency'] !== 'USD' ? ' ' . $costEstimate['currency'] : '' ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php elseif (canEdit() && !in_array($model['file_type'] ?? '', ['gcode'])): ?>
+                        <div class="cost-estimate-card cost-estimate-placeholder">
+                            <button type="button" class="btn btn-small btn-secondary" onclick="calculateCost(<?= $model['id'] ?>)" id="calc-cost-btn">Calculate Print Cost</button>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php
+                        // Mesh status for STL files
+                        $meshStatus = null;
+                        if (strtolower($model['file_type'] ?? '') === 'stl' || $model['file_type'] === 'parent') {
+                            $meshStatus = MeshAnalyzer::getMeshStatus($model);
+                        }
+                        ?>
+                        <?php if ($meshStatus !== null): ?>
+                        <div class="mesh-status-card <?= $meshStatus['is_manifold'] ? 'mesh-ok' : 'mesh-issues' ?>">
+                            <?php if ($meshStatus['is_manifold']): ?>
+                                <span class="mesh-badge mesh-badge-ok">Mesh OK</span>
+                                <span class="mesh-text">Model is manifold (watertight)</span>
+                            <?php else: ?>
+                                <span class="mesh-badge mesh-badge-warning">Mesh Issues</span>
+                                <span class="mesh-text"><?= count($meshStatus['issues']) ?> issue(s) detected</span>
+                                <?php if (canEdit() && MeshAnalyzer::isAdmeshAvailable()): ?>
+                                <button type="button" class="btn btn-small btn-warning" onclick="repairMesh(<?= $model['id'] ?>)" id="repair-mesh-btn">Repair Mesh</button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                        <?php elseif (strtolower($model['file_type'] ?? '') === 'stl' && canEdit()): ?>
+                        <div class="mesh-status-card">
+                            <button type="button" class="btn btn-small btn-secondary" onclick="analyzeMesh(<?= $model['id'] ?>)" id="analyze-mesh-btn">Analyze Mesh</button>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array($previewType ?? $model['file_type'], ['stl', '3mf'])): ?>
+                        <div class="annotation-panel" id="annotation-panel">
+                            <h4>Annotations</h4>
+                            <div class="annotation-controls">
+                                <button type="button" class="btn btn-small" id="toggle-annotations-btn" onclick="toggleAnnotations()">Show Annotations</button>
+                                <?php if (isLoggedIn()): ?>
+                                <button type="button" class="btn btn-small btn-secondary" id="add-annotation-btn" onclick="toggleAddAnnotationMode()">Add Annotation</button>
+                                <?php endif; ?>
+                            </div>
+                            <div class="annotation-form" id="annotation-form">
+                                <div class="form-group">
+                                    <label for="annotation-content">Note</label>
+                                    <textarea id="annotation-content" class="form-input" placeholder="Enter annotation..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Color</label>
+                                    <div class="color-picker-row">
+                                        <input type="color" id="annotation-color" value="#ff0000">
+                                        <span class="form-help">Click on the model to place annotation</span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-small btn-secondary" onclick="cancelAddAnnotation()">Cancel</button>
+                            </div>
+                            <div class="annotation-list" id="annotation-list">
+                                <p class="text-muted">No annotations yet</p>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
                         <?php if (!empty($categories)): ?>
                         <div class="model-categories">
                             <?php foreach ($categories as $cat): ?>
@@ -330,8 +421,10 @@ require_once 'includes/header.php';
                         </p>
                         <?php endif; ?>
 
-                        <?php if (canEdit() || canDelete()): ?>
                         <div class="model-actions" style="margin-top: 1rem;">
+                            <?php if (isLoggedIn()): ?>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>
+                            <?php endif; ?>
                             <?php if (canEdit()): ?>
                             <a href="edit-model.php?id=<?= $model['id'] ?>" class="btn btn-secondary btn-small">Edit Model</a>
                             <?php if ($model['is_archived']): ?>
@@ -344,7 +437,6 @@ require_once 'includes/header.php';
                             <a href="actions/delete.php?id=<?= $model['id'] ?>" class="btn btn-danger btn-small">Delete Model</a>
                             <?php endif; ?>
                         </div>
-                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -537,6 +629,55 @@ require_once 'includes/header.php';
                 </div>
             </div>
         </div>
+
+        <?php if (isLoggedIn()): ?>
+        <!-- Share Modal -->
+        <div id="share-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3>Share "<?= htmlspecialchars($model['name']) ?>"</h3>
+                    <button type="button" class="modal-close" onclick="closeShareModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Create New Share Link -->
+                    <div class="share-create-section">
+                        <h4>Create Share Link</h4>
+                        <form id="share-link-form" class="share-form">
+                            <div class="share-form-row">
+                                <div class="form-group">
+                                    <label for="share-expires">Expires In</label>
+                                    <select id="share-expires" class="form-input">
+                                        <option value="">Never</option>
+                                        <option value="1 hour">1 Hour</option>
+                                        <option value="24 hours">24 Hours</option>
+                                        <option value="7 days">7 Days</option>
+                                        <option value="30 days">30 Days</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="share-max-downloads">Max Downloads</label>
+                                    <input type="number" id="share-max-downloads" class="form-input" min="0" placeholder="Unlimited">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="share-password">Password (optional)</label>
+                                <input type="password" id="share-password" class="form-input" placeholder="Leave empty for no password">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create Share Link</button>
+                        </form>
+                    </div>
+
+                    <!-- Existing Share Links -->
+                    <div class="share-links-section">
+                        <h4>Active Share Links</h4>
+                        <div id="share-links-list" class="share-links-list">
+                            <p class="text-muted">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <script>
         // Part preview modal
@@ -1031,6 +1172,275 @@ require_once 'includes/header.php';
             }
         }
 
+        // Analyze mesh
+        async function analyzeMesh(modelId) {
+            const btn = document.getElementById('analyze-mesh-btn');
+            if (btn) {
+                btn.textContent = 'Analyzing...';
+                btn.disabled = true;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'analyze');
+                formData.append('model_id', modelId);
+
+                const response = await fetch('actions/mesh-repair.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Could not analyze mesh: ' + (data.error || 'Unknown error'));
+                    if (btn) {
+                        btn.textContent = 'Analyze Mesh';
+                        btn.disabled = false;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to analyze mesh:', err);
+                alert('Failed to analyze mesh');
+                if (btn) {
+                    btn.textContent = 'Analyze Mesh';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        // Annotation management
+        let annotationsEnabled = false;
+        let addAnnotationMode = false;
+        let pendingAnnotationPosition = null;
+
+        function toggleAnnotations() {
+            annotationsEnabled = !annotationsEnabled;
+            const btn = document.getElementById('toggle-annotations-btn');
+            btn.textContent = annotationsEnabled ? 'Hide Annotations' : 'Show Annotations';
+
+            if (annotationsEnabled) {
+                loadAnnotations();
+            } else {
+                document.getElementById('annotation-list').innerHTML = '<p class="text-muted">No annotations yet</p>';
+            }
+        }
+
+        function toggleAddAnnotationMode() {
+            addAnnotationMode = !addAnnotationMode;
+            const btn = document.getElementById('add-annotation-btn');
+            const form = document.getElementById('annotation-form');
+
+            if (addAnnotationMode) {
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-secondary');
+                form.classList.add('active');
+                alert('Click on the 3D model to place an annotation marker');
+            } else {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+                form.classList.remove('active');
+                pendingAnnotationPosition = null;
+            }
+        }
+
+        function cancelAddAnnotation() {
+            addAnnotationMode = false;
+            pendingAnnotationPosition = null;
+            const btn = document.getElementById('add-annotation-btn');
+            const form = document.getElementById('annotation-form');
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+            form.classList.remove('active');
+            document.getElementById('annotation-content').value = '';
+        }
+
+        async function loadAnnotations() {
+            const list = document.getElementById('annotation-list');
+
+            try {
+                const response = await fetch('actions/annotations.php?action=list&model_id=<?= $model['id'] ?>');
+                const data = await response.json();
+
+                if (!data.success || !data.annotations.length) {
+                    list.innerHTML = '<p class="text-muted">No annotations yet</p>';
+                    return;
+                }
+
+                list.innerHTML = data.annotations.map((annotation, index) => `
+                    <div class="annotation-item" data-id="${annotation.id}">
+                        <span class="annotation-item-number" style="background: ${annotation.color}">${index + 1}</span>
+                        <div class="annotation-item-content">
+                            <div class="annotation-item-text">${escapeHtml(annotation.content)}</div>
+                            <div class="annotation-item-meta">by ${escapeHtml(annotation.username)}</div>
+                        </div>
+                        <?php if (isLoggedIn()): ?>
+                        <div class="annotation-item-actions">
+                            <button type="button" class="btn btn-small btn-danger" onclick="deleteAnnotation(${annotation.id})">Delete</button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Failed to load annotations:', err);
+                list.innerHTML = '<p class="text-muted">Failed to load annotations</p>';
+            }
+        }
+
+        async function saveAnnotation() {
+            if (!pendingAnnotationPosition) {
+                alert('Please click on the model to place the annotation');
+                return;
+            }
+
+            const content = document.getElementById('annotation-content').value.trim();
+            const color = document.getElementById('annotation-color').value;
+
+            if (!content) {
+                alert('Please enter annotation content');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'create');
+                formData.append('model_id', <?= $model['id'] ?>);
+                formData.append('position_x', pendingAnnotationPosition.x);
+                formData.append('position_y', pendingAnnotationPosition.y);
+                formData.append('position_z', pendingAnnotationPosition.z);
+                formData.append('content', content);
+                formData.append('color', color);
+
+                const response = await fetch('actions/annotations.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    cancelAddAnnotation();
+                    loadAnnotations();
+                } else {
+                    alert('Failed to save annotation: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Failed to save annotation:', err);
+                alert('Failed to save annotation');
+            }
+        }
+
+        async function deleteAnnotation(annotationId) {
+            if (!confirm('Delete this annotation?')) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'delete');
+                formData.append('id', annotationId);
+
+                const response = await fetch('actions/annotations.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    loadAnnotations();
+                } else {
+                    alert('Failed to delete: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Failed to delete annotation:', err);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Repair mesh
+        async function repairMesh(modelId) {
+            if (!confirm('This will attempt to repair mesh issues. A backup will be created. Continue?')) {
+                return;
+            }
+
+            const btn = document.getElementById('repair-mesh-btn');
+            if (btn) {
+                btn.textContent = 'Repairing...';
+                btn.disabled = true;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'repair');
+                formData.append('model_id', modelId);
+
+                const response = await fetch('actions/mesh-repair.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Mesh repaired successfully!');
+                    location.reload();
+                } else {
+                    alert('Repair failed: ' + (data.error || 'Unknown error'));
+                    if (btn) {
+                        btn.textContent = 'Repair Mesh';
+                        btn.disabled = false;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to repair mesh:', err);
+                alert('Failed to repair mesh');
+                if (btn) {
+                    btn.textContent = 'Repair Mesh';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        // Calculate cost
+        async function calculateCost(modelId) {
+            const btn = document.getElementById('calc-cost-btn');
+            if (btn) {
+                btn.textContent = 'Calculating...';
+                btn.disabled = true;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('model_id', modelId);
+
+                const response = await fetch('actions/calculate-volume.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success && data.cost_estimate) {
+                    // Reload the page to show the cost estimate
+                    location.reload();
+                } else {
+                    alert('Could not calculate cost: ' + (data.error || 'Unknown error'));
+                    if (btn) {
+                        btn.textContent = 'Calculate Print Cost';
+                        btn.disabled = false;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to calculate cost:', err);
+                alert('Failed to calculate cost');
+                if (btn) {
+                    btn.textContent = 'Calculate Print Cost';
+                    btn.disabled = false;
+                }
+            }
+        }
+
         // Calculate dimensions
         async function calculateDimensions(modelId) {
             const btn = document.getElementById('calc-dim-btn');
@@ -1179,6 +1589,180 @@ require_once 'includes/header.php';
                 console.error('Failed to remove tag:', err);
             }
         }
+
+        // Share Modal Functions
+        <?php if (isLoggedIn()): ?>
+        function openShareModal() {
+            document.getElementById('share-modal').style.display = 'flex';
+            loadShareLinks();
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').style.display = 'none';
+        }
+
+        document.getElementById('share-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeShareModal();
+        });
+
+        document.getElementById('share-link-form')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('action', 'create');
+            formData.append('model_id', <?= $model['id'] ?>);
+            formData.append('expires_in', document.getElementById('share-expires').value);
+            formData.append('max_downloads', document.getElementById('share-max-downloads').value);
+            formData.append('password', document.getElementById('share-password').value);
+
+            try {
+                const response = await fetch('actions/share-link.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    // Clear form
+                    this.reset();
+                    // Reload links
+                    loadShareLinks();
+                } else {
+                    alert('Failed to create share link: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error creating share link:', err);
+                alert('Failed to create share link');
+            }
+        });
+
+        async function loadShareLinks() {
+            const container = document.getElementById('share-links-list');
+
+            try {
+                const response = await fetch('actions/share-link.php?action=list&model_id=<?= $model['id'] ?>');
+                const result = await response.json();
+
+                if (!result.success) {
+                    container.innerHTML = '<p class="text-muted">Failed to load share links</p>';
+                    return;
+                }
+
+                if (result.links.length === 0) {
+                    container.innerHTML = '<p class="text-muted">No active share links</p>';
+                    return;
+                }
+
+                container.innerHTML = result.links.map(link => `
+                    <div class="share-link-item ${link.is_expired ? 'expired' : ''}">
+                        <div class="share-link-info">
+                            <div class="share-link-url">
+                                <input type="text" readonly value="${link.share_url}" class="share-url-input" onclick="this.select()">
+                                <button type="button" class="btn btn-small" onclick="copyShareUrl(this.previousElementSibling)" title="Copy URL">Copy</button>
+                                <button type="button" class="btn btn-small" onclick="showQRCode('${link.share_url}')" title="Show QR Code">QR</button>
+                            </div>
+                            <div class="share-link-meta">
+                                ${link.has_password ? '<span class="share-badge">Password</span>' : ''}
+                                ${link.expires_at ? `<span class="share-meta-item">${link.is_expired ? 'Expired' : 'Expires: ' + new Date(link.expires_at).toLocaleDateString()}</span>` : '<span class="share-meta-item">Never expires</span>'}
+                                ${link.max_downloads ? `<span class="share-meta-item">Downloads: ${link.download_count}/${link.max_downloads}</span>` : `<span class="share-meta-item">${link.download_count} downloads</span>`}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-danger btn-small" onclick="deleteShareLink(${link.id})">Delete</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Error loading share links:', err);
+                container.innerHTML = '<p class="text-muted">Failed to load share links</p>';
+            }
+        }
+
+        function copyShareUrl(input) {
+            input.select();
+            navigator.clipboard.writeText(input.value).then(() => {
+                const btn = input.nextElementSibling;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = originalText, 1500);
+            }).catch(() => {
+                document.execCommand('copy');
+            });
+        }
+
+        function showQRCode(url) {
+            // Create QR code modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.id = 'qr-modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 320px; text-align: center;">
+                    <div class="modal-header">
+                        <h3>Scan to Access</h3>
+                        <button type="button" class="modal-close" onclick="document.getElementById('qr-modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="qr-container" style="padding: 1rem; background: white; display: inline-block; border-radius: 8px;"></div>
+                        <p class="text-muted" style="margin-top: 1rem; font-size: 0.875rem; word-break: break-all;">${url}</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.style.display = 'flex';
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) this.remove();
+            });
+
+            // Load QRCode.js from CDN and generate QR code
+            if (typeof QRCode === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+                script.onload = () => generateQR(url);
+                document.head.appendChild(script);
+            } else {
+                generateQR(url);
+            }
+        }
+
+        function generateQR(url) {
+            const container = document.getElementById('qr-container');
+            if (container) {
+                new QRCode(container, {
+                    text: url,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        }
+
+        async function deleteShareLink(linkId) {
+            if (!confirm('Delete this share link? Anyone with this link will no longer be able to access the model.')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('link_id', linkId);
+
+            try {
+                const response = await fetch('actions/share-link.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    loadShareLinks();
+                } else {
+                    alert('Failed to delete share link: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error deleting share link:', err);
+                alert('Failed to delete share link');
+            }
+        }
+        <?php endif; ?>
         </script>
 
 <?php require_once 'includes/footer.php'; ?>

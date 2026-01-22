@@ -147,24 +147,6 @@ switch ($action) {
         echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
         break;
 
-    case 'set_license':
-        $license = $_POST['license'] ?? '';
-
-        foreach ($modelIds as $modelId) {
-            $stmt = $db->prepare('UPDATE models SET license = :license WHERE id = :id');
-            $stmt->bindValue(':license', $license, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
-            if ($stmt->execute()) {
-                $successCount++;
-            } else {
-                $errorCount++;
-            }
-        }
-
-        logActivity($user['id'], 'batch_set_license', 'models', 0, "Set license on $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
-        break;
-
     case 'archive':
         $archive = ($_POST['archive'] ?? '1') === '1' ? 1 : 0;
 
@@ -223,6 +205,60 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_add_to_queue', 'models', 0, "Added $successCount models to print queue");
+        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        break;
+
+    case 'set_collection':
+        $collection = trim($_POST['collection'] ?? '');
+
+        foreach ($modelIds as $modelId) {
+            $stmt = $db->prepare('UPDATE models SET collection = :collection WHERE id = :id');
+            $stmt->bindValue(':collection', $collection ?: null, SQLITE3_TEXT);
+            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            if ($stmt->execute()) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+
+        logActivity($user['id'], 'batch_set_collection', 'models', 0, "Set collection on $successCount models");
+        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        break;
+
+    case 'set_creator':
+        $creator = trim($_POST['creator'] ?? '');
+
+        foreach ($modelIds as $modelId) {
+            $stmt = $db->prepare('UPDATE models SET creator = :creator WHERE id = :id');
+            $stmt->bindValue(':creator', $creator ?: null, SQLITE3_TEXT);
+            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            if ($stmt->execute()) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+
+        logActivity($user['id'], 'batch_set_creator', 'models', 0, "Set creator on $successCount models");
+        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        break;
+
+    case 'set_license':
+        $license = $_POST['license'] ?? '';
+
+        foreach ($modelIds as $modelId) {
+            $stmt = $db->prepare('UPDATE models SET license = :license WHERE id = :id');
+            $stmt->bindValue(':license', $license, SQLITE3_TEXT);
+            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            if ($stmt->execute()) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+
+        logActivity($user['id'], 'batch_set_license', 'models', 0, "Set license on $successCount models");
         echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
         break;
 

@@ -388,20 +388,34 @@ require_once 'includes/header.php';
             <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
 
-            <form class="upload-form" action="upload.php" method="post" enctype="multipart/form-data">
+            <form class="upload-form" id="upload-form" action="upload.php" method="post" enctype="multipart/form-data">
                 <div class="upload-dropzone" id="dropzone">
                     <div class="dropzone-content">
                         <span class="dropzone-icon">&#8679;</span>
                         <p class="dropzone-text">Drag and drop your file here</p>
                         <p class="dropzone-subtext">or</p>
-                        <label class="btn btn-primary file-select-btn">
-                            Browse Files
-                            <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.gcode,.zip" hidden>
-                        </label>
+                        <div class="upload-buttons">
+                            <label class="btn btn-primary file-select-btn">
+                                Browse Files
+                                <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.gcode,.zip" hidden>
+                            </label>
+                            <label class="btn btn-secondary file-select-btn mobile-only">
+                                Take Photo
+                                <input type="file" name="photo_file" id="photo_file" accept="image/*" capture="environment" hidden>
+                            </label>
+                        </div>
                         <p class="dropzone-hint">Supported: .stl, .3mf, .gcode, .zip (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
                         <p class="dropzone-hint">ZIP files will be unpacked and all model files imported</p>
                         <p class="file-name-display" id="file-name-display"></p>
                     </div>
+                </div>
+
+                <!-- Upload Progress Bar -->
+                <div class="upload-progress" id="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <p class="progress-text" id="progress-text">Uploading... 0%</p>
                 </div>
 
                 <div class="form-group">
@@ -415,61 +429,93 @@ require_once 'includes/header.php';
                     <textarea id="model-description" name="description" class="form-input form-textarea" placeholder="Describe your model..." rows="4"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
 
-                <div class="form-group">
-                    <label for="model-creator">Creator</label>
-                    <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
-                </div>
+                <!-- Advanced Options (collapsible on mobile) -->
+                <details class="advanced-options" id="advanced-options">
+                    <summary class="advanced-toggle">Advanced Options</summary>
+                    <div class="advanced-content">
+                        <div class="form-group">
+                            <label for="model-creator">Creator</label>
+                            <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
+                        </div>
 
-                <div class="form-group">
-                    <label for="model-collection">Collection</label>
-                    <input type="text" id="model-collection" name="collection" class="form-input" placeholder="Collection name (e.g., Gridfinity, Voron)" list="collections-list" value="<?= htmlspecialchars($_POST['collection'] ?? '') ?>">
-                    <datalist id="collections-list">
-                        <?php foreach ($collections as $col): ?>
-                        <option value="<?= htmlspecialchars($col) ?>">
-                        <?php endforeach; ?>
-                    </datalist>
-                </div>
+                        <div class="form-group">
+                            <label for="model-collection">Collection</label>
+                            <input type="text" id="model-collection" name="collection" class="form-input" placeholder="Collection name (e.g., Gridfinity, Voron)" list="collections-list" value="<?= htmlspecialchars($_POST['collection'] ?? '') ?>">
+                            <datalist id="collections-list">
+                                <?php foreach ($collections as $col): ?>
+                                <option value="<?= htmlspecialchars($col) ?>">
+                                <?php endforeach; ?>
+                            </datalist>
+                        </div>
 
-                <div class="form-group">
-                    <label for="model-source">Source Link</label>
-                    <input type="url" id="model-source" name="source_url" class="form-input" placeholder="https://thingiverse.com/..." value="<?= htmlspecialchars($_POST['source_url'] ?? '') ?>">
-                </div>
+                        <div class="form-group">
+                            <label for="model-source">Source Link</label>
+                            <input type="url" id="model-source" name="source_url" class="form-input" placeholder="https://thingiverse.com/..." value="<?= htmlspecialchars($_POST['source_url'] ?? '') ?>">
+                        </div>
 
-                <div class="form-group">
-                    <label>Categories</label>
-                    <div class="checkbox-group">
-                        <?php foreach ($categories as $category): ?>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="categories[]" value="<?= $category['id'] ?>" <?= in_array($category['id'], $_POST['categories'] ?? []) ? 'checked' : '' ?>>
-                            <span><?= htmlspecialchars($category['name']) ?></span>
-                        </label>
-                        <?php endforeach; ?>
+                        <div class="form-group">
+                            <label>Categories</label>
+                            <div class="checkbox-group">
+                                <?php foreach ($categories as $category): ?>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="categories[]" value="<?= $category['id'] ?>" <?= in_array($category['id'], $_POST['categories'] ?? []) ? 'checked' : '' ?>>
+                                    <span><?= htmlspecialchars($category['name']) ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </details>
 
                 <div class="form-actions">
                     <a href="index.php" class="btn btn-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-primary">Upload Model</button>
+                    <button type="submit" class="btn btn-primary" id="submit-btn">Upload Model</button>
                 </div>
             </form>
         </div>
 
         <script>
-        // Show selected file name
-        document.getElementById('model_file').addEventListener('change', function(e) {
-            const display = document.getElementById('file-name-display');
+        const fileInput = document.getElementById('model_file');
+        const photoInput = document.getElementById('photo_file');
+        const dropzone = document.getElementById('dropzone');
+        const display = document.getElementById('file-name-display');
+        const uploadForm = document.getElementById('upload-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const progressContainer = document.getElementById('upload-progress');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+
+        // File selection handlers
+        function handleFileSelect(file) {
+            display.textContent = 'Selected: ' + file.name;
+            display.style.color = '#22c55e';
+
+            // Auto-fill name from filename if empty
+            const nameInput = document.getElementById('model-name');
+            if (!nameInput.value) {
+                nameInput.value = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+            }
+        }
+
+        fileInput.addEventListener('change', function(e) {
             if (this.files.length > 0) {
-                display.textContent = 'Selected: ' + this.files[0].name;
-                display.style.color = '#22c55e';
+                handleFileSelect(this.files[0]);
             } else {
                 display.textContent = '';
             }
         });
 
-        // Drag and drop support
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('model_file');
+        // Photo capture (mobile)
+        if (photoInput) {
+            photoInput.addEventListener('change', function(e) {
+                if (this.files.length > 0) {
+                    display.textContent = 'Photo captured: ' + this.files[0].name;
+                    display.style.color = '#22c55e';
+                }
+            });
+        }
 
+        // Drag and drop support
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropzone.addEventListener(eventName, preventDefaults, false);
         });
@@ -491,11 +537,86 @@ require_once 'includes/header.php';
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 fileInput.files = files;
-                const display = document.getElementById('file-name-display');
-                display.textContent = 'Selected: ' + files[0].name;
-                display.style.color = '#22c55e';
+                handleFileSelect(files[0]);
             }
         });
+
+        // Progressive upload with XHR
+        uploadForm.addEventListener('submit', function(e) {
+            // Check if file is selected
+            if (!fileInput.files.length) {
+                return; // Let default validation handle it
+            }
+
+            // For large files, use XHR for progress tracking
+            const file = fileInput.files[0];
+            const fileSizeMB = file.size / (1024 * 1024);
+
+            // Use XHR for files larger than 1MB
+            if (fileSizeMB > 1) {
+                e.preventDefault();
+                uploadWithProgress();
+            }
+        });
+
+        function uploadWithProgress() {
+            const formData = new FormData(uploadForm);
+
+            // Show progress bar
+            progressContainer.style.display = 'block';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressFill.style.width = percent + '%';
+                    progressText.textContent = 'Uploading... ' + percent + '%';
+
+                    if (percent === 100) {
+                        progressText.textContent = 'Processing...';
+                    }
+                }
+            });
+
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    // Check if redirect (success)
+                    if (xhr.responseURL && xhr.responseURL.includes('uploaded=')) {
+                        window.location.href = xhr.responseURL;
+                    } else {
+                        // Re-submit form to show response
+                        progressContainer.style.display = 'none';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Upload Model';
+                        uploadForm.submit();
+                    }
+                } else {
+                    alert('Upload failed. Please try again.');
+                    progressContainer.style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Upload Model';
+                }
+            });
+
+            xhr.addEventListener('error', function() {
+                alert('Upload failed. Please check your connection and try again.');
+                progressContainer.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload Model';
+            });
+
+            xhr.open('POST', uploadForm.action, true);
+            xhr.send(formData);
+        }
+
+        // Auto-open advanced options on desktop, keep collapsed on mobile
+        const advancedOptions = document.getElementById('advanced-options');
+        if (window.innerWidth >= 768) {
+            advancedOptions.setAttribute('open', '');
+        }
         </script>
 
 <?php require_once 'includes/footer.php'; ?>

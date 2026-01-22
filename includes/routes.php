@@ -79,8 +79,9 @@ $router->group(['middleware' => ['auth']], function($router) {
     // Favorites
     $router->get('/favorites', ['file' => 'pages/favorites.php'], 'favorites');
 
-    // Print Queue
+    // Print Queue & Analytics
     $router->get('/print-queue', ['file' => 'pages/print-queue.php'], 'print-queue');
+    $router->get('/print-analytics', ['file' => 'pages/print-analytics.php'], 'print-analytics');
     $router->get('/printers', ['file' => 'pages/printers.php'], 'printers');
 
     // Upload (requires upload permission)
