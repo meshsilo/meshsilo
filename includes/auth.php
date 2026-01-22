@@ -56,6 +56,8 @@ if (php_sapi_name() !== 'cli' && !isLoggedIn() && !in_array($currentPage, $publi
         'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
         'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
     ]);
-    header('Location: ' . ($GLOBALS['baseDir'] ?? '') . 'login.php');
+    // Use route helper if available, otherwise fall back to /login
+    $loginUrl = function_exists('route') ? route('login') : '/login';
+    header('Location: ' . $loginUrl);
     exit;
 }

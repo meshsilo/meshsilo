@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
             ]);
 
-            header('Location: index.php');
+            header('Location: /');
             exit;
         } else {
             $error = 'Invalid username or password.';
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // If already logged in, redirect to home
 if (isLoggedIn()) {
-    header('Location: index.php');
+    header('Location: /');
     exit;
 }
 
@@ -72,7 +72,7 @@ require_once 'includes/header.php';
                 <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
-                <form class="auth-form" action="login.php" method="post">
+                <form class="auth-form" action="/login" method="post">
                     <div class="form-group">
                         <label for="username">Username or Email</label>
                         <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username or email" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">

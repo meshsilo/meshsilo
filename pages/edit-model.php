@@ -2,7 +2,7 @@
 require_once 'includes/config.php';
 
 if (!canEdit()) {
-    header('Location: login.php');
+    header('Location: /login');
     exit;
 }
 
@@ -10,7 +10,7 @@ $db = getDB();
 $modelId = (int)($_GET['id'] ?? 0);
 
 if (!$modelId) {
-    header('Location: index.php');
+    header('Location: /');
     exit;
 }
 
@@ -21,7 +21,7 @@ $result = $stmt->execute();
 $model = $result->fetchArray(SQLITE3_ASSOC);
 
 if (!$model) {
-    header('Location: index.php');
+    header('Location: /');
     exit;
 }
 

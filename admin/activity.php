@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 
 // Admin only
 if (!isLoggedIn() || !getCurrentUser()['is_admin']) {
-    header('Location: ../login.php');
+    header('Location: /login');
     exit;
 }
 

@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include full config for settings and OIDC functions
-require_once __DIR__ . '/includes/config.php';
+require_once 'includes/config.php';
 
 // Get user info before destroying session
 $userId = $_SESSION['user_id'] ?? null;
@@ -50,5 +50,5 @@ if ($wasOIDCUser && $oidcSingleLogout && isOIDCEnabled()) {
 }
 
 // Default: redirect to login page
-header('Location: login.php');
+header('Location: /login');
 exit;

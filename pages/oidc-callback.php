@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Load full configuration (includes database, logging, OIDC functions)
-require_once __DIR__ . '/includes/config.php';
+require_once 'includes/config.php';
 
 $error = null;
 $errorCode = null;
@@ -134,7 +134,7 @@ unset($_SESSION['oidc_return_url']);
 // If we have an error, redirect to login with error
 if ($error) {
     $_SESSION['oidc_error'] = $error;
-    header('Location: login.php');
+    header('Location: /login');
     exit;
 }
 

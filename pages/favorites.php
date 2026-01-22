@@ -7,8 +7,8 @@ $activePage = 'favorites';
 
 // Require login
 if (!isLoggedIn()) {
-    $_SESSION['redirect_after_login'] = 'favorites.php';
-    header('Location: login.php');
+    $_SESSION['redirect_after_login'] = '/favorites';
+    header('Location: /login');
     exit;
 }
 

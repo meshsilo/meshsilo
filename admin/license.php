@@ -4,7 +4,7 @@ $baseDir = '../';
 
 // Require admin access
 if (!isLoggedIn() || !isAdmin()) {
-    header('Location: ../login.php');
+    header('Location: /login');
     exit;
 }
 
