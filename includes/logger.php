@@ -1,35 +1,36 @@
 <?php
 /**
- * Enhanced Logging System
- * Provides comprehensive logging with multiple channels, levels, and admin features
+ * Logging System
+ *
+ * This file provides backward-compatible wrapper functions around the new Logger class.
+ * All existing code using logError(), logWarning(), etc. will continue to work.
  */
 
-// Log configuration
-define('LOG_PATH', __DIR__ . '/../logs/');
-define('LOG_MAX_SIZE', 5 * 1024 * 1024); // 5MB max log size
-define('LOG_MAX_FILES', 10); // Keep last 10 rotated logs
+require_once __DIR__ . '/Logger.php';
 
-// Log levels (lower number = more severe)
+// Legacy constants (kept for backward compatibility)
+define('LOG_PATH', __DIR__ . '/../logs/');
+define('LOG_MAX_SIZE', 10 * 1024 * 1024); // 10MB
+define('LOG_MAX_FILES', 10);
+
 define('LOG_LEVEL_ERROR', 1);
 define('LOG_LEVEL_WARNING', 2);
 define('LOG_LEVEL_INFO', 3);
 define('LOG_LEVEL_DEBUG', 4);
 define('LOG_LEVEL_AUDIT', 5);
 
-// Log channels
-define('LOG_CHANNEL_DEFAULT', 'error');
+define('LOG_CHANNEL_DEFAULT', 'app');
 define('LOG_CHANNEL_AUTH', 'auth');
 define('LOG_CHANNEL_UPLOAD', 'upload');
 define('LOG_CHANNEL_ADMIN', 'admin');
 define('LOG_CHANNEL_AUDIT', 'audit');
 
 /**
- * Initialize logging - create logs directory if needed
+ * Initialize logging - now handled by Logger class
  */
 function initLogger() {
-    if (!file_exists(LOG_PATH)) {
-        mkdir(LOG_PATH, 0755, true);
-    }
+    // Logger auto-initializes, this is now a no-op
+    Logger::getInstance();
 }
 
 /**
@@ -38,7 +39,6 @@ function initLogger() {
 function getLogLevel() {
     static $level = null;
     if ($level === null) {
-        // Try to get from settings, default to INFO
         if (function_exists('getSetting')) {
             $levelStr = getSetting('log_level', 'info');
         } else {
@@ -52,6 +52,16 @@ function getLogLevel() {
             'audit' => LOG_LEVEL_AUDIT
         ];
         $level = $levels[strtolower($levelStr)] ?? LOG_LEVEL_INFO;
+
+        // Configure the new logger with the same level
+        $loggerLevels = [
+            LOG_LEVEL_ERROR => Logger::ERROR,
+            LOG_LEVEL_WARNING => Logger::WARNING,
+            LOG_LEVEL_INFO => Logger::INFO,
+            LOG_LEVEL_DEBUG => Logger::DEBUG,
+            LOG_LEVEL_AUDIT => Logger::DEBUG,
+        ];
+        Logger::getInstance()->configure(['min_level' => $loggerLevels[$level] ?? Logger::INFO]);
     }
     return $level;
 }
@@ -64,111 +74,52 @@ function getLogFile($channel = LOG_CHANNEL_DEFAULT) {
 }
 
 /**
- * Rotate log file if too large
- */
-function rotateLogIfNeeded($logFile) {
-    if (file_exists($logFile) && filesize($logFile) > LOG_MAX_SIZE) {
-        $pathInfo = pathinfo($logFile);
-        $backupFile = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_' . date('Y-m-d_H-i-s') . '.log';
-        rename($logFile, $backupFile);
-
-        // Clean up old rotated logs
-        cleanupOldLogs($pathInfo['dirname'], $pathInfo['filename']);
-    }
-}
-
-/**
- * Clean up old rotated log files, keeping only LOG_MAX_FILES
- */
-function cleanupOldLogs($dir, $baseName) {
-    $pattern = $dir . '/' . $baseName . '_*.log';
-    $files = glob($pattern);
-
-    if (count($files) > LOG_MAX_FILES) {
-        // Sort by modification time, oldest first
-        usort($files, function($a, $b) {
-            return filemtime($a) - filemtime($b);
-        });
-
-        // Delete oldest files
-        $toDelete = array_slice($files, 0, count($files) - LOG_MAX_FILES);
-        foreach ($toDelete as $file) {
-            @unlink($file);
-        }
-    }
-}
-
-/**
- * Log a message to a specific channel
- *
- * @param string $level Log level (ERROR, WARNING, INFO, DEBUG, AUDIT)
- * @param string $message The log message
- * @param array $context Additional context data
- * @param string $channel Log channel
+ * Log a message (legacy wrapper)
  */
 function logMessage($level, $message, $context = [], $channel = LOG_CHANNEL_DEFAULT) {
-    initLogger();
+    $levelMap = [
+        'ERROR' => Logger::ERROR,
+        'WARNING' => Logger::WARNING,
+        'INFO' => Logger::INFO,
+        'DEBUG' => Logger::DEBUG,
+        'NOTICE' => Logger::NOTICE,
+        'AUDIT' => Logger::INFO,
+    ];
 
-    // Check if this level should be logged
-    $levelNum = [
-        'ERROR' => LOG_LEVEL_ERROR,
-        'WARNING' => LOG_LEVEL_WARNING,
-        'INFO' => LOG_LEVEL_INFO,
-        'DEBUG' => LOG_LEVEL_DEBUG,
-        'AUDIT' => LOG_LEVEL_AUDIT
-    ][$level] ?? LOG_LEVEL_INFO;
-
-    // Always log AUDIT messages, otherwise check level
-    if ($level !== 'AUDIT' && $levelNum > getLogLevel()) {
-        return;
-    }
-
-    $logFile = getLogFile($channel);
-    rotateLogIfNeeded($logFile);
-
-    $timestamp = date('Y-m-d H:i:s');
-
-    // Add request info for non-CLI
-    if (php_sapi_name() !== 'cli' && !isset($context['ip'])) {
-        $context['ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    }
-
-    $contextStr = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES) : '';
-    $logEntry = "[$timestamp] [$level] $message$contextStr" . PHP_EOL;
-
-    file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+    $loggerLevel = $levelMap[strtoupper($level)] ?? Logger::INFO;
+    Logger::getInstance()->log($loggerLevel, $message, $context, $channel);
 }
 
 /**
  * Log an error
  */
 function logError($message, $context = []) {
-    logMessage('ERROR', $message, $context);
+    Logger::getInstance()->error($message, $context);
 }
 
 /**
  * Log a warning
  */
 function logWarning($message, $context = []) {
-    logMessage('WARNING', $message, $context);
+    Logger::getInstance()->warning($message, $context);
 }
 
 /**
  * Log info
  */
 function logInfo($message, $context = []) {
-    logMessage('INFO', $message, $context);
+    Logger::getInstance()->info($message, $context);
 }
 
 /**
  * Log debug info
  */
 function logDebug($message, $context = []) {
-    logMessage('DEBUG', $message, $context);
+    Logger::getInstance()->debug($message, $context);
 }
 
 /**
- * Log an audit event (always logged, security/compliance related)
+ * Log an audit event
  */
 function logAudit($action, $context = []) {
     // Add user info if available
@@ -179,28 +130,27 @@ function logAudit($action, $context = []) {
             $context['username'] = $user['username'];
         }
     }
-    logMessage('AUDIT', $action, $context, LOG_CHANNEL_AUDIT);
+    Logger::getInstance()->log(Logger::INFO, $action, $context, LOG_CHANNEL_AUDIT);
 }
 
 /**
  * Log authentication events
  */
 function logAuth($message, $context = []) {
-    logMessage('INFO', $message, $context, LOG_CHANNEL_AUTH);
+    Logger::getInstance()->log(Logger::INFO, $message, $context, LOG_CHANNEL_AUTH);
 }
 
 /**
  * Log upload events
  */
 function logUpload($message, $context = []) {
-    logMessage('INFO', $message, $context, LOG_CHANNEL_UPLOAD);
+    Logger::getInstance()->log(Logger::INFO, $message, $context, LOG_CHANNEL_UPLOAD);
 }
 
 /**
  * Log admin actions
  */
 function logAdmin($message, $context = []) {
-    // Add user info
     if (function_exists('getCurrentUser')) {
         $user = getCurrentUser();
         if ($user) {
@@ -208,18 +158,15 @@ function logAdmin($message, $context = []) {
             $context['admin_username'] = $user['username'];
         }
     }
-    logMessage('INFO', $message, $context, LOG_CHANNEL_ADMIN);
+    Logger::getInstance()->log(Logger::INFO, $message, $context, LOG_CHANNEL_ADMIN);
 }
 
 /**
  * Log an exception with full details
  */
 function logException($e, $context = []) {
-    $context['exception'] = get_class($e);
-    $context['file'] = $e->getFile();
-    $context['line'] = $e->getLine();
-    $context['trace'] = $e->getTraceAsString();
-    logError($e->getMessage(), $context);
+    $context['exception'] = $e;
+    Logger::getInstance()->error($e->getMessage(), $context);
 }
 
 /**
@@ -227,21 +174,31 @@ function logException($e, $context = []) {
  */
 function setupErrorHandler() {
     set_error_handler(function($severity, $message, $file, $line) {
-        $levels = [
-            E_ERROR => 'ERROR',
-            E_WARNING => 'WARNING',
-            E_NOTICE => 'NOTICE',
-            E_USER_ERROR => 'USER_ERROR',
-            E_USER_WARNING => 'USER_WARNING',
-            E_USER_NOTICE => 'USER_NOTICE',
+        // Map PHP error levels to log levels
+        $levelMap = [
+            E_ERROR => Logger::ERROR,
+            E_WARNING => Logger::WARNING,
+            E_NOTICE => Logger::NOTICE,
+            E_USER_ERROR => Logger::ERROR,
+            E_USER_WARNING => Logger::WARNING,
+            E_USER_NOTICE => Logger::NOTICE,
+            E_STRICT => Logger::NOTICE,
+            E_DEPRECATED => Logger::NOTICE,
+            E_USER_DEPRECATED => Logger::NOTICE,
         ];
-        $level = $levels[$severity] ?? 'UNKNOWN';
-        logMessage($level, $message, ['file' => $file, 'line' => $line]);
+
+        $level = $levelMap[$severity] ?? Logger::WARNING;
+        Logger::getInstance()->log($level, $message, [
+            'file' => $file,
+            'line' => $line,
+            'severity' => $severity
+        ]);
+
         return false; // Continue with normal error handling
     });
 
     set_exception_handler(function($e) {
-        logException($e);
+        Logger::getInstance()->exception($e);
         throw $e; // Re-throw to show error page
     });
 }
@@ -251,7 +208,7 @@ function setupErrorHandler() {
  */
 function getLogChannels() {
     return [
-        LOG_CHANNEL_DEFAULT => 'General Errors',
+        LOG_CHANNEL_DEFAULT => 'Application',
         LOG_CHANNEL_AUTH => 'Authentication',
         LOG_CHANNEL_UPLOAD => 'File Uploads',
         LOG_CHANNEL_ADMIN => 'Admin Actions',
@@ -261,11 +218,6 @@ function getLogChannels() {
 
 /**
  * Read log file contents (for admin viewing)
- *
- * @param string $channel Log channel to read
- * @param int $lines Number of lines to return (from end)
- * @param string $filter Optional filter string
- * @return array Array of log entries
  */
 function readLog($channel = LOG_CHANNEL_DEFAULT, $lines = 100, $filter = null) {
     $logFile = getLogFile($channel);
@@ -289,21 +241,53 @@ function readLog($channel = LOG_CHANNEL_DEFAULT, $lines = 100, $filter = null) {
     // Parse into structured format
     $entries = [];
     foreach ($content as $line) {
-        if (preg_match('/^\[([\d-]+\s[\d:]+)\]\s\[(\w+)\]\s(.+)$/', $line, $matches)) {
+        // Try new format first: [timestamp] [LEVEL] [request_id] message
+        if (preg_match('/^\[([\d-T:\.+]+)\]\s\[(\w+)\]\s\[([a-f0-9-]+)\]\s(.+)$/', $line, $matches)) {
             $entry = [
                 'timestamp' => $matches[1],
                 'level' => $matches[2],
+                'request_id' => $matches[3],
+                'message' => $matches[4]
+            ];
+        }
+        // Fall back to old format: [timestamp] [LEVEL] message
+        elseif (preg_match('/^\[([\d-]+\s[\d:]+)\]\s\[(\w+)\]\s(.+)$/', $line, $matches)) {
+            $entry = [
+                'timestamp' => $matches[1],
+                'level' => $matches[2],
+                'request_id' => null,
                 'message' => $matches[3]
             ];
-
-            // Try to extract JSON context
-            if (preg_match('/^(.+?)\s(\{.+\})$/', $entry['message'], $msgMatches)) {
-                $entry['message'] = $msgMatches[1];
-                $entry['context'] = json_decode($msgMatches[2], true);
-            }
-
-            $entries[] = $entry;
         }
+        // Try JSON format
+        elseif ($line[0] === '{') {
+            $decoded = json_decode($line, true);
+            if ($decoded) {
+                $entry = [
+                    'timestamp' => $decoded['timestamp'] ?? '',
+                    'level' => strtoupper($decoded['level'] ?? 'INFO'),
+                    'request_id' => $decoded['request_id'] ?? null,
+                    'message' => $decoded['message'] ?? '',
+                    'context' => $decoded['context'] ?? null,
+                    'http' => $decoded['http'] ?? null,
+                    'user' => $decoded['user'] ?? null,
+                ];
+                $entries[] = $entry;
+                continue;
+            } else {
+                continue; // Skip unparseable lines
+            }
+        } else {
+            continue; // Skip unparseable lines
+        }
+
+        // Try to extract JSON context from message
+        if (preg_match('/^(.+?)\s(\{.+\})$/', $entry['message'], $msgMatches)) {
+            $entry['message'] = $msgMatches[1];
+            $entry['context'] = json_decode($msgMatches[2], true);
+        }
+
+        $entries[] = $entry;
     }
 
     return array_reverse($entries); // Newest first
@@ -390,4 +374,25 @@ function getAllLogFiles() {
     });
 
     return $files;
+}
+
+/**
+ * Get the current request ID for log correlation
+ */
+function getRequestId() {
+    return Logger::getInstance()->getRequestId();
+}
+
+/**
+ * Rotate log file if too large (legacy, now handled automatically)
+ */
+function rotateLogIfNeeded($logFile) {
+    // Now handled by Logger class automatically
+}
+
+/**
+ * Clean up old rotated log files (legacy, now handled automatically)
+ */
+function cleanupOldLogs($dir, $baseName) {
+    // Now handled by Logger class automatically
 }
