@@ -1,0 +1,96 @@
+{
+    "name": "silo/silo",
+    "description": "Digital Asset Manager for 3D Print Files",
+    "type": "project",
+    "license": "MIT",
+    "keywords": [
+        "3d-printing",
+        "stl",
+        "3mf",
+        "asset-manager",
+        "digital-asset-management",
+        "file-manager"
+    ],
+    "authors": [
+        {
+            "name": "Silo Contributors"
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.10",
+        "squizlabs/php_codesniffer": "^3.7"
+    },
+    "suggest": {
+        "ext-gd": "For image thumbnail generation",
+        "ext-imagick": "For advanced image processing",
+        "ext-apcu": "For high-performance caching",
+        "ext-pcntl": "For graceful queue worker shutdown",
+        "ext-ldap": "For LDAP/Active Directory authentication",
+        "ext-sqlite3": "For SQLite database support"
+    },
+    "autoload": {
+        "psr-4": {
+            "Silo\\": "src/"
+        },
+        "classmap": [
+            "includes/"
+        ],
+        "files": [
+            "includes/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Silo\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage",
+        "analyse": "phpstan analyse includes src --level=5",
+        "cs": "phpcs --standard=PSR12 includes src",
+        "cs:fix": "phpcbf --standard=PSR12 includes src",
+        "serve": "php -S localhost:8000 -t .",
+        "worker": "php cli/queue-worker.php --verbose",
+        "worker:thumbnails": "php cli/queue-worker.php --queue=thumbnails --verbose",
+        "migrate": "php cli/migrate.php",
+        "migrate:status": "php cli/migrate.php --status",
+        "scheduler": "php cli/scheduler.php",
+        "dedup": "php cli/dedup.php",
+        "cache:clear": "php -r \"array_map('unlink', glob('cache/*/*.php')); array_map('unlink', glob('cache/assets/*'));\"",
+        "logs:clear": "php -r \"file_put_contents('logs/error.log', '');\""
+    },
+    "scripts-descriptions": {
+        "test": "Run the PHPUnit test suite",
+        "test:coverage": "Run tests with HTML coverage report",
+        "analyse": "Run PHPStan static analysis",
+        "cs": "Check code style against PSR-12",
+        "cs:fix": "Fix code style violations",
+        "serve": "Start PHP development server on port 8000",
+        "worker": "Start the background job queue worker",
+        "worker:thumbnails": "Start worker for thumbnail generation queue",
+        "migrate": "Run database migrations",
+        "migrate:status": "Show migration status",
+        "scheduler": "Run scheduled tasks",
+        "dedup": "Run file deduplication",
+        "cache:clear": "Clear all cache files",
+        "logs:clear": "Clear error logs"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "platform": {
+            "php": "8.0"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
