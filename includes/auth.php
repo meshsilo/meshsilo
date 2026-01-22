@@ -33,11 +33,17 @@ if ($forceSiteUrl && !empty($siteUrl)) {
     }
 }
 
-// Pages that don't require authentication
+// Pages that don't require authentication (old direct-access pattern)
 $publicPages = ['login.php', 'oidc-callback.php', 'install.php'];
 
-// Get current page filename
+// Routes that don't require authentication (router pattern)
+$publicRoutes = ['/login', '/logout', '/oidc-callback', '/install'];
+
+// Get current page filename (for direct access)
 $currentPage = basename($_SERVER['PHP_SELF']);
+
+// Get current route (for router access)
+$currentRoute = '/' . trim($_GET['route'] ?? '', '/');
 
 // Check if user is logged in
 function isLoggedIn() {
@@ -49,10 +55,15 @@ function getCurrentUser() {
     return $_SESSION['user'] ?? null;
 }
 
-// Redirect to login if not authenticated (unless on public page or CLI)
-if (php_sapi_name() !== 'cli' && !isLoggedIn() && !in_array($currentPage, $publicPages)) {
+// Determine if current request is to a public page/route
+$isPublicPage = in_array($currentPage, $publicPages);
+$isPublicRoute = in_array($currentRoute, $publicRoutes);
+
+// Redirect to login if not authenticated (unless on public page/route or CLI)
+if (php_sapi_name() !== 'cli' && !isLoggedIn() && !$isPublicPage && !$isPublicRoute) {
     logWarning('Unauthorized access attempt', [
         'page' => $currentPage,
+        'route' => $currentRoute,
         'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
         'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
     ]);
