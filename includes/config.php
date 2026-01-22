@@ -55,6 +55,17 @@ require_once __DIR__ . '/AuditLogger.php';
 require_once __DIR__ . '/RetentionManager.php';
 require_once __DIR__ . '/Analytics.php';
 
+// Load infrastructure components
+require_once __DIR__ . '/Csrf.php';
+require_once __DIR__ . '/Validator.php';
+require_once __DIR__ . '/QueryBuilder.php';
+require_once __DIR__ . '/Cache.php';
+require_once __DIR__ . '/Search.php';
+require_once __DIR__ . '/Asset.php';
+require_once __DIR__ . '/HttpCache.php';
+require_once __DIR__ . '/ErrorHandler.php';
+require_once __DIR__ . '/Queue.php';
+
 // Load route definitions (for URL generation)
 // Only load if routes haven't been loaded yet
 $router = Router::getInstance();
