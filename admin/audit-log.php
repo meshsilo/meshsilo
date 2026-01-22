@@ -4,8 +4,8 @@
  *
  * View, filter, and export comprehensive audit logs
  */
-require_once '../includes/config.php';
-require_once '../includes/AuditLogger.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/AuditLogger.php';
 
 // Require admin
 if (!isLoggedIn() || !isAdmin()) {

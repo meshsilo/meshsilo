@@ -1,6 +1,6 @@
 <?php
-require_once '../includes/config.php';
-require_once '../includes/slicers.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/slicers.php';
 $baseDir = '../';
 
 // Require admin permission
