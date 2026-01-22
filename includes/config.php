@@ -32,6 +32,8 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/oidc.php';
+require_once __DIR__ . '/saml.php';
+require_once __DIR__ . '/ldap.php';
 require_once __DIR__ . '/license.php';
 
 // Include router and helpers (if not already loaded by front controller)
@@ -49,6 +51,9 @@ require_once __DIR__ . '/Events.php';
 require_once __DIR__ . '/TwoFactor.php';
 require_once __DIR__ . '/Integrity.php';
 require_once __DIR__ . '/Scheduler.php';
+require_once __DIR__ . '/AuditLogger.php';
+require_once __DIR__ . '/RetentionManager.php';
+require_once __DIR__ . '/Analytics.php';
 
 // Load route definitions (for URL generation)
 // Only load if routes haven't been loaded yet

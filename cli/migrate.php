@@ -1141,5 +1141,833 @@ function getMigrationList() {
                 }
             }
         ],
+
+        // =====================================================================
+        // MODEL MANAGEMENT FEATURES
+        // =====================================================================
+
+        // Model Analysis
+        [
+            'name' => 'Model analysis table',
+            'description' => 'Store automated model analysis results (overhangs, printability)',
+            'check' => fn($db) => tableExists($db, 'model_analysis'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE model_analysis (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        model_id INT NOT NULL UNIQUE,
+                        overhang_percentage DECIMAL(5,2),
+                        support_required TINYINT DEFAULT 0,
+                        optimal_orientation TEXT,
+                        thin_wall_warnings TEXT,
+                        printability_score INT,
+                        analysis_warnings TEXT,
+                        estimated_print_time INT,
+                        estimated_filament_grams DECIMAL(10,2),
+                        analyzed_at DATETIME,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_model_analysis_score ON model_analysis(printability_score)');
+                } else {
+                    $db->exec('CREATE TABLE model_analysis (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        model_id INTEGER NOT NULL UNIQUE,
+                        overhang_percentage REAL,
+                        support_required INTEGER DEFAULT 0,
+                        optimal_orientation TEXT,
+                        thin_wall_warnings TEXT,
+                        printability_score INTEGER,
+                        analysis_warnings TEXT,
+                        estimated_print_time INTEGER,
+                        estimated_filament_grams REAL,
+                        analyzed_at DATETIME,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_model_analysis_score ON model_analysis(printability_score)');
+                }
+            }
+        ],
+
+        // Remix/Fork Tracking
+        [
+            'name' => 'Related models: remix columns',
+            'description' => 'Track remix/fork relationships between models',
+            'check' => fn($db) => columnExists($db, 'related_models', 'is_remix'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('ALTER TABLE related_models ADD COLUMN is_remix TINYINT DEFAULT 0');
+                    $db->exec('ALTER TABLE related_models ADD COLUMN remix_notes TEXT');
+                    $db->exec('ALTER TABLE related_models ADD COLUMN created_by INT');
+                } else {
+                    $db->exec('ALTER TABLE related_models ADD COLUMN is_remix INTEGER DEFAULT 0');
+                    $db->exec('ALTER TABLE related_models ADD COLUMN remix_notes TEXT');
+                    $db->exec('ALTER TABLE related_models ADD COLUMN created_by INTEGER');
+                }
+            }
+        ],
+
+        // Models: remix source tracking
+        [
+            'name' => 'Models: remix source columns',
+            'description' => 'Track original source for remixed models',
+            'check' => fn($db) => columnExists($db, 'models', 'remix_of'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('ALTER TABLE models ADD COLUMN remix_of INT');
+                    $db->exec('ALTER TABLE models ADD COLUMN external_source_url VARCHAR(500)');
+                    $db->exec('ALTER TABLE models ADD COLUMN external_source_id VARCHAR(100)');
+                } else {
+                    $db->exec('ALTER TABLE models ADD COLUMN remix_of INTEGER');
+                    $db->exec('ALTER TABLE models ADD COLUMN external_source_url TEXT');
+                    $db->exec('ALTER TABLE models ADD COLUMN external_source_id TEXT');
+                }
+            }
+        ],
+
+        // Import Jobs
+        [
+            'name' => 'Import jobs table',
+            'description' => 'Track bulk import jobs from external sources',
+            'check' => fn($db) => tableExists($db, 'import_jobs'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE import_jobs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        source_url VARCHAR(500) NOT NULL,
+                        source_type VARCHAR(50) NOT NULL,
+                        status VARCHAR(20) DEFAULT "pending",
+                        total_items INT DEFAULT 0,
+                        imported_items INT DEFAULT 0,
+                        failed_items INT DEFAULT 0,
+                        settings TEXT,
+                        error_log TEXT,
+                        created_by INT NOT NULL,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_import_jobs_status ON import_jobs(status)');
+                    $db->exec('CREATE INDEX idx_import_jobs_user ON import_jobs(created_by)');
+                } else {
+                    $db->exec('CREATE TABLE import_jobs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        source_url TEXT NOT NULL,
+                        source_type TEXT NOT NULL,
+                        status TEXT DEFAULT "pending",
+                        total_items INTEGER DEFAULT 0,
+                        imported_items INTEGER DEFAULT 0,
+                        failed_items INTEGER DEFAULT 0,
+                        settings TEXT,
+                        error_log TEXT,
+                        created_by INTEGER NOT NULL,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_import_jobs_status ON import_jobs(status)');
+                    $db->exec('CREATE INDEX idx_import_jobs_user ON import_jobs(created_by)');
+                }
+            }
+        ],
+
+        // Import job items
+        [
+            'name' => 'Import job items table',
+            'description' => 'Track individual items within an import job',
+            'check' => fn($db) => tableExists($db, 'import_job_items'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE import_job_items (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        job_id INT NOT NULL,
+                        external_id VARCHAR(100),
+                        external_url VARCHAR(500),
+                        name VARCHAR(255),
+                        status VARCHAR(20) DEFAULT "pending",
+                        model_id INT,
+                        error_message TEXT,
+                        metadata TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (job_id) REFERENCES import_jobs(id) ON DELETE CASCADE,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_import_items_job ON import_job_items(job_id)');
+                    $db->exec('CREATE INDEX idx_import_items_status ON import_job_items(status)');
+                } else {
+                    $db->exec('CREATE TABLE import_job_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        job_id INTEGER NOT NULL,
+                        external_id TEXT,
+                        external_url TEXT,
+                        name TEXT,
+                        status TEXT DEFAULT "pending",
+                        model_id INTEGER,
+                        error_message TEXT,
+                        metadata TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (job_id) REFERENCES import_jobs(id) ON DELETE CASCADE,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_import_items_job ON import_job_items(job_id)');
+                    $db->exec('CREATE INDEX idx_import_items_status ON import_job_items(status)');
+                }
+            }
+        ],
+
+        // Batch conversion queue
+        [
+            'name' => 'Conversion queue table',
+            'description' => 'Queue for batch STL to 3MF conversions',
+            'check' => fn($db) => tableExists($db, 'conversion_queue'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE conversion_queue (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        model_id INT NOT NULL,
+                        source_format VARCHAR(10) NOT NULL,
+                        target_format VARCHAR(10) NOT NULL,
+                        status VARCHAR(20) DEFAULT "pending",
+                        priority INT DEFAULT 0,
+                        error_message TEXT,
+                        queued_by INT,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (queued_by) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_conversion_status ON conversion_queue(status, priority)');
+                } else {
+                    $db->exec('CREATE TABLE conversion_queue (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        model_id INTEGER NOT NULL,
+                        source_format TEXT NOT NULL,
+                        target_format TEXT NOT NULL,
+                        status TEXT DEFAULT "pending",
+                        priority INTEGER DEFAULT 0,
+                        error_message TEXT,
+                        queued_by INTEGER,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (queued_by) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_conversion_status ON conversion_queue(status, priority)');
+                }
+            }
+        ],
+
+        // =====================================================================
+        // ENTERPRISE AUTHENTICATION
+        // =====================================================================
+
+        // SAML SSO
+        [
+            'name' => 'Users: SAML SSO columns',
+            'description' => 'SAML identity provider integration',
+            'check' => fn($db) => columnExists($db, 'users', 'saml_id'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('ALTER TABLE users ADD COLUMN saml_id VARCHAR(255)');
+                    $db->exec('ALTER TABLE users ADD COLUMN saml_idp VARCHAR(100)');
+                    $db->exec('ALTER TABLE users ADD COLUMN saml_attributes TEXT');
+                    $db->exec('CREATE INDEX idx_users_saml ON users(saml_id)');
+                } else {
+                    $db->exec('ALTER TABLE users ADD COLUMN saml_id TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN saml_idp TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN saml_attributes TEXT');
+                    $db->exec('CREATE INDEX idx_users_saml ON users(saml_id)');
+                }
+            }
+        ],
+
+        // LDAP/AD
+        [
+            'name' => 'Users: LDAP columns',
+            'description' => 'LDAP/Active Directory integration',
+            'check' => fn($db) => columnExists($db, 'users', 'ldap_dn'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_dn VARCHAR(500)');
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_guid VARCHAR(64)');
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_groups TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_synced_at DATETIME');
+                    $db->exec('CREATE INDEX idx_users_ldap ON users(ldap_dn(191))');
+                } else {
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_dn TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_guid TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_groups TEXT');
+                    $db->exec('ALTER TABLE users ADD COLUMN ldap_synced_at DATETIME');
+                    $db->exec('CREATE INDEX idx_users_ldap ON users(ldap_dn)');
+                }
+            }
+        ],
+
+        // Auth method tracking
+        [
+            'name' => 'Users: auth method column',
+            'description' => 'Track authentication method per user',
+            'check' => fn($db) => columnExists($db, 'users', 'auth_method'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec("ALTER TABLE users ADD COLUMN auth_method VARCHAR(20) DEFAULT 'local'");
+                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_at DATETIME');
+                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_ip VARCHAR(45)');
+                } else {
+                    $db->exec("ALTER TABLE users ADD COLUMN auth_method TEXT DEFAULT 'local'");
+                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_at DATETIME');
+                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_ip TEXT');
+                }
+            }
+        ],
+
+        // =====================================================================
+        // ADVANCED AUDIT LOGGING
+        // =====================================================================
+
+        [
+            'name' => 'Audit log table',
+            'description' => 'Enhanced audit logging for compliance and security',
+            'check' => fn($db) => tableExists($db, 'audit_log'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE audit_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        event_type VARCHAR(50) NOT NULL,
+                        event_name VARCHAR(100) NOT NULL,
+                        severity VARCHAR(20) DEFAULT "info",
+                        user_id INT,
+                        ip_address VARCHAR(45),
+                        user_agent VARCHAR(500),
+                        resource_type VARCHAR(50),
+                        resource_id INT,
+                        resource_name VARCHAR(255),
+                        old_value TEXT,
+                        new_value TEXT,
+                        metadata TEXT,
+                        session_id VARCHAR(128),
+                        request_id VARCHAR(36),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_audit_event ON audit_log(event_type, event_name)');
+                    $db->exec('CREATE INDEX idx_audit_user ON audit_log(user_id)');
+                    $db->exec('CREATE INDEX idx_audit_resource ON audit_log(resource_type, resource_id)');
+                    $db->exec('CREATE INDEX idx_audit_created ON audit_log(created_at)');
+                    $db->exec('CREATE INDEX idx_audit_severity ON audit_log(severity)');
+                } else {
+                    $db->exec('CREATE TABLE audit_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        event_type TEXT NOT NULL,
+                        event_name TEXT NOT NULL,
+                        severity TEXT DEFAULT "info",
+                        user_id INTEGER,
+                        ip_address TEXT,
+                        user_agent TEXT,
+                        resource_type TEXT,
+                        resource_id INTEGER,
+                        resource_name TEXT,
+                        old_value TEXT,
+                        new_value TEXT,
+                        metadata TEXT,
+                        session_id TEXT,
+                        request_id TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_audit_event ON audit_log(event_type, event_name)');
+                    $db->exec('CREATE INDEX idx_audit_user ON audit_log(user_id)');
+                    $db->exec('CREATE INDEX idx_audit_resource ON audit_log(resource_type, resource_id)');
+                    $db->exec('CREATE INDEX idx_audit_created ON audit_log(created_at)');
+                    $db->exec('CREATE INDEX idx_audit_severity ON audit_log(severity)');
+                }
+            }
+        ],
+
+        // =====================================================================
+        // DATA RETENTION & COMPLIANCE
+        // =====================================================================
+
+        [
+            'name' => 'Retention policies table',
+            'description' => 'Configure data retention rules',
+            'check' => fn($db) => tableExists($db, 'retention_policies'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE retention_policies (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        entity_type VARCHAR(50) NOT NULL,
+                        condition_field VARCHAR(100),
+                        condition_operator VARCHAR(20),
+                        condition_value VARCHAR(255),
+                        action VARCHAR(20) NOT NULL,
+                        retention_days INT,
+                        is_active TINYINT DEFAULT 1,
+                        last_executed_at DATETIME,
+                        items_affected INT DEFAULT 0,
+                        created_by INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE retention_policies (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        entity_type TEXT NOT NULL,
+                        condition_field TEXT,
+                        condition_operator TEXT,
+                        condition_value TEXT,
+                        action TEXT NOT NULL,
+                        retention_days INTEGER,
+                        is_active INTEGER DEFAULT 1,
+                        last_executed_at DATETIME,
+                        items_affected INTEGER DEFAULT 0,
+                        created_by INTEGER,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                }
+            }
+        ],
+
+        [
+            'name' => 'Legal holds table',
+            'description' => 'Prevent deletion of items under legal hold',
+            'check' => fn($db) => tableExists($db, 'legal_holds'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE legal_holds (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        entity_type VARCHAR(50) NOT NULL,
+                        entity_id INT NOT NULL,
+                        reason TEXT NOT NULL,
+                        reference_number VARCHAR(100),
+                        created_by INT NOT NULL,
+                        expires_at DATETIME,
+                        released_at DATETIME,
+                        released_by INT,
+                        release_reason TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (released_by) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_legal_holds_entity ON legal_holds(entity_type, entity_id)');
+                    $db->exec('CREATE INDEX idx_legal_holds_active ON legal_holds(released_at)');
+                } else {
+                    $db->exec('CREATE TABLE legal_holds (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        entity_type TEXT NOT NULL,
+                        entity_id INTEGER NOT NULL,
+                        reason TEXT NOT NULL,
+                        reference_number TEXT,
+                        created_by INTEGER NOT NULL,
+                        expires_at DATETIME,
+                        released_at DATETIME,
+                        released_by INTEGER,
+                        release_reason TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (released_by) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_legal_holds_entity ON legal_holds(entity_type, entity_id)');
+                    $db->exec('CREATE INDEX idx_legal_holds_active ON legal_holds(released_at)');
+                }
+            }
+        ],
+
+        [
+            'name' => 'Retention execution log table',
+            'description' => 'Track retention policy execution history',
+            'check' => fn($db) => tableExists($db, 'retention_log'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE retention_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        policy_id INT NOT NULL,
+                        action_taken VARCHAR(20) NOT NULL,
+                        items_processed INT DEFAULT 0,
+                        items_affected INT DEFAULT 0,
+                        items_skipped INT DEFAULT 0,
+                        error_count INT DEFAULT 0,
+                        details TEXT,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (policy_id) REFERENCES retention_policies(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_retention_log_policy ON retention_log(policy_id)');
+                } else {
+                    $db->exec('CREATE TABLE retention_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        policy_id INTEGER NOT NULL,
+                        action_taken TEXT NOT NULL,
+                        items_processed INTEGER DEFAULT 0,
+                        items_affected INTEGER DEFAULT 0,
+                        items_skipped INTEGER DEFAULT 0,
+                        error_count INTEGER DEFAULT 0,
+                        details TEXT,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (policy_id) REFERENCES retention_policies(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_retention_log_policy ON retention_log(policy_id)');
+                }
+            }
+        ],
+
+        // =====================================================================
+        // ADVANCED ANALYTICS
+        // =====================================================================
+
+        [
+            'name' => 'Scheduled reports table',
+            'description' => 'Configure automated report generation and delivery',
+            'check' => fn($db) => tableExists($db, 'scheduled_reports'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE scheduled_reports (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        report_type VARCHAR(50) NOT NULL,
+                        filters TEXT,
+                        columns TEXT,
+                        schedule VARCHAR(50) NOT NULL,
+                        recipients TEXT NOT NULL,
+                        format VARCHAR(20) DEFAULT "csv",
+                        include_charts TINYINT DEFAULT 0,
+                        is_active TINYINT DEFAULT 1,
+                        last_run_at DATETIME,
+                        last_status VARCHAR(20),
+                        last_error TEXT,
+                        next_run_at DATETIME,
+                        created_by INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_scheduled_reports_next ON scheduled_reports(next_run_at)');
+                    $db->exec('CREATE INDEX idx_scheduled_reports_active ON scheduled_reports(is_active)');
+                } else {
+                    $db->exec('CREATE TABLE scheduled_reports (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        report_type TEXT NOT NULL,
+                        filters TEXT,
+                        columns TEXT,
+                        schedule TEXT NOT NULL,
+                        recipients TEXT NOT NULL,
+                        format TEXT DEFAULT "csv",
+                        include_charts INTEGER DEFAULT 0,
+                        is_active INTEGER DEFAULT 1,
+                        last_run_at DATETIME,
+                        last_status TEXT,
+                        last_error TEXT,
+                        next_run_at DATETIME,
+                        created_by INTEGER,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_scheduled_reports_next ON scheduled_reports(next_run_at)');
+                    $db->exec('CREATE INDEX idx_scheduled_reports_active ON scheduled_reports(is_active)');
+                }
+            }
+        ],
+
+        [
+            'name' => 'Report execution log table',
+            'description' => 'Track report generation history',
+            'check' => fn($db) => tableExists($db, 'report_log'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE report_log (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        report_id INT,
+                        report_type VARCHAR(50) NOT NULL,
+                        status VARCHAR(20) NOT NULL,
+                        file_path VARCHAR(500),
+                        file_size BIGINT,
+                        row_count INT,
+                        recipients_notified INT DEFAULT 0,
+                        error_message TEXT,
+                        execution_time_ms INT,
+                        triggered_by INT,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (report_id) REFERENCES scheduled_reports(id) ON DELETE SET NULL,
+                        FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_report_log_report ON report_log(report_id)');
+                    $db->exec('CREATE INDEX idx_report_log_created ON report_log(created_at)');
+                } else {
+                    $db->exec('CREATE TABLE report_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        report_id INTEGER,
+                        report_type TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        file_path TEXT,
+                        file_size INTEGER,
+                        row_count INTEGER,
+                        recipients_notified INTEGER DEFAULT 0,
+                        error_message TEXT,
+                        execution_time_ms INTEGER,
+                        triggered_by INTEGER,
+                        started_at DATETIME,
+                        completed_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (report_id) REFERENCES scheduled_reports(id) ON DELETE SET NULL,
+                        FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_report_log_report ON report_log(report_id)');
+                    $db->exec('CREATE INDEX idx_report_log_created ON report_log(created_at)');
+                }
+            }
+        ],
+
+        [
+            'name' => 'Dashboard widgets table',
+            'description' => 'Store custom dashboard widget configurations',
+            'check' => fn($db) => tableExists($db, 'dashboard_widgets'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE dashboard_widgets (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT NOT NULL,
+                        widget_type VARCHAR(50) NOT NULL,
+                        title VARCHAR(255),
+                        config TEXT,
+                        position_x INT DEFAULT 0,
+                        position_y INT DEFAULT 0,
+                        width INT DEFAULT 1,
+                        height INT DEFAULT 1,
+                        is_visible TINYINT DEFAULT 1,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_dashboard_widgets_user ON dashboard_widgets(user_id)');
+                } else {
+                    $db->exec('CREATE TABLE dashboard_widgets (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        widget_type TEXT NOT NULL,
+                        title TEXT,
+                        config TEXT,
+                        position_x INTEGER DEFAULT 0,
+                        position_y INTEGER DEFAULT 0,
+                        width INTEGER DEFAULT 1,
+                        height INTEGER DEFAULT 1,
+                        is_visible INTEGER DEFAULT 1,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_dashboard_widgets_user ON dashboard_widgets(user_id)');
+                }
+            }
+        ],
+
+        [
+            'name' => 'Saved filters table',
+            'description' => 'Store reusable filter presets for reports',
+            'check' => fn($db) => tableExists($db, 'saved_filters'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE saved_filters (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT NOT NULL,
+                        name VARCHAR(255) NOT NULL,
+                        entity_type VARCHAR(50) NOT NULL,
+                        filters TEXT NOT NULL,
+                        is_default TINYINT DEFAULT 0,
+                        is_shared TINYINT DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_saved_filters_user ON saved_filters(user_id)');
+                } else {
+                    $db->exec('CREATE TABLE saved_filters (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        entity_type TEXT NOT NULL,
+                        filters TEXT NOT NULL,
+                        is_default INTEGER DEFAULT 0,
+                        is_shared INTEGER DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_saved_filters_user ON saved_filters(user_id)');
+                }
+            }
+        ],
+
+        // Share links table (if not exists)
+        [
+            'name' => 'Share links table',
+            'description' => 'Public share links for models',
+            'check' => fn($db) => tableExists($db, 'share_links'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE share_links (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        model_id INT NOT NULL,
+                        token VARCHAR(64) NOT NULL UNIQUE,
+                        password_hash VARCHAR(255),
+                        expires_at DATETIME,
+                        download_limit INT,
+                        download_count INT DEFAULT 0,
+                        is_active TINYINT DEFAULT 1,
+                        created_by INT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_share_links_token ON share_links(token)');
+                } else {
+                    $db->exec('CREATE TABLE share_links (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        model_id INTEGER NOT NULL,
+                        token TEXT NOT NULL UNIQUE,
+                        password_hash TEXT,
+                        expires_at DATETIME,
+                        download_limit INTEGER,
+                        download_count INTEGER DEFAULT 0,
+                        is_active INTEGER DEFAULT 1,
+                        created_by INTEGER NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_share_links_token ON share_links(token)');
+                }
+            }
+        ],
+
+        // Smart collections table (if not exists)
+        [
+            'name' => 'Smart collections table',
+            'description' => 'Auto-updating collections based on rules',
+            'check' => fn($db) => tableExists($db, 'smart_collections'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE smart_collections (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        rules TEXT NOT NULL,
+                        match_type VARCHAR(10) DEFAULT "all",
+                        is_public TINYINT DEFAULT 0,
+                        cache_model_ids TEXT,
+                        cache_updated_at DATETIME,
+                        created_by INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE smart_collections (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        rules TEXT NOT NULL,
+                        match_type TEXT DEFAULT "all",
+                        is_public INTEGER DEFAULT 0,
+                        cache_model_ids TEXT,
+                        cache_updated_at DATETIME,
+                        created_by INTEGER,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+                    )');
+                }
+            }
+        ],
+
+        // Print history table (if not exists)
+        [
+            'name' => 'Print history table',
+            'description' => 'Track print history with settings and results',
+            'check' => fn($db) => tableExists($db, 'print_history'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE print_history (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        model_id INT NOT NULL,
+                        user_id INT NOT NULL,
+                        printer_id INT,
+                        status VARCHAR(20) DEFAULT "completed",
+                        filament_type VARCHAR(50),
+                        filament_color VARCHAR(50),
+                        filament_used_grams DECIMAL(10,2),
+                        print_time_minutes INT,
+                        layer_height DECIMAL(4,2),
+                        infill_percentage INT,
+                        notes TEXT,
+                        rating INT,
+                        printed_at DATETIME,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (printer_id) REFERENCES printers(id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                    $db->exec('CREATE INDEX idx_print_history_model ON print_history(model_id)');
+                    $db->exec('CREATE INDEX idx_print_history_user ON print_history(user_id)');
+                } else {
+                    $db->exec('CREATE TABLE print_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        model_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        printer_id INTEGER,
+                        status TEXT DEFAULT "completed",
+                        filament_type TEXT,
+                        filament_color TEXT,
+                        filament_used_grams REAL,
+                        print_time_minutes INTEGER,
+                        layer_height REAL,
+                        infill_percentage INTEGER,
+                        notes TEXT,
+                        rating INTEGER,
+                        printed_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (printer_id) REFERENCES printers(id) ON DELETE SET NULL
+                    )');
+                    $db->exec('CREATE INDEX idx_print_history_model ON print_history(model_id)');
+                    $db->exec('CREATE INDEX idx_print_history_user ON print_history(user_id)');
+                }
+            }
+        ],
     ];
 }

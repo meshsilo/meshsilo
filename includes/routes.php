@@ -43,6 +43,13 @@ $router->get('/tags', ['file' => 'pages/tags.php'], 'tags');
 $router->get('/model/{id:\d+}', ['file' => 'pages/model.php', 'map' => ['id' => 'id']], 'model.show');
 $router->get('/models/{id:\d+}', ['file' => 'pages/model.php', 'map' => ['id' => 'id']], 'model.show.alt');
 
+// Model Version Control
+$router->get('/model/{id:\d+}/versions', ['file' => 'pages/model-versions.php', 'map' => ['id' => 'id']], 'model.versions');
+$router->get('/model/{id:\d+}/compare', ['file' => 'pages/model-compare.php', 'map' => ['id' => 'id']], 'model.compare');
+
+// Remix/Fork Tracking
+$router->get('/model/{id:\d+}/remixes', ['file' => 'pages/remix-tree.php', 'map' => ['id' => 'id']], 'model.remixes');
+
 // Shared links (public, no auth required)
 $router->get('/share/{token}', ['file' => 'pages/share.php', 'map' => ['token' => 'token']], 'share.view');
 $router->get('/s/{token}', ['file' => 'pages/share.php', 'map' => ['token' => 'token']], 'share.short');
@@ -56,6 +63,11 @@ $router->post('/login', ['file' => 'pages/login.php'], 'login.post')
     ->middleware('ratelimit:5,60,auth'); // 5 attempts per minute
 $router->get('/logout', ['file' => 'pages/logout.php'], 'logout');
 $router->get('/oidc-callback', ['file' => 'pages/oidc-callback.php'], 'oidc.callback');
+
+// SAML SSO
+$router->post('/saml-acs', ['file' => 'pages/saml-acs.php'], 'saml.acs');
+$router->get('/saml-metadata', ['file' => 'pages/saml-metadata.php'], 'saml.metadata');
+
 $router->get('/install', ['file' => 'install.php'], 'install');
 $router->post('/install', ['file' => 'install.php'], 'install.post');
 
@@ -192,6 +204,7 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Upload versions
     $router->post('/upload-version', ['file' => 'actions/upload-version.php'], 'actions.upload.version');
+    $router->post('/revert-version', ['file' => 'actions/revert-version.php'], 'actions.revert.version');
 
     // Teams
     $router->post('/teams', ['file' => 'actions/teams.php'], 'actions.teams');
@@ -274,6 +287,17 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     // License
     $router->get('/license', ['file' => 'admin/license.php'], 'admin.license');
     $router->post('/license', ['file' => 'admin/license.php'], 'admin.license.save');
+
+    // Audit Log
+    $router->get('/audit-log', ['file' => 'admin/audit-log.php'], 'admin.audit-log');
+
+    // Data Retention
+    $router->get('/retention', ['file' => 'admin/retention-policies.php'], 'admin.retention');
+    $router->post('/retention', ['file' => 'admin/retention-policies.php'], 'admin.retention.save');
+
+    // Analytics
+    $router->get('/analytics', ['file' => 'admin/analytics.php'], 'admin.analytics');
+    $router->post('/analytics', ['file' => 'admin/analytics.php'], 'admin.analytics.action');
 
     // Routes (debugging)
     $router->get('/routes', ['file' => 'admin/routes.php'], 'admin.routes');
