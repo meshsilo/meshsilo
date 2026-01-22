@@ -34,7 +34,9 @@ cache/*
 todo.txt
 
 # License tools (keep private keys secure)
-tools/*.pem
-tools/license-*.txt
+cli/generate-license.php
+cli/LICENSE-TOOLS-README.md
+cli/*.pem
+cli/license-*.txt
 CLAUDE.md
 **/CLAUDE.md
