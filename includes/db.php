@@ -1467,10 +1467,116 @@ function runMigrations($db) {
         }
         logInfo('Migration: Created team_invites table');
     }
+
+    // =====================
+    // Performance Optimization: Add critical indexes
+    // =====================
+    $criticalIndexes = [
+        'idx_models_filename' => ['table' => 'models', 'column' => 'filename', 'reason' => 'orphan file detection'],
+        'idx_models_parent_id' => ['table' => 'models', 'column' => 'parent_id', 'reason' => 'part queries'],
+        'idx_models_created_at' => ['table' => 'models', 'column' => 'created_at', 'reason' => 'sorting by date'],
+        'idx_models_user_id' => ['table' => 'models', 'column' => 'user_id', 'reason' => 'user filtering'],
+        'idx_models_category_id' => ['table' => 'models', 'column' => 'category_id', 'reason' => 'category filtering'],
+        'idx_model_tags_model' => ['table' => 'model_tags', 'column' => 'model_id', 'reason' => 'tag lookups'],
+        'idx_model_tags_tag' => ['table' => 'model_tags', 'column' => 'tag_id', 'reason' => 'reverse tag lookups'],
+        'idx_favorites_user' => ['table' => 'favorites', 'column' => 'user_id', 'reason' => 'user favorites'],
+        'idx_favorites_model' => ['table' => 'favorites', 'column' => 'model_id', 'reason' => 'model favorite count'],
+    ];
+
+    // Composite indexes for common query patterns (only for MySQL, SQLite handles these well enough)
+    $compositeIndexes = [
+        'idx_models_parent_created' => ['table' => 'models', 'columns' => ['parent_id', 'created_at'], 'reason' => 'parts with sorting'],
+        'idx_models_parent_original' => ['table' => 'models', 'columns' => ['parent_id', 'original_path'], 'reason' => 'ordered part retrieval'],
+        'idx_recently_viewed_user_time' => ['table' => 'recently_viewed', 'columns' => ['user_id', 'viewed_at'], 'reason' => 'user view history'],
+        'idx_activity_user_time' => ['table' => 'activity_log', 'columns' => ['user_id', 'created_at'], 'reason' => 'user activity history'],
+    ];
+
+    // Covering indexes - include frequently queried columns for index-only scans
+    // These avoid the need to access the main table for common queries
+    $coveringIndexes = [
+        'idx_models_parent_null_created' => [
+            'table' => 'models',
+            'sql' => 'CREATE INDEX idx_models_parent_null_created ON models(parent_id, created_at) WHERE parent_id IS NULL',
+            'check_only' => true,
+            'reason' => 'homepage recent models - index-only scan'
+        ],
+    ];
+
+    foreach ($criticalIndexes as $indexName => $indexInfo) {
+        try {
+            $indexExists = false;
+
+            if ($type === 'mysql') {
+                $result = $db->query("SHOW INDEX FROM {$indexInfo['table']} WHERE Key_name = '$indexName'");
+                $indexExists = ($result->fetch() !== false);
+            } else {
+                $result = $db->query("SELECT name FROM sqlite_master WHERE type='index' AND name='$indexName'");
+                $indexExists = ($result->fetch() !== false);
+            }
+
+            if (!$indexExists && tableExists($db, $indexInfo['table'])) {
+                $db->exec("CREATE INDEX $indexName ON {$indexInfo['table']}({$indexInfo['column']})");
+                logInfo("Migration: Created index $indexName", ['reason' => $indexInfo['reason']]);
+            }
+        } catch (Exception $e) {
+            // Index might already exist or table doesn't exist yet, safe to ignore
+            logDebug("Migration: Index $indexName skipped", ['error' => $e->getMessage()]);
+        }
+    }
+
+    // Add composite indexes (only for MySQL as they provide more benefit there)
+    if ($type === 'mysql') {
+        foreach ($compositeIndexes as $indexName => $indexInfo) {
+            try {
+                $result = $db->query("SHOW INDEX FROM {$indexInfo['table']} WHERE Key_name = '$indexName'");
+                $indexExists = ($result->fetch() !== false);
+
+                if (!$indexExists && tableExists($db, $indexInfo['table'])) {
+                    $columns = implode(', ', $indexInfo['columns']);
+                    $db->exec("CREATE INDEX $indexName ON {$indexInfo['table']}($columns)");
+                    logInfo("Migration: Created composite index $indexName", ['reason' => $indexInfo['reason']]);
+                }
+            } catch (Exception $e) {
+                logDebug("Migration: Composite index $indexName skipped", ['error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    // Add covering/partial indexes (advanced optimizations)
+    foreach ($coveringIndexes as $indexName => $indexInfo) {
+        try {
+            $indexExists = false;
+
+            if ($type === 'mysql') {
+                $result = $db->query("SHOW INDEX FROM {$indexInfo['table']} WHERE Key_name = '$indexName'");
+                $indexExists = ($result->fetch() !== false);
+            } else {
+                $result = $db->query("SELECT name FROM sqlite_master WHERE type='index' AND name='$indexName'");
+                $indexExists = ($result->fetch() !== false);
+            }
+
+            if (!$indexExists && tableExists($db, $indexInfo['table'])) {
+                // Use custom SQL for covering indexes (may include WHERE clause)
+                $db->exec($indexInfo['sql']);
+                logInfo("Migration: Created covering index $indexName", ['reason' => $indexInfo['reason']]);
+            }
+        } catch (Exception $e) {
+            // Partial indexes may not be supported on all DB versions
+            logDebug("Migration: Covering index $indexName skipped", ['error' => $e->getMessage()]);
+        }
+    }
 }
 
-// Get a setting value
+// Settings cache storage
+$GLOBALS['_settings_cache'] = [];
+
+// Get a setting value (with in-memory cache for performance)
 function getSetting($key, $default = null) {
+    // Return cached value if available
+    if (array_key_exists($key, $GLOBALS['_settings_cache'])) {
+        return $GLOBALS['_settings_cache'][$key];
+    }
+
     try {
         $db = getDB();
         $type = $db->getType();
@@ -1478,8 +1584,13 @@ function getSetting($key, $default = null) {
         $stmt = $db->prepare("SELECT value FROM settings WHERE $keyCol = :key");
         $stmt->execute([':key' => $key]);
         $row = $stmt->fetch();
-        return $row ? $row['value'] : $default;
+        $value = $row ? $row['value'] : $default;
+
+        // Cache the value (including nulls/defaults)
+        $GLOBALS['_settings_cache'][$key] = $value;
+        return $value;
     } catch (Exception $e) {
+        $GLOBALS['_settings_cache'][$key] = $default;
         return $default;
     }
 }
@@ -1497,6 +1608,10 @@ function setSetting($key, $value) {
             $stmt = $db->prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (:key, :value, CURRENT_TIMESTAMP)');
             $stmt->execute([':key' => $key, ':value' => $value]);
         }
+
+        // Update cache with new value
+        $GLOBALS['_settings_cache'][$key] = $value;
+
         return true;
     } catch (Exception $e) {
         logException($e, ['action' => 'set_setting', 'key' => $key]);
@@ -1578,6 +1693,88 @@ function getModelTags($modelId) {
             $tags[] = $row;
         }
         return $tags;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Get tags for multiple models in one query (optimized for N+1 prevention)
+function getTagsForModels(array $modelIds) {
+    if (empty($modelIds)) {
+        return [];
+    }
+
+    try {
+        $db = getDB();
+        $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
+        $query = "
+            SELECT mt.model_id, t.id, t.name, t.color
+            FROM model_tags mt
+            JOIN tags t ON mt.tag_id = t.id
+            WHERE mt.model_id IN ($placeholders)
+            ORDER BY t.name
+        ";
+        $stmt = $db->prepare($query);
+
+        $index = 1;
+        foreach ($modelIds as $id) {
+            $stmt->bindValue($index++, $id, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        // Group tags by model_id
+        $tagsByModel = [];
+        while ($row = $stmt->fetch()) {
+            $tagsByModel[$row['model_id']][] = [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'color' => $row['color']
+            ];
+        }
+
+        return $tagsByModel;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Get first part for multiple parent models in one query (optimized for N+1 prevention)
+function getFirstPartsForModels(array $modelIds) {
+    if (empty($modelIds)) {
+        return [];
+    }
+
+    try {
+        $db = getDB();
+        $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
+
+        // Get first part for each parent (using subquery to get minimum id per parent)
+        $query = "
+            SELECT m.*
+            FROM models m
+            INNER JOIN (
+                SELECT parent_id, MIN(id) as first_id
+                FROM models
+                WHERE parent_id IN ($placeholders)
+                GROUP BY parent_id
+            ) first ON m.id = first.first_id
+            ORDER BY m.original_path
+        ";
+        $stmt = $db->prepare($query);
+
+        $index = 1;
+        foreach ($modelIds as $id) {
+            $stmt->bindValue($index++, $id, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        // Group by parent_id
+        $partsByParent = [];
+        while ($row = $stmt->fetch()) {
+            $partsByParent[$row['parent_id']] = $row;
+        }
+
+        return $partsByParent;
     } catch (Exception $e) {
         return [];
     }

@@ -73,8 +73,13 @@ foreach ($params as $key => $value) {
 $totalModels = (int)$countStmt->fetchColumn();
 $totalPages = ceil($totalModels / $perPage);
 
-// Get models
-$sql = "SELECT m.* FROM models m WHERE $whereClause ORDER BY $orderBy LIMIT :limit OFFSET :offset";
+// Get models - optimized to only select columns we display
+$sql = "SELECT m.id, m.name, m.description, m.creator, m.file_path, m.file_size, m.file_type,
+               m.dedup_path, m.part_count, m.download_count, m.created_at, m.is_archived
+        FROM models m
+        WHERE $whereClause
+        ORDER BY $orderBy
+        LIMIT :limit OFFSET :offset";
 $stmt = $db->prepare($sql);
 foreach ($params as $key => $value) {
     $stmt->bindValue($key, $value);
@@ -84,6 +89,7 @@ $stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
 $result = $stmt->execute();
 
 $models = [];
+$modelIds = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     // For multi-part models, get the first part for preview
     if ($row['part_count'] > 0) {
@@ -100,10 +106,23 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $row['preview_type'] = $row['file_type'];
     }
 
-    // Get tags for model
-    $row['tags'] = getModelTags($row['id']);
-
+    // Initialize tags array (will be filled in bulk below)
+    $row['tags'] = [];
+    $modelIds[] = $row['id'];
     $models[] = $row;
+}
+
+// Fetch all tags for all models in one query (fixes N+1 problem)
+if (!empty($modelIds)) {
+    $tagsByModel = getTagsForModels($modelIds);
+
+    // Assign tags to models
+    foreach ($models as &$model) {
+        if (isset($tagsByModel[$model['id']])) {
+            $model['tags'] = $tagsByModel[$model['id']];
+        }
+    }
+    unset($model); // Break reference
 }
 
 // Get categories for filter dropdown

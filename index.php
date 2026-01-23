@@ -90,30 +90,13 @@ $activePage = 'browse';
 $db = getDB();
 
 // Get recent models (only parent/standalone models, not parts)
-$result = $db->query('SELECT * FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
+// Optimized: Only select columns we actually use
+$result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, print_type, creator, created_at FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
 $models = [];
+$modelIds = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    // For multi-part models, get the first part for preview and print types
     if ($row['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
-        $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
-        if ($firstPart) {
-            // Add cache buster to prevent stale model files after conversion
-            $row['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
-            $row['preview_type'] = $firstPart['file_type'];
-        }
-
-        // Get distinct print types for this model's parts
-        $printStmt = $db->prepare('SELECT DISTINCT print_type FROM models WHERE parent_id = :parent_id AND print_type IS NOT NULL');
-        $printStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
-        $printResult = $printStmt->execute();
-        $printTypes = [];
-        while ($printRow = $printResult->fetchArray(SQLITE3_ASSOC)) {
-            $printTypes[] = $printRow['print_type'];
-        }
-        $row['print_types'] = $printTypes;
+        $modelIds[] = $row['id'];
     } else {
         // Add cache buster for single models
         $row['preview_path'] = getRealFilePath($row) . '?v=' . ($row['file_size'] ?? time());
@@ -121,6 +104,36 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
     }
     $models[] = $row;
+}
+
+// Bulk load first parts for multi-part models (eliminates N+1 queries)
+if (!empty($modelIds)) {
+    $firstParts = getFirstPartsForModels($modelIds);
+
+    // Get distinct print types for multi-part models in one query
+    $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
+    $printStmt = $db->prepare("SELECT parent_id, GROUP_CONCAT(DISTINCT print_type) as print_types FROM models WHERE parent_id IN ($placeholders) AND print_type IS NOT NULL GROUP BY parent_id");
+    foreach ($modelIds as $index => $id) {
+        $printStmt->bindValue($index + 1, $id, SQLITE3_INTEGER);
+    }
+    $printResult = $printStmt->execute();
+    $printTypesByParent = [];
+    while ($row = $printResult->fetchArray(SQLITE3_ASSOC)) {
+        $printTypesByParent[$row['parent_id']] = explode(',', $row['print_types']);
+    }
+
+    // Assign to models
+    foreach ($models as &$model) {
+        if ($model['part_count'] > 0) {
+            $firstPart = $firstParts[$model['id']] ?? null;
+            if ($firstPart) {
+                $model['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+                $model['preview_type'] = $firstPart['file_type'];
+            }
+            $model['print_types'] = $printTypesByParent[$model['id']] ?? [];
+        }
+    }
+    unset($model);
 }
 
 // Get categories with model counts
@@ -155,13 +168,15 @@ if (isset($_SESSION['success'])) {
 
 // Get recently viewed models
 $recentlyViewed = getRecentlyViewed(6);
+
+// Bulk load first parts for recently viewed multi-part models
+$rvMultiPartIds = array_column(array_filter($recentlyViewed, fn($m) => $m['part_count'] > 0), 'id');
+$rvParts = !empty($rvMultiPartIds) ? getFirstPartsForModels($rvMultiPartIds) : [];
+
 // Enhance with preview data
 foreach ($recentlyViewed as &$rv) {
     if ($rv['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $rv['id'], SQLITE3_INTEGER);
-        $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        $firstPart = $rvParts[$rv['id']] ?? null;
         if ($firstPart) {
             $rv['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
             $rv['preview_type'] = $firstPart['file_type'];
@@ -173,12 +188,34 @@ foreach ($recentlyViewed as &$rv) {
 }
 unset($rv);
 
-// Get popular tags
+// Get popular tags (cached for 5 minutes to reduce load)
 $popularTags = [];
 if (getSetting('enable_tags', '1') === '1') {
-    $tagResult = $db->query('SELECT t.*, COUNT(mt.model_id) as model_count FROM tags t JOIN model_tags mt ON t.id = mt.tag_id GROUP BY t.id ORDER BY model_count DESC LIMIT 10');
-    while ($row = $tagResult->fetchArray(SQLITE3_ASSOC)) {
-        $popularTags[] = $row;
+    $cacheKey = 'popular_tags_10';
+    $cacheFile = __DIR__ . '/cache/popular_tags.json';
+    $cacheValid = false;
+
+    // Check if cache exists and is fresh (5 minutes)
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 300) {
+        $cached = json_decode(file_get_contents($cacheFile), true);
+        if ($cached) {
+            $popularTags = $cached;
+            $cacheValid = true;
+        }
+    }
+
+    // Regenerate cache if needed
+    if (!$cacheValid) {
+        $tagResult = $db->query('SELECT t.id, t.name, t.color, COUNT(mt.model_id) as model_count FROM tags t JOIN model_tags mt ON t.id = mt.tag_id GROUP BY t.id ORDER BY model_count DESC LIMIT 10');
+        while ($row = $tagResult->fetchArray(SQLITE3_ASSOC)) {
+            $popularTags[] = $row;
+        }
+
+        // Save to cache
+        if (!is_dir(__DIR__ . '/cache')) {
+            @mkdir(__DIR__ . '/cache', 0755, true);
+        }
+        @file_put_contents($cacheFile, json_encode($popularTags));
     }
 }
 

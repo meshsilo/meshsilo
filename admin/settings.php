@@ -1,7 +1,9 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/slicers.php';
-$baseDir = '../';
+// Set baseDir based on how we're accessed (router vs direct)
+// Router loads from root context, direct access needs ../
+$baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
 // Require admin permission
 requirePermission(PERM_ADMIN, $baseDir . 'index.php');

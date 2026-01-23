@@ -1,7 +1,9 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/dedup.php';
-$baseDir = '../';
+// Set baseDir based on how we're accessed (router vs direct)
+// Router loads from root context, direct access needs ../
+$baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
 // Require admin permission
 requirePermission(PERM_ADMIN, $baseDir . 'index.php');
@@ -31,42 +33,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
         }
     } elseif ($action === 'delete_all_missing') {
         // Delete all missing file entries (parts with missing files)
-        // Exclude parent models (ZIP containers) which have folder paths, not file paths
-        $result = $db->query('SELECT id, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL');
+        // Process in batches to avoid memory exhaustion
+        $batchSize = 100;
+        $offset = 0;
         $deletedCount = 0;
-        $idsToDelete = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            // Skip parent models (ZIP containers) - they don't have actual files
-            if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
-                continue;
+
+        while (true) {
+            $result = $db->query("SELECT id, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT $batchSize OFFSET $offset");
+            $hasRows = false;
+            $idsToDelete = [];
+
+            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                $hasRows = true;
+                // Skip parent models (ZIP containers) - they don't have actual files
+                if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
+                    continue;
+                }
+                $filePath = getAbsoluteFilePath($row);
+                if (!file_exists($filePath) || !is_file($filePath)) {
+                    $idsToDelete[] = $row['id'];
+                }
             }
-            $filePath = getAbsoluteFilePath($row);
-            if (!file_exists($filePath) || !is_file($filePath)) {
-                $idsToDelete[] = $row['id'];
-            }
-        }
 
-        // Delete the missing entries
-        foreach ($idsToDelete as $id) {
-            // Get parent_id to update part count later
-            $stmt = $db->prepare('SELECT parent_id FROM models WHERE id = :id');
-            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
-            $parentResult = $stmt->execute();
-            $parentRow = $parentResult->fetchArray(SQLITE3_ASSOC);
+            // Delete the missing entries in this batch
+            foreach ($idsToDelete as $id) {
+                // Get parent_id to update part count later
+                $stmt = $db->prepare('SELECT parent_id FROM models WHERE id = :id');
+                $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+                $parentResult = $stmt->execute();
+                $parentRow = $parentResult->fetchArray(SQLITE3_ASSOC);
 
-            $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
-            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
-            $stmt->execute();
-
-            // Update parent's part count if this was a child
-            if ($parentRow && $parentRow['parent_id']) {
-                $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :parent_id) WHERE id = :parent_id');
-                $stmt->bindValue(':parent_id', $parentRow['parent_id'], SQLITE3_INTEGER);
+                $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
+                $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
                 $stmt->execute();
+
+                // Update parent's part count if this was a child
+                if ($parentRow && $parentRow['parent_id']) {
+                    $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :parent_id) WHERE id = :parent_id');
+                    $stmt->bindValue(':parent_id', $parentRow['parent_id'], SQLITE3_INTEGER);
+                    $stmt->execute();
+                }
+
+                $deletedCount++;
             }
 
-            $deletedCount++;
+            if (!$hasRows) break;
+            $offset += $batchSize;
         }
+
         $message = "Removed $deletedCount missing file entries from database.";
         logInfo('Removed all missing files from database', ['count' => $deletedCount]);
     } elseif ($action === 'delete_orphan') {
@@ -82,19 +96,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
         }
     } elseif ($action === 'delete_all_orphans') {
         // Delete all orphaned files from disk
+        // Use database queries instead of loading all filenames into memory
         $assetsPath = realpath(UPLOAD_PATH);
         if ($assetsPath && is_dir($assetsPath)) {
-            $dbFilenames = [];
-            $result = $db->query('SELECT filename FROM models');
-            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-                $dbFilenames[] = $row['filename'];
-            }
-
             $deletedCount = 0;
             $iterator = new DirectoryIterator($assetsPath);
             foreach ($iterator as $file) {
                 if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-                    if (!in_array($file->getFilename(), $dbFilenames)) {
+                    // Check if file exists in database
+                    $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
+                    $stmt->bindValue(':filename', $file->getFilename(), SQLITE3_TEXT);
+                    $result = $stmt->execute();
+                    $row = $result->fetchArray(SQLITE3_ASSOC);
+
+                    if ($row['count'] == 0) {
                         unlink($file->getPathname());
                         $deletedCount++;
                     }
@@ -285,8 +300,8 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 
 // Check for missing files (files in DB but not on disk)
-// Exclude parent models (ZIP containers) which have folder paths, not file paths
-$result = $db->query('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL');
+// Limit to first 100 to avoid memory issues on large databases
+$result = $db->query('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT 100');
 $missingFiles = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     // Skip parent models (ZIP containers) - they don't have actual files
@@ -300,22 +315,26 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 
 // Check for orphaned files (files on disk but not in DB)
+// Limit to first 100 to avoid memory issues
 $orphanedFiles = [];
 if ($assetsPath && is_dir($assetsPath)) {
-    $dbFilenames = [];
-    $result = $db->query('SELECT filename FROM models');
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-        $dbFilenames[] = $row['filename'];
-    }
-
     $iterator = new DirectoryIterator($assetsPath);
+    $count = 0;
     foreach ($iterator as $file) {
         if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-            if (!in_array($file->getFilename(), $dbFilenames)) {
+            // Check if file exists in database
+            $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
+            $stmt->bindValue(':filename', $file->getFilename(), SQLITE3_TEXT);
+            $result = $stmt->execute();
+            $row = $result->fetchArray(SQLITE3_ASSOC);
+
+            if ($row['count'] == 0) {
                 $orphanedFiles[] = [
                     'filename' => $file->getFilename(),
                     'size' => $file->getSize()
                 ];
+                $count++;
+                if ($count >= 100) break; // Limit to 100 orphaned files
             }
         }
     }

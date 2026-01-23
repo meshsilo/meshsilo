@@ -71,5 +71,74 @@
     Header set X-XSS-Protection "1; mode=block"
 </IfModule>
 
+# =====================================================
+# Browser Caching & Performance
+# =====================================================
+
+# Enable compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# Enable ETags for cache validation
+<IfModule mod_headers.c>
+    FileETag MTime Size
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Images - cache for 1 year (immutable)
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+
+    # CSS and JavaScript - cache for 1 year (we use ?v= versioning)
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+
+    # Fonts - cache for 1 year
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/otf "access plus 1 year"
+
+    # 3D model files - cache for 1 week (can be changed frequently)
+    ExpiresByType model/stl "access plus 1 week"
+    ExpiresByType application/octet-stream "access plus 1 week"
+
+    # HTML - no cache (dynamic pages)
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# Add Cache-Control headers for static assets
+<IfModule mod_headers.c>
+    # CSS and JS with version query strings - long cache
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Images - long cache
+    <FilesMatch "\.(jpg|jpeg|png|gif|svg|webp|ico)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Fonts - long cache
+    <FilesMatch "\.(woff|woff2|ttf|otf)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # 3D model files - moderate cache
+    <FilesMatch "\.(stl|3mf|gcode)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>
+
 # Disable directory listing
 Options -Indexes
