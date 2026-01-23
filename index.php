@@ -7,6 +7,9 @@
  * homepage is displayed.
  */
 
+// Increase memory limit for large operations
+ini_set('memory_limit', '512M');
+
 // Check if this is a routed request (not the homepage)
 $routePath = $_GET['route'] ?? '';
 $routePath = '/' . trim($routePath, '/');
