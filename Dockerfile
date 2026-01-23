@@ -53,11 +53,12 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Configure PHP settings for file uploads
+# Configure PHP settings for file uploads (both FPM and CLI)
 RUN sed -i 's/upload_max_filesize = .*/upload_max_filesize = 100M/' /etc/php/8.1/fpm/php.ini \
     && sed -i 's/post_max_size = .*/post_max_size = 100M/' /etc/php/8.1/fpm/php.ini \
     && sed -i 's/memory_limit = .*/memory_limit = 2G/' /etc/php/8.1/fpm/php.ini \
-    && sed -i 's/max_execution_time = .*/max_execution_time = 300/' /etc/php/8.1/fpm/php.ini
+    && sed -i 's/max_execution_time = .*/max_execution_time = 300/' /etc/php/8.1/fpm/php.ini \
+    && sed -i 's/memory_limit = .*/memory_limit = 2G/' /etc/php/8.1/cli/php.ini
 
 # Create PHP-FPM socket directory
 RUN mkdir -p /run/php && chown www-data:www-data /run/php
