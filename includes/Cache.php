@@ -357,14 +357,14 @@ class Cache {
             return $default;
         }
 
-        $data = @json_decode($content, true);
-        if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+        $data = @unserialize($content);
+        if ($data === false) {
             @unlink($file);
             return $default;
         }
 
         // Check expiration
-        if (isset($data['expires']) && $data['expires'] !== 0 && $data['expires'] < time()) {
+        if ($data['expires'] !== 0 && $data['expires'] < time()) {
             @unlink($file);
             return $default;
         }
@@ -378,10 +378,10 @@ class Cache {
     private function setToFile(string $key, $value, int $expires): bool {
         $file = $this->getCacheFile($key);
 
-        $data = json_encode([
+        $data = serialize([
             'expires' => $expires,
             'value' => $value
-        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        ]);
 
         return file_put_contents($file, $data, LOCK_EX) !== false;
     }
@@ -403,8 +403,8 @@ class Cache {
                 continue;
             }
 
-            $data = @json_decode($content, true);
-            if ($data === null || (isset($data['expires']) && $data['expires'] !== 0 && $data['expires'] < time())) {
+            $data = @unserialize($content);
+            if ($data === false || ($data['expires'] !== 0 && $data['expires'] < time())) {
                 @unlink($file);
                 $count++;
             }
