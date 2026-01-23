@@ -274,7 +274,7 @@ require_once 'includes/header.php';
             </div>
 
             <?php if (empty($models)): ?>
-                <p class="text-muted" style="text-align: center; padding: 3rem;">No models found. <?php if (!$search && !$categoryId && !$tagId): ?><a href="upload.php">Upload your first model!</a><?php endif; ?></p>
+                <p class="text-muted" style="text-align: center; padding: 3rem;">No models found. <?php if (!$search && !$categoryId && !$tagId): ?><a href="<?= route('upload') ?>">Upload your first model!</a><?php endif; ?></p>
             <?php elseif ($view === 'list'): ?>
                 <div class="models-list">
                     <?php foreach ($models as $model): ?>

@@ -368,7 +368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Redirect on success
             if ($uploadedCount > 0) {
-                header('Location: index.php?uploaded=' . $uploadedCount);
+                header('Location: ' . route('home', [], ['uploaded' => $uploadedCount]));
                 exit;
             }
         }
@@ -388,7 +388,7 @@ require_once 'includes/header.php';
             <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
 
-            <form class="upload-form" id="upload-form" action="upload.php" method="post" enctype="multipart/form-data">
+            <form class="upload-form" id="upload-form" action="<?= route('upload') ?>" method="post" enctype="multipart/form-data">
                 <div class="upload-dropzone" id="dropzone">
                     <div class="dropzone-content">
                         <span class="dropzone-icon">&#8679;</span>
@@ -468,7 +468,7 @@ require_once 'includes/header.php';
                 </details>
 
                 <div class="form-actions">
-                    <a href="index.php" class="btn btn-secondary">Cancel</a>
+                    <a href="<?= route('home') ?>" class="btn btn-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary" id="submit-btn">Upload Model</button>
                 </div>
             </form>

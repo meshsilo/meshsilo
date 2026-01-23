@@ -13,7 +13,7 @@ $db = getDB();
 $modelId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$modelId) {
-    header('Location: index.php');
+    header('Location: ' . route('home'));
     exit;
 }
 
@@ -24,13 +24,13 @@ $result = $stmt->execute();
 $model = $result->fetchArray(SQLITE3_ASSOC);
 
 if (!$model) {
-    header('Location: index.php');
+    header('Location: ' . route('home'));
     exit;
 }
 
 // If this is a child model, redirect to its parent
 if ($model['parent_id']) {
-    header('Location: model.php?id=' . $model['parent_id']);
+    header('Location: ' . route('model.show', ['id' => $model['parent_id']]));
     exit;
 }
 
@@ -390,7 +390,7 @@ require_once 'includes/header.php';
                         <?php if (!empty($categories)): ?>
                         <div class="model-categories">
                             <?php foreach ($categories as $cat): ?>
-                            <a href="browse.php?category=<?= $cat['id'] ?>" class="category-tag"><?= htmlspecialchars($cat['name']) ?></a>
+                            <a href="<?= route('browse', [], ['category' => $cat['id']]) ?>" class="category-tag"><?= htmlspecialchars($cat['name']) ?></a>
                             <?php endforeach; ?>
                         </div>
                         <?php endif; ?>
@@ -398,7 +398,7 @@ require_once 'includes/header.php';
                         <?php if (!empty($modelTags)): ?>
                         <div class="model-tags">
                             <?php foreach ($modelTags as $tag): ?>
-                            <a href="browse.php?tag=<?= $tag['id'] ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none;">
+                            <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none;">
                                 <?= htmlspecialchars($tag['name']) ?>
                                 <?php if (canEdit()): ?>
                                 <button type="button" class="model-tag-remove" onclick="event.preventDefault(); event.stopPropagation(); removeTag(<?= $model['id'] ?>, <?= $tag['id'] ?>, this.parentElement)" title="Remove tag">&times;</button>
@@ -426,7 +426,7 @@ require_once 'includes/header.php';
                             <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>
                             <?php endif; ?>
                             <?php if (canEdit()): ?>
-                            <a href="edit-model.php?id=<?= $model['id'] ?>" class="btn btn-secondary btn-small">Edit Model</a>
+                            <a href="<?= route('model.edit', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">Edit Model</a>
                             <?php if ($model['is_archived']): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="toggleArchive(<?= $model['id'] ?>, false)">Unarchive</button>
                             <?php else: ?>
@@ -434,7 +434,7 @@ require_once 'includes/header.php';
                             <?php endif; ?>
                             <?php endif; ?>
                             <?php if (canDelete()): ?>
-                            <a href="actions/delete.php?id=<?= $model['id'] ?>" class="btn btn-danger btn-small">Delete Model</a>
+                            <a href="<?= route('actions.delete', [], ['id' => $model['id']]) ?>" class="btn btn-danger btn-small">Delete Model</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -536,9 +536,9 @@ require_once 'includes/header.php';
                                         </div>
                                     </div>
                                     <?php endif; ?>
-                                    <a href="actions/download.php?id=<?= $part['id'] ?>" class="btn btn-small btn-primary">Download</a>
+                                    <a href="<?= route('actions.download', [], ['id' => $part['id']]) ?>" class="btn btn-small btn-primary">Download</a>
                                     <?php if (canDelete()): ?>
-                                    <a href="actions/delete.php?id=<?= $model['id'] ?>&part_id=<?= $part['id'] ?>" class="btn btn-small btn-danger">Delete</a>
+                                    <a href="<?= route('actions.delete', [], ['id' => $model['id'], 'part_id' => $part['id']]) ?>" class="btn btn-small btn-danger">Delete</a>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -548,7 +548,7 @@ require_once 'includes/header.php';
                     <?php endforeach; ?>
 
                     <div class="parts-actions">
-                        <a href="actions/download-all.php?id=<?= $model['id'] ?>" class="btn btn-primary">Download All Parts</a>
+                        <a href="<?= route('actions.download.all', [], ['id' => $model['id']]) ?>" class="btn btn-primary">Download All Parts</a>
                         <?php if (canUpload()): ?>
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
                         <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
@@ -581,7 +581,7 @@ require_once 'includes/header.php';
                         </div>
                     </div>
                     <?php endif; ?>
-                    <a href="actions/download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
+                    <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
                     <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
                 </div>
@@ -611,7 +611,7 @@ require_once 'includes/header.php';
                         </div>
                     </div>
                     <?php endif; ?>
-                    <a href="actions/download.php?id=<?= $model['id'] ?>" class="btn btn-primary btn-large">Download Model</a>
+                    <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                 </div>
                 <?php endif; ?>
             </div>

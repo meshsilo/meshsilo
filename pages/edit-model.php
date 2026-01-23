@@ -110,7 +110,7 @@ require_once 'includes/header.php';
         <div class="page-container">
             <div class="page-header">
                 <h1>Edit Model</h1>
-                <p><a href="model.php?id=<?= $modelId ?>">&larr; Back to model</a></p>
+                <p><a href="<?= route('model.show', ['id' => $modelId]) ?>">&larr; Back to model</a></p>
             </div>
 
             <?php if ($message): ?>
@@ -179,7 +179,7 @@ require_once 'includes/header.php';
 
                 <div class="form-actions" style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <a href="model.php?id=<?= $modelId ?>" class="btn btn-secondary">Cancel</a>
+                    <a href="<?= route('model.show', ['id' => $modelId]) ?>" class="btn btn-secondary">Cancel</a>
                 </div>
             </form>
         </div>
