@@ -89,8 +89,8 @@ while ($row = $usersResult->fetchArray(SQLITE3_ASSOC)) {
     $users[] = $row;
 }
 
-require_once '../includes/header.php';
-require_once '../includes/admin-sidebar.php';
+require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/admin-sidebar.php';
 ?>
 
 <div class="admin-content">
@@ -521,4 +521,4 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
 }
 </style>
 
-<?php require_once '../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

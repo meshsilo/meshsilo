@@ -157,11 +157,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get user's permissions
 $userPermissions = getUserPermissions($userId);
 
-require_once '../includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
         <div class="admin-layout">
-<?php require_once '../includes/admin-sidebar.php'; ?>
+<?php require_once __DIR__ . '/../includes/admin-sidebar.php'; ?>
 
             <div class="admin-content">
                 <div class="page-header">
@@ -336,4 +336,4 @@ require_once '../includes/header.php';
 }
 </style>
 
-<?php require_once '../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

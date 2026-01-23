@@ -151,11 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get current settings
 $settings = getAllSettings();
 
-require_once '../includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
         <div class="admin-layout">
-<?php require_once '../includes/admin-sidebar.php'; ?>
+<?php require_once __DIR__ . '/../includes/admin-sidebar.php'; ?>
 
             <div class="admin-content">
                 <div class="page-header">
@@ -639,4 +639,4 @@ document.getElementById('test-oidc').addEventListener('click', async function() 
 });
 </script>
 
-<?php require_once '../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

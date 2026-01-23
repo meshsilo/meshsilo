@@ -57,7 +57,7 @@ include '../includes/header.php';
 ?>
 
         <div class="admin-layout">
-<?php require_once '../includes/admin-sidebar.php'; ?>
+<?php require_once __DIR__ . '/../includes/admin-sidebar.php'; ?>
 
             <div class="admin-content">
     <div class="admin-header">

@@ -140,11 +140,11 @@ if ($dbType === 'sqlite' && defined('DB_PATH') && file_exists(DB_PATH)) {
     $dbSize = filesize(DB_PATH);
 }
 
-require_once '../includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="admin-container">
-    <?php require_once '../includes/admin-sidebar.php'; ?>
+    <?php require_once __DIR__ . '/../includes/admin-sidebar.php'; ?>
 
     <main class="admin-main">
         <h1>Database Management</h1>
@@ -457,7 +457,7 @@ php cli/migrate.php --dry-run
 </style>
 
 <?php
-require_once '../includes/footer.php';
+require_once __DIR__ . '/../includes/footer.php';
 
 // Helper function for formatting bytes
 function formatBytes($bytes, $precision = 2) {
