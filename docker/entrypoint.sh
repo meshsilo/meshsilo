@@ -107,8 +107,10 @@ fi
 if [ -n "$SILO_MAX_UPLOAD_SIZE" ]; then
     # Convert to MB for PHP config
     UPLOAD_MB=$(($SILO_MAX_UPLOAD_SIZE / 1048576))
-    sed -i "s/upload_max_filesize = .*/upload_max_filesize = ${UPLOAD_MB}M/" /etc/php/8.1/fpm/php.ini
-    sed -i "s/post_max_size = .*/post_max_size = ${UPLOAD_MB}M/" /etc/php/8.1/fpm/php.ini
+
+    # Update the custom config file to override defaults
+    sed -i "s/^upload_max_filesize = .*/upload_max_filesize = ${UPLOAD_MB}M/" /etc/php/8.1/fpm/conf.d/99-silo.ini
+    sed -i "s/^post_max_size = .*/post_max_size = ${UPLOAD_MB}M/" /etc/php/8.1/fpm/conf.d/99-silo.ini
 
     # Update nginx client_max_body_size
     sed -i "s/client_max_body_size .*/client_max_body_size ${UPLOAD_MB}M;/" /etc/nginx/sites-available/default
