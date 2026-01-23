@@ -175,7 +175,7 @@ $health['checks']['maintenance'] = [
 // Application info
 $health['app'] = [
     'name' => defined('SITE_NAME') ? SITE_NAME : 'Silo',
-    'version' => '1.0.0', // Could be loaded from a version file
+    'version' => defined('SILO_VERSION') ? SILO_VERSION : '1.0.0',
     'environment' => defined('APP_ENV') ? APP_ENV : 'production'
 ];
 

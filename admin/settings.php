@@ -13,6 +13,13 @@ $adminPage = 'settings';
 $message = '';
 $error = '';
 
+// Handle force update check
+if (isset($_GET['force_update_check'])) {
+    UpdateChecker::clearCache();
+    header('Location: ' . route('admin.settings'));
+    exit;
+}
+
 // Handle OIDC test connection AJAX request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_oidc'])) {
     header('Content-Type: application/json');
@@ -170,6 +177,48 @@ require_once __DIR__ . '/../includes/header.php';
                 <?php if ($error): ?>
                 <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
+
+                <?php
+                // Check for updates
+                $updateInfo = UpdateChecker::check();
+                ?>
+                <section class="settings-section update-checker">
+                    <h2>Version Information</h2>
+                    <div class="version-info">
+                        <div class="version-current">
+                            <span class="label">Current Version:</span>
+                            <span class="version"><?= htmlspecialchars(SILO_VERSION) ?></span>
+                        </div>
+                        <?php if ($updateInfo['available']): ?>
+                        <div class="update-available">
+                            <div class="update-badge">Update Available</div>
+                            <div class="update-details">
+                                <p>Version <strong><?= htmlspecialchars($updateInfo['latest']) ?></strong> is available!</p>
+                                <?php if ($updateInfo['published']): ?>
+                                <p class="update-date">Released: <?= htmlspecialchars(date('M j, Y', strtotime($updateInfo['published']))) ?></p>
+                                <?php endif; ?>
+                                <a href="<?= htmlspecialchars($updateInfo['url']) ?>" target="_blank" rel="noopener" class="btn btn-primary">
+                                    View Release
+                                </a>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="version-status up-to-date">
+                            <span class="status-icon">&#10003;</span>
+                            <span>You're running the latest version</span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($updateInfo['error']): ?>
+                        <div class="update-error">
+                            <small>Unable to check for updates: <?= htmlspecialchars($updateInfo['error']) ?></small>
+                        </div>
+                        <?php endif; ?>
+                        <div class="version-meta">
+                            <small>Last checked: <?= htmlspecialchars($updateInfo['checked_at'] ?? 'Never') ?></small>
+                            <a href="?force_update_check=1" class="check-now">Check now</a>
+                        </div>
+                    </div>
+                </section>
 
                 <form class="settings-form" method="POST">
                     <section class="settings-section">

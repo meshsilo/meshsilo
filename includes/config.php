@@ -1,4 +1,7 @@
 <?php
+// Silo Version
+define('SILO_VERSION', '1.0.0');
+
 // Load local configuration if exists
 if (file_exists(__DIR__ . '/../config.local.php')) {
     require_once __DIR__ . '/../config.local.php';
@@ -65,6 +68,8 @@ require_once __DIR__ . '/Asset.php';
 require_once __DIR__ . '/HttpCache.php';
 require_once __DIR__ . '/ErrorHandler.php';
 require_once __DIR__ . '/Queue.php';
+require_once __DIR__ . '/RateLimiter.php';
+require_once __DIR__ . '/UpdateChecker.php';
 
 // Load route definitions (for URL generation)
 // Only load if routes haven't been loaded yet
