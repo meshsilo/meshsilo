@@ -68,8 +68,8 @@ require_once __DIR__ . '/Asset.php';
 require_once __DIR__ . '/HttpCache.php';
 require_once __DIR__ . '/ErrorHandler.php';
 require_once __DIR__ . '/Queue.php';
-require_once __DIR__ . '/RateLimiter.php';
-require_once __DIR__ . '/UpdateChecker.php';
+// require_once __DIR__ . '/RateLimiter.php';  // Temporarily disabled for debugging
+// require_once __DIR__ . '/UpdateChecker.php'; // Temporarily disabled for debugging
 
 // Load route definitions (for URL generation)
 // Only load if routes haven't been loaded yet
