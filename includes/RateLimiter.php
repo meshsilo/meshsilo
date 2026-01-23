@@ -61,17 +61,30 @@ class RateLimiter {
     private function ensureTable(): void {
         if (!$this->db) return;
 
-        $this->db->exec("
-            CREATE TABLE IF NOT EXISTS rate_limits (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                key TEXT NOT NULL UNIQUE,
-                hits INTEGER DEFAULT 1,
-                expires_at DATETIME NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ");
+        // Use database-appropriate syntax
+        if (defined('DB_TYPE') && DB_TYPE === 'mysql') {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS rate_limits (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    `key` VARCHAR(255) NOT NULL UNIQUE,
+                    hits INT DEFAULT 1,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ");
+        } else {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS rate_limits (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT NOT NULL UNIQUE,
+                    hits INTEGER DEFAULT 1,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ");
+        }
 
-        $this->db->exec("CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits(key)");
+        $this->db->exec("CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits(`key`)");
         $this->db->exec("CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at)");
     }
 
@@ -165,16 +178,13 @@ class RateLimiter {
         $expires = date('Y-m-d H:i:s', time() + $decaySeconds);
 
         // Try to get existing record
-        $stmt = $this->db->prepare("SELECT hits, expires_at FROM rate_limits WHERE key = :key");
+        $stmt = $this->db->prepare("SELECT hits, expires_at FROM rate_limits WHERE `key` = :key");
         $stmt->execute([':key' => $key]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$row || $row['expires_at'] < $now) {
-            // No record or expired - create new
-            $stmt = $this->db->prepare("
-                INSERT OR REPLACE INTO rate_limits (key, hits, expires_at)
-                VALUES (:key, 1, :expires)
-            ");
+            // No record or expired - create new (use REPLACE for cross-DB compatibility)
+            $stmt = $this->db->prepare("REPLACE INTO rate_limits (`key`, hits, expires_at) VALUES (:key, 1, :expires)");
             $stmt->execute([':key' => $key, ':expires' => $expires]);
 
             return [
@@ -187,7 +197,7 @@ class RateLimiter {
 
         // Increment existing record
         $hits = $row['hits'] + 1;
-        $stmt = $this->db->prepare("UPDATE rate_limits SET hits = :hits WHERE key = :key");
+        $stmt = $this->db->prepare("UPDATE rate_limits SET hits = :hits WHERE `key` = :key");
         $stmt->execute([':hits' => $hits, ':key' => $key]);
 
         $remaining = max(0, $maxAttempts - $hits);
@@ -247,7 +257,7 @@ class RateLimiter {
 
             case 'database':
                 if (!$this->db) return null;
-                $stmt = $this->db->prepare("SELECT hits, expires_at FROM rate_limits WHERE key = :key");
+                $stmt = $this->db->prepare("SELECT hits, expires_at FROM rate_limits WHERE `key` = :key");
                 $stmt->execute([':key' => $key]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$row) return null;
@@ -274,7 +284,7 @@ class RateLimiter {
 
             case 'database':
                 if (!$this->db) return false;
-                $stmt = $this->db->prepare("DELETE FROM rate_limits WHERE key = :key");
+                $stmt = $this->db->prepare("DELETE FROM rate_limits WHERE `key` = :key");
                 return $stmt->execute([':key' => $key]);
 
             default:
