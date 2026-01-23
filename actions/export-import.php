@@ -290,7 +290,26 @@ function importLibrary() {
         return;
     }
 
-    $zip->extractTo($extractDir);
+    // Safe extraction with path traversal protection (ZIP Slip prevention)
+    mkdir($extractDir, 0755, true);
+    $realExtractDir = realpath($extractDir);
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (substr($filename, -1) === '/') continue;
+
+        $targetPath = $extractDir . '/' . $filename;
+        $targetDir = dirname($targetPath);
+        if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
+
+        $realTargetPath = realpath($targetDir) . '/' . basename($filename);
+        if (strpos($realTargetPath, $realExtractDir) !== 0) {
+            logWarning('ZIP path traversal blocked in import', ['filename' => $filename]);
+            continue;
+        }
+
+        $content = $zip->getFromIndex($i);
+        if ($content !== false) file_put_contents($realTargetPath, $content);
+    }
     $zip->close();
 
     // Read metadata
@@ -496,11 +515,29 @@ function previewImport() {
         return;
     }
 
-    // Just extract metadata
-    $zip->extractTo($extractDir, ['metadata.json']);
+    // Safe extraction of metadata only (ZIP Slip prevention)
+    mkdir($extractDir, 0755, true);
+    $realExtractDir = realpath($extractDir);
+    $metadataContent = null;
+
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        // Only extract metadata.json, and validate the path
+        if (basename($filename) === 'metadata.json' && $filename === 'metadata.json') {
+            $metadataContent = $zip->getFromIndex($i);
+            break;
+        }
+    }
     $zip->close();
 
+    if ($metadataContent === null) {
+        echo json_encode(['success' => false, 'error' => 'Invalid export file']);
+        cleanupDir($extractDir);
+        return;
+    }
+
     $metadataPath = $extractDir . '/metadata.json';
+    file_put_contents($metadataPath, $metadataContent);
     if (!file_exists($metadataPath)) {
         echo json_encode(['success' => false, 'error' => 'Invalid export file']);
         cleanupDir($extractDir);

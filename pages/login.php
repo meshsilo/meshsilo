@@ -11,12 +11,30 @@ if (isset($_SESSION['oidc_error'])) {
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-
-    if (empty($username) || empty($password)) {
-        $error = 'Please enter both username and password.';
+    // Validate CSRF token
+    if (!Csrf::validate()) {
+        $error = 'Security validation failed. Please try again.';
     } else {
+        // Rate limit login attempts (5 per minute per IP)
+        $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        if (str_contains($ip, ',')) {
+            $ip = trim(explode(',', $ip)[0]);
+        }
+        $rateLimitResult = RateLimiter::getInstance()->attempt('login:' . $ip, 5, 60);
+
+        if (!$rateLimitResult['allowed']) {
+            $error = 'Too many login attempts. Please try again in ' . ($rateLimitResult['reset'] - time()) . ' seconds.';
+            logWarning('Login rate limited', [
+                'ip' => $ip,
+                'hits' => $rateLimitResult['hits']
+            ]);
+        } else {
+        $username = $_POST['username'] ?? '';
+        $password = $_POST['password'] ?? '';
+
+        if (empty($username) || empty($password)) {
+            $error = 'Please enter both username and password.';
+        } else {
         $user = getUserByLogin($username);
 
         if ($user && verifyPassword($password, $user['password'])) {
@@ -46,6 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'user_found' => $user ? 'yes' : 'no'
             ]);
         }
+        }
+        }
     }
 }
 
@@ -73,6 +93,7 @@ require_once 'includes/header.php';
                 <?php endif; ?>
 
                 <form class="auth-form" action="/login" method="post">
+                    <?= csrf_field() ?>
                     <div class="form-group">
                         <label for="username">Username or Email</label>
                         <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username or email" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">

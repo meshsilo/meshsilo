@@ -196,6 +196,10 @@ function updateParentModel($db, $parentId, $partCount, $totalSize) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate CSRF token
+    if (!Csrf::validate()) {
+        $error = 'Security validation failed. Please try again.';
+    } else {
     $name = trim($_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $creator = trim($_POST['author'] ?? '');
@@ -235,8 +239,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Create temp directory for extraction
                     $extractDir = sys_get_temp_dir() . '/silo_' . uniqid();
                     mkdir($extractDir, 0755, true);
+                    $realExtractDir = realpath($extractDir);
 
-                    $zip->extractTo($extractDir);
+                    // Safe extraction with path traversal protection (ZIP Slip prevention)
+                    $extractedCount = 0;
+                    for ($i = 0; $i < $zip->numFiles; $i++) {
+                        $filename = $zip->getNameIndex($i);
+
+                        // Skip directories
+                        if (substr($filename, -1) === '/') {
+                            continue;
+                        }
+
+                        // Build the target path and resolve it
+                        $targetPath = $extractDir . '/' . $filename;
+                        $targetDir = dirname($targetPath);
+
+                        // Create directory if needed
+                        if (!is_dir($targetDir)) {
+                            mkdir($targetDir, 0755, true);
+                        }
+
+                        // Verify the resolved path is within our extraction directory
+                        $realTargetPath = realpath($targetDir) . '/' . basename($filename);
+                        if (strpos($realTargetPath, $realExtractDir) !== 0) {
+                            // Path traversal attempt detected - skip this file
+                            logWarning('ZIP path traversal attempt blocked', [
+                                'filename' => $filename,
+                                'target' => $realTargetPath,
+                                'allowed_base' => $realExtractDir
+                            ]);
+                            continue;
+                        }
+
+                        // Extract the file
+                        $content = $zip->getFromIndex($i);
+                        if ($content !== false) {
+                            file_put_contents($realTargetPath, $content);
+                            $extractedCount++;
+                        }
+                    }
                     $zip->close();
 
                     // First pass: collect all model files with their paths
@@ -373,6 +415,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+    } // End CSRF validation
 }
 
 require_once 'includes/header.php';
@@ -389,6 +432,7 @@ require_once 'includes/header.php';
             <?php endif; ?>
 
             <form class="upload-form" id="upload-form" action="<?= route('upload') ?>" method="post" enctype="multipart/form-data">
+                <?= csrf_field() ?>
                 <div class="upload-dropzone" id="dropzone">
                     <div class="dropzone-content">
                         <span class="dropzone-icon">&#8679;</span>

@@ -12,6 +12,7 @@ if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?= csrf_meta() ?>
     <title><?= $pageTitle ?? SITE_NAME ?> - <?= SITE_NAME ?></title>
     <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=2">
 
@@ -40,6 +41,7 @@ if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
             }
         }
     </script>
+    <?= Csrf::ajaxSetupScript() ?>
 </head>
 <body>
     <header class="site-header">
