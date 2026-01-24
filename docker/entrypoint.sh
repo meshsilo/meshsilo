@@ -14,6 +14,10 @@ mkdir -p /var/www/meshsilo/assets /var/www/meshsilo/logs /var/www/meshsilo/db
 chown -R www-data:www-data /var/www/meshsilo/assets /var/www/meshsilo/logs /var/www/meshsilo/db
 chmod -R 775 /var/www/meshsilo/assets /var/www/meshsilo/logs /var/www/meshsilo/db
 
+# Create PHP error log file if it doesn't exist (so tail doesn't fail)
+touch /var/www/meshsilo/logs/php-error.log
+chown www-data:www-data /var/www/meshsilo/logs/php-error.log
+
 # Generate config.local.php if it doesn't exist and environment variables are set
 if [ ! -f "$CONFIG_FILE" ] && [ -n "$MESHSILO_DB_TYPE" ]; then
     echo "Generating configuration from environment variables..."
