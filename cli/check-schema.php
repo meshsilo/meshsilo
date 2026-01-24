@@ -137,37 +137,33 @@ try {
 
 echo "\n";
 
-// Check migration status
-echo "Migration status:\n";
+// Check schema version from settings
+echo "Schema status:\n";
 echo str_repeat("-", 80) . "\n";
 
 try {
-    // Check if migrations table exists
+    // Check if settings table exists
     if ($dbType === 'sqlite') {
-        $tableCheck = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'");
+        $tableCheck = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'");
     } else {
-        $tableCheck = $db->query("SHOW TABLES LIKE 'migrations'");
+        $tableCheck = $db->query("SHOW TABLES LIKE 'settings'");
     }
     $tableExists = $tableCheck && $tableCheck->fetch();
 
     if ($tableExists) {
-        $migResult = $db->query("SELECT * FROM migrations ORDER BY id DESC LIMIT 10");
-        if ($migResult) {
-            $count = 0;
-            while ($row = $migResult->fetch(PDO::FETCH_ASSOC)) {
-                printf("  %s - %s - %s\n", $row['id'], $row['migration'], $row['applied_at']);
-                $count++;
-            }
-            if ($count === 0) {
-                echo "  No migrations applied yet\n";
-            }
-            echo "\nTotal migrations shown: $count (last 10)\n";
-        }
+        $schemaVersion = getSetting('schema_version', 'Not set');
+        $lastMigration = getSetting('last_migration', 'Never');
+
+        echo "  Schema version: $schemaVersion\n";
+        echo "  Last migration: $lastMigration\n";
+        echo "\n\033[32m✓ Database schema is initialized.\033[0m\n";
+        echo "Run 'php cli/migrate.php --status' to check for pending migrations.\n";
     } else {
-        echo "\033[33mMigrations table does not exist!\033[0m\n";
+        echo "\033[33mSettings table does not exist!\033[0m\n";
+        echo "Database may need to be initialized.\n";
         echo "Run: php cli/migrate.php\n";
     }
 } catch (Exception $e) {
-    echo "\033[31mError checking migrations: " . $e->getMessage() . "\033[0m\n";
+    echo "\033[31mError checking schema status: " . $e->getMessage() . "\033[0m\n";
     echo "Run: php cli/migrate.php\n";
 }
