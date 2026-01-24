@@ -6,6 +6,8 @@
 // SQLite3 type constants for compatibility
 if (!defined('SQLITE3_TEXT')) define('SQLITE3_TEXT', 3);
 if (!defined('SQLITE3_INTEGER')) define('SQLITE3_INTEGER', 1);
+if (!defined('SQLITE3_FLOAT')) define('SQLITE3_FLOAT', 2);
+if (!defined('SQLITE3_BLOB')) define('SQLITE3_BLOB', 4);
 if (!defined('SQLITE3_NULL')) define('SQLITE3_NULL', 5);
 if (!defined('SQLITE3_ASSOC')) define('SQLITE3_ASSOC', 1);
 
@@ -27,7 +29,18 @@ class DatabaseStatement {
         if ($params !== null) {
             $this->stmt->execute($params);
         } else {
-            $this->stmt->execute($this->params);
+            // For positional placeholders (?), PDO::execute() expects 0-indexed array
+            // but bindValue uses 1-based indices, so convert to array_values
+            $execParams = $this->params;
+            if (!empty($execParams)) {
+                $firstKey = array_keys($execParams)[0];
+                if (is_int($firstKey)) {
+                    // Positional placeholders - ensure 0-indexed array
+                    ksort($execParams);
+                    $execParams = array_values($execParams);
+                }
+            }
+            $this->stmt->execute($execParams);
         }
         $this->params = [];
         return new DatabaseResult($this->stmt);
