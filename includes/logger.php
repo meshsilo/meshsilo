@@ -114,6 +114,12 @@ class Logger {
 
         // Write log entry
         @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+
+        // Also write to stdout/stderr when running in Docker
+        if (getenv('MESHSILO_DOCKER') === 'true') {
+            $stream = ($level <= self::WARNING) ? STDERR : STDOUT;
+            fwrite($stream, "[{$channel}] {$logEntry}");
+        }
     }
 
     public function error($message, $context = []) {

@@ -9,6 +9,9 @@ LABEL description="MeshSilo - Digital Asset Manager for 3D model files"
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Set Docker environment flag for application
+ENV MESHSILO_DOCKER=true
+
 # Install nginx, PHP, and required extensions
 RUN apt-get update && apt-get install -y software-properties-common && apt update && add-apt-repository ppa:ondrej/php && apt-get install -y \
     nginx \

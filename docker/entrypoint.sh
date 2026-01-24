@@ -4,6 +4,9 @@ set -e
 # MeshSilo Docker Entrypoint Script
 # Handles initialization and configuration from environment variables
 
+# Set Docker environment flag for Logger to detect
+export MESHSILO_DOCKER=true
+
 CONFIG_FILE="/var/www/meshsilo/storage/db/config.local.php"
 
 # Create supervisor log directory
