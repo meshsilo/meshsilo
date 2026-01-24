@@ -1,398 +1,184 @@
 <?php
 /**
- * Logging System
+ * Logger Class
  *
- * This file provides backward-compatible wrapper functions around the new Logger class.
- * All existing code using logError(), logWarning(), etc. will continue to work.
+ * Modern logging implementation with support for multiple channels,
+ * log rotation, and structured logging.
  */
 
-require_once __DIR__ . '/Logger.php';
+class Logger {
+    // Log levels
+    const ERROR = 1;
+    const WARNING = 2;
+    const INFO = 3;
+    const DEBUG = 4;
+    const NOTICE = 5;
 
-// Legacy constants (kept for backward compatibility)
-define('LOG_PATH', __DIR__ . '/../logs/');
-define('LOG_MAX_SIZE', 10 * 1024 * 1024); // 10MB
-define('LOG_MAX_FILES', 10);
+    private static $instance = null;
+    private $logPath;
+    private $minLevel = self::INFO;
+    private $requestId;
+    private $maxFileSize = 5242880; // 5MB
+    private $maxFiles = 10;
 
-define('LOG_LEVEL_ERROR', 1);
-define('LOG_LEVEL_WARNING', 2);
-define('LOG_LEVEL_INFO', 3);
-define('LOG_LEVEL_DEBUG', 4);
-define('LOG_LEVEL_AUDIT', 5);
+    private function __construct() {
+        $this->logPath = __DIR__ . '/../logs/';
+        $this->requestId = $this->generateRequestId();
 
-define('LOG_CHANNEL_DEFAULT', 'app');
-define('LOG_CHANNEL_AUTH', 'auth');
-define('LOG_CHANNEL_UPLOAD', 'upload');
-define('LOG_CHANNEL_ADMIN', 'admin');
-define('LOG_CHANNEL_AUDIT', 'audit');
-
-/**
- * Initialize logging - now handled by Logger class
- */
-function initLogger() {
-    // Logger auto-initializes, this is now a no-op
-    Logger::getInstance();
-}
-
-/**
- * Get the configured minimum log level
- */
-function getLogLevel() {
-    static $level = null;
-    if ($level === null) {
-        if (function_exists('getSetting')) {
-            $levelStr = getSetting('log_level', 'info');
-        } else {
-            $levelStr = 'info';
-        }
-        $levels = [
-            'error' => LOG_LEVEL_ERROR,
-            'warning' => LOG_LEVEL_WARNING,
-            'info' => LOG_LEVEL_INFO,
-            'debug' => LOG_LEVEL_DEBUG,
-            'audit' => LOG_LEVEL_AUDIT
-        ];
-        $level = $levels[strtolower($levelStr)] ?? LOG_LEVEL_INFO;
-
-        // Configure the new logger with the same level
-        $loggerLevels = [
-            LOG_LEVEL_ERROR => Logger::ERROR,
-            LOG_LEVEL_WARNING => Logger::WARNING,
-            LOG_LEVEL_INFO => Logger::INFO,
-            LOG_LEVEL_DEBUG => Logger::DEBUG,
-            LOG_LEVEL_AUDIT => Logger::DEBUG,
-        ];
-        Logger::getInstance()->configure(['min_level' => $loggerLevels[$level] ?? Logger::INFO]);
-    }
-    return $level;
-}
-
-/**
- * Get log file path for a channel
- */
-function getLogFile($channel = LOG_CHANNEL_DEFAULT) {
-    return LOG_PATH . $channel . '.log';
-}
-
-/**
- * Log a message (legacy wrapper)
- */
-function logMessage($level, $message, $context = [], $channel = LOG_CHANNEL_DEFAULT) {
-    $levelMap = [
-        'ERROR' => Logger::ERROR,
-        'WARNING' => Logger::WARNING,
-        'INFO' => Logger::INFO,
-        'DEBUG' => Logger::DEBUG,
-        'NOTICE' => Logger::NOTICE,
-        'AUDIT' => Logger::INFO,
-    ];
-
-    $loggerLevel = $levelMap[strtoupper($level)] ?? Logger::INFO;
-    Logger::getInstance()->log($loggerLevel, $message, $context, $channel);
-}
-
-/**
- * Log an error
- */
-function logError($message, $context = []) {
-    Logger::getInstance()->error($message, $context);
-}
-
-/**
- * Log a warning
- */
-function logWarning($message, $context = []) {
-    Logger::getInstance()->warning($message, $context);
-}
-
-/**
- * Log info
- */
-function logInfo($message, $context = []) {
-    Logger::getInstance()->info($message, $context);
-}
-
-/**
- * Log debug info
- */
-function logDebug($message, $context = []) {
-    Logger::getInstance()->debug($message, $context);
-}
-
-/**
- * Log an audit event
- */
-function logAudit($action, $context = []) {
-    // Add user info if available
-    if (function_exists('getCurrentUser')) {
-        $user = getCurrentUser();
-        if ($user) {
-            $context['user_id'] = $user['id'];
-            $context['username'] = $user['username'];
+        // Create logs directory if it doesn't exist
+        if (!file_exists($this->logPath)) {
+            @mkdir($this->logPath, 0755, true);
         }
     }
-    Logger::getInstance()->log(Logger::INFO, $action, $context, LOG_CHANNEL_AUDIT);
-}
 
-/**
- * Log authentication events
- */
-function logAuth($message, $context = []) {
-    Logger::getInstance()->log(Logger::INFO, $message, $context, LOG_CHANNEL_AUTH);
-}
-
-/**
- * Log upload events
- */
-function logUpload($message, $context = []) {
-    Logger::getInstance()->log(Logger::INFO, $message, $context, LOG_CHANNEL_UPLOAD);
-}
-
-/**
- * Log admin actions
- */
-function logAdmin($message, $context = []) {
-    if (function_exists('getCurrentUser')) {
-        $user = getCurrentUser();
-        if ($user) {
-            $context['admin_id'] = $user['id'];
-            $context['admin_username'] = $user['username'];
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
         }
+        return self::$instance;
     }
-    Logger::getInstance()->log(Logger::INFO, $message, $context, LOG_CHANNEL_ADMIN);
-}
 
-/**
- * Log an exception with full details
- */
-function logException($e, $context = []) {
-    $context['exception'] = $e;
-    Logger::getInstance()->error($e->getMessage(), $context);
-}
+    public function configure($config) {
+        if (isset($config['min_level'])) {
+            $this->minLevel = $config['min_level'];
+        }
+        if (isset($config['log_path'])) {
+            $this->logPath = $config['log_path'];
+        }
+        if (isset($config['max_file_size'])) {
+            $this->maxFileSize = $config['max_file_size'];
+        }
+        if (isset($config['max_files'])) {
+            $this->maxFiles = $config['max_files'];
+        }
+        return $this;
+    }
 
-/**
- * Set up PHP error handler to use our logger
- */
-function setupErrorHandler() {
-    set_error_handler(function($severity, $message, $file, $line) {
-        // Map PHP error levels to log levels
-        $levelMap = [
-            E_ERROR => Logger::ERROR,
-            E_WARNING => Logger::WARNING,
-            E_NOTICE => Logger::NOTICE,
-            E_USER_ERROR => Logger::ERROR,
-            E_USER_WARNING => Logger::WARNING,
-            E_USER_NOTICE => Logger::NOTICE,
-            E_STRICT => Logger::NOTICE,
-            E_DEPRECATED => Logger::NOTICE,
-            E_USER_DEPRECATED => Logger::NOTICE,
+    public function getRequestId() {
+        return $this->requestId;
+    }
+
+    private function generateRequestId() {
+        return substr(md5(uniqid() . microtime()), 0, 12);
+    }
+
+    public function log($level, $message, $context = [], $channel = 'app') {
+        // Skip if below minimum level
+        if ($level > $this->minLevel) {
+            return;
+        }
+
+        $levelNames = [
+            self::ERROR => 'ERROR',
+            self::WARNING => 'WARNING',
+            self::INFO => 'INFO',
+            self::DEBUG => 'DEBUG',
+            self::NOTICE => 'NOTICE',
         ];
 
-        $level = $levelMap[$severity] ?? Logger::WARNING;
-        Logger::getInstance()->log($level, $message, [
-            'file' => $file,
-            'line' => $line,
-            'severity' => $severity
-        ]);
+        $levelName = $levelNames[$level] ?? 'INFO';
+        $timestamp = date('Y-m-d H:i:s');
 
-        return false; // Continue with normal error handling
-    });
+        // Format log entry
+        $logEntry = sprintf(
+            "[%s] [%s] [%s] %s",
+            $timestamp,
+            $levelName,
+            $this->requestId,
+            $message
+        );
 
-    set_exception_handler(function($e) {
-        Logger::getInstance()->exception($e);
-        throw $e; // Re-throw to show error page
-    });
-}
-
-/**
- * Get available log channels
- */
-function getLogChannels() {
-    return [
-        LOG_CHANNEL_DEFAULT => 'Application',
-        LOG_CHANNEL_AUTH => 'Authentication',
-        LOG_CHANNEL_UPLOAD => 'File Uploads',
-        LOG_CHANNEL_ADMIN => 'Admin Actions',
-        LOG_CHANNEL_AUDIT => 'Security Audit'
-    ];
-}
-
-/**
- * Read log file contents (for admin viewing)
- */
-function readLog($channel = LOG_CHANNEL_DEFAULT, $lines = 100, $filter = null) {
-    $logFile = getLogFile($channel);
-
-    if (!file_exists($logFile)) {
-        return [];
-    }
-
-    $content = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-    // Filter if specified
-    if ($filter) {
-        $content = array_filter($content, function($line) use ($filter) {
-            return stripos($line, $filter) !== false;
-        });
-    }
-
-    // Get last N lines
-    $content = array_slice($content, -$lines);
-
-    // Parse into structured format
-    $entries = [];
-    foreach ($content as $line) {
-        // Try new format first: [timestamp] [LEVEL] [request_id] message
-        if (preg_match('/^\[([\d-T:\.+]+)\]\s\[(\w+)\]\s\[([a-f0-9-]+)\]\s(.+)$/', $line, $matches)) {
-            $entry = [
-                'timestamp' => $matches[1],
-                'level' => $matches[2],
-                'request_id' => $matches[3],
-                'message' => $matches[4]
-            ];
-        }
-        // Fall back to old format: [timestamp] [LEVEL] message
-        elseif (preg_match('/^\[([\d-]+\s[\d:]+)\]\s\[(\w+)\]\s(.+)$/', $line, $matches)) {
-            $entry = [
-                'timestamp' => $matches[1],
-                'level' => $matches[2],
-                'request_id' => null,
-                'message' => $matches[3]
-            ];
-        }
-        // Try JSON format
-        elseif ($line[0] === '{') {
-            $decoded = json_decode($line, true);
-            if ($decoded) {
-                $entry = [
-                    'timestamp' => $decoded['timestamp'] ?? '',
-                    'level' => strtoupper($decoded['level'] ?? 'INFO'),
-                    'request_id' => $decoded['request_id'] ?? null,
-                    'message' => $decoded['message'] ?? '',
-                    'context' => $decoded['context'] ?? null,
-                    'http' => $decoded['http'] ?? null,
-                    'user' => $decoded['user'] ?? null,
+        // Add context if present
+        if (!empty($context)) {
+            // Handle exception objects
+            if (isset($context['exception']) && $context['exception'] instanceof Throwable) {
+                $e = $context['exception'];
+                $context['exception'] = [
+                    'class' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
                 ];
-                $entries[] = $entry;
-                continue;
-            } else {
-                continue; // Skip unparseable lines
             }
-        } else {
-            continue; // Skip unparseable lines
+            $logEntry .= ' ' . json_encode($context, JSON_UNESCAPED_SLASHES);
         }
 
-        // Try to extract JSON context from message
-        if (preg_match('/^(.+?)\s(\{.+\})$/', $entry['message'], $msgMatches)) {
-            $entry['message'] = $msgMatches[1];
-            $entry['context'] = json_decode($msgMatches[2], true);
-        }
+        $logEntry .= PHP_EOL;
 
-        $entries[] = $entry;
+        // Write to log file
+        $logFile = $this->logPath . $channel . '.log';
+
+        // Rotate if needed
+        $this->rotateIfNeeded($logFile);
+
+        // Write log entry
+        @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
     }
 
-    return array_reverse($entries); // Newest first
-}
-
-/**
- * Get log file statistics
- */
-function getLogStats($channel = LOG_CHANNEL_DEFAULT) {
-    $logFile = getLogFile($channel);
-
-    if (!file_exists($logFile)) {
-        return [
-            'exists' => false,
-            'size' => 0,
-            'lines' => 0,
-            'modified' => null
-        ];
+    public function error($message, $context = []) {
+        $this->log(self::ERROR, $message, $context);
     }
 
-    return [
-        'exists' => true,
-        'size' => filesize($logFile),
-        'lines' => count(file($logFile)),
-        'modified' => filemtime($logFile)
-    ];
-}
-
-/**
- * Clear a log file
- */
-function clearLog($channel = LOG_CHANNEL_DEFAULT) {
-    $logFile = getLogFile($channel);
-
-    if (file_exists($logFile)) {
-        file_put_contents($logFile, '');
-        logAudit('Log cleared', ['channel' => $channel]);
-        return true;
+    public function warning($message, $context = []) {
+        $this->log(self::WARNING, $message, $context);
     }
 
-    return false;
-}
+    public function info($message, $context = []) {
+        $this->log(self::INFO, $message, $context);
+    }
 
-/**
- * Get all log files including rotated ones
- */
-function getAllLogFiles() {
-    initLogger();
+    public function debug($message, $context = []) {
+        $this->log(self::DEBUG, $message, $context);
+    }
 
-    $files = [];
-    $channels = getLogChannels();
+    public function notice($message, $context = []) {
+        $this->log(self::NOTICE, $message, $context);
+    }
 
-    foreach ($channels as $channel => $name) {
-        $mainFile = getLogFile($channel);
-
-        if (file_exists($mainFile)) {
-            $files[] = [
-                'channel' => $channel,
-                'name' => $name,
-                'file' => basename($mainFile),
-                'size' => filesize($mainFile),
-                'modified' => filemtime($mainFile),
-                'rotated' => false
-            ];
-        }
-
-        // Find rotated files
-        $pattern = LOG_PATH . $channel . '_*.log';
-        foreach (glob($pattern) as $rotatedFile) {
-            $files[] = [
-                'channel' => $channel,
-                'name' => $name . ' (archived)',
-                'file' => basename($rotatedFile),
-                'size' => filesize($rotatedFile),
-                'modified' => filemtime($rotatedFile),
-                'rotated' => true
-            ];
+    public function exception($exception, $context = []) {
+        if ($exception instanceof Throwable) {
+            $context['exception'] = $exception;
+            $this->error($exception->getMessage(), $context);
         }
     }
 
-    // Sort by modification time, newest first
-    usort($files, function($a, $b) {
-        return $b['modified'] - $a['modified'];
-    });
+    private function rotateIfNeeded($logFile) {
+        if (!file_exists($logFile)) {
+            return;
+        }
 
-    return $files;
-}
+        $size = filesize($logFile);
+        if ($size < $this->maxFileSize) {
+            return;
+        }
 
-/**
- * Get the current request ID for log correlation
- */
-function getRequestId() {
-    return Logger::getInstance()->getRequestId();
-}
+        // Rotate the file
+        $timestamp = date('Y-m-d_H-i-s');
+        $rotatedFile = $logFile . '.' . $timestamp;
+        @rename($logFile, $rotatedFile);
 
-/**
- * Rotate log file if too large (legacy, now handled automatically)
- */
-function rotateLogIfNeeded($logFile) {
-    // Now handled by Logger class automatically
-}
+        // Clean up old rotated files
+        $this->cleanupOldRotatedFiles($logFile);
+    }
 
-/**
- * Clean up old rotated log files (legacy, now handled automatically)
- */
-function cleanupOldLogs($dir, $baseName) {
-    // Now handled by Logger class automatically
+    private function cleanupOldRotatedFiles($baseFile) {
+        $pattern = $baseFile . '.*';
+        $files = glob($pattern);
+
+        if (count($files) <= $this->maxFiles) {
+            return;
+        }
+
+        // Sort by modification time
+        usort($files, function($a, $b) {
+            return filemtime($a) - filemtime($b);
+        });
+
+        // Delete oldest files
+        $toDelete = count($files) - $this->maxFiles;
+        for ($i = 0; $i < $toDelete; $i++) {
+            @unlink($files[$i]);
+        }
+    }
 }
