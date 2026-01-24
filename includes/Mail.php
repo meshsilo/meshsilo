@@ -418,7 +418,7 @@ class Mail {
      * Log email instead of sending (for testing)
      */
     private function sendLog(): bool {
-        $logPath = dirname(__DIR__) . '/logs/mail.log';
+        $logPath = dirname(__DIR__) . '/storage/logs/mail.log';
         $logDir = dirname($logPath);
 
         if (!is_dir($logDir)) {

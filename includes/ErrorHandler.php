@@ -16,7 +16,7 @@ class ErrorHandler {
      */
     public static function init(bool $debug = false): void {
         self::$debug = $debug;
-        self::$logPath = dirname(__DIR__) . '/logs/';
+        self::$logPath = dirname(__DIR__) . '/storage/logs/';
 
         if (!self::$registered) {
             set_error_handler([self::class, 'handleError']);

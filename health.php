@@ -85,7 +85,7 @@ try {
 }
 
 // Storage check
-$uploadPath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/assets/';
+$uploadPath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/storage/assets/';
 $storageWritable = is_writable($uploadPath);
 $storageFree = @disk_free_space($uploadPath);
 $storageTotal = @disk_total_space($uploadPath);
@@ -111,7 +111,7 @@ if ($storageFree !== false && $storageTotal !== false) {
 if (!$storageWritable) $allHealthy = false;
 
 // Cache directory check
-$cacheDir = __DIR__ . '/cache';
+$cacheDir = __DIR__ . '/storage/cache';
 $cacheWritable = is_dir($cacheDir) && is_writable($cacheDir);
 $health['checks']['cache'] = [
     'status' => $cacheWritable ? 'ok' : 'warning',
@@ -119,7 +119,7 @@ $health['checks']['cache'] = [
 ];
 
 // Logs directory check
-$logsDir = __DIR__ . '/logs';
+$logsDir = __DIR__ . '/storage/logs';
 $logsWritable = is_dir($logsDir) && is_writable($logsDir);
 $health['checks']['logs'] = [
     'status' => $logsWritable ? 'ok' : 'warning',

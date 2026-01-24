@@ -71,7 +71,7 @@ if ($currentVersion == $versionNumber) {
 }
 
 // Get source file path
-$sourceFilePath = __DIR__ . '/../assets/' . $targetVersion['file_path'];
+$sourceFilePath = __DIR__ . '/../../storage/assets/' . $targetVersion['file_path'];
 if (!file_exists($sourceFilePath)) {
     echo json_encode(['success' => false, 'error' => 'Version file not found']);
     exit;
@@ -84,7 +84,7 @@ $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
 $nextVersion = ($row && $row['max_ver']) ? $row['max_ver'] + 1 : 1;
 
 // Create version directory if needed
-$versionDir = __DIR__ . '/../assets/versions/' . $modelId;
+$versionDir = __DIR__ . '/../../storage/assets/versions/' . $modelId;
 if (!is_dir($versionDir)) {
     mkdir($versionDir, 0755, true);
 }

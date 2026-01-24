@@ -48,7 +48,7 @@ switch ($action) {
 }
 
 function createBackup() {
-    $backupDir = __DIR__ . '/../db/backups';
+    $backupDir = __DIR__ . '/../../storage/db/backups';
     if (!is_dir($backupDir)) {
         mkdir($backupDir, 0755, true);
     }
@@ -97,7 +97,7 @@ function createBackup() {
 }
 
 function listBackups() {
-    $backupDir = __DIR__ . '/../db/backups';
+    $backupDir = __DIR__ . '/../../storage/db/backups';
     $backups = [];
 
     if (is_dir($backupDir)) {
@@ -125,7 +125,7 @@ function downloadBackup() {
         return;
     }
 
-    $backupPath = __DIR__ . '/../db/backups/' . $filename;
+    $backupPath = __DIR__ . '/../../storage/db/backups/' . $filename;
     if (!file_exists($backupPath)) {
         echo json_encode(['success' => false, 'error' => 'Backup not found']);
         return;
@@ -145,7 +145,7 @@ function deleteBackup() {
         return;
     }
 
-    $backupPath = __DIR__ . '/../db/backups/' . $filename;
+    $backupPath = __DIR__ . '/../../storage/db/backups/' . $filename;
     if (!file_exists($backupPath)) {
         echo json_encode(['success' => false, 'error' => 'Backup not found']);
         return;
@@ -168,7 +168,7 @@ function restoreBackup() {
         return;
     }
 
-    $backupPath = __DIR__ . '/../db/backups/' . $filename;
+    $backupPath = __DIR__ . '/../../storage/db/backups/' . $filename;
     if (!file_exists($backupPath)) {
         echo json_encode(['success' => false, 'error' => 'Backup not found']);
         return;

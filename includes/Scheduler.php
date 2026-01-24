@@ -387,7 +387,7 @@ class Scheduler {
 
         // Log cleanup - daily at 3am
         self::register(self::TASK_CLEANUP_LOGS, '0 3 * * *', function() {
-            $logsDir = __DIR__ . '/../logs';
+            $logsDir = __DIR__ . '/../storage/logs';
             $cleaned = 0;
 
             if (is_dir($logsDir)) {

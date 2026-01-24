@@ -191,7 +191,7 @@ function getPendingMigrations($db, $migrations) {
 }
 
 function createBackup() {
-    $dbPath = defined('DB_PATH') ? DB_PATH : 'db/silo.db';
+    $dbPath = defined('DB_PATH') ? DB_PATH : 'storage/db/meshsilo.db';
 
     if (!file_exists($dbPath)) {
         echo "\033[33mWarning: SQLite database not found, skipping backup.\033[0m\n";

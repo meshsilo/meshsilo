@@ -18,7 +18,7 @@ $db = getDB();
 $storageType = getSetting('storage_type', 'local');
 
 // Calculate storage stats
-$assetsPath = realpath(__DIR__ . '/../assets');
+$assetsPath = realpath(__DIR__ . '/../../storage/assets');
 $dbPath = realpath(DB_PATH);
 
 function getDirectorySize($path) {
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Migration completed with errors. {$result['migrated']} migrated, {$result['failed']} failed.";
         }
     } elseif (isset($_POST['backup_db'])) {
-        $backupPath = __DIR__ . '/../db/backup_' . date('Y-m-d_H-i-s') . '.db';
+        $backupPath = __DIR__ . '/../../storage/db/backup_' . date('Y-m-d_H-i-s') . '.db';
         if (copy($dbPath, $backupPath)) {
             $message = 'Database backed up to: ' . basename($backupPath);
         } else {

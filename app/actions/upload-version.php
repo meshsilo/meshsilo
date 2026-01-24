@@ -55,7 +55,7 @@ if (!in_array($ext, $allowedTypes)) {
 $hash = calculateContentHash($file['tmp_name'], $ext);
 
 // Create version directory if needed
-$versionDir = __DIR__ . '/../assets/versions/' . $modelId;
+$versionDir = __DIR__ . '/../../storage/assets/versions/' . $modelId;
 if (!is_dir($versionDir)) {
     mkdir($versionDir, 0755, true);
 }
