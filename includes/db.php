@@ -234,8 +234,10 @@ function getDB() {
                 }
             }
 
-            // Run migrations
-            runMigrations($db);
+            // Skip inline migrations - use cli/migrate.php instead
+            // This avoids database locks and timeouts from running
+            // 50+ table/column checks on every request
+            // runMigrations($db);
         } catch (Exception $e) {
             logException($e, ['action' => 'database_connect']);
             throw $e;
