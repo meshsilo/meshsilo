@@ -34,7 +34,7 @@ class UpdateChecker {
             }
         }
 
-        $currentVersion = defined('SILO_VERSION') ? SILO_VERSION : '0.0.0';
+        $currentVersion = defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '0.0.0';
 
         $result = [
             'available' => false,
@@ -84,7 +84,7 @@ class UpdateChecker {
             'http' => [
                 'method' => 'GET',
                 'header' => [
-                    'User-Agent: Silo-UpdateChecker/' . (defined('SILO_VERSION') ? SILO_VERSION : '1.0.0'),
+                    'User-Agent: MeshSilo-UpdateChecker/' . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0'),
                     'Accept: application/vnd.github.v3+json'
                 ],
                 'timeout' => 10
@@ -131,7 +131,7 @@ class UpdateChecker {
             'http' => [
                 'method' => 'GET',
                 'header' => [
-                    'User-Agent: Silo-UpdateChecker/' . (defined('SILO_VERSION') ? SILO_VERSION : '1.0.0'),
+                    'User-Agent: MeshSilo-UpdateChecker/' . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0'),
                     'Accept: application/vnd.github.v3+json'
                 ],
                 'timeout' => 10

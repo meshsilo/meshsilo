@@ -92,11 +92,11 @@ if ($model && !$requiresPassword && isset($_GET['download'])) {
     }
 }
 
-$siteName = getSetting('site_name', 'Silo');
+$siteName = getSetting('site_name', 'MeshSilo');
 $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared Model';
 ?>
 <!DOCTYPE html>
-<html lang="en" data-theme="<?= htmlspecialchars($_COOKIE['silo_theme'] ?? 'dark') ?>">
+<function_calls lang="en" data-theme="<?= htmlspecialchars($_COOKIE['meshsilo_theme'] ?? 'dark') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

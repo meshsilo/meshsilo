@@ -71,11 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $webhooks = getAllWebhooks();
 $availableEvents = getWebhookEvents();
 
-$siteName = getSetting('site_name', 'Silo');
+$siteName = getSetting('site_name', 'MeshSilo');
 $pageTitle = 'Webhooks - ' . $siteName;
 ?>
 <!DOCTYPE html>
-<html lang="en" data-theme="<?= htmlspecialchars($_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark')) ?>">
+<html lang="en" data-theme="<?= htmlspecialchars($_COOKIE['meshsilo_theme'] ?? getSetting('default_theme', 'dark')) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

@@ -1,6 +1,6 @@
 <?php
-// Silo Version
-define('SILO_VERSION', '1.0.0');
+// MeshSilo Version
+define('MESHSILO_VERSION', '1.0.0');
 
 // Load local configuration if exists
 if (file_exists(__DIR__ . '/../config.local.php')) {
@@ -8,14 +8,14 @@ if (file_exists(__DIR__ . '/../config.local.php')) {
 }
 
 // Site Configuration (defaults, can be overridden in config.local.php)
-if (!defined('SITE_NAME')) define('SITE_NAME', 'Silo');
+if (!defined('SITE_NAME')) define('SITE_NAME', 'MeshSilo');
 if (!defined('SITE_DESCRIPTION')) define('SITE_DESCRIPTION', '3D Model Storage');
 if (!defined('SITE_URL')) define('SITE_URL', '/');
 if (!defined('FORCE_SITE_URL')) define('FORCE_SITE_URL', false);
 
 // Database Configuration (defaults to SQLite)
 if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
-if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../db/silo.db');
+if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../db/meshsilo.db');
 
 // Upload Configuration
 define('UPLOAD_PATH', __DIR__ . '/../assets/');

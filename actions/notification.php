@@ -46,7 +46,7 @@ function testDiscord() {
         return;
     }
 
-    $siteName = getSetting('site_name', 'Silo');
+    $siteName = getSetting('site_name', 'MeshSilo');
     $result = sendDiscordNotification($webhookUrl, [
         'embeds' => [[
             'title' => 'Test Notification',
@@ -67,7 +67,7 @@ function testSlack() {
         return;
     }
 
-    $siteName = getSetting('site_name', 'Silo');
+    $siteName = getSetting('site_name', 'MeshSilo');
     $result = sendSlackNotification($webhookUrl, [
         'text' => "Test notification from $siteName",
         'blocks' => [[
@@ -188,7 +188,7 @@ function triggerNotification($event, $data) {
 }
 
 function formatDiscordPayload($event, $data) {
-    $siteName = getSetting('site_name', 'Silo');
+    $siteName = getSetting('site_name', 'MeshSilo');
     $siteUrl = getSetting('site_url', '');
 
     $titles = [
@@ -237,7 +237,7 @@ function formatDiscordPayload($event, $data) {
 }
 
 function formatSlackPayload($event, $data) {
-    $siteName = getSetting('site_name', 'Silo');
+    $siteName = getSetting('site_name', 'MeshSilo');
 
     $titles = [
         'model.created' => 'New Model Uploaded',

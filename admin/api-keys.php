@@ -60,11 +60,11 @@ if (isset($_GET['created']) && isset($_SESSION['new_api_key'])) {
 // Get all API keys (admin sees all)
 $apiKeys = getAllApiKeys();
 
-$siteName = getSetting('site_name', 'Silo');
+$siteName = getSetting('site_name', 'MeshSilo');
 $pageTitle = 'API Keys - ' . $siteName;
 ?>
 <!DOCTYPE html>
-<html lang="en" data-theme="<?= htmlspecialchars($_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark')) ?>">
+<html lang="en" data-theme="<?= htmlspecialchars($_COOKIE['meshsilo_theme'] ?? getSetting('default_theme', 'dark')) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

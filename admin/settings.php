@@ -189,7 +189,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="version-info">
                         <div class="version-current">
                             <span class="label">Current Version:</span>
-                            <span class="version"><?= htmlspecialchars(SILO_VERSION) ?></span>
+                            <span class="version"><?= htmlspecialchars(MESHSILO_VERSION) ?></span>
                         </div>
                         <?php if ($updateInfo['available']): ?>
                         <div class="update-available">

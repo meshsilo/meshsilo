@@ -1,56 +1,56 @@
 version: '3.8'
 
 services:
-  silo:
+  meshsilo:
     build:
       context: .
       dockerfile: Dockerfile
-    image: silo:latest
-    container_name: silo
+    image: meshsilo:latest
+    container_name: meshsilo
     restart: unless-stopped
     ports:
       - "8080:80"
     volumes:
       # Persistent data volumes
-      - silo_assets:/var/www/silo/assets
-      - silo_db:/var/www/silo/db
-      - silo_logs:/var/www/silo/logs
+      - meshsilo_assets:/var/www/meshsilo/assets
+      - meshsilo_db:/var/www/meshsilo/db
+      - meshsilo_logs:/var/www/meshsilo/logs
       # Optional: Mount custom config file
-      # - ./config.local.php:/var/www/silo/config.local.php:ro
+      # - ./config.local.php:/var/www/meshsilo/config.local.php:ro
     environment:
       # Database Configuration (sqlite or mysql)
-      - SILO_DB_TYPE=sqlite
+      - MESHSILO_DB_TYPE=sqlite
       # For MySQL, uncomment and configure:
-      # - SILO_DB_TYPE=mysql
-      # - SILO_DB_HOST=db
-      # - SILO_DB_NAME=silo
-      # - SILO_DB_USER=silo
-      # - SILO_DB_PASS=your_password
+      # - MESHSILO_DB_TYPE=mysql
+      # - MESHSILO_DB_HOST=db
+      # - MESHSILO_DB_NAME=meshsilo
+      # - MESHSILO_DB_USER=meshsilo
+      # - MESHSILO_DB_PASS=your_password
 
       # Site Configuration
-      - SILO_SITE_NAME=Silo
-      - SILO_SITE_DESCRIPTION=3D Print File Manager
+      - MESHSILO_SITE_NAME=MeshSilo
+      - MESHSILO_SITE_DESCRIPTION=3D Model Asset Manager
       # Set this to your external URL if using reverse proxy
-      # - SILO_SITE_URL=https://silo.example.com
+      # - MESHSILO_SITE_URL=https://meshsilo.example.com
 
       # File Upload Settings (in bytes, default 100MB)
-      - SILO_MAX_UPLOAD_SIZE=104857600
-      - SILO_ALLOWED_EXTENSIONS=stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d
+      - MESHSILO_MAX_UPLOAD_SIZE=104857600
+      - MESHSILO_ALLOWED_EXTENSIONS=stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d
 
       # Deduplication
-      - SILO_DEDUP_ENABLED=true
+      - MESHSILO_DEDUP_ENABLED=true
 
       # Development/Debug Settings
-      # - SILO_ENABLE_QUERY_STATS=true
+      # - MESHSILO_ENABLE_QUERY_STATS=true
 
       # OIDC/SSO Configuration (optional)
-      # - SILO_OIDC_PROVIDER_URL=https://auth.example.com
-      # - SILO_OIDC_CLIENT_ID=silo
-      # - SILO_OIDC_CLIENT_SECRET=your_client_secret
-      # - SILO_OIDC_REDIRECT_URI=https://silo.example.com/oidc-callback.php
-      # - SILO_OIDC_SCOPES=openid profile email
-      # - SILO_OIDC_USERNAME_CLAIM=preferred_username
-      # - SILO_OIDC_AUTO_REGISTER=true
+      # - MESHSILO_OIDC_PROVIDER_URL=https://auth.example.com
+      # - MESHSILO_OIDC_CLIENT_ID=meshsilo
+      # - MESHSILO_OIDC_CLIENT_SECRET=your_client_secret
+      # - MESHSILO_OIDC_REDIRECT_URI=https://meshsilo.example.com/oidc-callback.php
+      # - MESHSILO_OIDC_SCOPES=openid profile email
+      # - MESHSILO_OIDC_USERNAME_CLAIM=preferred_username
+      # - MESHSILO_OIDC_AUTO_REGISTER=true
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
@@ -64,15 +64,15 @@ services:
 #
 #   db:
 #     image: mysql:8.0
-#     container_name: silo-db
+#     container_name: meshsilo-db
 #     restart: unless-stopped
 #     environment:
 #       - MYSQL_ROOT_PASSWORD=root_password
-#       - MYSQL_DATABASE=silo
-#       - MYSQL_USER=silo
+#       - MYSQL_DATABASE=meshsilo
+#       - MYSQL_USER=meshsilo
 #       - MYSQL_PASSWORD=your_password
 #     volumes:
-#       - silo_mysql:/var/lib/mysql
+#       - meshsilo_mysql:/var/lib/mysql
 #     healthcheck:
 #       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
 #       interval: 10s
@@ -80,11 +80,11 @@ services:
 #       retries: 5
 
 volumes:
-  silo_assets:
+  meshsilo_assets:
     driver: local
-  silo_db:
+  meshsilo_db:
     driver: local
-  silo_logs:
+  meshsilo_logs:
     driver: local
-  # silo_mysql:
+  # meshsilo_mysql:
   #   driver: local

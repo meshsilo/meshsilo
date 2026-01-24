@@ -60,7 +60,7 @@ class Mail {
                 'password' => getSetting('mail_password', ''),
                 'encryption' => getSetting('mail_encryption', 'tls'),
                 'from_address' => getSetting('mail_from_address', 'noreply@example.com'),
-                'from_name' => getSetting('mail_from_name', defined('SITE_NAME') ? SITE_NAME : 'Silo'),
+                'from_name' => getSetting('mail_from_name', defined('SITE_NAME') ? SITE_NAME : 'MeshSilo'),
             ];
         }
 

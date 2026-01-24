@@ -3,8 +3,8 @@
 $defaultTheme = getSetting('default_theme', 'dark');
 $allowUserTheme = getSetting('allow_user_theme', '1') === '1';
 $currentTheme = $defaultTheme;
-if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
-    $currentTheme = $_COOKIE['silo_theme'] === 'light' ? 'light' : 'dark';
+if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
+    $currentTheme = $_COOKIE['meshsilo_theme'] === 'light' ? 'light' : 'dark';
 }
 ?>
 <!DOCTYPE html>
@@ -37,7 +37,7 @@ if ($allowUserTheme && isset($_COOKIE['silo_theme'])) {
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             html.setAttribute('data-theme', newTheme);
-            document.cookie = 'silo_theme=' + newTheme + ';path=/;max-age=31536000';
+            document.cookie = 'meshsilo_theme=' + newTheme + ';path=/;max-age=31536000';
             updateThemeIcon(newTheme);
         }
         function updateThemeIcon(theme) {

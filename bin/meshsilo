@@ -1,10 +1,10 @@
 #!/usr/bin/env php
 <?php
 /**
- * Silo CLI Tool
+ * MeshSilo CLI Tool
  *
  * Usage:
- *   ./bin/silo [command] [options]
+ *   ./bin/meshsilo [command] [options]
  *
  * Commands:
  *   list          List models
@@ -80,9 +80,9 @@ switch ($command) {
 
 function showHelp() {
     echo <<<HELP
-Silo CLI Tool
+MeshSilo CLI Tool
 
-Usage: ./bin/silo <command> [options]
+Usage: ./bin/meshsilo <command> [options]
 
 Commands:
   list                    List models
@@ -158,7 +158,7 @@ function cmdList($options) {
 function cmdUpload($positional, $options) {
     if (empty($positional[0])) {
         echo "Error: No file specified\n";
-        echo "Usage: ./bin/silo upload <file>\n";
+        echo "Usage: ./bin/meshsilo upload <file>\n";
         exit(1);
     }
 
@@ -299,7 +299,7 @@ function cmdSearch($positional, $options) {
 }
 
 function cmdBackup($options) {
-    $dbPath = 'db/silo.db';
+    $dbPath = 'db/meshsilo.db';
     if (!file_exists($dbPath)) {
         echo "Error: Database not found\n";
         exit(1);
@@ -368,8 +368,8 @@ function cmdStats($options) {
     if (isset($options['json'])) {
         echo json_encode($stats, JSON_PRETTY_PRINT) . "\n";
     } else {
-        echo "Silo Statistics\n";
-        echo "---------------\n";
+        echo "MeshSilo Statistics\n";
+        echo "-------------------\n";
         echo "Total Models: {$stats['total_models']}\n";
         echo "Total Parts: {$stats['total_parts']}\n";
         echo "Total Size: " . formatSize($stats['total_size']) . "\n";

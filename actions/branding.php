@@ -52,7 +52,7 @@ switch ($action) {
 
 function getBranding() {
     $branding = [
-        'site_name' => getSetting('site_name', 'Silo'),
+        'site_name' => getSetting('site_name', 'MeshSilo'),
         'site_tagline' => getSetting('site_tagline', '3D Model Library'),
         'logo_path' => getSetting('logo_path', ''),
         'favicon_path' => getSetting('favicon_path', ''),

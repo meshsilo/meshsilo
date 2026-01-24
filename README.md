@@ -1,4 +1,4 @@
-# Silo
+# MeshSilo
 
 A self-hosted web-based Digital Asset Manager (DAM) for 3D print files (.stl, .3mf).
 
@@ -49,13 +49,13 @@ A self-hosted web-based Digital Asset Manager (DAM) for 3D print files (.stl, .3
 
 ### Docker (Recommended)
 
-The easiest way to run Silo is using Docker. Multi-architecture images are available for both `amd64` and `arm64`.
+The easiest way to run MeshSilo is using Docker. Multi-architecture images are available for both `amd64` and `arm64`.
 
 #### Quick Start with Docker Compose
 
 1. Download the docker-compose file:
    ```bash
-   curl -O https://raw.githubusercontent.com/Azurith93/Silo/main/docker-compose.yml
+   curl -O https://raw.githubusercontent.com/Azurith93/MeshSilo/main/docker-compose.yml
    ```
 
 2. Start the container:
@@ -63,64 +63,64 @@ The easiest way to run Silo is using Docker. Multi-architecture images are avail
    docker-compose up -d
    ```
 
-3. Access Silo at `http://localhost:8080` and complete the installation wizard.
+3. Access MeshSilo at `http://localhost:8080` and complete the installation wizard.
 
 #### Docker Run
 
 ```bash
 docker run -d \
-  --name silo \
+  --name meshsilo \
   -p 8080:80 \
-  -v silo_assets:/var/www/silo/assets \
-  -v silo_db:/var/www/silo/db \
-  -v silo_logs:/var/www/silo/logs \
-  -e SILO_DB_TYPE=sqlite \
-  -e SILO_SITE_NAME=Silo \
-  ghcr.io/azurith93/silo:latest
+  -v meshsilo_assets:/var/www/meshsilo/assets \
+  -v meshsilo_db:/var/www/meshsilo/db \
+  -v meshsilo_logs:/var/www/meshsilo/logs \
+  -e MESHSILO_DB_TYPE=sqlite \
+  -e MESHSILO_SITE_NAME=MeshSilo \
+  ghcr.io/azurith93/meshsilo:latest
 ```
 
 #### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SILO_DB_TYPE` | Database type: `sqlite` or `mysql` | `sqlite` |
-| `SILO_DB_HOST` | MySQL host (if using MySQL) | `localhost` |
-| `SILO_DB_NAME` | MySQL database name | `silo` |
-| `SILO_DB_USER` | MySQL username | `silo` |
-| `SILO_DB_PASS` | MySQL password | - |
-| `SILO_SITE_NAME` | Site name displayed in UI | `Silo` |
-| `SILO_SITE_DESCRIPTION` | Site description | `3D Print File Manager` |
-| `SILO_SITE_URL` | External URL (for reverse proxy) | - |
-| `SILO_MAX_UPLOAD_SIZE` | Max upload size in bytes | `104857600` (100MB) |
-| `SILO_ALLOWED_EXTENSIONS` | Allowed file extensions | `stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d` |
-| `SILO_DEDUP_ENABLED` | Enable file deduplication | `true` |
+| `MESHSILO_DB_TYPE` | Database type: `sqlite` or `mysql` | `sqlite` |
+| `MESHSILO_DB_HOST` | MySQL host (if using MySQL) | `localhost` |
+| `MESHSILO_DB_NAME` | MySQL database name | `meshsilo` |
+| `MESHSILO_DB_USER` | MySQL username | `meshsilo` |
+| `MESHSILO_DB_PASS` | MySQL password | - |
+| `MESHSILO_SITE_NAME` | Site name displayed in UI | `MeshSilo` |
+| `MESHSILO_SITE_DESCRIPTION` | Site description | `3D Print File Manager` |
+| `MESHSILO_SITE_URL` | External URL (for reverse proxy) | - |
+| `MESHSILO_MAX_UPLOAD_SIZE` | Max upload size in bytes | `104857600` (100MB) |
+| `MESHSILO_ALLOWED_EXTENSIONS` | Allowed file extensions | `stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d` |
+| `MESHSILO_DEDUP_ENABLED` | Enable file deduplication | `true` |
 
 ##### OIDC/SSO Configuration
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SILO_OIDC_PROVIDER_URL` | OIDC provider URL | - |
-| `SILO_OIDC_CLIENT_ID` | OIDC client ID | - |
-| `SILO_OIDC_CLIENT_SECRET` | OIDC client secret | - |
-| `SILO_OIDC_REDIRECT_URI` | OIDC redirect URI | - |
-| `SILO_OIDC_SCOPES` | OIDC scopes | `openid profile email` |
-| `SILO_OIDC_USERNAME_CLAIM` | Claim for username | `preferred_username` |
-| `SILO_OIDC_AUTO_REGISTER` | Auto-register OIDC users | `true` |
+| `MESHSILO_OIDC_PROVIDER_URL` | OIDC provider URL | - |
+| `MESHSILO_OIDC_CLIENT_ID` | OIDC client ID | - |
+| `MESHSILO_OIDC_CLIENT_SECRET` | OIDC client secret | - |
+| `MESHSILO_OIDC_REDIRECT_URI` | OIDC redirect URI | - |
+| `MESHSILO_OIDC_SCOPES` | OIDC scopes | `openid profile email` |
+| `MESHSILO_OIDC_USERNAME_CLAIM` | Claim for username | `preferred_username` |
+| `MESHSILO_OIDC_AUTO_REGISTER` | Auto-register OIDC users | `true` |
 
 #### Docker Volumes
 
 | Volume | Description |
 |--------|-------------|
-| `/var/www/silo/assets` | Uploaded 3D model files |
-| `/var/www/silo/db` | SQLite database file |
-| `/var/www/silo/logs` | Application logs |
+| `/var/www/meshsilo/assets` | Uploaded 3D model files |
+| `/var/www/meshsilo/db` | SQLite database file |
+| `/var/www/meshsilo/logs` | Application logs |
 
 ### Manual Installation
 
 1. Clone the repository to your web server:
    ```bash
-   git clone https://github.com/Azurith93/Silo.git
-   cd Silo
+   git clone https://github.com/Azurith93/MeshSilo.git
+   cd MeshSilo
    ```
 
 2. Ensure the web server has write permissions:
@@ -165,7 +165,7 @@ See `nginx.conf.example` for sample configuration.
 ## Directory Structure
 
 ```
-Silo/
+MeshSilo/
 ├── admin/              # Admin pages
 ├── assets/             # Uploaded model files
 ├── cli/                # Command-line scripts

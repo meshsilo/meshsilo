@@ -1,6 +1,6 @@
-# 3D Format Support in Silo
+# 3D Format Support in MeshSilo
 
-Silo supports a wide range of 3D model file formats with browser-based preview capabilities.
+MeshSilo supports a wide range of 3D model file formats with browser-based preview capabilities.
 
 ## Supported Formats
 

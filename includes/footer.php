@@ -14,7 +14,7 @@
                 <a href="#">Terms</a>
             </nav>
         </div>
-        <?php if (getenv('SILO_ENABLE_QUERY_STATS') === 'true'): ?>
+        <?php if (getenv('MESHSILO_ENABLE_QUERY_STATS') === 'true'): ?>
         <div class="query-stats" style="padding: 10px; margin-top: 10px; background: var(--background-secondary); border-top: 1px solid var(--border-color); font-size: 0.85em; color: var(--text-secondary); text-align: center;">
             <strong>Query Stats:</strong>
             <?= Database::getQueryCount() ?> queries in <?= number_format(Database::getQueryTime() * 1000, 2) ?>ms |

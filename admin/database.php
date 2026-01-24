@@ -313,8 +313,8 @@ php cli/migrate.php --backup
 # Dry run (preview changes)
 php cli/migrate.php --dry-run
 
-# Run via bin/silo
-./bin/silo migrate</code></pre>
+# Run via bin/meshsilo
+./bin/meshsilo migrate</code></pre>
         </section>
     </main>
 </div>

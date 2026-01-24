@@ -54,7 +54,7 @@ function exportLibrary() {
         'version' => '1.0',
         'exported_at' => date('c'),
         'exported_by' => $user['username'],
-        'site_name' => getSetting('site_name', 'Silo')
+        'site_name' => getSetting('site_name', 'MeshSilo')
     ];
 
     // Export models
