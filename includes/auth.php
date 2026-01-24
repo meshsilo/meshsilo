@@ -18,7 +18,8 @@ if (function_exists('getSetting')) {
     }
 }
 
-if ($forceSiteUrl && !empty($siteUrl)) {
+// Skip URL enforcement for CLI scripts
+if ($forceSiteUrl && !empty($siteUrl) && php_sapi_name() !== 'cli') {
     $configuredUrl = parse_url($siteUrl);
     $currentHost = $_SERVER['HTTP_HOST'] ?? '';
 
