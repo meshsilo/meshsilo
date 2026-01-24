@@ -36,7 +36,7 @@ if (isset($_GET['error'])) {
 
     $error = $errorMessages[$errorCode] ?? ('Authentication failed: ' . ($errorDescription ?: $errorCode));
 
-    logWarning('OIDC error from provider', [
+    logSecurityWarning('OIDC error from provider', [
         'error' => $errorCode,
         'description' => $errorDescription,
         'state' => $_GET['state'] ?? 'none'
@@ -50,7 +50,7 @@ if (!$error) {
 
     if (!$receivedState || !$expectedState || $receivedState !== $expectedState) {
         $error = 'Security validation failed. Please try logging in again.';
-        logWarning('OIDC state mismatch', [
+        logSecurityWarning('OIDC state mismatch - possible CSRF attempt', [
             'received' => $receivedState ? substr($receivedState, 0, 8) . '...' : 'none',
             'expected' => $expectedState ? substr($expectedState, 0, 8) . '...' : 'none',
             'session_id' => session_id()
@@ -61,7 +61,7 @@ if (!$error) {
 // Check for authorization code
 if (!$error && !isset($_GET['code'])) {
     $error = 'No authorization code received from the identity provider.';
-    logWarning('OIDC missing authorization code');
+    logSecurityWarning('OIDC missing authorization code');
 }
 
 // Exchange code for tokens
@@ -148,10 +148,9 @@ $_SESSION['user'] = [
 ];
 
 // Log the successful login
-logInfo('OIDC login successful', [
+logAuthEvent('login', $user['username'], true, [
     'user_id' => $user['id'],
-    'username' => $user['username'],
-    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+    'method' => 'oidc',
     'provider' => getSetting('oidc_provider_url')
 ]);
 

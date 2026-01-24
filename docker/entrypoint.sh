@@ -17,9 +17,13 @@ mkdir -p /var/www/meshsilo/storage/assets /var/www/meshsilo/storage/logs /var/ww
 chown -R www-data:www-data /var/www/meshsilo/storage
 chmod -R 775 /var/www/meshsilo/storage
 
-# Create PHP error log file if it doesn't exist (so tail doesn't fail)
-touch /var/www/meshsilo/storage/logs/php-error.log
-chown www-data:www-data /var/www/meshsilo/storage/logs/php-error.log
+# Create all log files if they don't exist (so tail doesn't fail)
+LOG_FILES="php-error.log app.log security.log access.log database.log"
+for logfile in $LOG_FILES; do
+    touch "/var/www/meshsilo/storage/logs/$logfile"
+done
+chown -R www-data:www-data /var/www/meshsilo/storage/logs/
+chmod 664 /var/www/meshsilo/storage/logs/*.log
 
 # Generate config.local.php if it doesn't exist and environment variables are set
 if [ ! -f "$CONFIG_FILE" ] && [ -n "$MESHSILO_DB_TYPE" ]; then

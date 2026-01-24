@@ -135,16 +135,19 @@ class Database {
         self::$queryTime = 0;
     }
 
-    private function profileQuery(callable $callback) {
+    private function profileQuery(callable $callback, $sql = null) {
         self::$queryCount++;
         $start = microtime(true);
         $result = $callback();
         $time = microtime(true) - $start;
         self::$queryTime += $time;
 
-        // Log slow queries (> 100ms)
-        if ($time > 0.1 && function_exists('logWarning')) {
-            logWarning('Slow query detected', ['time' => round($time, 3) . 's']);
+        // Log query using the new database logging channel
+        if ($sql !== null && function_exists('logQuery')) {
+            logQuery($sql, [], $time);
+        } elseif ($time > 0.1 && function_exists('logWarning')) {
+            // Fallback for slow queries without SQL context
+            logWarning('Slow query detected', ['time_seconds' => round($time, 3)]);
         }
 
         return $result;
@@ -162,20 +165,20 @@ class Database {
         // Return wrapped statement for SQLite3 API compatibility with profiling
         return $this->profileQuery(function() use ($sql) {
             return new DatabaseStatement($this->pdo->prepare($sql));
-        });
+        }, $sql);
     }
 
     public function query($sql) {
         // Return wrapped result for SQLite3 API compatibility with profiling
         return $this->profileQuery(function() use ($sql) {
             return new DatabaseResult($this->pdo->query($sql));
-        });
+        }, $sql);
     }
 
     public function exec($sql) {
         return $this->profileQuery(function() use ($sql) {
             return $this->pdo->exec($sql);
-        });
+        }, $sql);
     }
 
     public function lastInsertId() {

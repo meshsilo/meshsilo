@@ -8,7 +8,35 @@
 
 // Prevent running if already installed
 if (file_exists(__DIR__ . '/storage/db/config.local.php') || file_exists(__DIR__ . '/config.local.php')) {
-    die('MeshSilo is already installed. Delete storage/db/config.local.php to reinstall.');
+    http_response_code(200);
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>MeshSilo - Already Installed</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+            .container { text-align: center; padding: 2rem; }
+            h1 { color: #4ade80; margin-bottom: 1rem; }
+            p { color: #aaa; margin-bottom: 1.5rem; }
+            a { color: #60a5fa; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            .note { font-size: 0.875rem; color: #666; margin-top: 2rem; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>MeshSilo is Already Installed</h1>
+            <p>The installation wizard has already been completed.</p>
+            <p><a href="/">Go to Homepage</a> or <a href="/login">Log In</a></p>
+            <p class="note">To reinstall, delete <code>storage/db/config.local.php</code> and refresh this page.</p>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
 session_start();
@@ -279,6 +307,18 @@ function performInstallation($config) {
             return $result;
         }
 
+        // Run migrations to ensure all tables and columns are up to date
+        try {
+            require_once __DIR__ . '/includes/config.php';
+            $db = getDB();
+            if (function_exists('runMigrations')) {
+                runMigrations($db);
+            }
+        } catch (Exception $e) {
+            // Log but don't fail - migrations can be run manually
+            error_log('Post-install migrations warning: ' . $e->getMessage());
+        }
+
         return true;
     } catch (Exception $e) {
         return 'Installation failed: ' . $e->getMessage();
@@ -497,6 +537,23 @@ CREATE TABLE IF NOT EXISTS models (
     original_size BIGINT,
     file_hash VARCHAR(64),
     dedup_path VARCHAR(500),
+    download_count INT DEFAULT 0,
+    license VARCHAR(100),
+    is_archived TINYINT DEFAULT 0,
+    notes TEXT,
+    is_printed TINYINT DEFAULT 0,
+    printed_at TIMESTAMP NULL,
+    dim_x DECIMAL(10,3),
+    dim_y DECIMAL(10,3),
+    dim_z DECIMAL(10,3),
+    dim_unit VARCHAR(10) DEFAULT 'mm',
+    sort_order INT DEFAULT 0,
+    current_version INT DEFAULT 1,
+    thumbnail_path VARCHAR(500),
+    folder_id INT,
+    approval_status VARCHAR(20) DEFAULT 'approved',
+    approved_by INT,
+    approved_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
@@ -600,6 +657,23 @@ CREATE TABLE IF NOT EXISTS models (
     original_size INTEGER,
     file_hash TEXT,
     dedup_path TEXT,
+    download_count INTEGER DEFAULT 0,
+    license TEXT,
+    is_archived INTEGER DEFAULT 0,
+    notes TEXT,
+    is_printed INTEGER DEFAULT 0,
+    printed_at DATETIME,
+    dim_x REAL,
+    dim_y REAL,
+    dim_z REAL,
+    dim_unit TEXT DEFAULT 'mm',
+    sort_order INTEGER DEFAULT 0,
+    current_version INTEGER DEFAULT 1,
+    thumbnail_path TEXT,
+    folder_id INTEGER,
+    approval_status TEXT DEFAULT 'approved',
+    approved_by INTEGER,
+    approved_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE

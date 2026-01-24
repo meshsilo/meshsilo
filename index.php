@@ -21,6 +21,16 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
     require_once __DIR__ . '/includes/config.php';
     require_once __DIR__ . '/includes/helpers.php';
 
+    // Enable access logging for all requests (optional - can be disabled in settings)
+    if (getSetting('enable_access_log', '0') === '1') {
+        require_once __DIR__ . '/includes/middleware/AccessLogMiddleware.php';
+        $accessLog = new AccessLogMiddleware([
+            'skip_paths' => ['/health', '/api/health'],
+            'skip_extensions' => ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2']
+        ]);
+        $accessLog->handle([]);
+    }
+
     // Check for maintenance mode first (allow admins to bypass)
     if (function_exists('getSetting') && getSetting('maintenance_mode', '0') === '1') {
         if (!function_exists('isAdmin') || !isAdmin()) {
@@ -84,6 +94,14 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
 require_once 'includes/config.php';
 require_once 'includes/helpers.php';
 require_once 'includes/dedup.php';
+
+// Enable access logging for homepage (optional - can be disabled in settings)
+if (getSetting('enable_access_log', '0') === '1') {
+    require_once __DIR__ . '/includes/middleware/AccessLogMiddleware.php';
+    $accessLog = new AccessLogMiddleware();
+    $accessLog->handle([]);
+}
+
 $pageTitle = 'Home';
 $activePage = 'browse';
 

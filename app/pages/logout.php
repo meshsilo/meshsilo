@@ -19,16 +19,14 @@ $wasOIDCUser = !empty($_SESSION['user']['oidc_id']) || !empty($idToken);
 
 // Log the logout
 if ($userId) {
-    logInfo('User logged out', [
+    logAuthEvent('logout', $username, true, [
         'user_id' => $userId,
-        'username' => $username,
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        'method' => $wasOIDCUser ? 'oidc' : 'local'
+        'method' => $wasOIDCUser ? 'oidc' : 'password'
     ]);
 
     // Log activity if enabled
     if (function_exists('logActivity')) {
-        logActivity('logout', 'user', $userId, $username, ['method' => $wasOIDCUser ? 'oidc' : 'local']);
+        logActivity('logout', 'user', $userId, $username, ['method' => $wasOIDCUser ? 'oidc' : 'password']);
     }
 }
 
