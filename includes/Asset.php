@@ -37,7 +37,7 @@ class Asset {
     private function __construct() {
         $this->basePath = dirname(__DIR__) . '/';
         $this->baseUrl = '/';
-        $this->cachePath = dirname(__DIR__) . '/cache/assets/';
+        $this->cachePath = dirname(__DIR__) . '/storage/cache/assets/';
         $this->manifestFile = $this->cachePath . 'manifest.json';
 
         // Create cache directory

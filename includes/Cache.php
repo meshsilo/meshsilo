@@ -30,7 +30,7 @@ class Cache {
      * Constructor
      */
     private function __construct() {
-        $this->path = dirname(__DIR__) . '/cache/';
+        $this->path = dirname(__DIR__) . '/storage/cache/';
 
         // Auto-detect best available driver
         if (extension_loaded('apcu') && apcu_enabled()) {

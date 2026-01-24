@@ -125,14 +125,18 @@ function routeParams(): array {
 /**
  * Generate an asset URL (CSS, JS, images)
  *
- * @param string $path Asset path relative to root
+ * @param string $path Asset path relative to public/
  * @return string Full URL to asset
  *
- * @example asset('css/style.css')
- * @example asset('js/main.js')
+ * @example asset('css/style.css')  // Returns /public/css/style.css
+ * @example asset('js/main.js')     // Returns /public/js/main.js
  */
 function asset(string $path): string {
     $baseUrl = defined('SITE_URL') ? rtrim(SITE_URL, '/') : '';
+    // Prepend 'public/' if it's a known asset type
+    if (preg_match('#^(css|js|images)/#', $path)) {
+        return $baseUrl . '/public/' . ltrim($path, '/');
+    }
     return $baseUrl . '/' . ltrim($path, '/');
 }
 

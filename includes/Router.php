@@ -537,7 +537,7 @@ class Router {
     // ROUTE CACHING
     // ========================================================================
 
-    private const CACHE_DIR = __DIR__ . '/../cache';
+    private const CACHE_DIR = __DIR__ . '/../storage/cache';
     private const CACHE_FILE = 'routes.cache.php';
 
     /**

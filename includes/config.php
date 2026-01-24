@@ -3,9 +3,11 @@
 define('MESHSILO_VERSION', '1.0.0');
 
 // Load local configuration if exists
-// Check persistent location first (db/config.local.php for Docker)
-// Fall back to root location for backwards compatibility
-if (file_exists(__DIR__ . '/../db/config.local.php')) {
+// Check persistent location first (storage/db/config.local.php for Docker)
+// Fall back to old locations for backwards compatibility
+if (file_exists(__DIR__ . '/../storage/db/config.local.php')) {
+    require_once __DIR__ . '/../storage/db/config.local.php';
+} elseif (file_exists(__DIR__ . '/../db/config.local.php')) {
     require_once __DIR__ . '/../db/config.local.php';
 } elseif (file_exists(__DIR__ . '/../config.local.php')) {
     require_once __DIR__ . '/../config.local.php';
@@ -19,17 +21,21 @@ if (!defined('FORCE_SITE_URL')) define('FORCE_SITE_URL', false);
 
 // Database Configuration (defaults to SQLite)
 if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
-if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../db/meshsilo.db');
+if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../storage/db/meshsilo.db');
 
 // Upload Configuration
-define('UPLOAD_PATH', __DIR__ . '/../assets/');
+define('UPLOAD_PATH', __DIR__ . '/../storage/assets/');
 define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB
 define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d']);
 define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip']);
 
-// Helper function to get base path for includes
+// Helper function to get base path for public assets
 function basePath($path = '') {
     global $baseDir;
+    // Prepend 'public/' for asset paths
+    if (preg_match('#^(css|js|images)/#', $path)) {
+        return ($baseDir ?? '') . 'public/' . $path;
+    }
     return ($baseDir ?? '') . $path;
 }
 

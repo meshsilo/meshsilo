@@ -38,7 +38,7 @@ class RateLimiter {
      * Constructor
      */
     private function __construct() {
-        $this->cachePath = dirname(__DIR__) . '/cache/ratelimit/';
+        $this->cachePath = dirname(__DIR__) . '/storage/cache/ratelimit/';
 
         // Select best available driver
         if (function_exists('apcu_fetch') && apcu_enabled()) {

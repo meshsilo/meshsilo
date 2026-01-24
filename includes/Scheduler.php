@@ -302,7 +302,7 @@ class Scheduler {
      * Get lock file path for a task
      */
     private static function getLockFile(string $name): string {
-        $dir = __DIR__ . '/../cache/locks';
+        $dir = __DIR__ . '/../storage/cache/locks';
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
@@ -405,7 +405,7 @@ class Scheduler {
 
         // Cache cleanup - every 6 hours
         self::register(self::TASK_CLEANUP_CACHE, '0 */6 * * *', function() {
-            $cacheDir = __DIR__ . '/../cache';
+            $cacheDir = __DIR__ . '/../storage/cache';
             $cleaned = 0;
 
             if (is_dir($cacheDir)) {

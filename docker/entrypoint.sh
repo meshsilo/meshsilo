@@ -4,19 +4,19 @@ set -e
 # MeshSilo Docker Entrypoint Script
 # Handles initialization and configuration from environment variables
 
-CONFIG_FILE="/var/www/meshsilo/db/config.local.php"
+CONFIG_FILE="/var/www/meshsilo/storage/db/config.local.php"
 
 # Create supervisor log directory
 mkdir -p /var/log/supervisor
 
 # Ensure writable directories exist and have correct permissions
-mkdir -p /var/www/meshsilo/assets /var/www/meshsilo/logs /var/www/meshsilo/db /var/www/meshsilo/cache
-chown -R www-data:www-data /var/www/meshsilo/assets /var/www/meshsilo/logs /var/www/meshsilo/db /var/www/meshsilo/cache
-chmod -R 775 /var/www/meshsilo/assets /var/www/meshsilo/logs /var/www/meshsilo/db /var/www/meshsilo/cache
+mkdir -p /var/www/meshsilo/storage/assets /var/www/meshsilo/storage/logs /var/www/meshsilo/storage/db /var/www/meshsilo/storage/cache
+chown -R www-data:www-data /var/www/meshsilo/storage
+chmod -R 775 /var/www/meshsilo/storage
 
 # Create PHP error log file if it doesn't exist (so tail doesn't fail)
-touch /var/www/meshsilo/logs/php-error.log
-chown www-data:www-data /var/www/meshsilo/logs/php-error.log
+touch /var/www/meshsilo/storage/logs/php-error.log
+chown www-data:www-data /var/www/meshsilo/storage/logs/php-error.log
 
 # Generate config.local.php if it doesn't exist and environment variables are set
 if [ ! -f "$CONFIG_FILE" ] && [ -n "$MESHSILO_DB_TYPE" ]; then
@@ -45,7 +45,7 @@ PHPEOF
         cat >> "$CONFIG_FILE" << 'PHPEOF'
 // Database Configuration (SQLite)
 define('DB_TYPE', 'sqlite');
-define('DB_PATH', __DIR__ . '/db/meshsilo.db');
+define('DB_PATH', __DIR__ . '/meshsilo.db');
 
 PHPEOF
     fi
@@ -102,7 +102,7 @@ fi
 # If using SQLite and auto-setup is enabled, initialize the database
 if [ "$MESHSILO_AUTO_SETUP" = "true" ] && [ -f "$CONFIG_FILE" ]; then
     # Check if database exists
-    if [ "$MESHSILO_DB_TYPE" != "mysql" ] && [ ! -f "/var/www/meshsilo/db/meshsilo.db" ]; then
+    if [ "$MESHSILO_DB_TYPE" != "mysql" ] && [ ! -f "/var/www/meshsilo/storage/db/meshsilo.db" ]; then
         echo "Auto-setup enabled but database not found."
         echo "Please visit the installation wizard at /install.php to complete setup."
     fi

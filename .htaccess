@@ -7,18 +7,18 @@
     # If you're running Silo in a subdirectory, uncomment and set the base path
     # RewriteBase /silo/
 
-    # Redirect direct admin/*.php access to clean router URLs (SEO + security)
+    # Redirect direct app/admin/*.php access to clean router URLs (SEO + security)
     # Handles both simple URLs and URLs with query strings
-    RewriteCond %{THE_REQUEST} \s/admin/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
-    RewriteRule ^admin/([a-zA-Z0-9_-]+)\.php$ /admin/$1 [R=302,L,QSA]
+    RewriteCond %{THE_REQUEST} \s/app/admin/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
+    RewriteRule ^app/admin/([a-zA-Z0-9_-]+)\.php$ /admin/$1 [R=302,L,QSA]
 
-    # Redirect direct pages/*.php access to clean router URLs
-    RewriteCond %{THE_REQUEST} \s/pages/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
-    RewriteRule ^pages/([a-zA-Z0-9_-]+)\.php$ /$1 [R=302,L,QSA]
+    # Redirect direct app/pages/*.php access to clean router URLs
+    RewriteCond %{THE_REQUEST} \s/app/pages/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
+    RewriteRule ^app/pages/([a-zA-Z0-9_-]+)\.php$ /$1 [R=302,L,QSA]
 
-    # Redirect direct actions/*.php access to clean router URLs
-    RewriteCond %{THE_REQUEST} \s/actions/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
-    RewriteRule ^actions/([a-zA-Z0-9_-]+)\.php$ /actions/$1 [R=302,L,QSA]
+    # Redirect direct app/actions/*.php access to clean router URLs
+    RewriteCond %{THE_REQUEST} \s/app/actions/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
+    RewriteRule ^app/actions/([a-zA-Z0-9_-]+)\.php$ /actions/$1 [R=302,L,QSA]
 
     # Don't rewrite requests for files or directories that exist
     # (except for PHP files which are handled above)
@@ -57,9 +57,16 @@
     </IfModule>
 </FilesMatch>
 
-# Protect pages directory (should only be accessed via router)
+# Protect app directory (should only be accessed via router)
 <IfModule mod_authz_core.c>
-    <Directory "pages">
+    <Directory "app">
+        Require all denied
+    </Directory>
+</IfModule>
+
+# Protect storage directory (data files should be served via download handlers)
+<IfModule mod_authz_core.c>
+    <Directory "storage">
         Require all denied
     </Directory>
 </IfModule>

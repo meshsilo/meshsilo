@@ -71,9 +71,9 @@ The easiest way to run MeshSilo is using Docker. Multi-architecture images are a
 docker run -d \
   --name meshsilo \
   -p 8080:80 \
-  -v meshsilo_assets:/var/www/meshsilo/assets \
-  -v meshsilo_db:/var/www/meshsilo/db \
-  -v meshsilo_logs:/var/www/meshsilo/logs \
+  -v meshsilo_assets:/var/www/meshsilo/storage/assets \
+  -v meshsilo_db:/var/www/meshsilo/storage/db \
+  -v meshsilo_logs:/var/www/meshsilo/storage/logs \
   -e MESHSILO_DB_TYPE=sqlite \
   -e MESHSILO_SITE_NAME=MeshSilo \
   ghcr.io/azurith93/meshsilo:latest
@@ -111,9 +111,9 @@ docker run -d \
 
 | Volume | Description |
 |--------|-------------|
-| `/var/www/meshsilo/assets` | Uploaded 3D model files |
-| `/var/www/meshsilo/db` | SQLite database file |
-| `/var/www/meshsilo/logs` | Application logs |
+| `/var/www/meshsilo/storage/assets` | Uploaded 3D model files |
+| `/var/www/meshsilo/storage/db` | SQLite database file |
+| `/var/www/meshsilo/storage/logs` | Application logs |
 
 ### Manual Installation
 
@@ -166,15 +166,17 @@ See `nginx.conf.example` for sample configuration.
 
 ```
 MeshSilo/
-├── admin/              # Admin pages
-├── assets/             # Uploaded model files
+│   ├── admin/              # Admin pages
+├── storage/
+│   ├── assets/             # Uploaded model files
 ├── cli/                # Command-line scripts
-├── css/                # Stylesheets
-├── db/                 # Database files (SQLite)
-├── images/             # UI images
+├── public/
+│   ├── css/                # Stylesheets
+│   ├── db/                 # Database files (SQLite)
+│   ├── images/             # UI images
 ├── includes/           # PHP includes
-├── js/                 # JavaScript files
-├── logs/               # Log files
+│   ├── js/                 # JavaScript files
+│   ├── logs/               # Log files
 ├── install.php         # Installation wizard
 └── config.local.php    # Local configuration (created during install)
 ```

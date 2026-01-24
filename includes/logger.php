@@ -22,7 +22,7 @@ class Logger {
     private $maxFiles = 10;
 
     private function __construct() {
-        $this->logPath = __DIR__ . '/../logs/';
+        $this->logPath = __DIR__ . '/../storage/logs/';
         $this->requestId = $this->generateRequestId();
 
         // Create logs directory if it doesn't exist

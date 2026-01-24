@@ -1,12 +1,21 @@
-# Database
-db/*.db
-
-# Uploaded assets
-assets/*
-!assets/.gitkeep
+# Storage directory (persistent data)
+storage/assets/*
+!storage/assets/.gitkeep
+storage/db/*.db
+storage/logs/*
+!storage/logs/.gitkeep
+storage/cache/*
+!storage/cache/.gitkeep
 
 # Local configuration
 config.local.php
+storage/db/config.local.php
+
+# Legacy paths (backward compatibility during migration)
+db/*.db
+assets/*
+logs/*
+cache/*
 
 # IDE
 .idea/
@@ -20,14 +29,6 @@ Thumbs.db
 
 # PHP
 *.log
-
-# Logs directory
-logs/*
-!logs/.gitkeep
-
-# Cache directory
-cache/*
-!cache/.gitkeep
 
 # Development files
 .claude/
