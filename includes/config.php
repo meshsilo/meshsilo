@@ -3,7 +3,11 @@
 define('MESHSILO_VERSION', '1.0.0');
 
 // Load local configuration if exists
-if (file_exists(__DIR__ . '/../config.local.php')) {
+// Check persistent location first (db/config.local.php for Docker)
+// Fall back to root location for backwards compatibility
+if (file_exists(__DIR__ . '/../db/config.local.php')) {
+    require_once __DIR__ . '/../db/config.local.php';
+} elseif (file_exists(__DIR__ . '/../config.local.php')) {
     require_once __DIR__ . '/../config.local.php';
 }
 
