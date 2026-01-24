@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 $baseDir = '../';
 
 // Require delete permission
@@ -206,7 +206,7 @@ if (empty($_SESSION['csrf_token'])) {
 $pageTitle = $part ? 'Delete Part' : 'Delete ' . $model['name'];
 $activePage = 'browse';
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
         <div class="page-container">
@@ -263,4 +263,4 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

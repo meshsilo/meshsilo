@@ -2,8 +2,8 @@
 /**
  * AJAX endpoint for mass actions on models and parts
  */
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
 

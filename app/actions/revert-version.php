@@ -4,8 +4,8 @@
  *
  * Creates a new version with the contents of a previous version
  */
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
 

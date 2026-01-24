@@ -2,8 +2,8 @@
 // Set baseDir based on how we're accessed (router vs direct)
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/api-auth.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/api-auth.php';
 requirePermission(PERM_ADMIN);
 
 $user = getCurrentUser();
@@ -120,10 +120,10 @@ $pageTitle = 'API Keys - ' . $siteName;
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../includes/header.php'; ?>
+    <?php include __DIR__ . '/../../includes/header.php'; ?>
 
     <div class="admin-layout">
-        <?php include __DIR__ . '/../includes/admin-sidebar.php'; ?>
+        <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
         <main class="admin-content">
             <div class="admin-header">
@@ -301,7 +301,7 @@ $pageTitle = 'API Keys - ' . $siteName;
         </main>
     </div>
 
-    <?php include __DIR__ . '/../includes/footer.php'; ?>
+    <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
     <script>
         function copyToClipboard(text) {

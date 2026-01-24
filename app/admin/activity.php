@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 // Admin only
 if (!isLoggedIn() || !getCurrentUser()['is_admin']) {
@@ -100,7 +100,7 @@ function timeAgo($datetime) {
     return date('M j, Y', $time);
 }
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
         <div class="page-container-wide">
@@ -220,4 +220,4 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
         </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

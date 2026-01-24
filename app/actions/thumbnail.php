@@ -3,7 +3,7 @@
  * Custom Thumbnail Upload Actions
  */
 
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
@@ -135,7 +135,7 @@ function deleteThumbnail() {
 function generateThumbnail() {
     global $user;
 
-    require_once __DIR__ . '/../includes/ThumbnailGenerator.php';
+    require_once __DIR__ . '/../../includes/ThumbnailGenerator.php';
 
     $modelId = (int)($_POST['model_id'] ?? $_GET['model_id'] ?? 0);
 

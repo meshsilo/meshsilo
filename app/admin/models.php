@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 // Admin only
 if (!isLoggedIn() || !getCurrentUser()['is_admin']) {
@@ -99,7 +99,7 @@ function formatBytes($bytes, $precision = 2) {
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
         <div class="page-container-wide">
@@ -480,4 +480,4 @@ require_once __DIR__ . '/../includes/header.php';
         }
         </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

@@ -31,10 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Load configuration without triggering auth redirect
-require_once __DIR__ . '/../includes/logger.php';
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/api-auth.php';
-require_once __DIR__ . '/../includes/api-helpers.php';
+require_once __DIR__ . '/../../includes/logger.php';
+require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/api-auth.php';
+require_once __DIR__ . '/../../includes/api-helpers.php';
 
 // Set up error handling
 setupErrorHandler();

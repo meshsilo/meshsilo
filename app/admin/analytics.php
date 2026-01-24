@@ -5,7 +5,7 @@
  * Custom analytics dashboards and scheduled report management
  */
 
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 // Require admin permission
 if (!isLoggedIn() || !isAdmin()) {
@@ -14,7 +14,7 @@ if (!isLoggedIn() || !isAdmin()) {
 }
 
 // Include Analytics
-require_once __DIR__ . '/../includes/Analytics.php';
+require_once __DIR__ . '/../../includes/Analytics.php';
 
 $message = '';
 $error = '';
@@ -158,11 +158,11 @@ $periodOptions = [
 ];
 
 $pageTitle = 'Analytics';
-include __DIR__ . '/../includes/header.php';
+include __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="admin-container">
-    <?php include __DIR__ . '/../includes/admin-sidebar.php'; ?>
+    <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
     <div class="admin-content">
         <div class="admin-header">
@@ -988,4 +988,4 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-<?php include __DIR__ . '/../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>

@@ -2,8 +2,8 @@
 /**
  * AJAX endpoint for converting STL parts to 3MF
  */
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/converter.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/converter.php';
 
 header('Content-Type: application/json');
 

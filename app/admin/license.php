@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 // Set baseDir based on how we're accessed (router vs direct)
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
@@ -59,7 +59,7 @@ include '../includes/header.php';
 ?>
 
         <div class="admin-layout">
-<?php require_once __DIR__ . '/../includes/admin-sidebar.php'; ?>
+<?php require_once __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
             <div class="admin-content">
     <div class="admin-header">

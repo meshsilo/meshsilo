@@ -3,8 +3,8 @@
  * Download handler for model files
  * Handles both regular and deduplicated files
  */
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 $partId = (int)($_GET['id'] ?? 0);
 

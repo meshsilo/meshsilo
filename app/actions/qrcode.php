@@ -4,7 +4,7 @@
  * Generates QR codes for model pages
  */
 
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 $modelId = (int)($_GET['model_id'] ?? 0);
 $size = min(500, max(100, (int)($_GET['size'] ?? 200)));

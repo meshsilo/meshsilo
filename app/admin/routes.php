@@ -5,7 +5,7 @@
  * View all registered routes, test URL matching, and manage route cache.
  */
 
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 requirePermission(PERM_ADMIN);
 
 $pageTitle = 'Routes';
@@ -68,8 +68,8 @@ ksort($groupedRoutes);
 // Get request profiling data if available
 $profilingEnabled = getSetting('route_profiling', '0') === '1';
 
-require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../includes/admin-sidebar.php';
+require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/admin-sidebar.php';
 ?>
 
 <div class="admin-content">
@@ -434,4 +434,4 @@ document.getElementById('test-url').addEventListener('keypress', function(e) {
 });
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

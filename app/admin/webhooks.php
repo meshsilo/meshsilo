@@ -2,7 +2,7 @@
 // Set baseDir based on how we're accessed (router vs direct)
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 requirePermission(PERM_ADMIN);
 
 $error = '';
@@ -118,10 +118,10 @@ $pageTitle = 'Webhooks - ' . $siteName;
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../includes/header.php'; ?>
+    <?php include __DIR__ . '/../../includes/header.php'; ?>
 
     <div class="admin-layout">
-        <?php include __DIR__ . '/../includes/admin-sidebar.php'; ?>
+        <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
         <main class="admin-content">
             <div class="admin-header">
@@ -307,6 +307,6 @@ if (hash_equals($expected, $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'])) {
         </main>
     </div>
 
-    <?php include __DIR__ . '/../includes/footer.php'; ?>
+    <?php include __DIR__ . '/../../includes/footer.php'; ?>
 </body>
 </html>

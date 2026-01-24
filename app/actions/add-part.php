@@ -2,8 +2,8 @@
 /**
  * Add parts to an existing model
  */
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 // Require upload permission
 if (!canUpload()) {

@@ -5,7 +5,7 @@
  * Manage retention policies and legal holds
  */
 
-require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 // Require admin permission
 if (!isLoggedIn() || !isAdmin()) {
@@ -14,7 +14,7 @@ if (!isLoggedIn() || !isAdmin()) {
 }
 
 // Include RetentionManager
-require_once __DIR__ . '/../includes/RetentionManager.php';
+require_once __DIR__ . '/../../includes/RetentionManager.php';
 
 $message = '';
 $error = '';
@@ -174,11 +174,11 @@ $actionLabels = [
 ];
 
 $pageTitle = 'Data Retention';
-include __DIR__ . '/../includes/header.php';
+include __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="admin-container">
-    <?php include __DIR__ . '/../includes/admin-sidebar.php'; ?>
+    <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
     <div class="admin-content">
         <div class="admin-header">
@@ -801,4 +801,4 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-<?php include __DIR__ . '/../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>

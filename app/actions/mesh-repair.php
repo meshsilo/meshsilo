@@ -7,8 +7,8 @@
  * - repair: Attempt to repair mesh (requires admesh)
  */
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/MeshAnalyzer.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/MeshAnalyzer.php';
 
 header('Content-Type: application/json');
 

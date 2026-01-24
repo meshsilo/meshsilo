@@ -3,8 +3,8 @@
  * Check for duplicate files before upload
  * Accepts a file via POST and returns any matching existing models
  */
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
 

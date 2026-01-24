@@ -4,8 +4,8 @@
  *
  * View, filter, and export comprehensive audit logs
  */
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/AuditLogger.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/AuditLogger.php';
 
 // Require admin
 if (!isLoggedIn() || !isAdmin()) {
@@ -89,8 +89,8 @@ while ($row = $usersResult->fetchArray(SQLITE3_ASSOC)) {
     $users[] = $row;
 }
 
-require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../includes/admin-sidebar.php';
+require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/admin-sidebar.php';
 ?>
 
 <div class="admin-content">
@@ -521,4 +521,4 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
 }
 </style>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

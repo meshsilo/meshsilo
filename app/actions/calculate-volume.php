@@ -5,8 +5,8 @@
  * Calculates and stores volume for a model
  */
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/VolumeCalculator.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/VolumeCalculator.php';
 
 header('Content-Type: application/json');
 
