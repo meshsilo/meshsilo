@@ -182,3 +182,28 @@ class Logger {
         }
     }
 }
+
+// Helper functions for backward compatibility
+function logError($message, $context = []) {
+    Logger::getInstance()->error($message, $context);
+}
+
+function logWarning($message, $context = []) {
+    Logger::getInstance()->warning($message, $context);
+}
+
+function logInfo($message, $context = []) {
+    Logger::getInstance()->info($message, $context);
+}
+
+function logDebug($message, $context = []) {
+    Logger::getInstance()->debug($message, $context);
+}
+
+function logNotice($message, $context = []) {
+    Logger::getInstance()->notice($message, $context);
+}
+
+function logException($exception, $context = []) {
+    Logger::getInstance()->exception($exception, $context);
+}
