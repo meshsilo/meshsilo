@@ -401,3 +401,10 @@ function abort_if(bool $condition, int $code, ?string $message = null): void {
 function abort_unless(bool $condition, int $code, ?string $message = null): void {
     ErrorHandler::abortUnless($condition, $code, $message);
 }
+
+/**
+ * Setup error handler
+ */
+function setupErrorHandler(bool $debug = false): void {
+    ErrorHandler::init($debug);
+}
