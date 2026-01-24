@@ -234,10 +234,10 @@ function getDB() {
                 }
             }
 
-            // Run migrations with caching - only checks once per hour (or immediately for CLI)
-            // This avoids database locks and timeouts from running 50+ checks on every request
-            // while still auto-migrating when deployments occur
-            runCachedMigrations($db);
+            // Verify schema is ready (web: quick check only, CLI: runs full migrations)
+            // Web requests never run migrations to avoid 300s timeout issues
+            // Run 'php cli/migrate.php' after deployments to apply schema changes
+            verifySchemaReady($db);
         } catch (Exception $e) {
             logException($e, ['action' => 'database_connect']);
             throw $e;
@@ -499,98 +499,62 @@ function tableExists($db, $table) {
 }
 
 /**
- * Run migrations with caching to avoid checking on every request.
+ * Verify database schema is ready for web requests.
  *
- * Migrations only run when:
- * - Cache file is missing or expired (default: 1 hour for web, always for CLI)
- * - No other process is currently running migrations (lock file)
+ * Web requests do NOT run migrations - they only verify core tables exist.
+ * Migrations must be run via CLI: php cli/migrate.php
+ *
+ * This prevents timeout issues from running 50+ migration checks on web requests.
  *
  * @param Database $db Database connection
- * @param int $cacheLifetime Cache lifetime in seconds (default: 3600 = 1 hour, 0 = always run)
- * @return bool True if migrations ran, false if skipped (cached/locked)
+ * @return bool True if schema is ready, false otherwise
  */
-function runCachedMigrations($db, $cacheLifetime = 3600) {
-    // Define cache paths
-    $cacheDir = defined('STORAGE_PATH') ? STORAGE_PATH . '/cache' : __DIR__ . '/../storage/cache';
-    $cacheFile = $cacheDir . '/.migrations_checked';
-    $lockFile = $cacheDir . '/.migrations_lock';
-
-    // Ensure cache directory exists
-    if (!is_dir($cacheDir)) {
-        @mkdir($cacheDir, 0755, true);
-    }
-
-    // CLI always runs migrations (useful for deploy scripts)
-    $isCli = php_sapi_name() === 'cli';
-    if ($isCli) {
-        $cacheLifetime = 0;
-    }
-
-    // Check if cache is still valid
-    if ($cacheLifetime > 0 && file_exists($cacheFile)) {
-        $cacheAge = time() - filemtime($cacheFile);
-        if ($cacheAge < $cacheLifetime) {
-            // Cache is fresh, skip migrations
-            return false;
-        }
-    }
-
-    // Try to acquire lock (non-blocking to prevent request pile-up)
-    $lockHandle = @fopen($lockFile, 'c');
-    if ($lockHandle === false) {
-        // Can't open lock file, skip this time
-        return false;
-    }
-
-    // Try non-blocking exclusive lock
-    if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
-        // Another process is running migrations, skip
-        fclose($lockHandle);
-        return false;
-    }
-
-    try {
-        // Double-check cache after acquiring lock (another process may have just finished)
-        if ($cacheLifetime > 0 && file_exists($cacheFile)) {
-            $cacheAge = time() - filemtime($cacheFile);
-            if ($cacheAge < $cacheLifetime) {
-                // Cache became fresh while we were waiting
-                flock($lockHandle, LOCK_UN);
-                fclose($lockHandle);
-                return false;
-            }
-        }
-
-        // Run the actual migrations
+function verifySchemaReady($db) {
+    // CLI scripts run full migrations
+    if (php_sapi_name() === 'cli') {
         runMigrations($db);
+        return true;
+    }
 
-        // Update cache timestamp
-        $result = @file_put_contents($cacheFile, json_encode([
-            'checked_at' => date('c'),
-            'db_type' => $db->getType(),
-            'php_sapi' => php_sapi_name()
-        ]));
+    // Web requests: Quick check for core tables only (single query)
+    // If core tables don't exist, show migration required message
+    try {
+        $type = $db->getType();
 
-        if ($result !== false) {
-            @chmod($cacheFile, 0644);
+        // Single quick query to check if core tables exist
+        if ($type === 'mysql') {
+            $result = $db->query("SELECT COUNT(*) as cnt FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('users', 'models', 'settings')");
+        } else {
+            $result = $db->query("SELECT COUNT(*) as cnt FROM sqlite_master WHERE type='table' AND name IN ('users', 'models', 'settings')");
+        }
+
+        $row = $result->fetch();
+        $tableCount = $row ? (int)$row['cnt'] : 0;
+
+        if ($tableCount < 3) {
+            // Core tables missing - migrations needed
+            if (!headers_sent()) {
+                http_response_code(503);
+                header('Content-Type: text/html; charset=utf-8');
+            }
+            echo '<!DOCTYPE html><html><head><title>Database Setup Required</title></head><body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">';
+            echo '<h1>Database Setup Required</h1>';
+            echo '<p>The database schema needs to be initialized or updated.</p>';
+            echo '<p>Please run the following command:</p>';
+            echo '<pre style="background: #f4f4f4; padding: 15px; border-radius: 5px;">php cli/migrate.php</pre>';
+            echo '<p>Or in Docker:</p>';
+            echo '<pre style="background: #f4f4f4; padding: 15px; border-radius: 5px;">docker exec meshsilo php cli/migrate.php</pre>';
+            echo '</body></html>';
+            exit(1);
         }
 
         return true;
     } catch (Exception $e) {
-        // Log error but don't break the request
+        // Database query failed - likely fresh install
         if (function_exists('logException')) {
-            logException($e, ['action' => 'cached_migrations']);
+            logException($e, ['action' => 'verify_schema']);
         }
         return false;
-    } finally {
-        // Release lock
-        flock($lockHandle, LOCK_UN);
-        fclose($lockHandle);
-
-        // Clean up stale lock file
-        if (file_exists($lockFile) && (time() - filemtime($lockFile)) > 300) {
-            @unlink($lockFile);
-        }
     }
 }
 
