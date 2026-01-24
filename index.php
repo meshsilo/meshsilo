@@ -91,7 +91,7 @@ $db = getDB();
 
 // Get recent models (only parent/standalone models, not parts)
 // Optimized: Only select columns we actually use
-$result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, print_type, creator, created_at FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
+$result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, print_type, creator, created_at, is_archived FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
 $models = [];
 $modelIds = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
