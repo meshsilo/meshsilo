@@ -52,7 +52,7 @@ function listFileTypes() {
             'preview_handler' => $config[$ext]['preview_handler'] ?? 'none',
             'icon' => $config[$ext]['icon'] ?? 'file',
             'description' => $config[$ext]['description'] ?? ucfirst($ext) . ' file',
-            'is_3d' => in_array($ext, ['stl', '3mf', 'obj', 'ply', 'gltf', 'glb'])
+            'is_3d' => in_array($ext, ['stl', '3mf', 'obj', 'ply', 'gltf', 'glb', 'fbx', 'dae', 'blend', 'amf', '3ds', 'off', 'x3d'])
         ];
     }
 
@@ -62,12 +62,21 @@ function listFileTypes() {
         '3mf' => ['description' => '3D Manufacturing Format', 'preview_handler' => 'three.js', 'icon' => '3d'],
         'gcode' => ['description' => 'G-Code Instructions', 'preview_handler' => 'gcode', 'icon' => 'code'],
         'obj' => ['description' => 'Wavefront OBJ', 'preview_handler' => 'three.js', 'icon' => '3d'],
-        'step' => ['description' => 'STEP CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
-        'stp' => ['description' => 'STEP CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
-        'iges' => ['description' => 'IGES CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
-        'igs' => ['description' => 'IGES CAD File', 'preview_handler' => 'none', 'icon' => 'cad'],
-        'f3d' => ['description' => 'Fusion 360 File', 'preview_handler' => 'none', 'icon' => 'cad'],
+        'ply' => ['description' => 'Polygon File Format', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'amf' => ['description' => 'Additive Manufacturing Format', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'glb' => ['description' => 'Binary GL Transmission Format', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'gltf' => ['description' => 'GL Transmission Format', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'fbx' => ['description' => 'Autodesk FBX', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'dae' => ['description' => 'COLLADA Digital Asset Exchange', 'preview_handler' => 'three.js', 'icon' => '3d'],
         'blend' => ['description' => 'Blender File', 'preview_handler' => 'none', 'icon' => '3d'],
+        'step' => ['description' => 'STEP CAD File', 'preview_handler' => 'cad', 'icon' => 'cad'],
+        'stp' => ['description' => 'STEP CAD File', 'preview_handler' => 'cad', 'icon' => 'cad'],
+        'iges' => ['description' => 'IGES CAD File', 'preview_handler' => 'cad', 'icon' => 'cad'],
+        'igs' => ['description' => 'IGES CAD File', 'preview_handler' => 'cad', 'icon' => 'cad'],
+        '3ds' => ['description' => '3D Studio Max File', 'preview_handler' => 'three.js', 'icon' => '3d'],
+        'dxf' => ['description' => 'AutoCAD Drawing Exchange Format', 'preview_handler' => 'none', 'icon' => 'cad'],
+        'off' => ['description' => 'Object File Format', 'preview_handler' => 'none', 'icon' => '3d'],
+        'x3d' => ['description' => 'Extensible 3D Graphics', 'preview_handler' => 'none', 'icon' => '3d'],
         'zip' => ['description' => 'ZIP Archive', 'preview_handler' => 'archive', 'icon' => 'archive']
     ];
 
@@ -75,7 +84,7 @@ function listFileTypes() {
         'success' => true,
         'types' => $types,
         'built_in_info' => $builtIn,
-        'preview_handlers' => ['none', 'three.js', 'gcode', 'image', 'archive']
+        'preview_handlers' => ['none', 'three.js', 'gcode', 'cad', 'image', 'archive']
     ]);
 }
 
@@ -99,7 +108,7 @@ function addFileType() {
     }
 
     // Get current allowed extensions
-    $current = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
+    $current = getSetting('allowed_extensions', 'stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip');
     $extensions = array_map('trim', explode(',', $current));
 
     if (in_array($extension, $extensions)) {
@@ -131,15 +140,15 @@ function removeFileType() {
         return;
     }
 
-    // Prevent removing built-in types
-    $builtIn = ['stl', '3mf', 'gcode', 'zip'];
+    // Prevent removing core built-in types (allow removing extended formats)
+    $builtIn = ['stl', '3mf', 'zip'];
     if (in_array($extension, $builtIn)) {
-        echo json_encode(['success' => false, 'error' => 'Cannot remove built-in file type']);
+        echo json_encode(['success' => false, 'error' => 'Cannot remove core built-in file type']);
         return;
     }
 
     // Remove from allowed extensions
-    $current = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
+    $current = getSetting('allowed_extensions', 'stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip');
     $extensions = array_map('trim', explode(',', $current));
     $extensions = array_filter($extensions, fn($e) => $e !== $extension);
     setSetting('allowed_extensions', implode(',', $extensions));

@@ -111,6 +111,11 @@
 
     # 3D model files - cache for 1 week (can be changed frequently)
     ExpiresByType model/stl "access plus 1 week"
+    ExpiresByType model/obj "access plus 1 week"
+    ExpiresByType model/gltf+json "access plus 1 week"
+    ExpiresByType model/gltf-binary "access plus 1 week"
+    ExpiresByType model/x3d+xml "access plus 1 week"
+    ExpiresByType application/sla "access plus 1 week"
     ExpiresByType application/octet-stream "access plus 1 week"
 
     # HTML - no cache (dynamic pages)
@@ -135,7 +140,7 @@
     </FilesMatch>
 
     # 3D model files - moderate cache
-    <FilesMatch "\.(stl|3mf|gcode)$">
+    <FilesMatch "\.(stl|3mf|obj|ply|amf|gcode|glb|gltf|fbx|dae|blend|step|stp|iges|igs|3ds|dxf|off|x3d)$">
         Header set Cache-Control "public, max-age=604800"
     </FilesMatch>
 </IfModule>

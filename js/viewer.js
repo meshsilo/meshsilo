@@ -325,14 +325,348 @@ class ModelViewer {
         };
     }
 
+    async loadOBJ(url) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.OBJLoader();
+            loader.load(
+                url,
+                (object) => {
+                    this.clearModel();
+                    this.model = object;
+
+                    // Apply default material
+                    this.model.traverse((child) => {
+                        if (child.isMesh) {
+                            if (child.geometry) {
+                                child.geometry.computeVertexNormals();
+                            }
+                            child.material = new THREE.MeshPhongMaterial({
+                                color: 0x888888,
+                                specular: 0x222222,
+                                shininess: 20
+                            });
+                        }
+                    });
+
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                },
+                undefined,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async loadPLY(url) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.PLYLoader();
+            loader.load(
+                url,
+                (geometry) => {
+                    this.clearModel();
+                    geometry.computeVertexNormals();
+
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x888888,
+                        specular: 0x222222,
+                        shininess: 20,
+                        vertexColors: geometry.hasAttribute('color')
+                    });
+
+                    this.model = new THREE.Mesh(geometry, material);
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                },
+                undefined,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async loadGLTF(url) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                url,
+                (gltf) => {
+                    this.clearModel();
+                    this.model = gltf.scene;
+
+                    // Ensure normals are computed
+                    this.model.traverse((child) => {
+                        if (child.isMesh && child.geometry) {
+                            child.geometry.computeVertexNormals();
+                        }
+                    });
+
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                },
+                undefined,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async loadDAE(url) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.ColladaLoader();
+            loader.load(
+                url,
+                (collada) => {
+                    this.clearModel();
+                    this.model = collada.scene;
+
+                    this.model.traverse((child) => {
+                        if (child.isMesh && child.geometry) {
+                            child.geometry.computeVertexNormals();
+                        }
+                    });
+
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                },
+                undefined,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async loadFBX(url) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.FBXLoader();
+            loader.load(
+                url,
+                (object) => {
+                    this.clearModel();
+                    this.model = object;
+
+                    this.model.traverse((child) => {
+                        if (child.isMesh && child.geometry) {
+                            child.geometry.computeVertexNormals();
+                        }
+                    });
+
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                },
+                undefined,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async load3DS(url) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.TDSLoader();
+            loader.load(
+                url,
+                (object) => {
+                    this.clearModel();
+                    this.model = object;
+
+                    this.model.traverse((child) => {
+                        if (child.isMesh && child.geometry) {
+                            child.geometry.computeVertexNormals();
+                        }
+                    });
+
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                },
+                undefined,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async loadAMF(url) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.AMFLoader();
+            loader.load(
+                url,
+                (object) => {
+                    this.clearModel();
+                    this.model = object;
+
+                    this.model.traverse((child) => {
+                        if (child.isMesh) {
+                            if (child.geometry) {
+                                child.geometry.computeVertexNormals();
+                            }
+                            if (!child.material) {
+                                child.material = new THREE.MeshPhongMaterial({
+                                    color: 0x888888,
+                                    specular: 0x222222,
+                                    shininess: 20
+                                });
+                            }
+                        }
+                    });
+
+                    this.centerAndScaleModel();
+                    this.scene.add(this.model);
+                    this.startAnimation();
+                    resolve(this.model);
+                },
+                undefined,
+                (error) => reject(error)
+            );
+        });
+    }
+
+    async loadCAD(url, fileType) {
+        // Lazy load OpenCascade.js only when needed
+        if (!window.occtImportJS) {
+            console.log('Loading OpenCascade.js for CAD file preview...');
+            try {
+                await this.loadOpenCascade();
+            } catch (error) {
+                throw new Error('Failed to load OpenCascade.js: ' + error.message);
+            }
+        }
+
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Fetch the CAD file
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch CAD file');
+                const fileBuffer = await response.arrayBuffer();
+
+                // Convert to format occt-import-js expects
+                const fileArray = new Uint8Array(fileBuffer);
+
+                // Use occt-import-js to parse the file
+                const result = await window.occtImportJS({
+                    fileBuffer: fileArray,
+                    fileName: url.split('/').pop()
+                });
+
+                if (!result.success) {
+                    throw new Error('Failed to parse CAD file');
+                }
+
+                // Convert the result to Three.js geometry
+                this.clearModel();
+                this.model = this.convertOCCTToThree(result);
+
+                this.centerAndScaleModel();
+                this.scene.add(this.model);
+                this.startAnimation();
+                resolve(this.model);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    async loadOpenCascade() {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js';
+            script.onload = () => {
+                // Initialize occt-import-js
+                if (typeof occtimportjs !== 'undefined') {
+                    occtimportjs().then((occt) => {
+                        window.occtImportJS = occt;
+                        resolve();
+                    }).catch(reject);
+                } else {
+                    reject(new Error('occt-import-js failed to load'));
+                }
+            };
+            script.onerror = () => reject(new Error('Failed to load OpenCascade script'));
+            document.head.appendChild(script);
+        });
+    }
+
+    convertOCCTToThree(result) {
+        const group = new THREE.Group();
+
+        // OCCT result typically contains meshes with vertices and triangles
+        if (result.meshes && result.meshes.length > 0) {
+            result.meshes.forEach(mesh => {
+                const geometry = new THREE.BufferGeometry();
+
+                // Vertices
+                if (mesh.attributes && mesh.attributes.position) {
+                    geometry.setAttribute('position',
+                        new THREE.Float32BufferAttribute(mesh.attributes.position.array, 3));
+                }
+
+                // Normals
+                if (mesh.attributes && mesh.attributes.normal) {
+                    geometry.setAttribute('normal',
+                        new THREE.Float32BufferAttribute(mesh.attributes.normal.array, 3));
+                } else {
+                    geometry.computeVertexNormals();
+                }
+
+                // Indices
+                if (mesh.index) {
+                    geometry.setIndex(mesh.index.array);
+                }
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x888888,
+                    specular: 0x222222,
+                    shininess: 20,
+                    side: THREE.DoubleSide
+                });
+
+                const meshObj = new THREE.Mesh(geometry, material);
+                group.add(meshObj);
+            });
+        }
+
+        return group;
+    }
+
     async loadModel(url, fileType) {
         try {
-            if (fileType === 'stl') {
-                return await this.loadSTL(url);
-            } else if (fileType === '3mf') {
-                return await this.load3MF(url);
-            } else if (fileType === 'gcode') {
-                return await this.loadGCODE(url);
+            const type = fileType.toLowerCase();
+
+            switch(type) {
+                case 'stl':
+                    return await this.loadSTL(url);
+                case '3mf':
+                    return await this.load3MF(url);
+                case 'obj':
+                    return await this.loadOBJ(url);
+                case 'ply':
+                    return await this.loadPLY(url);
+                case 'gltf':
+                case 'glb':
+                    return await this.loadGLTF(url);
+                case 'dae':
+                    return await this.loadDAE(url);
+                case 'fbx':
+                    return await this.loadFBX(url);
+                case '3ds':
+                    return await this.load3DS(url);
+                case 'amf':
+                    return await this.loadAMF(url);
+                case 'gcode':
+                    return await this.loadGCODE(url);
+                case 'step':
+                case 'stp':
+                case 'iges':
+                case 'igs':
+                    return await this.loadCAD(url, type);
+                default:
+                    throw new Error('Unsupported file type: ' + fileType);
             }
         } catch (error) {
             console.error('Error loading model:', error);

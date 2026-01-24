@@ -35,10 +35,13 @@ services:
 
       # File Upload Settings (in bytes, default 100MB)
       - SILO_MAX_UPLOAD_SIZE=104857600
-      - SILO_ALLOWED_EXTENSIONS=stl,3mf
+      - SILO_ALLOWED_EXTENSIONS=stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d
 
       # Deduplication
       - SILO_DEDUP_ENABLED=true
+
+      # Development/Debug Settings
+      # - SILO_ENABLE_QUERY_STATS=true
 
       # OIDC/SSO Configuration (optional)
       # - SILO_OIDC_PROVIDER_URL=https://auth.example.com

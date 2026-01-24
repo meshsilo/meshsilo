@@ -82,7 +82,7 @@ PHPEOF
     # Settings
     cat >> "$CONFIG_FILE" << PHPEOF
 // Application Settings
-define('ALLOWED_EXTENSIONS', '${SILO_ALLOWED_EXTENSIONS:-stl,3mf}');
+define('ALLOWED_EXTENSIONS', '${SILO_ALLOWED_EXTENSIONS:-stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d}');
 define('MAX_UPLOAD_SIZE', '${SILO_MAX_UPLOAD_SIZE:-104857600}');
 define('DEDUP_ENABLED', ${SILO_DEDUP_ENABLED:-true});
 

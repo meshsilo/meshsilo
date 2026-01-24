@@ -77,6 +77,8 @@ class DatabaseResult {
 class Database {
     private $pdo;
     private $type;
+    private static $queryCount = 0;
+    private static $queryTime = 0;
 
     public function __construct($type, $config = []) {
         $this->type = $type;
@@ -85,14 +87,54 @@ class Database {
             $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['name']};charset=utf8mb4";
             $this->pdo = new PDO($dsn, $config['user'], $config['pass'], [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_PERSISTENT => true, // Persistent connections
+                PDO::ATTR_EMULATE_PREPARES => false, // Native prepared statements
             ]);
+            // MySQL-specific optimizations
+            $this->pdo->exec("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
         } else {
             $this->pdo = new PDO('sqlite:' . $config['path'], null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_PERSISTENT => true, // Persistent connections
             ]);
+            // SQLite-specific optimizations
+            $this->pdo->exec('PRAGMA journal_mode = WAL'); // Write-Ahead Logging
+            $this->pdo->exec('PRAGMA synchronous = NORMAL'); // Faster writes
+            $this->pdo->exec('PRAGMA cache_size = -64000'); // 64MB cache
+            $this->pdo->exec('PRAGMA temp_store = MEMORY'); // Temp tables in memory
+            $this->pdo->exec('PRAGMA mmap_size = 30000000000'); // Memory-mapped I/O
         }
+    }
+
+    // Query profiling methods
+    public static function getQueryCount(): int {
+        return self::$queryCount;
+    }
+
+    public static function getQueryTime(): float {
+        return self::$queryTime;
+    }
+
+    public static function resetStats(): void {
+        self::$queryCount = 0;
+        self::$queryTime = 0;
+    }
+
+    private function profileQuery(callable $callback) {
+        self::$queryCount++;
+        $start = microtime(true);
+        $result = $callback();
+        $time = microtime(true) - $start;
+        self::$queryTime += $time;
+
+        // Log slow queries (> 100ms)
+        if ($time > 0.1 && function_exists('logWarning')) {
+            logWarning('Slow query detected', ['time' => round($time, 3) . 's']);
+        }
+
+        return $result;
     }
 
     public function getType() {
@@ -104,17 +146,23 @@ class Database {
     }
 
     public function prepare($sql) {
-        // Return wrapped statement for SQLite3 API compatibility
-        return new DatabaseStatement($this->pdo->prepare($sql));
+        // Return wrapped statement for SQLite3 API compatibility with profiling
+        return $this->profileQuery(function() use ($sql) {
+            return new DatabaseStatement($this->pdo->prepare($sql));
+        });
     }
 
     public function query($sql) {
-        // Return wrapped result for SQLite3 API compatibility
-        return new DatabaseResult($this->pdo->query($sql));
+        // Return wrapped result for SQLite3 API compatibility with profiling
+        return $this->profileQuery(function() use ($sql) {
+            return new DatabaseResult($this->pdo->query($sql));
+        });
     }
 
     public function exec($sql) {
-        return $this->pdo->exec($sql);
+        return $this->profileQuery(function() use ($sql) {
+            return $this->pdo->exec($sql);
+        });
     }
 
     public function lastInsertId() {
@@ -1563,6 +1611,76 @@ function runMigrations($db) {
         } catch (Exception $e) {
             // Partial indexes may not be supported on all DB versions
             logDebug("Migration: Covering index $indexName skipped", ['error' => $e->getMessage()]);
+        }
+    }
+
+    // =====================
+    // Full-Text Search Indexes (for fast search)
+    // =====================
+    if ($type === 'mysql' && tableExists($db, 'models')) {
+        try {
+            // Check if FULLTEXT index exists
+            $result = $db->query("SHOW INDEX FROM models WHERE Key_name = 'idx_models_fulltext'");
+            if ($result->fetch() === false) {
+                $db->exec('CREATE FULLTEXT INDEX idx_models_fulltext ON models(name, description, creator)');
+                logInfo('Migration: Created FULLTEXT index on models', ['reason' => 'fast search']);
+            }
+        } catch (Exception $e) {
+            logDebug('Migration: FULLTEXT index skipped', ['error' => $e->getMessage()]);
+        }
+    } elseif ($type === 'sqlite' && tableExists($db, 'models')) {
+        // SQLite FTS5 virtual table for full-text search
+        try {
+            if (!tableExists($db, 'models_fts')) {
+                $db->exec("
+                    CREATE VIRTUAL TABLE models_fts USING fts5(
+                        name, description, creator,
+                        content='models',
+                        content_rowid='id'
+                    )
+                ");
+
+                // Populate FTS table
+                $db->exec("
+                    INSERT INTO models_fts(rowid, name, description, creator)
+                    SELECT id, name, COALESCE(description, ''), COALESCE(creator, '')
+                    FROM models WHERE parent_id IS NULL
+                ");
+
+                // Create triggers to keep FTS in sync
+                $db->exec("
+                    CREATE TRIGGER models_fts_insert AFTER INSERT ON models
+                    WHEN NEW.parent_id IS NULL
+                    BEGIN
+                        INSERT INTO models_fts(rowid, name, description, creator)
+                        VALUES (NEW.id, NEW.name, COALESCE(NEW.description, ''), COALESCE(NEW.creator, ''));
+                    END
+                ");
+
+                $db->exec("
+                    CREATE TRIGGER models_fts_delete AFTER DELETE ON models
+                    WHEN OLD.parent_id IS NULL
+                    BEGIN
+                        DELETE FROM models_fts WHERE rowid = OLD.id;
+                    END
+                ");
+
+                $db->exec("
+                    CREATE TRIGGER models_fts_update AFTER UPDATE ON models
+                    WHEN NEW.parent_id IS NULL
+                    BEGIN
+                        UPDATE models_fts
+                        SET name = NEW.name,
+                            description = COALESCE(NEW.description, ''),
+                            creator = COALESCE(NEW.creator, '')
+                        WHERE rowid = NEW.id;
+                    END
+                ");
+
+                logInfo('Migration: Created FTS5 virtual table for models', ['reason' => 'fast full-text search']);
+            }
+        } catch (Exception $e) {
+            logDebug('Migration: FTS5 table skipped', ['error' => $e->getMessage()]);
         }
     }
 }

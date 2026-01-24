@@ -14,6 +14,14 @@
                 <a href="#">Terms</a>
             </nav>
         </div>
+        <?php if (getenv('SILO_ENABLE_QUERY_STATS') === 'true'): ?>
+        <div class="query-stats" style="padding: 10px; margin-top: 10px; background: var(--background-secondary); border-top: 1px solid var(--border-color); font-size: 0.85em; color: var(--text-secondary); text-align: center;">
+            <strong>Query Stats:</strong>
+            <?= Database::getQueryCount() ?> queries in <?= number_format(Database::getQueryTime() * 1000, 2) ?>ms |
+            Peak Memory: <?= number_format(memory_get_peak_usage(true) / 1024 / 1024, 2) ?>MB |
+            Current: <?= number_format(memory_get_usage(true) / 1024 / 1024, 2) ?>MB
+        </div>
+        <?php endif; ?>
     </footer>
 
     <script>

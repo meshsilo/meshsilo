@@ -92,7 +92,7 @@ docker run -d \
 | `SILO_SITE_DESCRIPTION` | Site description | `3D Print File Manager` |
 | `SILO_SITE_URL` | External URL (for reverse proxy) | - |
 | `SILO_MAX_UPLOAD_SIZE` | Max upload size in bytes | `104857600` (100MB) |
-| `SILO_ALLOWED_EXTENSIONS` | Allowed file extensions | `stl,3mf` |
+| `SILO_ALLOWED_EXTENSIONS` | Allowed file extensions | `stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d` |
 | `SILO_DEDUP_ENABLED` | Enable file deduplication | `true` |
 
 ##### OIDC/SSO Configuration

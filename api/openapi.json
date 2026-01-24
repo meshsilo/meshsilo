@@ -99,7 +99,7 @@
             "name": "file_type",
             "in": "query",
             "description": "Filter by file type",
-            "schema": { "type": "string", "enum": ["stl", "3mf", "obj", "step"] }
+            "schema": { "type": "string", "enum": ["stl", "3mf", "obj", "ply", "amf", "gcode", "glb", "gltf", "fbx", "dae", "blend", "step", "stp", "iges", "igs", "3ds", "dxf", "off", "x3d"] }
           },
           {
             "name": "print_type",
@@ -159,7 +159,7 @@
                   "file": {
                     "type": "string",
                     "format": "binary",
-                    "description": "The 3D model file (STL, 3MF, OBJ, STEP)"
+                    "description": "The 3D model file (STL, 3MF, OBJ, PLY, AMF, GCODE, GLB, GLTF, FBX, DAE, BLEND, STEP, STP, IGES, IGS, 3DS, DXF, OFF, X3D, or ZIP archive)"
                   },
                   "name": {
                     "type": "string",
