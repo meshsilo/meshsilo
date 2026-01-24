@@ -1,14 +1,14 @@
 <?php
 /**
- * Silo Installation Wizard
+ * MeshSilo Installation Wizard
  *
  * This file guides users through the initial setup of Silo.
  * It should be deleted after installation is complete.
  */
 
 // Prevent running if already installed
-if (file_exists(__DIR__ . '/config.local.php')) {
-    die('Silo is already installed. Delete config.local.php to reinstall.');
+if (file_exists(__DIR__ . '/storage/db/config.local.php') || file_exists(__DIR__ . '/config.local.php')) {
+    die('MeshSilo is already installed. Delete storage/db/config.local.php to reinstall.');
 }
 
 session_start();
@@ -63,7 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else {
                 // SQLite - just check write permissions
-                $dbDir = __DIR__ . '/db';
+                $dbDir = __DIR__ . '/storage/db';
+                if (!is_dir($dbDir)) {
+                    @mkdir($dbDir, 0755, true);
+                }
                 if (!is_writable($dbDir)) {
                     $error = 'Database directory is not writable: ' . $dbDir;
                 } else {
@@ -100,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         case 'configure_site':
             $_SESSION['install']['site'] = [
-                'name' => trim($_POST['site_name'] ?? 'Silo'),
+                'name' => trim($_POST['site_name'] ?? 'MeshSilo'),
                 'description' => trim($_POST['site_description'] ?? '3D Model Library'),
                 'url' => trim($_POST['site_url'] ?? ''),
                 'force_url' => isset($_POST['force_url']) ? '1' : '0'
@@ -197,9 +200,10 @@ function checkRequirements() {
 
     // Directory permissions
     $dirs = [
-        'db' => __DIR__ . '/db',
-        'assets' => __DIR__ . '/assets',
-        'logs' => __DIR__ . '/logs'
+        'storage/db' => __DIR__ . '/storage/db',
+        'storage/assets' => __DIR__ . '/storage/assets',
+        'storage/logs' => __DIR__ . '/storage/logs',
+        'storage/cache' => __DIR__ . '/storage/cache'
     ];
 
     foreach ($dirs as $name => $path) {
@@ -215,11 +219,15 @@ function checkRequirements() {
     }
 
     // Config file
+    $configDir = __DIR__ . '/storage/db';
+    if (!is_dir($configDir)) {
+        @mkdir($configDir, 0755, true);
+    }
     $requirements['config_writable'] = [
         'name' => 'Config Directory',
         'required' => 'Writable',
-        'current' => is_writable(__DIR__) ? 'Writable' : 'Not Writable',
-        'passed' => is_writable(__DIR__)
+        'current' => is_writable($configDir) ? 'Writable' : 'Not Writable',
+        'passed' => is_writable($configDir)
     ];
 
     return $requirements;
@@ -247,7 +255,13 @@ function performInstallation($config) {
     try {
         // Create config file
         $configContent = generateConfigFile($config);
-        $configPath = __DIR__ . '/config.local.php';
+        $configPath = __DIR__ . '/storage/db/config.local.php';
+
+        // Ensure storage/db directory exists
+        $configDir = dirname($configPath);
+        if (!is_dir($configDir)) {
+            @mkdir($configDir, 0755, true);
+        }
 
         if (file_put_contents($configPath, $configContent) === false) {
             return 'Failed to write configuration file.';
@@ -280,7 +294,7 @@ function generateConfigFile($config) {
     $oidc = $config['oidc'];
 
     $content = "<?php\n";
-    $content .= "// Silo Local Configuration\n";
+    $content .= "// MeshSilo Local Configuration\n";
     $content .= "// Generated: " . date('Y-m-d H:i:s') . "\n\n";
 
     // Database configuration
@@ -319,7 +333,13 @@ function generateConfigFile($config) {
  */
 function initializeSQLiteDatabase($config) {
     try {
-        $dbPath = __DIR__ . '/db/silo.db';
+        $dbPath = __DIR__ . '/storage/db/meshsilo.db';
+
+        // Ensure storage/db directory exists
+        $dbDir = dirname($dbPath);
+        if (!is_dir($dbDir)) {
+            @mkdir($dbDir, 0755, true);
+        }
         $db = new SQLite3($dbPath);
         $db->enableExceptions(true);
 
@@ -534,7 +554,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 INSERT IGNORE INTO settings (`key`, `value`) VALUES
     ('auto_convert_stl', '0'),
-    ('site_name', 'Silo'),
+    ('site_name', 'MeshSilo'),
     ('site_description', 'Your 3D Model Library'),
     ('models_per_page', '20'),
     ('allow_registration', '1'),
@@ -637,7 +657,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 INSERT OR IGNORE INTO settings (key, value) VALUES
     ('auto_convert_stl', '0'),
-    ('site_name', 'Silo'),
+    ('site_name', 'MeshSilo'),
     ('site_description', 'Your 3D Model Library'),
     ('models_per_page', '20'),
     ('allow_registration', '1'),
@@ -684,7 +704,7 @@ foreach ($requirements as $req) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Install Silo</title>
+    <title>Install MeshSilo</title>
     <style>
         * {
             margin: 0;
@@ -890,7 +910,7 @@ foreach ($requirements as $req) {
     <div class="installer">
         <div class="logo">
             <div class="logo-icon">&#9653;</div>
-            <h1>Silo Installation</h1>
+            <h1>MeshSilo Installation</h1>
         </div>
 
         <div class="steps">
@@ -1027,7 +1047,7 @@ foreach ($requirements as $req) {
             <div class="form-group">
                 <label for="site_name">Site Name</label>
                 <input type="text" id="site_name" name="site_name" class="form-input"
-                    value="<?= htmlspecialchars($_SESSION['install']['site']['name'] ?? 'Silo') ?>">
+                    value="<?= htmlspecialchars($_SESSION['install']['site']['name'] ?? 'MeshSilo') ?>">
             </div>
 
             <div class="form-group">
@@ -1125,7 +1145,7 @@ foreach ($requirements as $req) {
         <ul style="list-style: none; margin-bottom: 1.5rem;">
             <li><strong>Database:</strong> <?= ucfirst($_SESSION['install']['db_type']) ?></li>
             <li><strong>Admin:</strong> <?= htmlspecialchars($_SESSION['install']['admin']['username']) ?></li>
-            <li><strong>Site Name:</strong> <?= htmlspecialchars($_SESSION['install']['site']['name'] ?? 'Silo') ?></li>
+            <li><strong>Site Name:</strong> <?= htmlspecialchars($_SESSION['install']['site']['name'] ?? 'MeshSilo') ?></li>
             <?php if (!empty($_SESSION['install']['site']['url'])): ?>
             <li><strong>Site URL:</strong> <?= htmlspecialchars($_SESSION['install']['site']['url']) ?></li>
             <?php endif; ?>
@@ -1136,7 +1156,7 @@ foreach ($requirements as $req) {
             <input type="hidden" name="action" value="install">
             <div class="btn-group">
                 <button type="submit" name="action" value="go_back" class="btn btn-secondary">Back</button>
-                <button type="submit" class="btn btn-primary">Install Silo</button>
+                <button type="submit" class="btn btn-primary">Install MeshSilo</button>
             </div>
         </form>
 
@@ -1146,7 +1166,7 @@ foreach ($requirements as $req) {
         <h2 style="text-align: center;">Installation Complete!</h2>
 
         <p style="text-align: center; margin: 1rem 0;">
-            Silo has been successfully installed. You can now log in with your admin account.
+            MeshSilo has been successfully installed. You can now log in with your admin account.
         </p>
 
         <div style="background-color: var(--color-bg); padding: 1rem; border-radius: var(--radius); margin: 1rem 0;">
