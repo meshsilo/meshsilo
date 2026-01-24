@@ -5,7 +5,8 @@
 
 require_once __DIR__ . '/includes/config.php';
 
-$db = getDatabase();
+// Get database connection
+$db = getDB();
 $result = $db->query("PRAGMA table_info(models)");
 
 echo "Current models table schema:\n";
