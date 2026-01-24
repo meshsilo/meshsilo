@@ -234,10 +234,10 @@ function getDB() {
                 }
             }
 
-            // Skip inline migrations - use cli/migrate.php instead
-            // This avoids database locks and timeouts from running
-            // 50+ table/column checks on every request
-            // runMigrations($db);
+            // Run migrations with caching - only checks once per hour (or immediately for CLI)
+            // This avoids database locks and timeouts from running 50+ checks on every request
+            // while still auto-migrating when deployments occur
+            runCachedMigrations($db);
         } catch (Exception $e) {
             logException($e, ['action' => 'database_connect']);
             throw $e;
@@ -495,6 +495,102 @@ function tableExists($db, $table) {
         $stmt = $db->prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = :table");
         $stmt->execute([':table' => $table]);
         return $stmt->fetchColumn() > 0;
+    }
+}
+
+/**
+ * Run migrations with caching to avoid checking on every request.
+ *
+ * Migrations only run when:
+ * - Cache file is missing or expired (default: 1 hour for web, always for CLI)
+ * - No other process is currently running migrations (lock file)
+ *
+ * @param Database $db Database connection
+ * @param int $cacheLifetime Cache lifetime in seconds (default: 3600 = 1 hour, 0 = always run)
+ * @return bool True if migrations ran, false if skipped (cached/locked)
+ */
+function runCachedMigrations($db, $cacheLifetime = 3600) {
+    // Define cache paths
+    $cacheDir = defined('STORAGE_PATH') ? STORAGE_PATH . '/cache' : __DIR__ . '/../storage/cache';
+    $cacheFile = $cacheDir . '/.migrations_checked';
+    $lockFile = $cacheDir . '/.migrations_lock';
+
+    // Ensure cache directory exists
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0755, true);
+    }
+
+    // CLI always runs migrations (useful for deploy scripts)
+    $isCli = php_sapi_name() === 'cli';
+    if ($isCli) {
+        $cacheLifetime = 0;
+    }
+
+    // Check if cache is still valid
+    if ($cacheLifetime > 0 && file_exists($cacheFile)) {
+        $cacheAge = time() - filemtime($cacheFile);
+        if ($cacheAge < $cacheLifetime) {
+            // Cache is fresh, skip migrations
+            return false;
+        }
+    }
+
+    // Try to acquire lock (non-blocking to prevent request pile-up)
+    $lockHandle = @fopen($lockFile, 'c');
+    if ($lockHandle === false) {
+        // Can't open lock file, skip this time
+        return false;
+    }
+
+    // Try non-blocking exclusive lock
+    if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
+        // Another process is running migrations, skip
+        fclose($lockHandle);
+        return false;
+    }
+
+    try {
+        // Double-check cache after acquiring lock (another process may have just finished)
+        if ($cacheLifetime > 0 && file_exists($cacheFile)) {
+            $cacheAge = time() - filemtime($cacheFile);
+            if ($cacheAge < $cacheLifetime) {
+                // Cache became fresh while we were waiting
+                flock($lockHandle, LOCK_UN);
+                fclose($lockHandle);
+                return false;
+            }
+        }
+
+        // Run the actual migrations
+        runMigrations($db);
+
+        // Update cache timestamp
+        $result = @file_put_contents($cacheFile, json_encode([
+            'checked_at' => date('c'),
+            'db_type' => $db->getType(),
+            'php_sapi' => php_sapi_name()
+        ]));
+
+        if ($result !== false) {
+            @chmod($cacheFile, 0644);
+        }
+
+        return true;
+    } catch (Exception $e) {
+        // Log error but don't break the request
+        if (function_exists('logException')) {
+            logException($e, ['action' => 'cached_migrations']);
+        }
+        return false;
+    } finally {
+        // Release lock
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+
+        // Clean up stale lock file
+        if (file_exists($lockFile) && (time() - filemtime($lockFile)) > 300) {
+            @unlink($lockFile);
+        }
     }
 }
 
