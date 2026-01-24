@@ -118,10 +118,10 @@ class Logger {
         // Also write to stdout/stderr when running in Docker
         if (getenv('MESHSILO_DOCKER') === 'true') {
             $streamName = ($level <= self::WARNING) ? 'php://stderr' : 'php://stdout';
-            $stream = fopen($streamName, 'w');
+            $stream = @fopen($streamName, 'w');
             if ($stream) {
-                fwrite($stream, "[{$channel}] {$logEntry}");
-                fclose($stream);
+                @fwrite($stream, "[{$channel}] {$logEntry}");
+                @fclose($stream);
             }
         }
     }
