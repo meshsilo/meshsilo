@@ -1190,7 +1190,7 @@ RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]</code>
 
         <form method="post">
             <div class="btn-group" style="flex-direction: column; gap: 0.5rem;">
-                <a href="login.php" class="btn btn-primary btn-full" style="text-align: center; text-decoration: none;">Go to Login</a>
+                <a href="/login" class="btn btn-primary btn-full" style="text-align: center; text-decoration: none;">Go to Login</a>
                 <button type="submit" name="action" value="delete_installer" class="btn btn-danger btn-full">
                     Delete Installer (Recommended)
                 </button>
