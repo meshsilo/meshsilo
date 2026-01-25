@@ -40,7 +40,7 @@ function basePath($path = '') {
     return '/' . ltrim($path, '/');
 }
 
-// Include logging, database, authentication, permissions, OIDC and licensing
+// Include logging, database, authentication, permissions, OIDC, mail and licensing
 require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
@@ -48,6 +48,7 @@ require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/oidc.php';
 require_once __DIR__ . '/saml.php';
 require_once __DIR__ . '/ldap.php';
+require_once __DIR__ . '/Mail.php';
 require_once __DIR__ . '/license.php';
 
 // Include router and helpers (if not already loaded by front controller)

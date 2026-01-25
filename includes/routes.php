@@ -64,6 +64,13 @@ $router->post('/login', ['file' => 'app/pages/login.php'], 'login.post')
 $router->get('/logout', ['file' => 'app/pages/logout.php'], 'logout');
 $router->get('/oidc-callback', ['file' => 'app/pages/oidc-callback.php'], 'oidc.callback');
 
+// Password Reset
+$router->get('/forgot-password', ['file' => 'app/pages/forgot-password.php'], 'password.forgot');
+$router->post('/forgot-password', ['file' => 'app/pages/forgot-password.php'], 'password.forgot.post')
+    ->middleware('ratelimit:3,60,password_reset'); // 3 attempts per minute
+$router->get('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset');
+$router->post('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset.post');
+
 // SAML SSO
 $router->post('/saml-acs', ['file' => 'app/pages/saml-acs.php'], 'saml.acs');
 $router->get('/saml-metadata', ['file' => 'app/pages/saml-metadata.php'], 'saml.metadata');
@@ -76,6 +83,11 @@ $router->post('/install', ['file' => 'install.php'], 'install.post');
 // ============================================================================
 
 $router->group(['middleware' => ['auth']], function($router) {
+    // User Settings
+    $router->get('/settings', ['file' => 'app/pages/settings.php'], 'settings');
+    $router->post('/settings', ['file' => 'app/pages/settings.php'], 'settings.post');
+    $router->get('/profile', ['file' => 'app/pages/settings.php'], 'profile'); // Alias
+
     // Favorites
     $router->get('/favorites', ['file' => 'app/pages/favorites.php'], 'favorites');
 

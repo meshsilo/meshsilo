@@ -86,8 +86,19 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                     <?php if ($user['is_admin']): ?>
                         <a href="<?= route('admin.settings') ?>" class="btn btn-secondary">Admin</a>
                     <?php endif; ?>
-                    <span class="user-name"><?= htmlspecialchars($user['username']) ?></span>
-                    <a href="<?= route('logout') ?>" class="btn btn-primary">Log Out</a>
+                    <div class="user-dropdown">
+                        <button type="button" class="user-dropdown-toggle">
+                            <span class="user-name"><?= htmlspecialchars($user['username']) ?></span>
+                            <span class="dropdown-arrow">&#9662;</span>
+                        </button>
+                        <div class="user-dropdown-menu">
+                            <a href="<?= route('settings') ?>">&#9881; Settings</a>
+                            <a href="<?= route('favorites') ?>">&#9829; Favorites</a>
+                            <a href="<?= route('print-queue') ?>">&#128424; Print Queue</a>
+                            <div class="dropdown-divider"></div>
+                            <a href="<?= route('logout') ?>">&#10140; Log Out</a>
+                        </div>
+                    </div>
                 <?php else: ?>
                     <a href="<?= route('login') ?>" class="btn btn-primary">Log In</a>
                 <?php endif; ?>

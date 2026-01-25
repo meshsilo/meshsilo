@@ -521,6 +521,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add smooth scrolling
     document.documentElement.style.scrollBehavior = 'smooth';
+
+    // User dropdown menu toggle
+    const userDropdown = document.querySelector('.user-dropdown');
+    if (userDropdown) {
+        const toggle = userDropdown.querySelector('.user-dropdown-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userDropdown.classList.toggle('open');
+            });
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!userDropdown.contains(e.target)) {
+                userDropdown.classList.remove('open');
+            }
+        });
+
+        // Close dropdown on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                userDropdown.classList.remove('open');
+            }
+        });
+    }
 });
 
 // Expose toast function globally for use in other scripts

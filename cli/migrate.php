@@ -1969,5 +1969,39 @@ function getMigrationList() {
                 }
             }
         ],
+        // Password Reset Tokens
+        [
+            'name' => 'Password resets table',
+            'description' => 'Stores password reset tokens for forgot password flow',
+            'check' => fn($db) => tableExists($db, 'password_resets'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE password_resets (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        email VARCHAR(255) NOT NULL,
+                        token VARCHAR(64) NOT NULL UNIQUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        expires_at TIMESTAMP NOT NULL,
+                        used_at TIMESTAMP NULL,
+                        INDEX idx_password_resets_email (email),
+                        INDEX idx_password_resets_token (token),
+                        INDEX idx_password_resets_expires (expires_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE password_resets (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        email TEXT NOT NULL,
+                        token TEXT NOT NULL UNIQUE,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        expires_at DATETIME NOT NULL,
+                        used_at DATETIME
+                    )');
+                    $db->exec('CREATE INDEX idx_password_resets_email ON password_resets(email)');
+                    $db->exec('CREATE INDEX idx_password_resets_token ON password_resets(token)');
+                    $db->exec('CREATE INDEX idx_password_resets_expires ON password_resets(expires_at)');
+                }
+            }
+        ],
     ];
 }

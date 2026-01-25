@@ -31,6 +31,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_oidc'])) {
     exit;
 }
 
+// Handle Email test AJAX request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
+    header('Content-Type: application/json');
+
+    $testEmail = trim($_POST['test_email_address'] ?? '');
+
+    if (empty($testEmail) || !filter_var($testEmail, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid email address.']);
+        exit;
+    }
+
+    try {
+        $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
+
+        $mail = Mail::create()
+            ->to($testEmail)
+            ->subject("Test Email from $siteName")
+            ->body("
+                <h2>Email Configuration Test</h2>
+                <p>This is a test email from your $siteName installation.</p>
+                <p>If you're receiving this, your email settings are configured correctly!</p>
+                <p style='margin-top: 20px; color: #666; font-size: 0.9em;'>
+                    <strong>Configuration Details:</strong><br>
+                    Driver: " . htmlspecialchars(getSetting('mail_driver', 'mail')) . "<br>
+                    Host: " . htmlspecialchars(getSetting('mail_host', 'localhost')) . "<br>
+                    Port: " . htmlspecialchars(getSetting('mail_port', '587')) . "<br>
+                    From: " . htmlspecialchars(getSetting('mail_from_address', 'noreply@example.com')) . "
+                </p>
+                <p style='margin-top: 20px;'>Sent at: " . date('Y-m-d H:i:s') . "</p>
+            ")
+            ->send();
+
+        logInfo('Test email sent', ['to' => $testEmail, 'by' => getCurrentUser()['username']]);
+        echo json_encode(['success' => true, 'message' => 'Test email sent successfully to ' . $testEmail]);
+    } catch (Exception $e) {
+        logError('Test email failed', ['to' => $testEmail, 'error' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'Failed to send email: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 // Handle php.ini save request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
     $phpIniPath = __DIR__ . '/../php.ini';
@@ -143,6 +184,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Slicer settings
     $enabledSlicers = isset($_POST['enabled_slicers']) ? $_POST['enabled_slicers'] : [];
     setSetting('enabled_slicers', implode(',', $enabledSlicers));
+
+    // Email/SMTP settings
+    $mailDriver = trim($_POST['mail_driver'] ?? 'mail');
+    $mailHost = trim($_POST['mail_host'] ?? '');
+    $mailPort = (int)($_POST['mail_port'] ?? 587);
+    $mailUsername = trim($_POST['mail_username'] ?? '');
+    $mailPassword = trim($_POST['mail_password'] ?? '');
+    $mailEncryption = trim($_POST['mail_encryption'] ?? 'tls');
+    $mailFromAddress = trim($_POST['mail_from_address'] ?? '');
+    $mailFromName = trim($_POST['mail_from_name'] ?? '');
+
+    setSetting('mail_driver', $mailDriver);
+    setSetting('mail_host', $mailHost);
+    setSetting('mail_port', (string)$mailPort);
+    setSetting('mail_username', $mailUsername);
+    if (!empty($mailPassword)) {
+        setSetting('mail_password', $mailPassword);
+    }
+    setSetting('mail_encryption', $mailEncryption);
+    setSetting('mail_from_address', $mailFromAddress);
+    setSetting('mail_from_name', $mailFromName);
 
     logInfo('Settings updated', [
         'auto_convert_stl' => $autoConvert,
@@ -580,6 +642,106 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </section>
 
+                    <section class="settings-section">
+                        <h2>Email / SMTP Settings</h2>
+                        <p class="form-help" style="margin-bottom: 1rem;">Configure email settings for password reset links, notifications, and other system emails.</p>
+
+                        <div class="form-group">
+                            <label for="mail_driver">Email Driver</label>
+                            <select id="mail_driver" name="mail_driver" class="form-input">
+                                <option value="mail" <?= ($settings['mail_driver'] ?? 'mail') === 'mail' ? 'selected' : '' ?>>PHP mail() - Default</option>
+                                <option value="smtp" <?= ($settings['mail_driver'] ?? '') === 'smtp' ? 'selected' : '' ?>>SMTP Server</option>
+                                <option value="log" <?= ($settings['mail_driver'] ?? '') === 'log' ? 'selected' : '' ?>>Log to File (Testing)</option>
+                            </select>
+                            <p class="form-help">PHP mail() uses your server's sendmail. SMTP connects directly to a mail server. Log mode writes emails to a file for testing.</p>
+                        </div>
+
+                        <div id="smtp-settings" style="<?= ($settings['mail_driver'] ?? 'mail') !== 'smtp' ? 'display: none;' : '' ?>">
+                            <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">SMTP Configuration</h3>
+
+                            <div class="form-row-grid">
+                                <div class="form-group">
+                                    <label for="mail_host">SMTP Host</label>
+                                    <input type="text" id="mail_host" name="mail_host" class="form-input"
+                                        value="<?= htmlspecialchars($settings['mail_host'] ?? '') ?>"
+                                        placeholder="smtp.gmail.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mail_port">SMTP Port</label>
+                                    <input type="number" id="mail_port" name="mail_port" class="form-input"
+                                        value="<?= htmlspecialchars($settings['mail_port'] ?? '587') ?>"
+                                        placeholder="587">
+                                    <p class="form-help">Common ports: 587 (TLS), 465 (SSL), 25 (unencrypted)</p>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="mail_encryption">Encryption</label>
+                                <select id="mail_encryption" name="mail_encryption" class="form-input">
+                                    <option value="tls" <?= ($settings['mail_encryption'] ?? 'tls') === 'tls' ? 'selected' : '' ?>>TLS (Recommended)</option>
+                                    <option value="ssl" <?= ($settings['mail_encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>>SSL</option>
+                                    <option value="none" <?= ($settings['mail_encryption'] ?? '') === 'none' ? 'selected' : '' ?>>None (Not Recommended)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row-grid">
+                                <div class="form-group">
+                                    <label for="mail_username">SMTP Username</label>
+                                    <input type="text" id="mail_username" name="mail_username" class="form-input"
+                                        value="<?= htmlspecialchars($settings['mail_username'] ?? '') ?>"
+                                        placeholder="your-email@gmail.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mail_password">SMTP Password</label>
+                                    <input type="password" id="mail_password" name="mail_password" class="form-input"
+                                        placeholder="<?= !empty($settings['mail_password']) ? '••••••••' : 'App password or SMTP password' ?>">
+                                    <p class="form-help">Leave blank to keep existing password.</p>
+                                </div>
+                            </div>
+
+                            <details class="provider-presets" style="margin-top: 0.5rem;">
+                                <summary style="cursor: pointer; color: var(--primary-color);">Common SMTP configurations</summary>
+                                <ul style="margin: 0.5rem 0 0 1rem; font-size: 0.875rem;">
+                                    <li><strong>Gmail:</strong> smtp.gmail.com:587 (TLS) - Requires App Password</li>
+                                    <li><strong>Outlook/Office 365:</strong> smtp.office365.com:587 (TLS)</li>
+                                    <li><strong>SendGrid:</strong> smtp.sendgrid.net:587 (TLS)</li>
+                                    <li><strong>Mailgun:</strong> smtp.mailgun.org:587 (TLS)</li>
+                                    <li><strong>Amazon SES:</strong> email-smtp.{region}.amazonaws.com:587 (TLS)</li>
+                                </ul>
+                            </details>
+                        </div>
+
+                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">Sender Information</h3>
+
+                        <div class="form-row-grid">
+                            <div class="form-group">
+                                <label for="mail_from_address">From Email Address</label>
+                                <input type="email" id="mail_from_address" name="mail_from_address" class="form-input"
+                                    value="<?= htmlspecialchars($settings['mail_from_address'] ?? '') ?>"
+                                    placeholder="noreply@yourdomain.com">
+                                <p class="form-help">The email address shown as the sender.</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="mail_from_name">From Name</label>
+                                <input type="text" id="mail_from_name" name="mail_from_name" class="form-input"
+                                    value="<?= htmlspecialchars($settings['mail_from_name'] ?? (defined('SITE_NAME') ? SITE_NAME : 'Silo')) ?>"
+                                    placeholder="<?= defined('SITE_NAME') ? SITE_NAME : 'Silo' ?>">
+                                <p class="form-help">The name shown as the sender.</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1.5rem;">
+                            <label for="test_email_address">Test Email Configuration</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                                <input type="email" id="test_email_address" class="form-input" style="flex: 1;"
+                                    placeholder="Enter email address to send test">
+                                <button type="button" id="test-email" class="btn btn-secondary">Send Test Email</button>
+                            </div>
+                            <div id="email-test-result" style="margin-top: 0.5rem;"></div>
+                            <p class="form-help">Save settings first, then send a test email to verify your configuration.</p>
+                        </div>
+                    </section>
+
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary">Reset to Defaults</button>
                         <button type="submit" class="btn btn-primary">Save Settings</button>
@@ -688,6 +850,64 @@ document.getElementById('test-oidc').addEventListener('click', async function() 
 
     btn.disabled = false;
     btn.textContent = 'Test Connection';
+});
+
+// Email driver toggle - show/hide SMTP settings
+document.getElementById('mail_driver').addEventListener('change', function() {
+    const smtpSettings = document.getElementById('smtp-settings');
+    if (this.value === 'smtp') {
+        smtpSettings.style.display = '';
+    } else {
+        smtpSettings.style.display = 'none';
+    }
+});
+
+// Test email button
+document.getElementById('test-email').addEventListener('click', async function() {
+    const resultDiv = document.getElementById('email-test-result');
+    const emailInput = document.getElementById('test_email_address');
+    const btn = this;
+    const email = emailInput.value.trim();
+
+    if (!email) {
+        resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">Please enter an email address.</div>';
+        emailInput.focus();
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    resultDiv.innerHTML = '';
+
+    try {
+        const formData = new FormData();
+        formData.append('test_email', '1');
+        formData.append('test_email_address', email);
+
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            resultDiv.innerHTML = '<div class="alert alert-success" style="margin: 0;">' +
+                '<strong>Success!</strong> ' + result.message +
+                '</div>';
+        } else {
+            resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
+                '<strong>Failed:</strong> ' + result.message +
+                '</div>';
+        }
+    } catch (error) {
+        resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
+            '<strong>Error:</strong> ' + error.message +
+            '</div>';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send Test Email';
 });
 </script>
 

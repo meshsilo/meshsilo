@@ -35,10 +35,10 @@ if ($forceSiteUrl && !empty($siteUrl) && php_sapi_name() !== 'cli') {
 }
 
 // Pages that don't require authentication (old direct-access pattern)
-$publicPages = ['login.php', 'oidc-callback.php', 'install.php'];
+$publicPages = ['login.php', 'oidc-callback.php', 'install.php', 'forgot-password.php', 'reset-password.php'];
 
 // Routes that don't require authentication (router pattern)
-$publicRoutes = ['/login', '/logout', '/oidc-callback', '/install'];
+$publicRoutes = ['/login', '/logout', '/oidc-callback', '/install', '/forgot-password', '/reset-password'];
 
 // Get current page filename (for direct access)
 $currentPage = basename($_SERVER['PHP_SELF']);
