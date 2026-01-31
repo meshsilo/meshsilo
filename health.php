@@ -36,7 +36,7 @@ $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 if (!empty($apiKey)) {
     $db = getDB();
     $stmt = $db->prepare('SELECT id FROM api_keys WHERE api_key = :key AND is_active = 1');
-    $stmt->bindValue(':key', $apiKey, SQLITE3_TEXT);
+    $stmt->bindValue(':key', $apiKey, PDO::PARAM_STR);
     $result = $stmt->execute();
     $authorized = $result->fetchArray() !== false;
 }

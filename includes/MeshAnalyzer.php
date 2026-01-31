@@ -318,9 +318,9 @@ class MeshAnalyzer {
         $errors = !empty($analysisResult['issues']) ? json_encode($analysisResult['issues']) : null;
 
         $stmt = $db->prepare('UPDATE models SET is_manifold = :manifold, mesh_errors = :errors WHERE id = :id');
-        $stmt->bindValue(':manifold', $isManifold === null ? null : ($isManifold ? 1 : 0), SQLITE3_INTEGER);
-        $stmt->bindValue(':errors', $errors, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':manifold', $isManifold === null ? null : ($isManifold ? 1 : 0), PDO::PARAM_INT);
+        $stmt->bindValue(':errors', $errors, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 
         return $stmt->execute() !== false;
     }

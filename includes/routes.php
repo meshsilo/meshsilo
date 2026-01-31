@@ -78,6 +78,10 @@ $router->get('/saml-metadata', ['file' => 'app/pages/saml-metadata.php'], 'saml.
 $router->get('/install', ['file' => 'install.php'], 'install');
 $router->post('/install', ['file' => 'install.php'], 'install.post');
 
+// Database update page (standalone, permission check in page)
+$router->get('/update', ['file' => 'app/pages/update.php'], 'update');
+$router->post('/update', ['file' => 'app/pages/update.php'], 'update.run');
+
 // ============================================================================
 // AUTHENTICATED USER PAGES
 // ============================================================================
@@ -121,9 +125,10 @@ $router->get('/download-all/{id:\d+}', ['file' => 'app/actions/download-all.php'
 // ============================================================================
 
 $router->group(['prefix' => '/actions'], function($router) {
-    // File downloads
+    // File downloads and previews
     $router->get('/download', ['file' => 'app/actions/download.php'], 'actions.download');
     $router->get('/download-all', ['file' => 'app/actions/download-all.php'], 'actions.download.all');
+    $router->get('/preview', ['file' => 'app/actions/preview.php'], 'actions.preview');
 
     // Favorites (AJAX)
     $router->post('/favorite', ['file' => 'app/actions/favorite.php'], 'actions.favorite');
@@ -151,6 +156,7 @@ $router->group(['prefix' => '/actions'], function($router) {
     $router->post('/mass-action', ['file' => 'app/actions/mass-action.php'], 'actions.mass');
 
     // Convert part (STL to 3MF)
+    $router->get('/convert-part', ['file' => 'app/actions/convert-part.php'], 'actions.convert.get');
     $router->post('/convert-part', ['file' => 'app/actions/convert-part.php'], 'actions.convert');
 
     // Duplicate checking
@@ -161,6 +167,9 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Reorder parts
     $router->post('/reorder-parts', ['file' => 'app/actions/reorder-parts.php'], 'actions.reorder');
+
+    // Batch rename parts
+    $router->post('/batch-rename', ['file' => 'app/actions/batch-rename.php'], 'actions.batch.rename');
 
     // Related models
     $router->get('/related-models', ['file' => 'app/actions/related-models.php'], 'actions.related');
@@ -193,6 +202,7 @@ $router->group(['prefix' => '/actions'], function($router) {
     $router->get('/qrcode', ['file' => 'app/actions/qrcode.php'], 'actions.qrcode');
 
     // Share links
+    $router->get('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share.get');
     $router->post('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share');
 
     // Notifications
@@ -208,6 +218,7 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Folders
     $router->post('/folder', ['file' => 'app/actions/folder.php'], 'actions.folder');
+    $router->post('/part-folders', ['file' => 'app/actions/part-folders.php'], 'actions.part.folders');
 
     // Smart collections
     $router->post('/smart-collection', ['file' => 'app/actions/smart-collection.php'], 'actions.smart.collection');
@@ -228,6 +239,10 @@ $router->group(['prefix' => '/actions'], function($router) {
     // Import/Export
     $router->post('/import', ['file' => 'app/actions/import.php'], 'actions.import');
     $router->post('/export-import', ['file' => 'app/actions/export-import.php'], 'actions.export');
+    $router->get('/export-download', ['file' => 'app/actions/export-download.php'], 'actions.export.download');
+
+    // Model links
+    $router->post('/model-links', ['file' => 'app/actions/model-links.php'], 'actions.model.links');
 
     // Bulk upload
     $router->post('/bulk-upload', ['file' => 'app/actions/bulk-upload.php'], 'actions.bulk.upload');
@@ -243,6 +258,16 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Branding
     $router->post('/branding', ['file' => 'app/actions/branding.php'], 'actions.branding');
+
+    // Mesh repair/analysis
+    $router->post('/mesh-repair', ['file' => 'app/actions/mesh-repair.php'], 'actions.mesh.repair');
+
+    // Annotations
+    $router->get('/annotations', ['file' => 'app/actions/annotations.php'], 'actions.annotations.get');
+    $router->post('/annotations', ['file' => 'app/actions/annotations.php'], 'actions.annotations');
+
+    // Volume calculation
+    $router->post('/calculate-volume', ['file' => 'app/actions/calculate-volume.php'], 'actions.volume');
 });
 
 // ============================================================================
@@ -250,9 +275,16 @@ $router->group(['prefix' => '/actions'], function($router) {
 // ============================================================================
 
 $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($router) {
+    // System Health Dashboard
+    $router->get('/health', ['file' => 'app/admin/health.php'], 'admin.health');
+
     // Settings
     $router->get('/settings', ['file' => 'app/admin/settings.php'], 'admin.settings');
     $router->post('/settings', ['file' => 'app/admin/settings.php'], 'admin.settings.save');
+
+    // Features
+    $router->get('/features', ['file' => 'app/admin/features.php'], 'admin.features');
+    $router->post('/features', ['file' => 'app/admin/features.php'], 'admin.features.save');
 
     // User management
     $router->get('/users', ['file' => 'app/admin/users.php'], 'admin.users');
@@ -262,6 +294,22 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     // Groups
     $router->get('/groups', ['file' => 'app/admin/groups.php'], 'admin.groups');
     $router->post('/groups', ['file' => 'app/admin/groups.php'], 'admin.groups.save');
+
+    // Sessions
+    $router->get('/sessions', ['file' => 'app/admin/sessions.php'], 'admin.sessions');
+    $router->post('/sessions', ['file' => 'app/admin/sessions.php'], 'admin.sessions.action');
+
+    // SCIM User Provisioning
+    $router->get('/scim', ['file' => 'app/admin/scim.php'], 'admin.scim');
+    $router->post('/scim', ['file' => 'app/admin/scim.php'], 'admin.scim.save');
+
+    // LDAP/Active Directory
+    $router->get('/ldap', ['file' => 'app/admin/ldap.php'], 'admin.ldap');
+    $router->post('/ldap', ['file' => 'app/admin/ldap.php'], 'admin.ldap.save');
+
+    // OAuth2 Clients
+    $router->get('/oauth-clients', ['file' => 'app/admin/oauth-clients.php'], 'admin.oauth-clients');
+    $router->post('/oauth-clients', ['file' => 'app/admin/oauth-clients.php'], 'admin.oauth-clients.save');
 
     // Categories
     $router->get('/categories', ['file' => 'app/admin/categories.php'], 'admin.categories');
@@ -297,10 +345,6 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     $router->get('/webhooks', ['file' => 'app/admin/webhooks.php'], 'admin.webhooks');
     $router->post('/webhooks', ['file' => 'app/admin/webhooks.php'], 'admin.webhooks.save');
 
-    // License
-    $router->get('/license', ['file' => 'app/admin/license.php'], 'admin.license');
-    $router->post('/license', ['file' => 'app/admin/license.php'], 'admin.license.save');
-
     // Audit Log
     $router->get('/audit-log', ['file' => 'app/admin/audit-log.php'], 'admin.audit-log');
 
@@ -311,6 +355,18 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     // Analytics
     $router->get('/analytics', ['file' => 'app/admin/analytics.php'], 'admin.analytics');
     $router->post('/analytics', ['file' => 'app/admin/analytics.php'], 'admin.analytics.action');
+
+    // Security Headers
+    $router->get('/security-headers', ['file' => 'app/admin/security-headers.php'], 'admin.security-headers');
+    $router->post('/security-headers', ['file' => 'app/admin/security-headers.php'], 'admin.security-headers.save');
+
+    // Scheduled Tasks
+    $router->get('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler');
+    $router->post('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler.action');
+
+    // Backup & Recovery
+    $router->get('/backups', ['file' => 'app/admin/backups.php'], 'admin.backups');
+    $router->post('/backups', ['file' => 'app/admin/backups.php'], 'admin.backups.action');
 
     // Routes (debugging)
     $router->get('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes');
@@ -323,6 +379,9 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
 // ============================================================================
 
 $router->group(['prefix' => '/api'], function($router) {
+    // GraphQL endpoint
+    $router->any('/graphql', ['file' => 'api/graphql.php'], 'api.graphql');
+
     // Redirect to API handler
     $router->any('/models', ['file' => 'app/api/index.php'], 'api.models');
     $router->any('/models/{id:\d+}', ['file' => 'app/api/index.php', 'map' => ['id' => 'id']], 'api.model');

@@ -245,8 +245,8 @@ class ThumbnailGenerator {
         self::ensureThumbnailColumn($db);
 
         $stmt = $db->prepare('UPDATE models SET thumbnail_path = :path WHERE id = :id');
-        $stmt->bindValue(':path', $thumbnailPath, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':path', $thumbnailPath, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 
         return $stmt->execute() !== false;
     }
@@ -319,7 +319,7 @@ class ThumbnailGenerator {
             ORDER BY CASE WHEN file_type = '3mf' THEN 0 ELSE 1 END, id DESC
             LIMIT :limit
         ");
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $result = $stmt->execute();
 
         $results = [
@@ -329,7 +329,7 @@ class ThumbnailGenerator {
             'skipped' => 0
         ];
 
-        while ($model = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($model = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $results['processed']++;
 
             $thumbnail = self::generateThumbnail($model);

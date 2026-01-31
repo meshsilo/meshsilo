@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
@@ -35,7 +35,7 @@ switch ($action) {
         // Get or create tag
         if ($tagId) {
             $stmt = $db->prepare('SELECT id FROM tags WHERE id = :id');
-            $stmt->bindValue(':id', $tagId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $tagId, PDO::PARAM_INT);
             $result = $stmt->execute();
             if (!$result->fetchArray()) {
                 $tagId = 0;
@@ -45,9 +45,9 @@ switch ($action) {
         if (!$tagId && $tagName) {
             // Check if tag exists by name
             $stmt = $db->prepare('SELECT id FROM tags WHERE LOWER(name) = LOWER(:name)');
-            $stmt->bindValue(':name', $tagName, SQLITE3_TEXT);
+            $stmt->bindValue(':name', $tagName, PDO::PARAM_STR);
             $result = $stmt->execute();
-            $row = $result->fetchArray(SQLITE3_ASSOC);
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
             if ($row) {
                 $tagId = $row['id'];
@@ -57,8 +57,8 @@ switch ($action) {
                 $color = $colors[array_rand($colors)];
 
                 $stmt = $db->prepare('INSERT INTO tags (name, color) VALUES (:name, :color)');
-                $stmt->bindValue(':name', $tagName, SQLITE3_TEXT);
-                $stmt->bindValue(':color', $color, SQLITE3_TEXT);
+                $stmt->bindValue(':name', $tagName, PDO::PARAM_STR);
+                $stmt->bindValue(':color', $color, PDO::PARAM_STR);
                 $stmt->execute();
                 $tagId = $db->lastInsertRowID();
             }
@@ -111,8 +111,8 @@ switch ($action) {
 
         foreach ($modelIds as $modelId) {
             $stmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
-            $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-            $stmt->bindValue(':category_id', $categoryId, SQLITE3_INTEGER);
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+            $stmt->bindValue(':category_id', $categoryId, PDO::PARAM_INT);
             if ($stmt->execute()) {
                 $successCount++;
             } else {
@@ -134,8 +134,8 @@ switch ($action) {
 
         foreach ($modelIds as $modelId) {
             $stmt = $db->prepare('DELETE FROM model_categories WHERE model_id = :model_id AND category_id = :category_id');
-            $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-            $stmt->bindValue(':category_id', $categoryId, SQLITE3_INTEGER);
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+            $stmt->bindValue(':category_id', $categoryId, PDO::PARAM_INT);
             if ($stmt->execute()) {
                 $successCount++;
             } else {
@@ -152,8 +152,8 @@ switch ($action) {
 
         foreach ($modelIds as $modelId) {
             $stmt = $db->prepare('UPDATE models SET is_archived = :archived WHERE id = :id');
-            $stmt->bindValue(':archived', $archive, SQLITE3_INTEGER);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':archived', $archive, PDO::PARAM_INT);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             if ($stmt->execute()) {
                 $successCount++;
             } else {
@@ -175,14 +175,15 @@ switch ($action) {
         foreach ($modelIds as $modelId) {
             // Get model info for logging
             $stmt = $db->prepare('SELECT name FROM models WHERE id = :id');
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $result = $stmt->execute();
-            $model = $result->fetchArray(SQLITE3_ASSOC);
+            $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
             if ($model) {
                 // Delete model (cascade will handle parts, tags, etc.)
-                $stmt = $db->prepare('DELETE FROM models WHERE id = :id OR parent_id = :id');
-                $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+                $stmt = $db->prepare('DELETE FROM models WHERE id = :id1 OR parent_id = :id2');
+                $stmt->bindValue(':id1', $modelId, PDO::PARAM_INT);
+                $stmt->bindValue(':id2', $modelId, PDO::PARAM_INT);
                 if ($stmt->execute()) {
                     $successCount++;
                     logActivity($user['id'], 'delete', 'model', $modelId, $model['name']);
@@ -213,8 +214,8 @@ switch ($action) {
 
         foreach ($modelIds as $modelId) {
             $stmt = $db->prepare('UPDATE models SET collection = :collection WHERE id = :id');
-            $stmt->bindValue(':collection', $collection ?: null, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':collection', $collection ?: null, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             if ($stmt->execute()) {
                 $successCount++;
             } else {
@@ -231,8 +232,8 @@ switch ($action) {
 
         foreach ($modelIds as $modelId) {
             $stmt = $db->prepare('UPDATE models SET creator = :creator WHERE id = :id');
-            $stmt->bindValue(':creator', $creator ?: null, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':creator', $creator ?: null, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             if ($stmt->execute()) {
                 $successCount++;
             } else {
@@ -249,8 +250,8 @@ switch ($action) {
 
         foreach ($modelIds as $modelId) {
             $stmt = $db->prepare('UPDATE models SET license = :license WHERE id = :id');
-            $stmt->bindValue(':license', $license, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':license', $license, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             if ($stmt->execute()) {
                 $successCount++;
             } else {

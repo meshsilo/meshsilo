@@ -548,8 +548,8 @@ function findOrCreateSAMLUser($samlData) {
 
     // Try to find existing user by SAML ID
     $stmt = $db->prepare('SELECT * FROM users WHERE saml_id = :saml_id');
-    $stmt->bindValue(':saml_id', $nameId, SQLITE3_TEXT);
-    $existingUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $stmt->bindValue(':saml_id', $nameId, PDO::PARAM_STR);
+    $existingUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
     if ($existingUser) {
         // Update attributes
@@ -558,10 +558,10 @@ function findOrCreateSAMLUser($samlData) {
             SET saml_attributes = :attrs, last_auth_at = :now, auth_method = :method
             WHERE id = :id
         ');
-        $stmt->bindValue(':attrs', json_encode($attributes), SQLITE3_TEXT);
-        $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':method', 'saml', SQLITE3_TEXT);
-        $stmt->bindValue(':id', $existingUser['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':attrs', json_encode($attributes), PDO::PARAM_STR);
+        $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':method', 'saml', PDO::PARAM_STR);
+        $stmt->bindValue(':id', $existingUser['id'], PDO::PARAM_INT);
         $stmt->execute();
 
         // Sync groups if enabled
@@ -574,9 +574,9 @@ function findOrCreateSAMLUser($samlData) {
 
     // Try to find by username or email
     $stmt = $db->prepare('SELECT * FROM users WHERE username = :username OR email = :email');
-    $stmt->bindValue(':username', $username, SQLITE3_TEXT);
-    $stmt->bindValue(':email', $email ?? '', SQLITE3_TEXT);
-    $existingUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+    $stmt->bindValue(':email', $email ?? '', PDO::PARAM_STR);
+    $existingUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
     if ($existingUser) {
         // Link existing account to SAML
@@ -585,11 +585,11 @@ function findOrCreateSAMLUser($samlData) {
             SET saml_id = :saml_id, saml_attributes = :attrs, last_auth_at = :now, auth_method = :method
             WHERE id = :id
         ');
-        $stmt->bindValue(':saml_id', $nameId, SQLITE3_TEXT);
-        $stmt->bindValue(':attrs', json_encode($attributes), SQLITE3_TEXT);
-        $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':method', 'saml', SQLITE3_TEXT);
-        $stmt->bindValue(':id', $existingUser['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':saml_id', $nameId, PDO::PARAM_STR);
+        $stmt->bindValue(':attrs', json_encode($attributes), PDO::PARAM_STR);
+        $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':method', 'saml', PDO::PARAM_STR);
+        $stmt->bindValue(':id', $existingUser['id'], PDO::PARAM_INT);
         $stmt->execute();
 
         if (getSetting('saml_sync_groups', '0') === '1') {
@@ -612,12 +612,12 @@ function findOrCreateSAMLUser($samlData) {
         INSERT INTO users (username, email, saml_id, saml_attributes, is_admin, auth_method, created_at)
         VALUES (:username, :email, :saml_id, :attrs, 0, :method, :now)
     ');
-    $stmt->bindValue(':username', $username, SQLITE3_TEXT);
-    $stmt->bindValue(':email', $email, SQLITE3_TEXT);
-    $stmt->bindValue(':saml_id', $nameId, SQLITE3_TEXT);
-    $stmt->bindValue(':attrs', json_encode($attributes), SQLITE3_TEXT);
-    $stmt->bindValue(':method', 'saml', SQLITE3_TEXT);
-    $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+    $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+    $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+    $stmt->bindValue(':saml_id', $nameId, PDO::PARAM_STR);
+    $stmt->bindValue(':attrs', json_encode($attributes), PDO::PARAM_STR);
+    $stmt->bindValue(':method', 'saml', PDO::PARAM_STR);
+    $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
     $stmt->execute();
 
     $userId = $db->lastInsertRowID();
@@ -625,8 +625,8 @@ function findOrCreateSAMLUser($samlData) {
     // Assign to default group
     if ($defaultGroupId) {
         $stmt = $db->prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (:uid, :gid)');
-        $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
-        $stmt->bindValue(':gid', $defaultGroupId, SQLITE3_INTEGER);
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':gid', $defaultGroupId, PDO::PARAM_INT);
         $stmt->execute();
     }
 
@@ -637,8 +637,8 @@ function findOrCreateSAMLUser($samlData) {
 
     // Get the created user
     $stmt = $db->prepare('SELECT * FROM users WHERE id = :id');
-    $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
-    $newUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
+    $newUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
     logActivity($userId, 'saml_register', 'user', $userId, 'New SAML user: ' . $username);
 
@@ -672,10 +672,10 @@ function syncSAMLGroups($userId, $attributes) {
 
     // Get current groups
     $stmt = $db->prepare('SELECT group_id FROM user_groups WHERE user_id = :uid');
-    $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
+    $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
     $result = $stmt->execute();
     $currentGroups = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $currentGroups[] = $row['group_id'];
     }
 
@@ -691,8 +691,8 @@ function syncSAMLGroups($userId, $attributes) {
     foreach ($targetGroups as $groupId) {
         if (!in_array($groupId, $currentGroups)) {
             $stmt = $db->prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (:uid, :gid)');
-            $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
-            $stmt->bindValue(':gid', $groupId, SQLITE3_INTEGER);
+            $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':gid', $groupId, PDO::PARAM_INT);
             $stmt->execute();
         }
     }
@@ -702,8 +702,8 @@ function syncSAMLGroups($userId, $attributes) {
         foreach ($currentGroups as $groupId) {
             if (!in_array($groupId, $targetGroups)) {
                 $stmt = $db->prepare('DELETE FROM user_groups WHERE user_id = :uid AND group_id = :gid');
-                $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
-                $stmt->bindValue(':gid', $groupId, SQLITE3_INTEGER);
+                $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+                $stmt->bindValue(':gid', $groupId, PDO::PARAM_INT);
                 $stmt->execute();
             }
         }

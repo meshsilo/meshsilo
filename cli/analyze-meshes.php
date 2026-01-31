@@ -59,9 +59,9 @@ if ($modelId) {
     echo "Analyzing model ID: $modelId\n\n";
 
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $model = $result->fetchArray(SQLITE3_ASSOC);
+    $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) {
         echo "\033[31mError: Model not found.\033[0m\n";
@@ -107,7 +107,7 @@ $stmt = $db->prepare("
     ORDER BY id DESC
     LIMIT :limit
 ");
-$stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 $result = $stmt->execute();
 
 $stats = [
@@ -119,7 +119,7 @@ $stats = [
     'skipped' => 0
 ];
 
-while ($model = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($model = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $filePath = getAbsoluteFilePath($model);
 
     if (!$filePath || !file_exists($filePath)) {

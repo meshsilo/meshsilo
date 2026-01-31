@@ -4,7 +4,17 @@
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/api-auth.php';
-requirePermission(PERM_ADMIN);
+require_once __DIR__ . '/../../includes/features.php';
+
+// Require feature to be enabled
+requireFeature('api_keys');
+
+// Require API keys management permission
+if (!isLoggedIn() || !canManageApiKeys()) {
+    $_SESSION['error'] = 'You do not have permission to manage API keys.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $user = getCurrentUser();
 $error = '';
@@ -161,7 +171,7 @@ $pageTitle = 'API Keys - ' . $siteName;
 
                         <div class="form-group">
                             <label for="name">Key Name</label>
-                            <input type="text" id="name" name="name" required
+                            <input type="text" id="name" name="name" class="form-input" required
                                    placeholder="e.g., My Integration, CI/CD Pipeline">
                         </div>
 
@@ -189,7 +199,7 @@ $pageTitle = 'API Keys - ' . $siteName;
 
                         <div class="form-group">
                             <label for="expires_in">Expiration</label>
-                            <select id="expires_in" name="expires_in">
+                            <select id="expires_in" name="expires_in" class="form-input">
                                 <option value="">Never expires</option>
                                 <option value="30 days">30 days</option>
                                 <option value="90 days">90 days</option>

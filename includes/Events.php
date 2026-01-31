@@ -248,10 +248,10 @@ class Events {
             $eventData = $data;
             unset($eventData['_event'], $eventData['_timestamp'], $eventData['_user_id']);
 
-            $stmt->bindValue(':event', $event, SQLITE3_TEXT);
-            $stmt->bindValue(':data', json_encode($eventData), SQLITE3_TEXT);
-            $stmt->bindValue(':user_id', $data['_user_id'], SQLITE3_INTEGER);
-            $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? null, SQLITE3_TEXT);
+            $stmt->bindValue(':event', $event, PDO::PARAM_STR);
+            $stmt->bindValue(':data', json_encode($eventData), PDO::PARAM_STR);
+            $stmt->bindValue(':user_id', $data['_user_id'], PDO::PARAM_INT);
+            $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? null, PDO::PARAM_STR);
             $stmt->execute();
         } catch (Exception $e) {
             // Silently fail to avoid disrupting the application
@@ -281,16 +281,16 @@ class Events {
                 WHERE is_active = 1
                 AND (events LIKE :event_pattern OR events LIKE :wildcard_pattern OR events = "*")
             ');
-            $stmt->bindValue(':event_pattern', '%"' . $event . '"%', SQLITE3_TEXT);
+            $stmt->bindValue(':event_pattern', '%"' . $event . '"%', PDO::PARAM_STR);
 
             // Also check for wildcard patterns (e.g., "model.*")
             $eventParts = explode('.', $event);
             $wildcardEvent = $eventParts[0] . '.*';
-            $stmt->bindValue(':wildcard_pattern', '%"' . $wildcardEvent . '"%', SQLITE3_TEXT);
+            $stmt->bindValue(':wildcard_pattern', '%"' . $wildcardEvent . '"%', PDO::PARAM_STR);
 
             $result = $stmt->execute();
 
-            while ($webhook = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($webhook = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $payload = [
                     'event' => $event,
                     'timestamp' => $data['_timestamp'],
@@ -397,15 +397,15 @@ class Events {
                 INSERT INTO webhook_logs (webhook_id, event, http_code, error, created_at)
                 VALUES (:webhook_id, :event, :http_code, :error, CURRENT_TIMESTAMP)
             ');
-            $stmt->bindValue(':webhook_id', $webhookId, SQLITE3_INTEGER);
-            $stmt->bindValue(':event', $event, SQLITE3_TEXT);
-            $stmt->bindValue(':http_code', $httpCode, SQLITE3_INTEGER);
-            $stmt->bindValue(':error', $error ?: null, SQLITE3_TEXT);
+            $stmt->bindValue(':webhook_id', $webhookId, PDO::PARAM_INT);
+            $stmt->bindValue(':event', $event, PDO::PARAM_STR);
+            $stmt->bindValue(':http_code', $httpCode, PDO::PARAM_INT);
+            $stmt->bindValue(':error', $error ?: null, PDO::PARAM_STR);
             $stmt->execute();
 
             // Update webhook last_triggered
             $updateStmt = $db->prepare('UPDATE webhooks SET last_triggered = CURRENT_TIMESTAMP WHERE id = :id');
-            $updateStmt->bindValue(':id', $webhookId, SQLITE3_INTEGER);
+            $updateStmt->bindValue(':id', $webhookId, PDO::PARAM_INT);
             $updateStmt->execute();
         } catch (Exception $e) {
             // Silently fail

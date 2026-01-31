@@ -40,9 +40,9 @@ class ApiAuthMiddleware implements MiddlewareInterface {
         // Validate API key
         $db = getDB();
         $stmt = $db->prepare('SELECT * FROM api_keys WHERE api_key = :key AND is_active = 1');
-        $stmt->bindValue(':key', $apiKey, SQLITE3_TEXT);
+        $stmt->bindValue(':key', $apiKey, PDO::PARAM_STR);
         $result = $stmt->execute();
-        $keyData = $result->fetchArray(SQLITE3_ASSOC);
+        $keyData = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$keyData) {
             http_response_code(401);
@@ -52,7 +52,7 @@ class ApiAuthMiddleware implements MiddlewareInterface {
 
         // Update last used timestamp
         $updateStmt = $db->prepare('UPDATE api_keys SET last_used = CURRENT_TIMESTAMP WHERE id = :id');
-        $updateStmt->bindValue(':id', $keyData['id'], SQLITE3_INTEGER);
+        $updateStmt->bindValue(':id', $keyData['id'], PDO::PARAM_INT);
         $updateStmt->execute();
 
         // Store API user info for route handlers

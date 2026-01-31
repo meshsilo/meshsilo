@@ -6,10 +6,15 @@
  */
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/AuditLogger.php';
+require_once __DIR__ . '/../../includes/features.php';
 
-// Require admin
-if (!isLoggedIn() || !isAdmin()) {
-    header('Location: ' . route('login'));
+// Require feature to be enabled
+requireFeature('activity_log');
+
+// Require audit log permission
+if (!isLoggedIn() || !canViewAuditLog()) {
+    $_SESSION['error'] = 'You do not have permission to view the audit log.';
+    header('Location: ' . route('home'));
     exit;
 }
 
@@ -85,13 +90,15 @@ $stats = AuditLogger::getStats();
 $db = getDB();
 $usersResult = $db->query('SELECT id, username FROM users ORDER BY username');
 $users = [];
-while ($row = $usersResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $usersResult->fetchArray(PDO::FETCH_ASSOC)) {
     $users[] = $row;
 }
 
 require_once __DIR__ . '/../../includes/header.php';
-require_once __DIR__ . '/../../includes/admin-sidebar.php';
 ?>
+
+<div class="admin-layout">
+<?php require_once __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
 <div class="admin-content">
     <div class="page-header">
@@ -520,5 +527,7 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
     background: var(--bg-color);
 }
 </style>
+
+</div><!-- /.admin-layout -->
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

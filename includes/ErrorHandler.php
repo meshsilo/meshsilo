@@ -37,6 +37,16 @@ class ErrorHandler {
      * Handle PHP errors
      */
     public static function handleError(int $severity, string $message, string $file, int $line): bool {
+        // Don't throw exceptions for deprecation notices - just log them
+        // PHP 8.1+ triggers E_DEPRECATED for many previously-silent operations
+        // (e.g., htmlspecialchars(null), strlen(null)) which would cause 500 errors
+        if ($severity === E_DEPRECATED || $severity === E_USER_DEPRECATED) {
+            if (function_exists('logWarning')) {
+                logWarning("Deprecation: $message", ['file' => $file, 'line' => $line]);
+            }
+            return true;
+        }
+
         // Convert to ErrorException for consistent handling
         if (error_reporting() & $severity) {
             throw new ErrorException($message, 0, $severity, $file, $line);
@@ -82,7 +92,7 @@ class ErrorHandler {
      * Get HTTP status code for exception
      */
     private static function getStatusCode(\Throwable $e): int {
-        $code = $e->getCode();
+        $code = is_numeric($e->getCode()) ? (int)$e->getCode() : 0;
 
         // Map exception types to HTTP codes
         if ($e instanceof \InvalidArgumentException) {
@@ -406,5 +416,20 @@ function abort_unless(bool $condition, int $code, ?string $message = null): void
  * Setup error handler
  */
 function setupErrorHandler(bool $debug = false): void {
+    // Allow enabling debug via database setting or .debug file
+    if (!$debug) {
+        // Check for .debug file in project root (easiest toggle for server admin)
+        if (file_exists(dirname(__DIR__) . '/.debug')) {
+            $debug = true;
+        }
+        // Check database setting if available
+        if (!$debug && function_exists('getSetting')) {
+            try {
+                $debug = getSetting('debug_mode', '0') === '1';
+            } catch (\Throwable $e) {
+                // Ignore - can't access settings yet
+            }
+        }
+    }
     ErrorHandler::init($debug);
 }

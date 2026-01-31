@@ -6,10 +6,15 @@
  */
 
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 
-// Require admin permission
-if (!isLoggedIn() || !isAdmin()) {
-    header('Location: ' . url('login'));
+// Require feature to be enabled
+requireFeature('retention_policies');
+
+// Require retention management permission
+if (!isLoggedIn() || !canManageRetention()) {
+    $_SESSION['error'] = 'You do not have permission to manage data retention policies.';
+    header('Location: ' . route('home'));
     exit;
 }
 
@@ -177,11 +182,11 @@ $pageTitle = 'Data Retention';
 include __DIR__ . '/../../includes/header.php';
 ?>
 
-<div class="admin-container">
+<div class="admin-layout">
     <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
     <div class="admin-content">
-        <div class="admin-header">
+        <div class="page-header">
             <h1>Data Retention</h1>
             <p>Manage data retention policies and legal holds for compliance</p>
         </div>

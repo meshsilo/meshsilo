@@ -27,6 +27,36 @@ server {
         return 404;
     }
 
+    # Deny direct access to app/ and storage/ directories
+    location ~ ^/app/ {
+        deny all;
+        return 404;
+    }
+
+    location ~ ^/storage/ {
+        deny all;
+        return 404;
+    }
+
+    # Allow access to uploaded assets
+    location /assets/ {
+        try_files $uri =404;
+        expires 1w;
+        add_header Cache-Control "public";
+    }
+
+    # Serve public directory files (sw.js, manifest.json, etc.)
+    location = /sw.js {
+        alias /var/www/silo/public/sw.js;
+        add_header Cache-Control "no-cache";
+        add_header Service-Worker-Allowed "/";
+    }
+
+    location = /manifest.json {
+        alias /var/www/silo/public/manifest.json;
+        add_header Cache-Control "no-cache";
+    }
+
     # Friendly URLs - route all requests through index.php
     location / {
         try_files $uri $uri/ /index.php?route=$uri&$args;

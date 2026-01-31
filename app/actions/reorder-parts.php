@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
@@ -20,9 +20,9 @@ if (!$parentId || empty($partIds)) {
 // Verify user has permission to edit this model
 $db = getDB();
 $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
-$stmt->bindValue(':id', $parentId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $parentId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 $user = getCurrentUser();
 if (!$model || ($model['user_id'] != $user['id'] && !$user['is_admin'])) {

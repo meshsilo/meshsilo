@@ -205,9 +205,9 @@ class TwoFactor {
             WHERE id = :user_id
         ');
 
-        $stmt->bindValue(':secret', $secret, SQLITE3_TEXT);
-        $stmt->bindValue(':backup_codes', json_encode($hashedCodes), SQLITE3_TEXT);
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':secret', $secret, PDO::PARAM_STR);
+        $stmt->bindValue(':backup_codes', json_encode($hashedCodes), PDO::PARAM_STR);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
 
         $result = $stmt->execute();
 
@@ -237,7 +237,7 @@ class TwoFactor {
             WHERE id = :user_id
         ');
 
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $result = $stmt->execute();
 
         if ($result && class_exists('Events')) {
@@ -257,9 +257,9 @@ class TwoFactor {
 
         $db = getDB();
         $stmt = $db->prepare('SELECT two_factor_enabled FROM users WHERE id = :user_id');
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $row = $result->fetchArray(SQLITE3_ASSOC);
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
         return (bool)($row['two_factor_enabled'] ?? false);
     }
@@ -274,9 +274,9 @@ class TwoFactor {
 
         $db = getDB();
         $stmt = $db->prepare('SELECT two_factor_secret FROM users WHERE id = :user_id');
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $row = $result->fetchArray(SQLITE3_ASSOC);
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
         return $row['two_factor_secret'] ?? null;
     }
@@ -298,9 +298,9 @@ class TwoFactor {
             SELECT two_factor_secret, two_factor_backup_codes
             FROM users WHERE id = :user_id
         ');
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $user = $result->fetchArray(SQLITE3_ASSOC);
+        $user = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$user || empty($user['two_factor_secret'])) {
             return false;
@@ -323,8 +323,8 @@ class TwoFactor {
                 $updateStmt = $db->prepare('
                     UPDATE users SET two_factor_backup_codes = :codes WHERE id = :user_id
                 ');
-                $updateStmt->bindValue(':codes', json_encode($backupCodes), SQLITE3_TEXT);
-                $updateStmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+                $updateStmt->bindValue(':codes', json_encode($backupCodes), PDO::PARAM_STR);
+                $updateStmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
                 $updateStmt->execute();
 
                 if (class_exists('Events')) {
@@ -351,9 +351,9 @@ class TwoFactor {
 
         $db = getDB();
         $stmt = $db->prepare('SELECT two_factor_backup_codes FROM users WHERE id = :user_id');
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $row = $result->fetchArray(SQLITE3_ASSOC);
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
         $codes = json_decode($row['two_factor_backup_codes'] ?? '[]', true);
         return count($codes);
@@ -372,8 +372,8 @@ class TwoFactor {
             $stmt = $db->prepare('
                 UPDATE users SET two_factor_backup_codes = :codes WHERE id = :user_id
             ');
-            $stmt->bindValue(':codes', json_encode($hashedCodes), SQLITE3_TEXT);
-            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $stmt->bindValue(':codes', json_encode($hashedCodes), PDO::PARAM_STR);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stmt->execute();
         }
 

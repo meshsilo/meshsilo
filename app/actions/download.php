@@ -15,9 +15,9 @@ if (!$partId) {
 
 $db = getDB();
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-$stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $partId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$part = $result->fetchArray(SQLITE3_ASSOC);
+$part = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$part) {
     http_response_code(404);
@@ -25,9 +25,9 @@ if (!$part) {
 }
 
 // Get the real file path (handles deduplicated files)
-$filePath = __DIR__ . '/../' . getRealFilePath($part);
+$filePath = getAbsoluteFilePath($part);
 
-if (!file_exists($filePath)) {
+if (!$filePath || !is_file($filePath)) {
     http_response_code(404);
     die('File not found on disk');
 }
@@ -58,9 +58,9 @@ $modelName = $part['name'];
 if ($part['parent_id']) {
     // Get parent model name for better context
     $parentStmt = $db->prepare('SELECT name FROM models WHERE id = :id');
-    $parentStmt->bindValue(':id', $part['parent_id'], SQLITE3_INTEGER);
+    $parentStmt->bindValue(':id', $part['parent_id'], PDO::PARAM_INT);
     $parentResult = $parentStmt->execute();
-    $parent = $parentResult->fetchArray(SQLITE3_ASSOC);
+    $parent = $parentResult->fetchArray(PDO::FETCH_ASSOC);
     if ($parent) {
         $modelName = $parent['name'] . ' / ' . $part['name'];
     }

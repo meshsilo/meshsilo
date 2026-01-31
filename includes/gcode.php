@@ -310,21 +310,21 @@ function storeGCodeMetadata($modelId, $metadata) {
         VALUES (:model_id, :print_time, :print_time_formatted, :filament_used, :filament_used_g, :filament_used_m,
                 :layer_height, :layer_count, :nozzle_diameter, :bed_temp, :hotend_temp, :slicer, :slicer_version, :infill, :supports)");
 
-    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-    $stmt->bindValue(':print_time', $metadata['print_time'], SQLITE3_INTEGER);
-    $stmt->bindValue(':print_time_formatted', $metadata['print_time_formatted'], SQLITE3_TEXT);
-    $stmt->bindValue(':filament_used', $metadata['filament_used'], SQLITE3_FLOAT);
-    $stmt->bindValue(':filament_used_g', $metadata['filament_used_g'], SQLITE3_FLOAT);
-    $stmt->bindValue(':filament_used_m', $metadata['filament_used_m'], SQLITE3_FLOAT);
-    $stmt->bindValue(':layer_height', $metadata['layer_height'], SQLITE3_FLOAT);
-    $stmt->bindValue(':layer_count', $metadata['layer_count'], SQLITE3_INTEGER);
-    $stmt->bindValue(':nozzle_diameter', $metadata['nozzle_diameter'], SQLITE3_FLOAT);
-    $stmt->bindValue(':bed_temp', $metadata['bed_temp'], SQLITE3_INTEGER);
-    $stmt->bindValue(':hotend_temp', $metadata['hotend_temp'], SQLITE3_INTEGER);
-    $stmt->bindValue(':slicer', $metadata['slicer'], SQLITE3_TEXT);
-    $stmt->bindValue(':slicer_version', $metadata['slicer_version'], SQLITE3_TEXT);
-    $stmt->bindValue(':infill', $metadata['infill'], SQLITE3_TEXT);
-    $stmt->bindValue(':supports', $metadata['supports'], SQLITE3_TEXT);
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $stmt->bindValue(':print_time', $metadata['print_time'], PDO::PARAM_INT);
+    $stmt->bindValue(':print_time_formatted', $metadata['print_time_formatted'], PDO::PARAM_STR);
+    $stmt->bindValue(':filament_used', $metadata['filament_used'], PDO::PARAM_STR);
+    $stmt->bindValue(':filament_used_g', $metadata['filament_used_g'], PDO::PARAM_STR);
+    $stmt->bindValue(':filament_used_m', $metadata['filament_used_m'], PDO::PARAM_STR);
+    $stmt->bindValue(':layer_height', $metadata['layer_height'], PDO::PARAM_STR);
+    $stmt->bindValue(':layer_count', $metadata['layer_count'], PDO::PARAM_INT);
+    $stmt->bindValue(':nozzle_diameter', $metadata['nozzle_diameter'], PDO::PARAM_STR);
+    $stmt->bindValue(':bed_temp', $metadata['bed_temp'], PDO::PARAM_INT);
+    $stmt->bindValue(':hotend_temp', $metadata['hotend_temp'], PDO::PARAM_INT);
+    $stmt->bindValue(':slicer', $metadata['slicer'], PDO::PARAM_STR);
+    $stmt->bindValue(':slicer_version', $metadata['slicer_version'], PDO::PARAM_STR);
+    $stmt->bindValue(':infill', $metadata['infill'], PDO::PARAM_STR);
+    $stmt->bindValue(':supports', $metadata['supports'], PDO::PARAM_STR);
 
     return $stmt->execute() !== false;
 }
@@ -343,9 +343,9 @@ function getGCodeMetadata($modelId) {
     }
 
     $stmt = $db->prepare('SELECT * FROM gcode_metadata WHERE model_id = :model_id');
-    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    return $result->fetchArray(SQLITE3_ASSOC);
+    return $result->fetchArray(PDO::FETCH_ASSOC);
 }
 
 /**

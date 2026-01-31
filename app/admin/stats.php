@@ -5,8 +5,12 @@ require_once __DIR__ . '/../../includes/dedup.php';
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
-// Require admin permission
-requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+// Require view stats permission
+if (!isLoggedIn() || !canViewStats()) {
+    $_SESSION['error'] = 'You do not have permission to view statistics.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $pageTitle = 'Statistics';
 $activePage = 'admin';
@@ -26,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
         $modelId = (int)($_POST['model_id'] ?? 0);
         if ($modelId) {
             $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
             $message = 'Removed missing file entry from database.';
             logInfo('Removed missing file from database', ['model_id' => $modelId]);
@@ -43,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
             $hasRows = false;
             $idsToDelete = [];
 
-            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $hasRows = true;
                 // Skip parent models (ZIP containers) - they don't have actual files
                 if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
@@ -59,18 +63,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
             foreach ($idsToDelete as $id) {
                 // Get parent_id to update part count later
                 $stmt = $db->prepare('SELECT parent_id FROM models WHERE id = :id');
-                $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $id, PDO::PARAM_INT);
                 $parentResult = $stmt->execute();
-                $parentRow = $parentResult->fetchArray(SQLITE3_ASSOC);
+                $parentRow = $parentResult->fetchArray(PDO::FETCH_ASSOC);
 
                 $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
-                $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $id, PDO::PARAM_INT);
                 $stmt->execute();
 
                 // Update parent's part count if this was a child
                 if ($parentRow && $parentRow['parent_id']) {
-                    $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :parent_id) WHERE id = :parent_id');
-                    $stmt->bindValue(':parent_id', $parentRow['parent_id'], SQLITE3_INTEGER);
+                    $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :parent_id1) WHERE id = :parent_id2');
+                    $stmt->bindValue(':parent_id1', $parentRow['parent_id'], PDO::PARAM_INT);
+                    $stmt->bindValue(':parent_id2', $parentRow['parent_id'], PDO::PARAM_INT);
                     $stmt->execute();
                 }
 
@@ -105,9 +110,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
                 if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
                     // Check if file exists in database
                     $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
-                    $stmt->bindValue(':filename', $file->getFilename(), SQLITE3_TEXT);
+                    $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
                     $result = $stmt->execute();
-                    $row = $result->fetchArray(SQLITE3_ASSOC);
+                    $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
                     if ($row['count'] == 0) {
                         unlink($file->getPathname());
@@ -146,11 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
 
 // Get model count
 $result = $db->query('SELECT COUNT(*) as count FROM models');
-$modelCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+$modelCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
 // Get total storage from database
 $result = $db->query('SELECT SUM(file_size) as total, AVG(file_size) as avg FROM models');
-$row = $result->fetchArray(SQLITE3_ASSOC);
+$row = $result->fetchArray(PDO::FETCH_ASSOC);
 $totalStorageDB = $row['total'] ?? 0;
 $avgModelSize = $row['avg'] ?? 0;
 
@@ -180,14 +185,14 @@ $dbSize = file_exists(DB_PATH) ? filesize(DB_PATH) : 0;
 
 // Get user stats
 $result = $db->query('SELECT COUNT(*) as total, SUM(is_admin) as admins FROM users');
-$userStats = $result->fetchArray(SQLITE3_ASSOC);
+$userStats = $result->fetchArray(PDO::FETCH_ASSOC);
 $totalUsers = $userStats['total'] ?? 0;
 $adminUsers = $userStats['admins'] ?? 0;
 
 // Get models by file type (exclude parent models/ZIP containers which are just organizational entries)
 $result = $db->query('SELECT file_type, COUNT(*) as count, SUM(file_size) as size FROM models WHERE NOT (file_type = "zip" AND part_count > 0) GROUP BY file_type ORDER BY count DESC');
 $fileTypes = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $fileTypes[] = $row;
 }
 
@@ -200,7 +205,7 @@ $result = $db->query('
     ORDER BY count DESC
 ');
 $categoryStats = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $categoryStats[] = $row;
 }
 
@@ -209,11 +214,11 @@ $result = $db->query('
     SELECT COUNT(*) as count FROM models m
     WHERE NOT EXISTS (SELECT 1 FROM model_categories mc WHERE mc.model_id = m.id)
 ');
-$uncategorizedCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+$uncategorizedCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
 // Get models without source URL
 $result = $db->query('SELECT COUNT(*) as count FROM models WHERE source_url IS NULL OR source_url = ""');
-$noSourceCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+$noSourceCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
 // Get models by collection
 $result = $db->query('
@@ -225,7 +230,7 @@ $result = $db->query('
     LIMIT 10
 ');
 $collectionStats = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $collectionStats[] = $row;
 }
 
@@ -239,33 +244,54 @@ $result = $db->query('
     LIMIT 10
 ');
 $creatorStats = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $creatorStats[] = $row;
 }
 
 // Get recent uploads (last 7 days)
-$result = $db->query('
-    SELECT DATE(created_at) as date, COUNT(*) as count
-    FROM models
-    WHERE created_at >= datetime("now", "-7 days")
-    GROUP BY DATE(created_at)
-    ORDER BY date DESC
-');
+$dbType = $db->getType();
+if ($dbType === 'mysql') {
+    $result = $db->query('
+        SELECT DATE(created_at) as date, COUNT(*) as count
+        FROM models
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+    ');
+} else {
+    $result = $db->query('
+        SELECT DATE(created_at) as date, COUNT(*) as count
+        FROM models
+        WHERE created_at >= datetime("now", "-7 days")
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+    ');
+}
 $recentUploads = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $recentUploads[] = $row;
 }
 
 // Get monthly upload trends (last 12 months)
-$result = $db->query('
-    SELECT strftime("%Y-%m", created_at) as month, COUNT(*) as count, SUM(file_size) as size
-    FROM models
-    WHERE created_at >= datetime("now", "-12 months")
-    GROUP BY strftime("%Y-%m", created_at)
-    ORDER BY month DESC
-');
+if ($dbType === 'mysql') {
+    $result = $db->query('
+        SELECT DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as count, SUM(file_size) as size
+        FROM models
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        GROUP BY DATE_FORMAT(created_at, "%Y-%m")
+        ORDER BY month DESC
+    ');
+} else {
+    $result = $db->query('
+        SELECT strftime("%Y-%m", created_at) as month, COUNT(*) as count, SUM(file_size) as size
+        FROM models
+        WHERE created_at >= datetime("now", "-12 months")
+        GROUP BY strftime("%Y-%m", created_at)
+        ORDER BY month DESC
+    ');
+}
 $monthlyUploads = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $monthlyUploads[] = $row;
 }
 
@@ -279,23 +305,23 @@ $result = $db->query('
     FROM models
     WHERE original_size IS NOT NULL AND original_size > 0
 ');
-$conversionStats = $result->fetchArray(SQLITE3_ASSOC);
+$conversionStats = $result->fetchArray(PDO::FETCH_ASSOC);
 
 // Get count of STL files that could be converted
 $result = $db->query('SELECT COUNT(*) as count FROM models WHERE file_type = "stl"');
-$stlCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+$stlCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
 // Get oldest and newest models
 $result = $db->query('SELECT name, created_at FROM models ORDER BY created_at ASC LIMIT 1');
-$oldestModel = $result->fetchArray(SQLITE3_ASSOC);
+$oldestModel = $result->fetchArray(PDO::FETCH_ASSOC);
 
 $result = $db->query('SELECT name, created_at FROM models ORDER BY created_at DESC LIMIT 1');
-$newestModel = $result->fetchArray(SQLITE3_ASSOC);
+$newestModel = $result->fetchArray(PDO::FETCH_ASSOC);
 
 // Get largest models
 $result = $db->query('SELECT name, file_size, file_type FROM models ORDER BY file_size DESC LIMIT 5');
 $largestModels = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $largestModels[] = $row;
 }
 
@@ -303,7 +329,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 // Limit to first 100 to avoid memory issues on large databases
 $result = $db->query('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT 100');
 $missingFiles = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     // Skip parent models (ZIP containers) - they don't have actual files
     if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
         continue;
@@ -324,9 +350,9 @@ if ($assetsPath && is_dir($assetsPath)) {
         if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
             // Check if file exists in database
             $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
-            $stmt->bindValue(':filename', $file->getFilename(), SQLITE3_TEXT);
+            $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
             $result = $stmt->execute();
-            $row = $result->fetchArray(SQLITE3_ASSOC);
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
             if ($row['count'] == 0) {
                 $orphanedFiles[] = [
@@ -345,7 +371,7 @@ $dedupStats = getDeduplicationStats();
 
 // Count files without hashes
 $result = $db->query('SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = "") AND file_path IS NOT NULL');
-$filesWithoutHash = $result->fetchArray(SQLITE3_ASSOC)['count'];
+$filesWithoutHash = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
 // Helper function to format bytes
 function formatBytes($bytes, $precision = 2) {

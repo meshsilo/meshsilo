@@ -447,13 +447,13 @@ class QueryBuilder {
         $stmt = $this->db->prepare($sql);
 
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? SQLITE3_INTEGER : SQLITE3_TEXT;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
             $stmt->bindValue($key, $value, $type);
         }
 
         $result = $stmt->execute();
         $rows = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $rows[] = $row;
         }
 
@@ -585,7 +585,7 @@ class QueryBuilder {
 
         $stmt = $this->db->prepare($sql);
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? SQLITE3_INTEGER : SQLITE3_TEXT;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
             $stmt->bindValue($key, $value, $type);
         }
 
@@ -613,7 +613,7 @@ class QueryBuilder {
 
             $stmt = $this->db->prepare($sql);
             foreach ($this->bindings as $key => $value) {
-                $type = is_int($value) ? SQLITE3_INTEGER : SQLITE3_TEXT;
+                $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
                 $stmt->bindValue($key, $value, $type);
             }
             $stmt->execute();
@@ -643,7 +643,7 @@ class QueryBuilder {
 
         $stmt = $this->db->prepare($sql);
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? SQLITE3_INTEGER : SQLITE3_TEXT;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
             $stmt->bindValue($key, $value, $type);
         }
 
@@ -665,7 +665,7 @@ class QueryBuilder {
 
         $stmt = $this->db->prepare($sql);
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? SQLITE3_INTEGER : SQLITE3_TEXT;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
             $stmt->bindValue($key, $value, $type);
         }
 
@@ -687,7 +687,7 @@ class QueryBuilder {
 
         $stmt = $this->db->prepare($sql);
         foreach ($this->bindings as $key => $value) {
-            $stmt->bindValue($key, $value, SQLITE3_INTEGER);
+            $stmt->bindValue($key, $value, PDO::PARAM_INT);
         }
 
         $stmt->execute();

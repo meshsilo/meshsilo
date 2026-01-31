@@ -4,8 +4,12 @@ require_once __DIR__ . '/../../includes/config.php';
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
-// Require admin permission
-requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+// Require group management permission
+if (!isLoggedIn() || !canManageGroups()) {
+    $_SESSION['error'] = 'You do not have permission to manage groups.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $pageTitle = 'Manage Groups';
 $activePage = 'admin';
@@ -118,7 +122,7 @@ unset($group);
 // Get all users for adding to groups
 $usersResult = $db->query('SELECT id, username, email FROM users ORDER BY username');
 $allUsers = [];
-while ($row = $usersResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $usersResult->fetchArray(PDO::FETCH_ASSOC)) {
     $allUsers[] = $row;
 }
 

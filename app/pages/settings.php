@@ -18,9 +18,9 @@ $userId = $currentUser['id'];
 
 // Get full user data from database
 $stmt = $db->prepare('SELECT * FROM users WHERE id = :id');
-$stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $userId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$user = $result->fetchArray(SQLITE3_ASSOC);
+$user = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$user) {
     // User not found in database - session invalid
@@ -48,17 +48,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 // Check if email is already used by another user
                 $stmt = $db->prepare('SELECT id FROM users WHERE email = :email AND id != :id');
-                $stmt->bindValue(':email', $email, SQLITE3_TEXT);
-                $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
+                $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+                $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
                 $result = $stmt->execute();
-                $existing = $result->fetchArray(SQLITE3_ASSOC);
+                $existing = $result->fetchArray(PDO::FETCH_ASSOC);
 
                 if ($existing) {
                     $error = 'This email address is already in use.';
                 } else {
                     $stmt = $db->prepare('UPDATE users SET email = :email WHERE id = :id');
-                    $stmt->bindValue(':email', $email, SQLITE3_TEXT);
-                    $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
+                    $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+                    $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
                     $stmt->execute();
 
                     // Update session
@@ -99,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $hash = password_hash($newPassword, PASSWORD_DEFAULT);
             $stmt = $db->prepare('UPDATE users SET password = :password WHERE id = :id');
-            $stmt->bindValue(':password', $hash, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
+            $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
 
             $message = 'Password changed successfully.';
@@ -124,8 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $hash = password_hash($newPassword, PASSWORD_DEFAULT);
             $stmt = $db->prepare('UPDATE users SET password = :password WHERE id = :id');
-            $stmt->bindValue(':password', $hash, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
+            $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
 
             // Update local state
@@ -148,10 +148,10 @@ $stmt = $db->prepare('
     WHERE ug.user_id = :user_id
     ORDER BY g.name
 ');
-$stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+$stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
 $groupResult = $stmt->execute();
 $userGroups = [];
-while ($g = $groupResult->fetchArray(SQLITE3_ASSOC)) {
+while ($g = $groupResult->fetchArray(PDO::FETCH_ASSOC)) {
     $userGroups[] = $g;
 }
 

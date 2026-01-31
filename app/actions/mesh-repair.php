@@ -30,23 +30,98 @@ $db = getDB();
 
 // Get model info
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     echo json_encode(['success' => false, 'error' => 'Model not found']);
     exit;
 }
 
-// Only STL files can be analyzed/repaired
+// Check if this is a multi-part parent model
+$isMultiPart = ($model['part_count'] ?? 0) > 0;
+
+if ($isMultiPart) {
+    // Multi-part model: process all STL parts
+    $partStmt = $db->prepare('SELECT * FROM models WHERE parent_id = :pid ORDER BY id ASC');
+    $partStmt->bindValue(':pid', $modelId, PDO::PARAM_INT);
+    $partResult = $partStmt->execute();
+    $parts = [];
+    while ($row = $partResult->fetchArray(PDO::FETCH_ASSOC)) {
+        $parts[] = $row;
+    }
+
+    $partResults = [];
+    $anySuccess = false;
+
+    foreach ($parts as $part) {
+        if (strtolower($part['file_type']) !== 'stl') {
+            $partResults[] = ['id' => $part['id'], 'name' => $part['name'], 'status' => 'skipped', 'reason' => 'Not STL'];
+            continue;
+        }
+        $partPath = getAbsoluteFilePath($part);
+        if (!$partPath || !is_file($partPath)) {
+            $partResults[] = ['id' => $part['id'], 'name' => $part['name'], 'status' => 'skipped', 'reason' => 'File not found'];
+            continue;
+        }
+
+        switch ($action) {
+            case 'analyze':
+                $analysis = MeshAnalyzer::analyze($partPath);
+                if (!isset($analysis['error'])) {
+                    MeshAnalyzer::updateModelMeshStatus($part['id'], $analysis);
+                    $partResults[] = ['id' => $part['id'], 'name' => $part['name'], 'status' => 'ok', 'analysis' => $analysis];
+                    $anySuccess = true;
+                } else {
+                    $partResults[] = ['id' => $part['id'], 'name' => $part['name'], 'status' => 'error', 'error' => $analysis['error']];
+                }
+                break;
+
+            case 'repair':
+                if (!canEdit()) {
+                    $partResults[] = ['id' => $part['id'], 'name' => $part['name'], 'status' => 'error', 'error' => 'No edit permission'];
+                    continue 2;
+                }
+                if (!MeshAnalyzer::isAdmeshAvailable()) {
+                    echo json_encode(['success' => false, 'error' => 'admesh is not installed']);
+                    exit;
+                }
+                $repairResult = MeshAnalyzer::repair($partPath);
+                if ($repairResult['success']) {
+                    $analysis = MeshAnalyzer::analyze($partPath);
+                    MeshAnalyzer::updateModelMeshStatus($part['id'], $analysis);
+                    $partResults[] = ['id' => $part['id'], 'name' => $part['name'], 'status' => 'ok'];
+                    $anySuccess = true;
+                } else {
+                    $partResults[] = ['id' => $part['id'], 'name' => $part['name'], 'status' => 'error', 'error' => $repairResult['error']];
+                }
+                break;
+        }
+    }
+
+    if ($action === 'status') {
+        echo json_encode(['success' => true, 'model_id' => $modelId, 'multi_part' => true, 'parts' => count($parts)]);
+    } else {
+        echo json_encode([
+            'success' => $anySuccess,
+            'model_id' => $modelId,
+            'multi_part' => true,
+            'parts_processed' => count($partResults),
+            'part_results' => $partResults
+        ]);
+    }
+    exit;
+}
+
+// Single model / individual part
 if (strtolower($model['file_type']) !== 'stl') {
     echo json_encode(['success' => false, 'error' => 'Only STL files can be analyzed']);
     exit;
 }
 
 $filePath = getAbsoluteFilePath($model);
-if (!$filePath || !file_exists($filePath)) {
+if (!$filePath || !is_file($filePath)) {
     echo json_encode(['success' => false, 'error' => 'Model file not found']);
     exit;
 }
@@ -60,7 +135,6 @@ switch ($action) {
             exit;
         }
 
-        // Update model status in database
         MeshAnalyzer::updateModelMeshStatus($modelId, $analysis);
 
         echo json_encode([
@@ -71,13 +145,11 @@ switch ($action) {
         break;
 
     case 'repair':
-        // Check permission
         if (!canEdit()) {
             echo json_encode(['success' => false, 'error' => 'Edit permission required']);
             exit;
         }
 
-        // Check if admesh is available
         if (!MeshAnalyzer::isAdmeshAvailable()) {
             echo json_encode([
                 'success' => false,
@@ -86,7 +158,6 @@ switch ($action) {
             exit;
         }
 
-        // Attempt repair
         $repairResult = MeshAnalyzer::repair($filePath);
 
         if (!$repairResult['success']) {
@@ -98,11 +169,9 @@ switch ($action) {
             exit;
         }
 
-        // Re-analyze after repair
         $analysis = MeshAnalyzer::analyze($filePath);
         MeshAnalyzer::updateModelMeshStatus($modelId, $analysis);
 
-        // Log the repair
         if (function_exists('logActivity')) {
             logActivity(
                 getCurrentUser()['id'],
@@ -123,7 +192,6 @@ switch ($action) {
         break;
 
     case 'status':
-        // Just return current stored status
         $status = MeshAnalyzer::getMeshStatus($model);
 
         echo json_encode([

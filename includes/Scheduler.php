@@ -28,6 +28,7 @@ class Scheduler {
     public const TASK_DEDUP_SCAN = 'dedup:scan';
     public const TASK_STATS_CALCULATE = 'stats:calculate';
     public const TASK_WEBHOOKS_RETRY = 'webhooks:retry';
+    public const TASK_DEMO_RESET = 'demo:reset';
 
     /**
      * Initialize scheduler with default tasks
@@ -276,11 +277,11 @@ class Scheduler {
                 ORDER BY created_at DESC
                 LIMIT :limit
             ');
-            $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
             $result = $stmt->execute();
 
             $history = [];
-            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $history[] = $row;
             }
 
@@ -358,10 +359,10 @@ class Scheduler {
                 INSERT INTO scheduler_log (task_name, status, duration_ms, output, created_at)
                 VALUES (:name, :status, :duration, :output, CURRENT_TIMESTAMP)
             ');
-            $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-            $stmt->bindValue(':status', $status, SQLITE3_TEXT);
-            $stmt->bindValue(':duration', $duration, SQLITE3_INTEGER);
-            $stmt->bindValue(':output', $output ? substr($output, 0, 10000) : null, SQLITE3_TEXT);
+            $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+            $stmt->bindValue(':status', $status, PDO::PARAM_STR);
+            $stmt->bindValue(':duration', $duration, PDO::PARAM_INT);
+            $stmt->bindValue(':output', $output ? substr($output, 0, 10000) : null, PDO::PARAM_STR);
             $stmt->execute();
 
             // Cleanup old logs (keep last 1000)
@@ -380,7 +381,10 @@ class Scheduler {
             if (function_exists('getDB')) {
                 $db = getDB();
                 // Clean expired sessions (older than 24 hours)
-                $db->exec("DELETE FROM sessions WHERE last_activity < datetime('now', '-24 hours')");
+                $cutoff = date('Y-m-d H:i:s', strtotime('-24 hours'));
+                $stmt = $db->prepare("DELETE FROM sessions WHERE last_activity < :cutoff");
+                $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
+                $stmt->execute();
             }
             return 'Sessions cleaned';
         }, ['description' => 'Clean up expired sessions']);
@@ -442,12 +446,39 @@ class Scheduler {
             if (function_exists('getDB') && function_exists('getSetting')) {
                 $db = getDB();
                 $retention = (int)getSetting('activity_log_retention', 90);
-
-                $db->exec("DELETE FROM activity_log WHERE created_at < datetime('now', '-{$retention} days')");
+                $cutoff = date('Y-m-d H:i:s', strtotime("-{$retention} days"));
+                $stmt = $db->prepare("DELETE FROM activity_log WHERE created_at < :cutoff");
+                $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
+                $stmt->execute();
                 return "Cleaned activity logs older than {$retention} days";
             }
             return 'Skipped';
         }, ['description' => 'Clean up old activity log entries']);
+
+        // Demo mode reset - every hour (only runs if demo mode is enabled)
+        self::register(self::TASK_DEMO_RESET, '0 * * * *', function() {
+            if (!function_exists('getSetting') || getSetting('demo_mode', '0') !== '1') {
+                return 'Demo mode not enabled, skipped';
+            }
+
+            if (!class_exists('DemoMode')) {
+                require_once __DIR__ . '/DemoMode.php';
+            }
+
+            $demo = new DemoMode();
+            $result = $demo->resetToDemo();
+
+            if ($result['success']) {
+                $msgs = implode('; ', $result['messages'] ?? []);
+                return "Demo reset completed: $msgs";
+            } else {
+                $errs = implode('; ', $result['errors'] ?? []);
+                throw new Exception("Demo reset failed: $errs");
+            }
+        }, [
+            'description' => 'Reset demo instance to sample data (hourly)',
+            'timeout' => 600,
+        ]);
 
         // Database optimization - weekly on Sunday at 5am
         self::register('maintenance:optimize', '0 5 * * 0', function() {

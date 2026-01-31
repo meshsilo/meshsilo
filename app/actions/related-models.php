@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
@@ -82,12 +82,12 @@ switch ($action) {
             AND (name LIKE :query OR description LIKE :query)
             LIMIT 10
         ');
-        $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-        $stmt->bindValue(':query', '%' . $query . '%', SQLITE3_TEXT);
+        $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+        $stmt->bindValue(':query', '%' . $query . '%', PDO::PARAM_STR);
         $result = $stmt->execute();
 
         $results = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $results[] = $row;
         }
 
@@ -104,8 +104,8 @@ switch ($action) {
 
         // Check model exists and user has permission
         $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
-        $model = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $model = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$model) {
             echo json_encode(['success' => false, 'error' => 'Model not found']);
@@ -127,7 +127,7 @@ switch ($action) {
 
             // Check the remix target exists
             $stmt = $db->prepare('SELECT id FROM models WHERE id = :id AND parent_id IS NULL');
-            $stmt->bindValue(':id', $remixOf, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $remixOf, PDO::PARAM_INT);
             if (!$stmt->execute()->fetchArray()) {
                 echo json_encode(['success' => false, 'error' => 'Original model not found']);
                 exit;
@@ -141,8 +141,8 @@ switch ($action) {
                 SET remix_of = :remix_of, external_source_url = NULL, external_source_id = NULL
                 WHERE id = :id
             ');
-            $stmt->bindValue(':remix_of', $remixOf, SQLITE3_INTEGER);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':remix_of', $remixOf, PDO::PARAM_INT);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
             // Also add to related_models for easy querying
@@ -150,11 +150,11 @@ switch ($action) {
                 INSERT OR REPLACE INTO related_models (model_id, related_model_id, relationship_type, is_remix, remix_notes, created_by)
                 VALUES (:model_id, :related_id, :type, 1, :notes, :user_id)
             ');
-            $stmt->bindValue(':model_id', $remixOf, SQLITE3_INTEGER);
-            $stmt->bindValue(':related_id', $modelId, SQLITE3_INTEGER);
-            $stmt->bindValue(':type', 'remix', SQLITE3_TEXT);
-            $stmt->bindValue(':notes', $notes, SQLITE3_TEXT);
-            $stmt->bindValue(':user_id', $user['id'], SQLITE3_INTEGER);
+            $stmt->bindValue(':model_id', $remixOf, PDO::PARAM_INT);
+            $stmt->bindValue(':related_id', $modelId, PDO::PARAM_INT);
+            $stmt->bindValue(':type', 'remix', PDO::PARAM_STR);
+            $stmt->bindValue(':notes', $notes, PDO::PARAM_STR);
+            $stmt->bindValue(':user_id', $user['id'], PDO::PARAM_INT);
             $stmt->execute();
 
             logActivity($user['id'], 'set_remix_source', 'model', $modelId, 'Set as remix of model #' . $remixOf);
@@ -176,9 +176,9 @@ switch ($action) {
                 SET remix_of = NULL, external_source_url = :url, external_source_id = :ext_id
                 WHERE id = :id
             ');
-            $stmt->bindValue(':url', $externalUrl, SQLITE3_TEXT);
-            $stmt->bindValue(':ext_id', $externalId, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':url', $externalUrl, PDO::PARAM_STR);
+            $stmt->bindValue(':ext_id', $externalId, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
             logActivity($user['id'], 'set_remix_source', 'model', $modelId, 'Set external source: ' . $externalUrl);
@@ -196,8 +196,8 @@ switch ($action) {
 
         // Check model exists and user has permission
         $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
-        $model = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $model = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$model) {
             echo json_encode(['success' => false, 'error' => 'Model not found']);
@@ -216,7 +216,7 @@ switch ($action) {
             SET remix_of = NULL, external_source_url = NULL, external_source_id = NULL
             WHERE id = :id
         ');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
 
         // Remove from related_models
@@ -225,8 +225,8 @@ switch ($action) {
                 DELETE FROM related_models
                 WHERE model_id = :parent_id AND related_model_id = :model_id AND is_remix = 1
             ');
-            $stmt->bindValue(':parent_id', $model['remix_of'], SQLITE3_INTEGER);
-            $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':parent_id', $model['remix_of'], PDO::PARAM_INT);
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
         }
 

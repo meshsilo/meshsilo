@@ -6,8 +6,16 @@
  */
 
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 
 header('Content-Type: application/json');
+
+// Check if share links feature is enabled
+if (!isFeatureEnabled('share_links')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Share links feature is disabled']);
+    exit;
+}
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 

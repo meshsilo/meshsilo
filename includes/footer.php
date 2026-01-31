@@ -27,6 +27,19 @@
     <script>
     // Collapsible sections
     document.addEventListener('DOMContentLoaded', function() {
+        // Wrap non-h2 children in a .settings-section-content div so CSS can collapse them
+        document.querySelectorAll('.settings-section').forEach(section => {
+            if (section.querySelector('.settings-section-content')) return;
+            const h2 = section.querySelector('h2');
+            if (!h2) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'settings-section-content';
+            while (h2.nextSibling) {
+                wrapper.appendChild(h2.nextSibling);
+            }
+            section.appendChild(wrapper);
+        });
+
         document.querySelectorAll('.settings-section h2').forEach(header => {
             header.addEventListener('click', function() {
                 const section = this.closest('.settings-section');

@@ -31,7 +31,7 @@ $icons = [
     'Art' => '&#9733;',
     'Mechanical' => '&#9211;',
 ];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $row['icon'] = $icons[$row['name']] ?? '&#128193;';
     $categories[] = $row;
 }

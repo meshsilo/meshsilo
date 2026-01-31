@@ -69,7 +69,7 @@ $dupeResult = $db->query('
 ');
 
 $duplicateSets = [];
-while ($row = $dupeResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $dupeResult->fetchArray(PDO::FETCH_ASSOC)) {
     $duplicateSets[] = $row;
 }
 
@@ -99,11 +99,11 @@ foreach ($duplicateSets as $set) {
           AND dedup_path IS NULL
         ORDER BY id ASC
     ');
-    $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+    $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
     $result = $stmt->execute();
 
     $files = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $files[] = $row;
     }
 
@@ -137,8 +137,8 @@ foreach ($duplicateSets as $set) {
         } else {
             // Update database to point to canonical file
             $updateStmt = $db->prepare('UPDATE models SET dedup_path = :dedup_path WHERE id = :id');
-            $updateStmt->bindValue(':dedup_path', $canonical['file_path'], SQLITE3_TEXT);
-            $updateStmt->bindValue(':id', $dupe['id'], SQLITE3_INTEGER);
+            $updateStmt->bindValue(':dedup_path', $canonical['file_path'], PDO::PARAM_STR);
+            $updateStmt->bindValue(':id', $dupe['id'], PDO::PARAM_INT);
 
             if ($updateStmt->execute()) {
                 // Delete the duplicate file

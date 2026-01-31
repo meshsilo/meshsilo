@@ -31,7 +31,7 @@ $result = $db->query('
 ');
 
 $collections = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row;
 }
 

@@ -1,7 +1,15 @@
 <?php
-require_once '../includes/config.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 
 header('Content-Type: application/json');
+
+// Check if print queue feature is enabled
+if (!isFeatureEnabled('print_queue')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Print queue feature is disabled']);
+    exit;
+}
 
 if (!isLoggedIn()) {
     http_response_code(401);
@@ -63,7 +71,7 @@ switch ($action) {
     case 'clear':
         $db = getDB();
         $stmt = $db->prepare('DELETE FROM print_queue WHERE user_id = :user_id');
-        $stmt->bindValue(':user_id', $user['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', $user['id'], PDO::PARAM_INT);
         $result = $stmt->execute();
         logActivity($user['id'], 'clear_queue', 'print_queue', 0);
         echo json_encode(['success' => true]);

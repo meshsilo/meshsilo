@@ -4,8 +4,12 @@ require_once __DIR__ . '/../../includes/config.php';
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
-// Require admin permission
-requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+// Require collection management permission
+if (!isLoggedIn() || !canManageCollections()) {
+    $_SESSION['error'] = 'You do not have permission to manage collections.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $pageTitle = 'Manage Collections';
 $activePage = '';
@@ -16,7 +20,7 @@ $db = getDB();
 // Create collections table if it doesn't exist
 $db->exec('CREATE TABLE IF NOT EXISTS collections (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )');
@@ -32,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($name)) {
             try {
                 $stmt = $db->prepare('INSERT INTO collections (name, description) VALUES (:name, :description)');
-                $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-                $stmt->bindValue(':description', $description, SQLITE3_TEXT);
+                $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+                $stmt->bindValue(':description', $description, PDO::PARAM_STR);
                 $stmt->execute();
                 header('Location: ' . route('admin.collections', [], ['success' => '1']));
                 exit;
@@ -46,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['delete_collection'])) {
         $id = (int)$_POST['collection_id'];
         $stmt = $db->prepare('DELETE FROM collections WHERE id = :id');
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
         header('Location: ' . route('admin.collections', [], ['deleted' => '1']));
         exit;
@@ -62,7 +66,7 @@ if (isset($_GET['success'])) {
 // Get collections
 $result = $db->query('SELECT * FROM collections ORDER BY name');
 $collections = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row;
 }
 
@@ -124,8 +128,8 @@ require_once __DIR__ . '/../../includes/header.php';
                                         <td>
                                             <?php
                                             $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE collection = :name');
-                                            $stmt->bindValue(':name', $collection['name'], SQLITE3_TEXT);
-                                            $count = $stmt->execute()->fetchArray(SQLITE3_ASSOC)['count'];
+                                            $stmt->bindValue(':name', $collection['name'], PDO::PARAM_STR);
+                                            $count = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
                                             echo $count;
                                             ?>
                                         </td>

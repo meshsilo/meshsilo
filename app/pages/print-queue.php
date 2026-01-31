@@ -1,7 +1,10 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/dedup.php';
-require_once 'includes/upgrade-prompt.php';
+require_once 'includes/features.php';
+
+// Require feature to be enabled
+requireFeature('print_queue');
 
 $pageTitle = 'Print Queue';
 $activePage = 'print-queue';
@@ -13,9 +16,6 @@ if (!isLoggedIn()) {
     exit;
 }
 
-// Check for Pro feature
-$hasPrintQueueFeature = hasFeature(FEATURE_PRINT_QUEUE);
-
 $db = getDB();
 $user = getCurrentUser();
 
@@ -24,18 +24,18 @@ $queue = getUserPrintQueue($user['id'], 100);
 
 // Enhance models with preview data
 foreach ($queue as &$model) {
-    $modelData = $db->query("SELECT * FROM models WHERE id = " . (int)$model['model_id'])->fetchArray(SQLITE3_ASSOC);
+    $modelData = $db->query("SELECT id, part_count, file_type FROM models WHERE id = " . (int)$model['model_id'])->fetchArray(PDO::FETCH_ASSOC);
     if ($modelData && $modelData['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $model['model_id'], SQLITE3_INTEGER);
+        $partStmt = $db->prepare('SELECT id, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt->bindValue(':parent_id', $model['model_id'], PDO::PARAM_INT);
         $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
-            $model['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+            $model['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
             $model['preview_type'] = $firstPart['file_type'];
         }
     } elseif ($modelData) {
-        $model['preview_path'] = getRealFilePath($modelData) . '?v=' . ($modelData['file_size'] ?? time());
+        $model['preview_path'] = '/actions/preview?id=' . $modelData['id'];
         $model['preview_type'] = $modelData['file_type'];
     }
 }
@@ -47,12 +47,10 @@ require_once 'includes/header.php';
         <div class="page-container-wide">
             <div class="page-header">
                 <h1>Print Queue</h1>
-                <p><?= $hasPrintQueueFeature ? (count($queue) . ' model' . (count($queue) !== 1 ? 's' : '') . ' to print') : 'Queue models for printing' ?></p>
+                <p><?= count($queue) . ' model' . (count($queue) !== 1 ? 's' : '') . ' to print' ?></p>
             </div>
 
-            <?php if (!$hasPrintQueueFeature): ?>
-                <?php renderInlineUpgradePrompt(FEATURE_PRINT_QUEUE); ?>
-            <?php elseif (empty($queue)): ?>
+            <?php if (empty($queue)): ?>
                 <p class="text-muted" style="text-align: center; padding: 3rem;">
                     Your print queue is empty.<br>
                     Click the printer icon on any model to add it to your queue.

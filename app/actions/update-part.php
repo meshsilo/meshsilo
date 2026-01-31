@@ -18,9 +18,9 @@ if (!$partId) {
 
 // Get part to verify it exists
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-$stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $partId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$part = $result->fetchArray(SQLITE3_ASSOC);
+$part = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$part) {
     echo json_encode(['success' => false, 'error' => 'Part not found']);
@@ -74,11 +74,11 @@ try {
     $stmt = $db->prepare($sql);
     foreach ($params as $key => $value) {
         if ($value === null) {
-            $stmt->bindValue($key, null, SQLITE3_NULL);
+            $stmt->bindValue($key, null, PDO::PARAM_NULL);
         } elseif (is_int($value)) {
-            $stmt->bindValue($key, $value, SQLITE3_INTEGER);
+            $stmt->bindValue($key, $value, PDO::PARAM_INT);
         } else {
-            $stmt->bindValue($key, $value, SQLITE3_TEXT);
+            $stmt->bindValue($key, $value, PDO::PARAM_STR);
         }
     }
     $stmt->execute();

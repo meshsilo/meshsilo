@@ -63,9 +63,9 @@ class Integrity {
 
         // Get the file path
         $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE id = :id');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $model = $result->fetchArray(SQLITE3_ASSOC);
+        $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$model) {
             return false;
@@ -91,8 +91,8 @@ class Integrity {
                 integrity_checked_at = CURRENT_TIMESTAMP
             WHERE id = :id
         ');
-        $updateStmt->bindValue(':hash', $hash, SQLITE3_TEXT);
-        $updateStmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $updateStmt->bindValue(':hash', $hash, PDO::PARAM_STR);
+        $updateStmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 
         return (bool)$updateStmt->execute();
     }
@@ -115,9 +115,9 @@ class Integrity {
             SELECT id, name, file_path, dedup_path, integrity_hash, integrity_checked_at
             FROM models WHERE id = :id
         ');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $model = $result->fetchArray(SQLITE3_ASSOC);
+        $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$model) {
             return ['status' => 'error', 'message' => 'Model not found'];
@@ -159,7 +159,7 @@ class Integrity {
             $updateStmt = $db->prepare('
                 UPDATE models SET integrity_checked_at = CURRENT_TIMESTAMP WHERE id = :id
             ');
-            $updateStmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $updateStmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $updateStmt->execute();
 
             return [
@@ -235,7 +235,7 @@ class Integrity {
             'issues' => []
         ];
 
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $summary['total']++;
 
             $verification = self::verify($row['id']);
@@ -278,25 +278,32 @@ class Integrity {
         }
 
         $db = getDB();
+        $sevenDaysAgo = date('Y-m-d H:i:s', strtotime('-7 days'));
+        $thirtyDaysAgo = date('Y-m-d H:i:s', strtotime('-30 days'));
 
         $total = $db->querySingle('SELECT COUNT(*) FROM models WHERE file_path IS NOT NULL');
         $withHash = $db->querySingle('SELECT COUNT(*) FROM models WHERE integrity_hash IS NOT NULL');
-        $recentlyChecked = $db->querySingle("
+        $stmt = $db->prepare("
             SELECT COUNT(*) FROM models
-            WHERE integrity_checked_at > datetime('now', '-7 days')
+            WHERE integrity_checked_at > :cutoff
         ");
+        $stmt->bindValue(':cutoff', $sevenDaysAgo, PDO::PARAM_STR);
+        $result = $stmt->execute();
+        $recentlyChecked = $result->fetchArray()[0];
 
         // Get recent issues
-        $issuesResult = $db->query("
+        $stmt = $db->prepare("
             SELECT * FROM integrity_log
-            WHERE created_at > datetime('now', '-30 days')
+            WHERE created_at > :cutoff
             ORDER BY created_at DESC
             LIMIT 10
         ");
+        $stmt->bindValue(':cutoff', $thirtyDaysAgo, PDO::PARAM_STR);
+        $issuesResult = $stmt->execute();
 
         $issues = [];
         if ($issuesResult) {
-            while ($row = $issuesResult->fetchArray(SQLITE3_ASSOC)) {
+            while ($row = $issuesResult->fetchArray(PDO::FETCH_ASSOC)) {
                 $issues[] = $row;
             }
         }
@@ -328,11 +335,11 @@ class Integrity {
             ORDER BY il.created_at DESC
             LIMIT :limit
         ');
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $result = $stmt->execute();
 
         $issues = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $issues[] = $row;
         }
 
@@ -385,10 +392,10 @@ class Integrity {
                 INSERT INTO integrity_log (model_id, status, message, details, created_at)
                 VALUES (:model_id, :status, :message, :details, CURRENT_TIMESTAMP)
             ');
-            $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-            $stmt->bindValue(':status', $status, SQLITE3_TEXT);
-            $stmt->bindValue(':message', $message, SQLITE3_TEXT);
-            $stmt->bindValue(':details', json_encode($details), SQLITE3_TEXT);
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+            $stmt->bindValue(':status', $status, PDO::PARAM_STR);
+            $stmt->bindValue(':message', $message, PDO::PARAM_STR);
+            $stmt->bindValue(':details', json_encode($details), PDO::PARAM_STR);
             $stmt->execute();
         } catch (Exception $e) {
             // Silently fail
@@ -411,8 +418,8 @@ class Integrity {
                 resolved_at = CURRENT_TIMESTAMP
             WHERE id = :id
         ');
-        $stmt->bindValue(':resolution', $resolution, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $issueId, SQLITE3_INTEGER);
+        $stmt->bindValue(':resolution', $resolution, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $issueId, PDO::PARAM_INT);
 
         return (bool)$stmt->execute();
     }
@@ -433,8 +440,8 @@ class Integrity {
                     integrity_checked_at = CURRENT_TIMESTAMP
                 WHERE id = :id
             ');
-            $stmt->bindValue(':hash', $result['actual_hash'], SQLITE3_TEXT);
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':hash', $result['actual_hash'], PDO::PARAM_STR);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
             return [
@@ -462,13 +469,13 @@ class Integrity {
             WHERE file_path IS NOT NULL AND integrity_hash IS NULL
             LIMIT :limit
         ');
-        $stmt->bindValue(':limit', $batchSize, SQLITE3_INTEGER);
+        $stmt->bindValue(':limit', $batchSize, PDO::PARAM_INT);
         $result = $stmt->execute();
 
         $processed = 0;
         $errors = 0;
 
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             if (self::storeHash($row['id'])) {
                 $processed++;
             } else {

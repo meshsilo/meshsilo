@@ -19,9 +19,9 @@ if (!$modelId) {
 
 // Get model details
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     $_SESSION['error'] = 'Model not found.';
@@ -39,10 +39,10 @@ if ($model['parent_id']) {
 $part = null;
 if ($partId) {
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id = :parent_id');
-    $stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
-    $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
+    $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $part = $result->fetchArray(SQLITE3_ASSOC);
+    $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$part) {
         $_SESSION['error'] = 'Part not found.';
@@ -63,20 +63,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     try {
         if ($part) {
             // Delete individual part
-            $filePath = __DIR__ . '/' . $part['file_path'];
-            $dedupPath = !empty($part['dedup_path']) ? __DIR__ . '/' . $part['dedup_path'] : null;
+            $filePath = __DIR__ . '/../../' . $part['file_path'];
+            $dedupPath = !empty($part['dedup_path']) ? __DIR__ . '/../../' . $part['dedup_path'] : null;
 
             // Check if this part uses a deduplicated file
             $canDeleteDedup = $dedupPath && canDeleteDedupFile($part['dedup_path']);
 
             // Delete from database
             $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
-            $stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
             $stmt->execute();
 
             // Update parent's part count
             $stmt = $db->prepare('UPDATE models SET part_count = part_count - 1 WHERE id = :id');
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
             // Delete file from disk
@@ -115,38 +115,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             // If multi-part model, get all parts first
             if ($model['part_count'] > 0) {
                 $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = :parent_id');
-                $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
+                $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
                 $result = $stmt->execute();
-                while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                     if (!empty($row['dedup_path'])) {
                         // Track dedup path for later check
                         $dedupFilesToCheck[$row['dedup_path']] = true;
                     } elseif ($row['file_path']) {
-                        $filesToDelete[] = __DIR__ . '/' . $row['file_path'];
+                        $filesToDelete[] = __DIR__ . '/../../' . $row['file_path'];
                     }
                 }
 
                 // Delete child models from database
                 $stmt = $db->prepare('DELETE FROM models WHERE parent_id = :parent_id');
-                $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
+                $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
                 $stmt->execute();
             } else {
                 // Single model - add its file
                 if (!empty($model['dedup_path'])) {
                     $dedupFilesToCheck[$model['dedup_path']] = true;
                 } elseif ($model['file_path']) {
-                    $filesToDelete[] = __DIR__ . '/' . $model['file_path'];
+                    $filesToDelete[] = __DIR__ . '/../../' . $model['file_path'];
                 }
             }
 
             // Delete category associations
             $stmt = $db->prepare('DELETE FROM model_categories WHERE model_id = :model_id');
-            $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
             // Delete parent/main model from database
             $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
             // Delete non-deduplicated files from disk
@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             // Delete deduplicated files only if no other parts reference them
             foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
                 if (canDeleteDedupFile($dedupPath)) {
-                    $fullPath = __DIR__ . '/' . $dedupPath;
+                    $fullPath = __DIR__ . '/../../' . $dedupPath;
                     if (file_exists($fullPath)) {
                         unlink($fullPath);
                     }

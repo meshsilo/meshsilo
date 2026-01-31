@@ -107,11 +107,11 @@ function listAnnotations($db, $modelId) {
         WHERE a.model_id = :model_id
         ORDER BY a.created_at DESC
     ');
-    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
 
     $annotations = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $annotations[] = [
             'id' => (int)$row['id'],
             'model_id' => (int)$row['model_id'],
@@ -165,16 +165,16 @@ function createAnnotation($db, $modelId) {
         INSERT INTO annotations (model_id, user_id, position_x, position_y, position_z, normal_x, normal_y, normal_z, content, color)
         VALUES (:model_id, :user_id, :pos_x, :pos_y, :pos_z, :norm_x, :norm_y, :norm_z, :content, :color)
     ');
-    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-    $stmt->bindValue(':user_id', $user['id'], SQLITE3_INTEGER);
-    $stmt->bindValue(':pos_x', $positionX, SQLITE3_FLOAT);
-    $stmt->bindValue(':pos_y', $positionY, SQLITE3_FLOAT);
-    $stmt->bindValue(':pos_z', $positionZ, SQLITE3_FLOAT);
-    $stmt->bindValue(':norm_x', $normalX, SQLITE3_FLOAT);
-    $stmt->bindValue(':norm_y', $normalY, SQLITE3_FLOAT);
-    $stmt->bindValue(':norm_z', $normalZ, SQLITE3_FLOAT);
-    $stmt->bindValue(':content', $content, SQLITE3_TEXT);
-    $stmt->bindValue(':color', $color, SQLITE3_TEXT);
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $stmt->bindValue(':user_id', $user['id'], PDO::PARAM_INT);
+    $stmt->bindValue(':pos_x', $positionX, PDO::PARAM_STR);
+    $stmt->bindValue(':pos_y', $positionY, PDO::PARAM_STR);
+    $stmt->bindValue(':pos_z', $positionZ, PDO::PARAM_STR);
+    $stmt->bindValue(':norm_x', $normalX, PDO::PARAM_STR);
+    $stmt->bindValue(':norm_y', $normalY, PDO::PARAM_STR);
+    $stmt->bindValue(':norm_z', $normalZ, PDO::PARAM_STR);
+    $stmt->bindValue(':content', $content, PDO::PARAM_STR);
+    $stmt->bindValue(':color', $color, PDO::PARAM_STR);
 
     if ($stmt->execute()) {
         $annotationId = $db->lastInsertRowID();
@@ -208,9 +208,9 @@ function updateAnnotation($db) {
 
     // Check ownership
     $stmt = $db->prepare('SELECT user_id FROM annotations WHERE id = :id');
-    $stmt->bindValue(':id', $annotationId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $annotationId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $annotation = $result->fetchArray(SQLITE3_ASSOC);
+    $annotation = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$annotation) {
         echo json_encode(['success' => false, 'error' => 'Annotation not found']);
@@ -235,9 +235,9 @@ function updateAnnotation($db) {
     }
 
     $stmt = $db->prepare('UPDATE annotations SET content = :content, color = :color WHERE id = :id');
-    $stmt->bindValue(':content', $content, SQLITE3_TEXT);
-    $stmt->bindValue(':color', $color, SQLITE3_TEXT);
-    $stmt->bindValue(':id', $annotationId, SQLITE3_INTEGER);
+    $stmt->bindValue(':content', $content, PDO::PARAM_STR);
+    $stmt->bindValue(':color', $color, PDO::PARAM_STR);
+    $stmt->bindValue(':id', $annotationId, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
         echo json_encode(['success' => true]);
@@ -257,9 +257,9 @@ function deleteAnnotation($db) {
 
     // Check ownership
     $stmt = $db->prepare('SELECT user_id FROM annotations WHERE id = :id');
-    $stmt->bindValue(':id', $annotationId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $annotationId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $annotation = $result->fetchArray(SQLITE3_ASSOC);
+    $annotation = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$annotation) {
         echo json_encode(['success' => false, 'error' => 'Annotation not found']);
@@ -272,7 +272,7 @@ function deleteAnnotation($db) {
     }
 
     $stmt = $db->prepare('DELETE FROM annotations WHERE id = :id');
-    $stmt->bindValue(':id', $annotationId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $annotationId, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
         echo json_encode(['success' => true]);

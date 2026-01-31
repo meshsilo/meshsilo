@@ -7,9 +7,10 @@
 
 require_once __DIR__ . '/../../includes/config.php';
 
-// Require admin permission
-if (!isLoggedIn() || !isAdmin()) {
-    header('Location: ' . url('login'));
+// Require view stats permission
+if (!isLoggedIn() || !canViewStats()) {
+    $_SESSION['error'] = 'You do not have permission to view analytics.';
+    header('Location: ' . route('home'));
     exit;
 }
 
@@ -161,11 +162,11 @@ $pageTitle = 'Analytics';
 include __DIR__ . '/../../includes/header.php';
 ?>
 
-<div class="admin-container">
+<div class="admin-layout">
     <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
     <div class="admin-content">
-        <div class="admin-header">
+        <div class="page-header">
             <h1>Analytics</h1>
             <div class="header-actions">
                 <select id="period-select" class="form-control" onchange="changePeriod(this.value)">

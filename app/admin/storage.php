@@ -5,8 +5,12 @@ require_once __DIR__ . '/../../includes/storage.php';
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
-// Require admin permission
-requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+// Require storage management permission
+if (!isLoggedIn() || !canManageStorage()) {
+    $_SESSION['error'] = 'You do not have permission to manage storage settings.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $pageTitle = 'Storage Settings';
 $activePage = '';
@@ -124,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($file->isDot() || $file->getFilename() === '.gitkeep') continue;
                 if ($file->isFile()) {
                     $stmt = $db->prepare('SELECT COUNT(*) FROM models WHERE filename = :filename');
-                    $stmt->bindValue(':filename', $file->getFilename(), SQLITE3_TEXT);
+                    $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
                     $inDb = $stmt->execute()->fetchArray()[0];
                     if (!$inDb) {
                         unlink($file->getPathname());
@@ -319,7 +323,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <form method="post">
                             <div class="form-group">
                                 <label for="storage_type">Storage Type</label>
-                                <select name="storage_type" id="storage_type" onchange="toggleS3Settings()">
+                                <select name="storage_type" id="storage_type" class="form-input" onchange="toggleS3Settings()">
                                     <option value="local" <?= $storageType === 'local' ? 'selected' : '' ?>>Local Filesystem</option>
                                     <option value="s3" <?= $storageType === 's3' ? 'selected' : '' ?>>S3-Compatible Object Storage</option>
                                 </select>
@@ -329,7 +333,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div id="s3-settings" style="<?= $storageType !== 's3' ? 'display:none;' : '' ?>">
                                 <div class="form-group">
                                     <label for="s3_endpoint">S3 Endpoint URL</label>
-                                    <input type="url" name="s3_endpoint" id="s3_endpoint"
+                                    <input type="url" name="s3_endpoint" id="s3_endpoint" class="form-input"
                                            value="<?= htmlspecialchars(getSetting('s3_endpoint', '')) ?>"
                                            placeholder="https://s3.amazonaws.com or https://your-minio-server.com">
                                     <p class="form-hint">For AWS S3 use https://s3.amazonaws.com, for Minio/Backblaze use your server URL</p>
@@ -337,28 +341,28 @@ require_once __DIR__ . '/../../includes/header.php';
 
                                 <div class="form-group">
                                     <label for="s3_bucket">Bucket Name</label>
-                                    <input type="text" name="s3_bucket" id="s3_bucket"
+                                    <input type="text" name="s3_bucket" id="s3_bucket" class="form-input"
                                            value="<?= htmlspecialchars(getSetting('s3_bucket', '')) ?>"
                                            placeholder="my-silo-bucket">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="s3_region">Region</label>
-                                    <input type="text" name="s3_region" id="s3_region"
+                                    <input type="text" name="s3_region" id="s3_region" class="form-input"
                                            value="<?= htmlspecialchars(getSetting('s3_region', 'us-east-1')) ?>"
                                            placeholder="us-east-1">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="s3_access_key">Access Key</label>
-                                    <input type="text" name="s3_access_key" id="s3_access_key"
+                                    <input type="text" name="s3_access_key" id="s3_access_key" class="form-input"
                                            value="<?= htmlspecialchars(getSetting('s3_access_key', '')) ?>"
                                            placeholder="AKIAIOSFODNN7EXAMPLE">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="s3_secret_key">Secret Key</label>
-                                    <input type="password" name="s3_secret_key" id="s3_secret_key"
+                                    <input type="password" name="s3_secret_key" id="s3_secret_key" class="form-input"
                                            placeholder="<?= getSetting('s3_secret_key', '') ? '(saved - leave blank to keep)' : 'Enter secret key' ?>">
                                 </div>
 
@@ -372,7 +376,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
                                 <div class="form-group">
                                     <label for="s3_public_url">Public URL (optional)</label>
-                                    <input type="url" name="s3_public_url" id="s3_public_url"
+                                    <input type="url" name="s3_public_url" id="s3_public_url" class="form-input"
                                            value="<?= htmlspecialchars(getSetting('s3_public_url', '')) ?>"
                                            placeholder="https://cdn.example.com/silo">
                                     <p class="form-hint">If your bucket is publicly accessible via CDN, enter the base URL here</p>

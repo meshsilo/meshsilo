@@ -17,6 +17,8 @@ services:
       - meshsilo_logs:/var/www/meshsilo/logs
       # Optional: Mount custom config file
       # - ./config.local.php:/var/www/meshsilo/config.local.php:ro
+      # Optional: Mount seed models for demo mode (place .stl/.3mf files here)
+      # - ./demo-seed:/var/www/meshsilo/storage/demo-seed:ro
     environment:
       # Database Configuration (sqlite or mysql)
       - MESHSILO_DB_TYPE=sqlite
@@ -39,6 +41,10 @@ services:
 
       # Deduplication
       - MESHSILO_DEDUP_ENABLED=true
+
+      # Demo Mode (populates sample models, resets periodically)
+      # - MESHSILO_DEMO_MODE=true
+      # - MESHSILO_DEMO_RESET_INTERVAL=3600
 
       # Development/Debug Settings
       # - MESHSILO_ENABLE_QUERY_STATS=true

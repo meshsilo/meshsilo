@@ -15,6 +15,8 @@ if (!defined('SQLITE3_ASSOC')) define('SQLITE3_ASSOC', 1);
 class DatabaseStatement {
     private $stmt;
     private $params = [];
+    private $paramTypes = [];
+    private ?DatabaseResult $lastResult = null;
 
     public function __construct($stmt) {
         $this->stmt = $stmt;
@@ -22,46 +24,112 @@ class DatabaseStatement {
 
     public function bindValue($param, $value, $type = null) {
         $this->params[$param] = $value;
+        if ($type !== null) {
+            $this->paramTypes[$param] = $type;
+        }
         return true;
     }
 
     public function execute($params = null) {
         if ($params !== null) {
-            $this->stmt->execute($params);
+            // Use type-aware binding instead of PDOStatement::execute($params)
+            // PDO::execute() binds ALL values as strings, which breaks
+            // LIMIT/OFFSET in MySQL (requires integer binding)
+            $this->bindTypedParams($params);
+            $this->stmt->execute();
         } else {
-            // For positional placeholders (?), PDO::execute() expects 0-indexed array
-            // but bindValue uses 1-based indices, so convert to array_values
             $execParams = $this->params;
+            $execTypes = $this->paramTypes;
             if (!empty($execParams)) {
                 $firstKey = array_keys($execParams)[0];
                 if (is_int($firstKey)) {
-                    // Positional placeholders - ensure 0-indexed array
+                    // Positional placeholders - sort by key for proper ordering
                     ksort($execParams);
-                    $execParams = array_values($execParams);
                 }
+                $this->bindTypedParams($execParams, $execTypes);
+                $this->stmt->execute();
+            } else {
+                $this->stmt->execute();
             }
-            $this->stmt->execute($execParams);
         }
         $this->params = [];
-        return new DatabaseResult($this->stmt);
+        $this->paramTypes = [];
+        $this->lastResult = new DatabaseResult($this->stmt);
+        return $this->lastResult;
+    }
+
+    /**
+     * Bind parameters with proper PDO types.
+     * Detects PHP value types to use PDO::PARAM_INT for integers,
+     * which is required for MySQL LIMIT/OFFSET clauses.
+     */
+    private function bindTypedParams(array $params, array $types = []): void {
+        foreach ($params as $key => $value) {
+            // PDO bindValue uses 1-based index for positional params
+            $bindKey = is_int($key) ? $key + 1 : $key;
+
+            // Use explicitly provided type, or detect from PHP value type
+            if (isset($types[$key])) {
+                $pdoType = $this->mapToPdoType($types[$key]);
+                $this->stmt->bindValue($bindKey, $value, $pdoType);
+            } elseif (is_int($value)) {
+                $this->stmt->bindValue($bindKey, $value, PDO::PARAM_INT);
+            } elseif (is_bool($value)) {
+                $this->stmt->bindValue($bindKey, (int)$value, PDO::PARAM_INT);
+            } elseif (is_null($value)) {
+                $this->stmt->bindValue($bindKey, null, PDO::PARAM_NULL);
+            } else {
+                $this->stmt->bindValue($bindKey, $value, PDO::PARAM_STR);
+            }
+        }
+    }
+
+    /**
+     * Map SQLite3 type constants to PDO type constants
+     */
+    private function mapToPdoType($type): int {
+        if ($type === PDO::PARAM_INT || $type === PDO::PARAM_STR ||
+            $type === PDO::PARAM_NULL || $type === PDO::PARAM_BOOL) {
+            return $type;
+        }
+        // Map SQLITE3_* constants to PDO equivalents
+        switch ($type) {
+            case SQLITE3_INTEGER: return PDO::PARAM_INT;
+            case SQLITE3_TEXT: return PDO::PARAM_STR;
+            case SQLITE3_NULL: return PDO::PARAM_NULL;
+            case SQLITE3_FLOAT: return PDO::PARAM_STR; // PDO has no float type
+            case SQLITE3_BLOB: return PDO::PARAM_LOB;
+            default: return PDO::PARAM_STR;
+        }
     }
 
     // Convenience method: execute and fetch single column
+    // If execute() was already called, fetches from that result
     public function fetchColumn($column = 0) {
-        $result = $this->execute();
+        $result = $this->lastResult ?? $this->execute();
         return $result->fetchColumn($column);
     }
 
     // Convenience method: execute and fetch single row
+    // If execute() was already called, fetches from that result
+    // Safe to call in loops - lastResult persists until next execute()
     public function fetch($mode = PDO::FETCH_ASSOC) {
-        $result = $this->execute();
+        $result = $this->lastResult ?? $this->execute();
         return $result->fetch($mode);
     }
 
     // Convenience method: execute and fetch as array (SQLite3 compat)
+    // If execute() was already called, fetches from that result
+    // Safe to call in loops - lastResult persists until next execute()
     public function fetchArray($mode = SQLITE3_ASSOC) {
-        $result = $this->execute();
+        $result = $this->lastResult ?? $this->execute();
         return $result->fetchArray($mode);
+    }
+
+    // Convenience method: execute and fetch all rows
+    public function fetchAll($mode = PDO::FETCH_ASSOC) {
+        $result = $this->lastResult ?? $this->execute();
+        return $result->fetchAll($mode);
     }
 }
 
@@ -79,6 +147,10 @@ class DatabaseResult {
 
     public function fetch($mode = PDO::FETCH_ASSOC) {
         return $this->stmt->fetch($mode);
+    }
+
+    public function fetchAll($mode = PDO::FETCH_ASSOC) {
+        return $this->stmt->fetchAll($mode);
     }
 
     public function fetchColumn($column = 0) {
@@ -161,7 +233,40 @@ class Database {
         return $this->pdo;
     }
 
+    /**
+     * Normalize SQLite-specific SQL syntax for MySQL compatibility.
+     * Converts INSERT OR IGNORE → INSERT IGNORE, INSERT OR REPLACE → REPLACE INTO,
+     * and backticks MySQL reserved words used as table/column names.
+     */
+    private function normalizeSql($sql) {
+        if ($this->type !== 'mysql') {
+            return $sql;
+        }
+        // INSERT OR IGNORE INTO → INSERT IGNORE INTO
+        $sql = preg_replace('/\bINSERT\s+OR\s+IGNORE\s+INTO\b/i', 'INSERT IGNORE INTO', $sql);
+        // INSERT OR REPLACE INTO → REPLACE INTO
+        $sql = preg_replace('/\bINSERT\s+OR\s+REPLACE\s+INTO\b/i', 'REPLACE INTO', $sql);
+
+        // MySQL 8.0 reserved word: GROUPS is used as a table name throughout the codebase.
+        // Automatically backtick it when it appears after SQL keywords that precede table names.
+        // The \b word boundary prevents matching "user_groups" or other compound names.
+        $sql = preg_replace('/\b(FROM|JOIN|INTO|UPDATE|TABLE|EXISTS)\s+groups\b/i', '$1 `groups`', $sql);
+
+        // SQLite: INTEGER PRIMARY KEY AUTOINCREMENT → MySQL: INT AUTO_INCREMENT PRIMARY KEY
+        $sql = preg_replace('/\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b/i', 'INT AUTO_INCREMENT PRIMARY KEY', $sql);
+        // Catch any remaining standalone AUTOINCREMENT → AUTO_INCREMENT
+        $sql = preg_replace('/\bAUTOINCREMENT\b/i', 'AUTO_INCREMENT', $sql);
+
+        // MySQL/MariaDB: TEXT columns cannot have UNIQUE constraints without a prefix length.
+        // Convert "TEXT [NOT NULL] UNIQUE" → "VARCHAR(255) [NOT NULL] UNIQUE" in CREATE TABLE statements.
+        // VARCHAR(255) is also valid in SQLite (treated as TEXT affinity), so this is safe for both.
+        $sql = preg_replace('/\bTEXT\s+(NOT\s+NULL\s+)?UNIQUE\b/i', 'VARCHAR(255) $1UNIQUE', $sql);
+
+        return $sql;
+    }
+
     public function prepare($sql) {
+        $sql = $this->normalizeSql($sql);
         // Return wrapped statement for SQLite3 API compatibility with profiling
         return $this->profileQuery(function() use ($sql) {
             return new DatabaseStatement($this->pdo->prepare($sql));
@@ -169,6 +274,7 @@ class Database {
     }
 
     public function query($sql) {
+        $sql = $this->normalizeSql($sql);
         // Return wrapped result for SQLite3 API compatibility with profiling
         return $this->profileQuery(function() use ($sql) {
             return new DatabaseResult($this->pdo->query($sql));
@@ -176,6 +282,7 @@ class Database {
     }
 
     public function exec($sql) {
+        $sql = $this->normalizeSql($sql);
         return $this->profileQuery(function() use ($sql) {
             return $this->pdo->exec($sql);
         }, $sql);
@@ -186,6 +293,7 @@ class Database {
     }
 
     public function querySingle($sql) {
+        $sql = $this->normalizeSql($sql);
         $stmt = $this->pdo->query($sql);
         $row = $stmt->fetch(PDO::FETCH_NUM);
         return $row ? $row[0] : null;
@@ -453,9 +561,9 @@ SQL;
 function getUserByLogin($login) {
     try {
         $db = getDB();
-        $stmt = $db->prepare('SELECT * FROM users WHERE username = :login OR email = :login');
-        $stmt->execute([':login' => $login]);
-        return $stmt->fetch();
+        $stmt = $db->prepare('SELECT * FROM users WHERE username = :login1 OR email = :login2');
+        $result = $stmt->execute([':login1' => $login, ':login2' => $login]);
+        return $result->fetch();
     } catch (Exception $e) {
         logException($e, ['action' => 'get_user_by_login', 'login' => $login]);
         return null;
@@ -1761,6 +1869,246 @@ function runMigrations($db) {
             logDebug('Migration: FTS5 table skipped', ['error' => $e->getMessage()]);
         }
     }
+
+    // =====================
+    // Ensure all default settings exist in database
+    // Uses INSERT OR IGNORE / INSERT IGNORE so existing values are never overwritten
+    // =====================
+    initializeDefaultSettings($db);
+}
+
+/**
+ * Initialize all default settings in the database.
+ * Uses INSERT OR IGNORE (SQLite) / INSERT IGNORE (MySQL) so existing values are preserved.
+ * Called by runMigrations() to ensure all settings exist after install/upgrade.
+ */
+function initializeDefaultSettings($db) {
+    $type = $db->getType();
+
+    $defaults = [
+        // Core site settings
+        'site_name' => 'MeshSilo',
+        'site_description' => 'Your 3D Model Library',
+        'site_url' => '/',
+        'force_site_url' => '0',
+        'site_tagline' => '3D Model Library',
+        'models_per_page' => '20',
+        'allow_registration' => '1',
+        'require_approval' => '0',
+        'allowed_extensions' => 'stl,3mf,gcode,zip',
+        'auto_convert_stl' => '0',
+        'auto_deduplication' => '0',
+
+        // Feature toggles
+        'enable_categories' => '1',
+        'enable_collections' => '1',
+        'enable_tags' => '1',
+        'enable_activity_log' => '1',
+        'enable_access_log' => '0',
+
+        // Theme and display
+        'default_theme' => 'dark',
+        'allow_user_theme' => '1',
+        'default_sort' => 'newest',
+        'default_view' => 'grid',
+
+        // Maintenance
+        'maintenance_mode' => '0',
+        'maintenance_admin_bypass' => '1',
+        'maintenance_bypass_secret' => '',
+        'maintenance_whitelist_ips' => '',
+        'maintenance_message' => '',
+        'maintenance_title' => 'Maintenance Mode',
+
+        // Activity log
+        'activity_log_retention_days' => '90',
+        'activity_log_retention' => '90',
+        'audit_logging_enabled' => '1',
+
+        // Mail
+        'mail_driver' => 'mail',
+        'mail_host' => 'localhost',
+        'mail_port' => '587',
+        'mail_username' => '',
+        'mail_password' => '',
+        'mail_encryption' => 'tls',
+        'mail_from_address' => 'noreply@example.com',
+        'mail_from_name' => 'MeshSilo',
+        'admin_email' => '',
+
+        // Storage
+        'storage_type' => 'local',
+        's3_endpoint' => '',
+        's3_bucket' => '',
+        's3_access_key' => '',
+        's3_secret_key' => '',
+        's3_region' => 'us-east-1',
+        's3_path_style' => '0',
+        's3_public_url' => '',
+
+        // OIDC
+        'oidc_enabled' => '0',
+        'oidc_provider_url' => '',
+        'oidc_client_id' => '',
+        'oidc_client_secret' => '',
+        'oidc_button_text' => 'Sign in with SSO',
+        'oidc_scopes' => '',
+        'oidc_username_claim' => 'preferred_username',
+        'oidc_pkce_enabled' => '1',
+        'oidc_auto_register' => '1',
+        'oidc_prompt' => '',
+        'oidc_acr_values' => '',
+        'oidc_redirect_uri' => '',
+        'oidc_groups_claim' => 'groups',
+        'oidc_group_mapping' => '',
+        'oidc_manage_groups' => '0',
+        'oidc_link_existing' => '1',
+        'oidc_default_group' => 'Users',
+        'oidc_single_logout' => '1',
+        'oidc_post_logout_uri' => '',
+
+        // SAML
+        'saml_enabled' => '0',
+        'saml_idp_entity_id' => '',
+        'saml_idp_sso_url' => '',
+        'saml_idp_slo_url' => '',
+        'saml_idp_certificate' => '',
+        'saml_idp_metadata_url' => '',
+        'saml_sp_entity_id' => '',
+        'saml_sp_certificate' => '',
+        'saml_sp_private_key' => '',
+        'saml_acs_url' => '',
+        'saml_username_attribute' => 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
+        'saml_email_attribute' => 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+        'saml_groups_attribute' => 'http://schemas.microsoft.com/ws/2008/06/identity/claims/groups',
+        'saml_auto_register' => '1',
+        'saml_name_id_format' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+        'saml_sign_requests' => '0',
+        'saml_require_signature' => '0',
+        'saml_sync_groups' => '0',
+        'saml_group_mapping' => '{}',
+        'saml_remove_unmapped_groups' => '0',
+
+        // LDAP
+        'ldap_enabled' => '0',
+        'ldap_host' => '',
+        'ldap_port' => '389',
+        'ldap_use_ssl' => '0',
+        'ldap_use_tls' => '0',
+        'ldap_base_dn' => '',
+        'ldap_bind_dn' => '',
+        'ldap_bind_password' => '',
+        'ldap_user_filter' => '(sAMAccountName=%s)',
+        'ldap_username_attribute' => 'sAMAccountName',
+        'ldap_email_attribute' => 'mail',
+        'ldap_display_name_attribute' => 'displayName',
+        'ldap_groups_attribute' => 'memberOf',
+        'ldap_search_scope' => 'subtree',
+        'ldap_follow_referrals' => '0',
+        'ldap_timeout' => '10',
+        'ldap_sync_groups' => '0',
+        'ldap_auto_register' => '1',
+        'ldap_group_mapping' => '{}',
+        'ldap_remove_unmapped_groups' => '0',
+        'ldap_disable_missing_users' => '0',
+
+        // Rate limiting
+        'rate_limiting' => '1',
+        'rate_limit_storage' => 'file',
+
+        // Webhooks and events
+        'webhooks_enabled' => '1',
+        'event_logging' => '1',
+
+        // Notifications
+        'discord_enabled' => '0',
+        'discord_webhook_url' => '',
+        'discord_events' => '[]',
+        'slack_enabled' => '0',
+        'slack_webhook_url' => '',
+        'slack_events' => '[]',
+
+        // Backup
+        'backup_enabled' => '0',
+        'backup_frequency' => 'daily',
+        'backup_retention' => '10',
+        'backup_time' => '03:00',
+        'last_scheduled_backup' => '',
+
+        // Branding
+        'logo_path' => '',
+        'favicon_path' => '',
+        'brand_primary_color' => '#6366f1',
+        'brand_secondary_color' => '#8b5cf6',
+        'brand_accent_color' => '#06b6d4',
+        'brand_background_color' => '#f9fafb',
+        'brand_text_color' => '#111827',
+        'custom_css' => '',
+        'custom_head_html' => '',
+        'custom_footer_html' => '',
+        'brand_font_family' => 'Inter, system-ui, sans-serif',
+        'brand_border_radius' => '0.5rem',
+        'dark_mode_enabled' => '0',
+        'brand_dark_background' => '#1f2937',
+        'brand_dark_text' => '#f9fafb',
+
+        // Routing and performance
+        'seo_redirects' => '1',
+        'route_caching' => '0',
+        'route_profiling' => '0',
+
+        // Demo mode
+        'demo_mode' => '0',
+        'demo_reset_interval' => '3600',
+        'demo_last_reset' => '0',
+
+        // Printing and volume
+        'default_material' => 'pla',
+        'currency' => 'USD',
+        'default_infill' => '20',
+
+        // File types
+        'file_type_config' => '{}',
+
+        // Homepage
+        'homepage_config' => '',
+
+        // Signed URLs
+        'signed_url_secret' => '',
+
+        // Update checker
+        'update_check_enabled' => '1',
+
+        // CORS
+        'cors_allowed_origins' => '',
+        'cors_allowed_methods' => '',
+        'cors_allowed_headers' => '',
+        'cors_allow_credentials' => '0',
+
+        // Default group
+        'default_group' => '1',
+
+        // Schema tracking
+        'schema_version' => '',
+        'last_migration' => '',
+
+        // Slicers
+        'enabled_slicers' => '',
+    ];
+
+    try {
+        if ($type === 'mysql') {
+            $stmt = $db->prepare('INSERT IGNORE INTO settings (`key`, `value`) VALUES (:key, :value)');
+        } else {
+            $stmt = $db->prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (:key, :value)');
+        }
+
+        foreach ($defaults as $key => $value) {
+            $stmt->execute([':key' => $key, ':value' => $value]);
+        }
+    } catch (Exception $e) {
+        logDebug('Settings initialization skipped', ['error' => $e->getMessage()]);
+    }
 }
 
 // Settings cache storage
@@ -2441,7 +2789,7 @@ function getUserPrintQueue($userId, $limit = 100) {
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         return [];
     }
 }
@@ -2485,7 +2833,7 @@ function getRelatedModels($modelId) {
         ');
         $stmt->execute([':model_id' => $modelId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         return [];
     }
 }
@@ -2507,8 +2855,8 @@ function addRelatedModel($modelId, $relatedModelId, $relationshipType = 'related
 function removeRelatedModel($modelId, $relatedModelId) {
     try {
         $db = getDB();
-        $stmt = $db->prepare('DELETE FROM related_models WHERE (model_id = :model_id AND related_model_id = :related_id) OR (model_id = :related_id AND related_model_id = :model_id)');
-        $stmt->execute([':model_id' => $modelId, ':related_id' => $relatedModelId]);
+        $stmt = $db->prepare('DELETE FROM related_models WHERE (model_id = :model_id1 AND related_model_id = :related_id1) OR (model_id = :related_id2 AND related_model_id = :model_id2)');
+        $stmt->execute([':model_id1' => $modelId, ':related_id1' => $relatedModelId, ':related_id2' => $relatedModelId, ':model_id2' => $modelId]);
         return true;
     } catch (Exception $e) {
         return false;
@@ -2531,7 +2879,7 @@ function getModelVersions($modelId) {
         ');
         $stmt->execute([':model_id' => $modelId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         return [];
     }
 }
@@ -2597,7 +2945,7 @@ function getStorageUsageByCategory() {
             ORDER BY total_size DESC
         ');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         return [];
     }
 }
@@ -2615,7 +2963,7 @@ function getStorageUsageByUser() {
             ORDER BY total_size DESC
         ');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         return [];
     }
 }

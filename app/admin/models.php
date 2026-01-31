@@ -2,9 +2,10 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
-// Admin only
-if (!isLoggedIn() || !getCurrentUser()['is_admin']) {
-    header('Location: /login');
+// Require admin permission (bulk model management is admin-only)
+if (!isLoggedIn() || !isAdmin()) {
+    $_SESSION['error'] = 'You do not have permission to access bulk model management.';
+    header('Location: ' . route('home'));
     exit;
 }
 
@@ -70,19 +71,19 @@ $stmt = $db->prepare($sql);
 foreach ($params as $key => $value) {
     $stmt->bindValue($key, $value);
 }
-$stmt->bindValue(':limit', $perPage, SQLITE3_INTEGER);
-$stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
+$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $result = $stmt->execute();
 
 $models = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $models[] = $row;
 }
 
 // Get categories for filter
 $categories = [];
 $catResult = $db->query('SELECT * FROM categories ORDER BY name');
-while ($row = $catResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $catResult->fetchArray(PDO::FETCH_ASSOC)) {
     $categories[] = $row;
 }
 

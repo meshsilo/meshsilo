@@ -209,9 +209,9 @@ function calculateAndStoreDimensions($modelId) {
 
     $db = getDB();
     $stmt = $db->prepare('SELECT file_path, file_type, dedup_path FROM models WHERE id = :id');
-    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $model = $result->fetchArray(SQLITE3_ASSOC);
+    $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) return false;
 

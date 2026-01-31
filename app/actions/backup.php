@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/CloudBackup.php';
 
 header('Content-Type: application/json');
 
@@ -42,6 +43,28 @@ switch ($action) {
         break;
     case 'get_schedule':
         getBackupSchedule();
+        break;
+    // Cloud backup actions
+    case 'cloud_upload':
+        cloudUploadBackup();
+        break;
+    case 'cloud_list':
+        cloudListBackups();
+        break;
+    case 'cloud_download':
+        cloudDownloadBackup();
+        break;
+    case 'cloud_delete':
+        cloudDeleteBackup();
+        break;
+    case 'cloud_test':
+        cloudTestConnection();
+        break;
+    case 'save_cloud_settings':
+        saveCloudSettings();
+        break;
+    case 'get_cloud_settings':
+        getCloudSettings();
         break;
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
@@ -281,7 +304,203 @@ function runScheduledBackup() {
     if ($shouldBackup) {
         ob_start();
         createBackup();
-        ob_end_clean();
+        $backupResult = ob_get_clean();
+
+        // Upload to cloud destinations
+        $backupData = json_decode($backupResult, true);
+        if ($backupData && $backupData['success'] && !empty($backupData['filename'])) {
+            $backupPath = __DIR__ . '/../../storage/db/backups/' . $backupData['filename'];
+            if (file_exists($backupPath)) {
+                CloudBackup::uploadToAllDestinations($backupPath, $backupData['filename']);
+            }
+        }
+
         setSetting('last_scheduled_backup', date('Y-m-d H:i:s'));
     }
+}
+
+// =====================
+// Cloud Backup Functions
+// =====================
+
+function cloudUploadBackup() {
+    $filename = basename($_POST['filename'] ?? '');
+    $destination = $_POST['destination'] ?? '';
+
+    if (empty($filename) || strpos($filename, 'silo_backup_') !== 0) {
+        echo json_encode(['success' => false, 'error' => 'Invalid filename']);
+        return;
+    }
+
+    $backupPath = __DIR__ . '/../../storage/db/backups/' . $filename;
+    if (!file_exists($backupPath)) {
+        echo json_encode(['success' => false, 'error' => 'Backup not found']);
+        return;
+    }
+
+    try {
+        if ($destination) {
+            // Upload to specific destination
+            $provider = CloudBackup::getProvider($destination);
+            if (!$provider) {
+                echo json_encode(['success' => false, 'error' => 'Invalid destination']);
+                return;
+            }
+            $result = $provider->upload($backupPath, $filename);
+            logActivity('cloud_backup_uploaded', 'system', null, "$filename to $destination");
+            echo json_encode(['success' => true, 'destination' => $destination, 'result' => $result]);
+        } else {
+            // Upload to all enabled destinations
+            $results = CloudBackup::uploadToAllDestinations($backupPath, $filename);
+            logActivity('cloud_backup_uploaded', 'system', null, "$filename to all destinations");
+            echo json_encode(['success' => true, 'results' => $results]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+function cloudListBackups() {
+    $destination = $_GET['destination'] ?? '';
+
+    try {
+        if ($destination) {
+            $backups = CloudBackup::listFromDestination($destination);
+            echo json_encode(['success' => true, 'backups' => $backups]);
+        } else {
+            // List from all enabled destinations
+            $allBackups = [];
+            foreach (CloudBackup::getEnabledDestinations() as $dest) {
+                $backups = CloudBackup::listFromDestination($dest);
+                $allBackups = array_merge($allBackups, $backups);
+            }
+            // Sort by date descending
+            usort($allBackups, function($a, $b) {
+                return strtotime($b['created_at']) - strtotime($a['created_at']);
+            });
+            echo json_encode(['success' => true, 'backups' => $allBackups]);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+function cloudDownloadBackup() {
+    $filename = basename($_GET['filename'] ?? '');
+    $destination = $_GET['destination'] ?? '';
+
+    if (empty($filename) || empty($destination) || strpos($filename, 'silo_backup_') !== 0) {
+        echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+        return;
+    }
+
+    $localPath = __DIR__ . '/../../storage/db/backups/' . $filename;
+
+    try {
+        $success = CloudBackup::downloadFromDestination($destination, $filename, $localPath);
+        if ($success) {
+            logActivity('cloud_backup_downloaded', 'system', null, "$filename from $destination");
+            echo json_encode(['success' => true, 'filename' => $filename]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Download failed']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+function cloudDeleteBackup() {
+    $filename = basename($_POST['filename'] ?? '');
+    $destination = $_POST['destination'] ?? '';
+
+    if (empty($filename) || empty($destination) || strpos($filename, 'silo_backup_') !== 0) {
+        echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+        return;
+    }
+
+    try {
+        $success = CloudBackup::deleteFromDestination($destination, $filename);
+        if ($success) {
+            logActivity('cloud_backup_deleted', 'system', null, "$filename from $destination");
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Delete failed']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+function cloudTestConnection() {
+    $destination = $_POST['destination'] ?? '';
+
+    if (empty($destination)) {
+        echo json_encode(['success' => false, 'error' => 'No destination specified']);
+        return;
+    }
+
+    $provider = CloudBackup::getProvider($destination);
+    if (!$provider) {
+        echo json_encode(['success' => false, 'error' => 'Invalid destination']);
+        return;
+    }
+
+    $result = $provider->testConnection();
+    echo json_encode($result);
+}
+
+function saveCloudSettings() {
+    $destination = $_POST['destination'] ?? '';
+    $settings = $_POST['settings'] ?? [];
+
+    if (empty($destination)) {
+        echo json_encode(['success' => false, 'error' => 'No destination specified']);
+        return;
+    }
+
+    $prefix = 'backup_' . $destination . '_';
+
+    foreach ($settings as $key => $value) {
+        // Sanitize key
+        $key = preg_replace('/[^a-z_]/', '', $key);
+        setSetting($prefix . $key, $value);
+    }
+
+    logActivity('cloud_settings_updated', 'system', null, $destination);
+    echo json_encode(['success' => true]);
+}
+
+function getCloudSettings() {
+    $destinations = [
+        's3' => [
+            'enabled' => getSetting('backup_s3_enabled', '0') === '1',
+            'endpoint' => getSetting('backup_s3_endpoint', ''),
+            'bucket' => getSetting('backup_s3_bucket', ''),
+            'access_key' => getSetting('backup_s3_access_key', '') ? '••••••••' : '',
+            'secret_key' => getSetting('backup_s3_secret_key', '') ? '••••••••' : '',
+            'region' => getSetting('backup_s3_region', 'us-east-1'),
+            'folder' => getSetting('backup_s3_folder', 'silo-backups')
+        ],
+        'dropbox' => [
+            'enabled' => getSetting('backup_dropbox_enabled', '0') === '1',
+            'token' => getSetting('backup_dropbox_token', '') ? '••••••••' : '',
+            'folder' => getSetting('backup_dropbox_folder', 'Silo Backups')
+        ],
+        'google_drive' => [
+            'enabled' => getSetting('backup_gdrive_enabled', '0') === '1',
+            'client_id' => getSetting('backup_gdrive_client_id', ''),
+            'client_secret' => getSetting('backup_gdrive_client_secret', '') ? '••••••••' : '',
+            'folder_id' => getSetting('backup_gdrive_folder_id', ''),
+            'has_token' => !empty(getSetting('backup_gdrive_refresh_token', ''))
+        ],
+        'onedrive' => [
+            'enabled' => getSetting('backup_onedrive_enabled', '0') === '1',
+            'client_id' => getSetting('backup_onedrive_client_id', ''),
+            'client_secret' => getSetting('backup_onedrive_client_secret', '') ? '••••••••' : '',
+            'folder' => getSetting('backup_onedrive_folder', 'Silo Backups'),
+            'has_token' => !empty(getSetting('backup_onedrive_refresh_token', ''))
+        ]
+    ];
+
+    echo json_encode(['success' => true, 'destinations' => $destinations]);
 }

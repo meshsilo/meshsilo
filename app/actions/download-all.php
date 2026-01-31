@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 $db = getDB();
 
@@ -13,9 +14,9 @@ if (!$modelId) {
 
 // Get parent model details
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND part_count > 0');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     header('Location: ../index.php');
@@ -24,10 +25,10 @@ if (!$model) {
 
 // Get all parts
 $stmt = $db->prepare('SELECT * FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC');
-$stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
 $parts = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $parts[] = $row;
 }
 
@@ -48,8 +49,8 @@ if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
 }
 
 foreach ($parts as $part) {
-    $filePath = __DIR__ . '/../' . $part['file_path'];
-    if (file_exists($filePath)) {
+    $filePath = getAbsoluteFilePath($part);
+    if ($filePath && is_file($filePath)) {
         // Use original path structure if available, otherwise just filename
         $zipEntryPath = $part['original_path'] ?? $part['filename'];
         $zip->addFile($filePath, $zipEntryPath);

@@ -18,9 +18,9 @@ if (!$modelId) {
 
 // Get model details
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     header('Location: ' . route('browse'));
@@ -33,8 +33,8 @@ function getOriginalChain($db, $modelId, $visited = []) {
     $visited[] = $modelId;
 
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
-    $model = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+    $model = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) return null;
 
@@ -67,11 +67,11 @@ function getRemixes($db, $modelId, $depth = 0, $maxDepth = 5) {
         WHERE m.remix_of = :model_id AND m.parent_id IS NULL
         ORDER BY m.created_at DESC
     ');
-    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
 
     $remixes = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $remixes[] = [
             'id' => $row['id'],
             'name' => $row['name'],
@@ -97,11 +97,11 @@ function getRelatedRemixes($db, $modelId) {
         WHERE rm.model_id = :model_id AND rm.is_remix = 1 AND m.parent_id IS NULL
         ORDER BY m.created_at DESC
     ');
-    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
 
     $remixes = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $remixes[] = $row;
     }
 
@@ -121,8 +121,8 @@ while ($root && $root['parent']) {
 
 // Get user for display
 $stmt = $db->prepare('SELECT username FROM users WHERE id = :id');
-$stmt->bindValue(':id', $model['user_id'], SQLITE3_INTEGER);
-$modelUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+$stmt->bindValue(':id', $model['user_id'], PDO::PARAM_INT);
+$modelUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
 $pageTitle = 'Remix Tree: ' . $model['name'];
 $activePage = 'browse';

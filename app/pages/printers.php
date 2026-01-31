@@ -1,5 +1,9 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/features.php';
+
+// Require feature to be enabled
+requireFeature('printers');
 
 $user = getCurrentUser();
 $pageTitle = 'My Printers';

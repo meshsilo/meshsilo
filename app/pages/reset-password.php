@@ -34,17 +34,17 @@ if (empty($token)) {
           AND pr.used_at IS NULL
           AND pr.expires_at > :now
     ');
-    $stmt->bindValue(':token', $token, SQLITE3_TEXT);
-    $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+    $stmt->bindValue(':token', $token, PDO::PARAM_STR);
+    $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
     $result = $stmt->execute();
-    $tokenData = $result->fetchArray(SQLITE3_ASSOC);
+    $tokenData = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$tokenData) {
         // Check if token exists but is expired or used
         $stmt = $db->prepare('SELECT * FROM password_resets WHERE token = :token');
-        $stmt->bindValue(':token', $token, SQLITE3_TEXT);
+        $stmt->bindValue(':token', $token, PDO::PARAM_STR);
         $result = $stmt->execute();
-        $expiredToken = $result->fetchArray(SQLITE3_ASSOC);
+        $expiredToken = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if ($expiredToken) {
             if ($expiredToken['used_at']) {
@@ -80,19 +80,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken && $tokenData) {
         // Update password
         $hash = password_hash($newPassword, PASSWORD_DEFAULT);
         $stmt = $db->prepare('UPDATE users SET password = :password WHERE id = :id');
-        $stmt->bindValue(':password', $hash, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $tokenData['user_id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $tokenData['user_id'], PDO::PARAM_INT);
         $stmt->execute();
 
         // Mark token as used
         $stmt = $db->prepare('UPDATE password_resets SET used_at = :used_at WHERE id = :id');
-        $stmt->bindValue(':used_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':id', $tokenData['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':used_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':id', $tokenData['id'], PDO::PARAM_INT);
         $stmt->execute();
 
         // Delete all tokens for this email
         $stmt = $db->prepare('DELETE FROM password_resets WHERE email = :email');
-        $stmt->bindValue(':email', $tokenData['email'], SQLITE3_TEXT);
+        $stmt->bindValue(':email', $tokenData['email'], PDO::PARAM_STR);
         $stmt->execute();
 
         $resetComplete = true;

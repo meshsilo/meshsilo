@@ -1,6 +1,10 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/dedup.php';
+require_once 'includes/features.php';
+
+// Require feature to be enabled
+requireFeature('favorites');
 
 $pageTitle = 'My Favorites';
 $activePage = 'favorites';
@@ -18,19 +22,19 @@ $user = getCurrentUser();
 // Get user's favorites
 $favorites = getUserFavorites($user['id'], 100);
 
-// Enhance models with preview data
+// Enhance models with preview data using preview endpoint
 foreach ($favorites as &$model) {
     if ($model['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $model['id'], SQLITE3_INTEGER);
+        $partStmt = $db->prepare('SELECT id, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt->bindValue(':parent_id', $model['id'], PDO::PARAM_INT);
         $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
-            $model['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+            $model['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
             $model['preview_type'] = $firstPart['file_type'];
         }
     } else {
-        $model['preview_path'] = getRealFilePath($model) . '?v=' . ($model['file_size'] ?? time());
+        $model['preview_path'] = '/actions/preview?id=' . $model['id'];
         $model['preview_type'] = $model['file_type'];
     }
 }
@@ -62,7 +66,6 @@ require_once 'includes/header.php';
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
-                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
                             <button type="button" class="model-card-favorite favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(<?= $model['id'] ?>, this)" title="Remove from favorites">&#9829;</button>
                         </div>
                         <div class="model-info">

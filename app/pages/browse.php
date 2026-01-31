@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/dedup.php';
+require_once 'includes/features.php';
 
 $pageTitle = 'Browse Models';
 $activePage = 'browse';
@@ -75,7 +76,7 @@ $totalPages = ceil($totalModels / $perPage);
 
 // Get models - optimized to only select columns we display
 $sql = "SELECT m.id, m.name, m.description, m.creator, m.file_path, m.file_size, m.file_type,
-               m.dedup_path, m.part_count, m.download_count, m.created_at, m.is_archived
+               m.dedup_path, m.part_count, m.download_count, m.created_at, m.is_archived, m.thumbnail_path
         FROM models m
         WHERE $whereClause
         ORDER BY $orderBy
@@ -84,25 +85,25 @@ $stmt = $db->prepare($sql);
 foreach ($params as $key => $value) {
     $stmt->bindValue($key, $value);
 }
-$stmt->bindValue(':limit', $perPage, SQLITE3_INTEGER);
-$stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
+$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $result = $stmt->execute();
 
 $models = [];
 $modelIds = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     // For multi-part models, get the first part for preview
     if ($row['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
+        $partStmt = $db->prepare('SELECT id, file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt->bindValue(':parent_id', $row['id'], PDO::PARAM_INT);
         $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
-            $row['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+            $row['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
             $row['preview_type'] = $firstPart['file_type'];
         }
     } else {
-        $row['preview_path'] = getRealFilePath($row) . '?v=' . ($row['file_size'] ?? time());
+        $row['preview_path'] = '/actions/preview?id=' . $row['id'];
         $row['preview_type'] = $row['file_type'];
     }
 
@@ -128,7 +129,7 @@ if (!empty($modelIds)) {
 // Get categories for filter dropdown
 $categories = [];
 $catResult = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
-while ($row = $catResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $catResult->fetchArray(PDO::FETCH_ASSOC)) {
     $categories[] = $row;
 }
 
@@ -139,14 +140,14 @@ $tags = getAllTags();
 $activeCategory = null;
 if ($categoryId > 0) {
     $catStmt = $db->prepare('SELECT name FROM categories WHERE id = :id');
-    $catStmt->bindValue(':id', $categoryId, SQLITE3_INTEGER);
+    $catStmt->bindValue(':id', $categoryId, PDO::PARAM_INT);
     $activeCategory = $catStmt->fetchColumn();
 }
 
 $activeTag = null;
 if ($tagId > 0) {
     $tagStmt = $db->prepare('SELECT name, color FROM tags WHERE id = :id');
-    $tagStmt->bindValue(':id', $tagId, SQLITE3_INTEGER);
+    $tagStmt->bindValue(':id', $tagId, PDO::PARAM_INT);
     $activeTag = $tagStmt->fetch();
 }
 
@@ -203,7 +204,9 @@ require_once 'includes/header.php';
                     <button type="button" class="btn btn-small btn-ghost" onclick="clearSelection()" title="Clear selection (Esc)">Clear</button>
                 </div>
                 <div class="batch-actions-right">
+                    <?php if (isFeatureEnabled('print_queue')): ?>
                     <button type="button" class="btn btn-small" onclick="batchAddToQueue()" title="Add selected to print queue">Add to Queue</button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-small" onclick="batchDownload()" title="Download selected as ZIP">Download</button>
                     <select id="batch-tag-select" class="batch-select" onchange="batchApplyTag(this.value)">
                         <option value="">+ Tag</option>
@@ -220,6 +223,7 @@ require_once 'includes/header.php';
                     </select>
                     <button type="button" class="btn btn-small" onclick="batchSetCreator()" title="Set creator for selected">Set Creator</button>
                     <button type="button" class="btn btn-small" onclick="batchSetCollection()" title="Set collection for selected">Set Collection</button>
+                    <button type="button" class="btn btn-small" onclick="batchExport()" title="Export selected with metadata">Export</button>
                     <button type="button" class="btn btn-small btn-warning" onclick="batchArchive()">Archive</button>
                 </div>
             </div>
@@ -304,12 +308,14 @@ require_once 'includes/header.php';
                         </label>
                         <?php endif; ?>
                         <div class="model-list-thumbnail"
-                            <?php if (!empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
-                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
-                        </div>
+                            <?php if (!empty($model['thumbnail_path'])): ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image">
+                            <?php endif; ?>
+                                                    </div>
                         <div class="model-list-info">
                             <h3 class="model-list-title"><?= htmlspecialchars($model['name']) ?></h3>
                             <?php if ($model['creator']): ?>
@@ -346,10 +352,13 @@ require_once 'includes/header.php';
                     <?php foreach ($models as $model): ?>
                     <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)">
                         <div class="model-thumbnail"
-                            <?php if (!empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
+                            <?php if (!empty($model['thumbnail_path'])): ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image">
+                            <?php endif; ?>
                             <?php if (isLoggedIn()): ?>
                             <label class="model-select-checkbox" onclick="event.stopPropagation()">
                                 <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()">
@@ -358,8 +367,7 @@ require_once 'includes/header.php';
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
-                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
-                            <?php if ($model['is_archived']): ?>
+                                                        <?php if ($model['is_archived']): ?>
                             <span class="archived-badge" style="position: absolute; bottom: 0.5rem; left: 0.5rem;">Archived</span>
                             <?php endif; ?>
                         </div>
@@ -557,6 +565,34 @@ require_once 'includes/header.php';
                 return;
             }
             window.location = 'actions/batch-download.php?ids=' + ids.join(',');
+        }
+
+        async function batchExport() {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'export_selective');
+                formData.append('model_ids', JSON.stringify(ids));
+
+                const response = await fetch('/actions/export-import', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    window.location = '/actions/export-download?token=' + result.download_token;
+                } else {
+                    alert('Export failed: ' + result.error);
+                }
+            } catch (err) {
+                alert('Export failed: ' + err.message);
+            }
         }
 
         async function batchApplyTag(tagId) {

@@ -1,0 +1,53 @@
+{
+    "name": "Silo - 3D Model Manager",
+    "short_name": "Silo",
+    "description": "Digital Asset Manager for 3D print files",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#3b82f6",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/images/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/images/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["utilities", "productivity"],
+    "shortcuts": [
+        {
+            "name": "Browse Models",
+            "short_name": "Browse",
+            "url": "/browse",
+            "icons": [{"src": "/images/icon-192.png", "sizes": "192x192"}]
+        },
+        {
+            "name": "Upload Model",
+            "short_name": "Upload",
+            "url": "/upload",
+            "icons": [{"src": "/images/icon-192.png", "sizes": "192x192"}]
+        },
+        {
+            "name": "Search",
+            "short_name": "Search",
+            "url": "/search",
+            "icons": [{"src": "/images/icon-192.png", "sizes": "192x192"}]
+        }
+    ],
+    "screenshots": [],
+    "prefer_related_applications": false
+}

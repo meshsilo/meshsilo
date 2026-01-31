@@ -18,9 +18,9 @@ if (!$modelId) {
 
 // Get model details
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     header('Location: ' . route('browse'));
@@ -42,11 +42,11 @@ $stmt = $db->prepare('
     WHERE mv.model_id = :model_id
     ORDER BY mv.version_number DESC
 ');
-$stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
 
 $versions = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $versions[] = $row;
 }
 
@@ -490,7 +490,7 @@ document.getElementById('confirm-revert-btn').addEventListener('click', async fu
     this.textContent = 'Reverting...';
 
     try {
-        const response = await fetch('<?= basePath('actions/revert-version.php') ?>', {
+        const response = await fetch('/actions/revert-version', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

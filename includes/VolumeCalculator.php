@@ -15,7 +15,7 @@ class VolumeCalculator {
      * @return float|null Volume in cubic centimeters, or null on failure
      */
     public static function calculateVolume($filePath, $fileType = null) {
-        if (!file_exists($filePath)) {
+        if (!is_file($filePath)) {
             return null;
         }
 
@@ -305,8 +305,8 @@ class VolumeCalculator {
         self::ensureVolumeColumn($db);
 
         $stmt = $db->prepare('UPDATE models SET volume_cm3 = :volume WHERE id = :id');
-        $stmt->bindValue(':volume', $volumeCm3, SQLITE3_FLOAT);
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':volume', $volumeCm3, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 
         return $stmt->execute() !== false;
     }
@@ -338,21 +338,25 @@ class VolumeCalculator {
      * @return float|null Volume in cm^3
      */
     public static function getModelVolume($model) {
-        // Return cached volume if available
-        if (!empty($model['volume_cm3'])) {
-            return (float)$model['volume_cm3'];
-        }
-
-        // Calculate and cache
-        $filePath = getAbsoluteFilePath($model);
-        if ($filePath && file_exists($filePath)) {
-            $volume = self::calculateVolume($filePath, $model['file_type']);
-            if ($volume !== null) {
-                self::updateModelVolume($model['id'], $volume);
-                return $volume;
+        try {
+            // Return cached volume if available
+            if (!empty($model['volume_cm3'])) {
+                return (float)$model['volume_cm3'];
             }
-        }
 
-        return null;
+            // Calculate and cache
+            $filePath = getAbsoluteFilePath($model);
+            if ($filePath && is_file($filePath)) {
+                $volume = self::calculateVolume($filePath, $model['file_type']);
+                if ($volume !== null) {
+                    self::updateModelVolume($model['id'], $volume);
+                    return $volume;
+                }
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

@@ -93,11 +93,11 @@ class Queue {
             VALUES (:queue, :job_class, :payload, :available_at, :status)
         ");
 
-        $stmt->bindValue(':queue', $queue, SQLITE3_TEXT);
-        $stmt->bindValue(':job_class', $jobClass, SQLITE3_TEXT);
-        $stmt->bindValue(':payload', json_encode($data), SQLITE3_TEXT);
-        $stmt->bindValue(':available_at', $availableAt, SQLITE3_TEXT);
-        $stmt->bindValue(':status', self::STATUS_PENDING, SQLITE3_TEXT);
+        $stmt->bindValue(':queue', $queue, PDO::PARAM_STR);
+        $stmt->bindValue(':job_class', $jobClass, PDO::PARAM_STR);
+        $stmt->bindValue(':payload', json_encode($data), PDO::PARAM_STR);
+        $stmt->bindValue(':available_at', $availableAt, PDO::PARAM_STR);
+        $stmt->bindValue(':status', self::STATUS_PENDING, PDO::PARAM_STR);
 
         $stmt->execute();
         return $db->lastInsertRowID();
@@ -122,12 +122,12 @@ class Queue {
             LIMIT 1
         ");
 
-        $stmt->bindValue(':queue', $queue, SQLITE3_TEXT);
-        $stmt->bindValue(':status', self::STATUS_PENDING, SQLITE3_TEXT);
-        $stmt->bindValue(':now', $now, SQLITE3_TEXT);
+        $stmt->bindValue(':queue', $queue, PDO::PARAM_STR);
+        $stmt->bindValue(':status', self::STATUS_PENDING, PDO::PARAM_STR);
+        $stmt->bindValue(':now', $now, PDO::PARAM_STR);
 
         $result = $stmt->execute();
-        $job = $result->fetchArray(SQLITE3_ASSOC);
+        $job = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$job) return null;
 
@@ -138,10 +138,10 @@ class Queue {
             WHERE id = :id AND status = :pending_status
         ");
 
-        $stmt->bindValue(':status', self::STATUS_PROCESSING, SQLITE3_TEXT);
-        $stmt->bindValue(':reserved_at', $now, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $job['id'], SQLITE3_INTEGER);
-        $stmt->bindValue(':pending_status', self::STATUS_PENDING, SQLITE3_TEXT);
+        $stmt->bindValue(':status', self::STATUS_PROCESSING, PDO::PARAM_STR);
+        $stmt->bindValue(':reserved_at', $now, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $job['id'], PDO::PARAM_INT);
+        $stmt->bindValue(':pending_status', self::STATUS_PENDING, PDO::PARAM_STR);
 
         $stmt->execute();
 
@@ -167,9 +167,9 @@ class Queue {
             WHERE id = :id
         ");
 
-        $stmt->bindValue(':status', self::STATUS_COMPLETED, SQLITE3_TEXT);
-        $stmt->bindValue(':completed_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':id', $jobId, SQLITE3_INTEGER);
+        $stmt->bindValue(':status', self::STATUS_COMPLETED, PDO::PARAM_STR);
+        $stmt->bindValue(':completed_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':id', $jobId, PDO::PARAM_INT);
 
         return $stmt->execute() !== false;
     }
@@ -183,8 +183,8 @@ class Queue {
 
         // Get job to check attempts
         $stmt = $db->prepare("SELECT attempts, max_attempts FROM jobs WHERE id = :id");
-        $stmt->bindValue(':id', $jobId, SQLITE3_INTEGER);
-        $job = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        $stmt->bindValue(':id', $jobId, PDO::PARAM_INT);
+        $job = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$job) return false;
 
@@ -200,10 +200,10 @@ class Queue {
                 WHERE id = :id
             ");
 
-            $stmt->bindValue(':status', self::STATUS_PENDING, SQLITE3_TEXT);
-            $stmt->bindValue(':available_at', $availableAt, SQLITE3_TEXT);
-            $stmt->bindValue(':error', $error, SQLITE3_TEXT);
-            $stmt->bindValue(':id', $jobId, SQLITE3_INTEGER);
+            $stmt->bindValue(':status', self::STATUS_PENDING, PDO::PARAM_STR);
+            $stmt->bindValue(':available_at', $availableAt, PDO::PARAM_STR);
+            $stmt->bindValue(':error', $error, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $jobId, PDO::PARAM_INT);
 
             return $stmt->execute() !== false;
         }
@@ -215,9 +215,9 @@ class Queue {
             WHERE id = :id
         ");
 
-        $stmt->bindValue(':status', self::STATUS_FAILED, SQLITE3_TEXT);
-        $stmt->bindValue(':error', $error, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $jobId, SQLITE3_INTEGER);
+        $stmt->bindValue(':status', self::STATUS_FAILED, PDO::PARAM_STR);
+        $stmt->bindValue(':error', $error, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $jobId, PDO::PARAM_INT);
 
         return $stmt->execute() !== false;
     }
@@ -230,7 +230,7 @@ class Queue {
         if (!$db) return false;
 
         $stmt = $db->prepare("DELETE FROM jobs WHERE id = :id");
-        $stmt->bindValue(':id', $jobId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $jobId, PDO::PARAM_INT);
 
         return $stmt->execute() !== false;
     }
@@ -256,13 +256,13 @@ class Queue {
 
         $stmt = $db->prepare($sql);
         if ($queue) {
-            $stmt->bindValue(':queue', $queue, SQLITE3_TEXT);
+            $stmt->bindValue(':queue', $queue, PDO::PARAM_STR);
         }
 
         $result = $stmt->execute();
         $stats = [];
 
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             if (!isset($stats[$row['queue']])) {
                 $stats[$row['queue']] = ['pending' => 0, 'processing' => 0, 'completed' => 0, 'failed' => 0];
             }
@@ -287,8 +287,8 @@ class Queue {
             AND completed_at < :cutoff
         ");
 
-        $stmt->bindValue(':status', self::STATUS_COMPLETED, SQLITE3_TEXT);
-        $stmt->bindValue(':cutoff', $cutoff, SQLITE3_TEXT);
+        $stmt->bindValue(':status', self::STATUS_COMPLETED, PDO::PARAM_STR);
+        $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
 
         $stmt->execute();
         return $db->changes();
@@ -307,10 +307,10 @@ class Queue {
             WHERE queue = :queue AND status = :failed
         ");
 
-        $stmt->bindValue(':pending', self::STATUS_PENDING, SQLITE3_TEXT);
-        $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':queue', $queue, SQLITE3_TEXT);
-        $stmt->bindValue(':failed', self::STATUS_FAILED, SQLITE3_TEXT);
+        $stmt->bindValue(':pending', self::STATUS_PENDING, PDO::PARAM_STR);
+        $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':queue', $queue, PDO::PARAM_STR);
+        $stmt->bindValue(':failed', self::STATUS_FAILED, PDO::PARAM_STR);
 
         $stmt->execute();
         return $db->changes();
@@ -330,13 +330,13 @@ class Queue {
             LIMIT :limit
         ");
 
-        $stmt->bindValue(':status', self::STATUS_FAILED, SQLITE3_TEXT);
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+        $stmt->bindValue(':status', self::STATUS_FAILED, PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $result = $stmt->execute();
         $jobs = [];
 
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $row['payload'] = json_decode($row['payload'], true);
             $jobs[] = $row;
         }

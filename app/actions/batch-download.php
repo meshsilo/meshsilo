@@ -1,6 +1,6 @@
 <?php
-require_once '../includes/config.php';
-require_once '../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 if (!isLoggedIn()) {
     http_response_code(401);
@@ -23,12 +23,12 @@ $db = getDB();
 $placeholders = implode(',', array_fill(0, count($ids), '?'));
 $stmt = $db->prepare("SELECT * FROM models WHERE id IN ($placeholders) AND parent_id IS NULL");
 foreach ($ids as $i => $id) {
-    $stmt->bindValue($i + 1, $id, SQLITE3_INTEGER);
+    $stmt->bindValue($i + 1, $id, PDO::PARAM_INT);
 }
 $result = $stmt->execute();
 
 $models = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $models[] = $row;
 }
 
@@ -55,12 +55,12 @@ foreach ($models as $model) {
     // Check if model has parts
     if ($model['part_count'] > 0) {
         $partStmt = $db->prepare('SELECT * FROM models WHERE parent_id = :parent_id ORDER BY sort_order ASC, original_path ASC');
-        $partStmt->bindValue(':parent_id', $model['id'], SQLITE3_INTEGER);
+        $partStmt->bindValue(':parent_id', $model['id'], PDO::PARAM_INT);
         $partResult = $partStmt->execute();
 
-        while ($part = $partResult->fetchArray(SQLITE3_ASSOC)) {
+        while ($part = $partResult->fetchArray(PDO::FETCH_ASSOC)) {
             $filePath = getAbsoluteFilePath($part);
-            if ($filePath && file_exists($filePath)) {
+            if ($filePath && is_file($filePath)) {
                 $fileName = basename($part['original_path'] ?: $part['file_path']);
                 $zip->addFile($filePath, $modelFolder . '/' . $fileName);
             }
@@ -68,7 +68,7 @@ foreach ($models as $model) {
     } else {
         // Single file model
         $filePath = getAbsoluteFilePath($model);
-        if ($filePath && file_exists($filePath)) {
+        if ($filePath && is_file($filePath)) {
             $fileName = basename($model['original_path'] ?: $model['file_path']);
             $zip->addFile($filePath, $modelFolder . '/' . $fileName);
         }

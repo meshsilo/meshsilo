@@ -52,9 +52,10 @@ COPY docker/php-fpm.conf /etc/php/8.1/fpm/pool.d/www.conf
 # Copy supervisor configuration
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Copy entrypoint script
+# Copy entrypoint and demo cron scripts
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY docker/demo-cron.sh /demo-cron.sh
+RUN chmod +x /entrypoint.sh /demo-cron.sh
 
 # Configure PHP settings for file uploads (both FPM and CLI)
 # Create custom config files in conf.d to override defaults reliably

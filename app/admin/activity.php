@@ -1,9 +1,14 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 
-// Admin only
-if (!isLoggedIn() || !getCurrentUser()['is_admin']) {
-    header('Location: /login');
+// Require feature to be enabled
+requireFeature('activity_log');
+
+// Require view logs permission
+if (!isLoggedIn() || !canViewLogs()) {
+    $_SESSION['error'] = 'You do not have permission to view activity logs.';
+    header('Location: ' . route('home'));
     exit;
 }
 
@@ -56,20 +61,20 @@ $totalPages = ceil($totalActivities / $perPage);
 // Get unique actions and entity types for filters
 $actions = [];
 $actionsResult = $db->query('SELECT DISTINCT action FROM activity_log ORDER BY action');
-while ($row = $actionsResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $actionsResult->fetchArray(PDO::FETCH_ASSOC)) {
     $actions[] = $row['action'];
 }
 
 $entityTypes = [];
 $entityResult = $db->query('SELECT DISTINCT entity_type FROM activity_log ORDER BY entity_type');
-while ($row = $entityResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $entityResult->fetchArray(PDO::FETCH_ASSOC)) {
     $entityTypes[] = $row['entity_type'];
 }
 
 // Get users for filter
 $users = [];
 $usersResult = $db->query('SELECT id, username FROM users ORDER BY username');
-while ($row = $usersResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $usersResult->fetchArray(PDO::FETCH_ASSOC)) {
     $users[] = $row;
 }
 

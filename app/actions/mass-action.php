@@ -48,9 +48,9 @@ try {
 
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $stmt = $db->prepare("UPDATE models SET print_type = ? WHERE id IN ($placeholders)");
-            $stmt->bindValue(1, $printType ?: null, $printType ? SQLITE3_TEXT : SQLITE3_NULL);
+            $stmt->bindValue(1, $printType ?: null, $printType ? PDO::PARAM_STR : PDO::PARAM_NULL);
             foreach ($ids as $i => $id) {
-                $stmt->bindValue($i + 2, $id, SQLITE3_INTEGER);
+                $stmt->bindValue($i + 2, $id, PDO::PARAM_INT);
             }
             $stmt->execute();
 
@@ -68,20 +68,20 @@ try {
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $stmt = $db->prepare("SELECT DISTINCT parent_id FROM models WHERE id IN ($placeholders) AND parent_id IS NOT NULL");
             foreach ($ids as $i => $id) {
-                $stmt->bindValue($i + 1, $id, SQLITE3_INTEGER);
+                $stmt->bindValue($i + 1, $id, PDO::PARAM_INT);
             }
             $result = $stmt->execute();
             $parentIds = [];
-            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $parentIds[] = $row['parent_id'];
             }
 
             // Delete the parts and their files
             foreach ($ids as $id) {
                 $stmt = $db->prepare('SELECT file_path, dedup_path, parent_id FROM models WHERE id = ?');
-                $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $result = $stmt->execute();
-                $part = $result->fetchArray(SQLITE3_ASSOC);
+                $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
                 if ($part) {
                     // Check if file can be deleted before removing from DB
@@ -89,21 +89,21 @@ try {
 
                     // Delete from database first
                     $stmt = $db->prepare('DELETE FROM models WHERE id = ?');
-                    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+                    $stmt->bindValue(1, $id, PDO::PARAM_INT);
                     $stmt->execute();
 
                     // Now delete the file
                     if (!empty($part['dedup_path'])) {
                         // Deduplicated file - only delete if no other references
                         if ($canDeleteDedup) {
-                            $dedupPath = __DIR__ . '/../' . $part['dedup_path'];
+                            $dedupPath = __DIR__ . '/../../' . $part['dedup_path'];
                             if (file_exists($dedupPath)) {
                                 unlink($dedupPath);
                             }
                         }
                     } elseif ($part['file_path']) {
                         // Regular file
-                        $filePath = __DIR__ . '/../' . $part['file_path'];
+                        $filePath = __DIR__ . '/../../' . $part['file_path'];
                         if (file_exists($filePath)) {
                             unlink($filePath);
                         }
@@ -114,13 +114,13 @@ try {
             // Update parent model part counts
             foreach ($parentIds as $parentId) {
                 $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE parent_id = ?');
-                $stmt->bindValue(1, $parentId, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $parentId, PDO::PARAM_INT);
                 $result = $stmt->execute();
-                $count = $result->fetchArray(SQLITE3_ASSOC)['count'];
+                $count = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
                 $stmt = $db->prepare('UPDATE models SET part_count = ? WHERE id = ?');
-                $stmt->bindValue(1, $count, SQLITE3_INTEGER);
-                $stmt->bindValue(2, $parentId, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $count, PDO::PARAM_INT);
+                $stmt->bindValue(2, $parentId, PDO::PARAM_INT);
                 $stmt->execute();
             }
 
@@ -137,9 +137,9 @@ try {
             foreach ($ids as $id) {
                 // Get model info
                 $stmt = $db->prepare('SELECT file_path, dedup_path, part_count FROM models WHERE id = ? AND parent_id IS NULL');
-                $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $result = $stmt->execute();
-                $model = $result->fetchArray(SQLITE3_ASSOC);
+                $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
                 if (!$model) continue;
 
@@ -148,13 +148,13 @@ try {
 
                 // Collect files to delete from child parts
                 $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = ?');
-                $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $result = $stmt->execute();
-                while ($part = $result->fetchArray(SQLITE3_ASSOC)) {
+                while ($part = $result->fetchArray(PDO::FETCH_ASSOC)) {
                     if (!empty($part['dedup_path'])) {
                         $dedupFilesToCheck[$part['dedup_path']] = true;
                     } elseif ($part['file_path']) {
-                        $filesToDelete[] = __DIR__ . '/../' . $part['file_path'];
+                        $filesToDelete[] = __DIR__ . '/../../' . $part['file_path'];
                     }
                 }
 
@@ -162,18 +162,18 @@ try {
                 if (!empty($model['dedup_path'])) {
                     $dedupFilesToCheck[$model['dedup_path']] = true;
                 } elseif ($model['file_path']) {
-                    $filesToDelete[] = __DIR__ . '/../' . $model['file_path'];
+                    $filesToDelete[] = __DIR__ . '/../../' . $model['file_path'];
                 }
 
                 // Delete from database (cascade will handle children)
                 $stmt = $db->prepare('DELETE FROM models WHERE id = ? OR parent_id = ?');
-                $stmt->bindValue(1, $id, SQLITE3_INTEGER);
-                $stmt->bindValue(2, $id, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $id, PDO::PARAM_INT);
+                $stmt->bindValue(2, $id, PDO::PARAM_INT);
                 $stmt->execute();
 
                 // Delete category associations
                 $stmt = $db->prepare('DELETE FROM model_categories WHERE model_id = ?');
-                $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $stmt->execute();
 
                 // Now delete regular files
@@ -191,7 +191,7 @@ try {
                 // Delete dedup files only if no other parts reference them
                 foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
                     if (canDeleteDedupFile($dedupPath)) {
-                        $fullPath = __DIR__ . '/../' . $dedupPath;
+                        $fullPath = __DIR__ . '/../../' . $dedupPath;
                         if (file_exists($fullPath)) {
                             unlink($fullPath);
                         }
@@ -219,16 +219,16 @@ try {
 
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $stmt = $db->prepare("UPDATE models SET collection = ? WHERE id IN ($placeholders) AND parent_id IS NULL");
-            $stmt->bindValue(1, $collection ?: null, $collection ? SQLITE3_TEXT : SQLITE3_NULL);
+            $stmt->bindValue(1, $collection ?: null, $collection ? PDO::PARAM_STR : PDO::PARAM_NULL);
             foreach ($ids as $i => $id) {
-                $stmt->bindValue($i + 2, $id, SQLITE3_INTEGER);
+                $stmt->bindValue($i + 2, $id, PDO::PARAM_INT);
             }
             $stmt->execute();
 
             // Add to collections table if new
             if ($collection) {
                 $stmt = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (?)');
-                $stmt->bindValue(1, $collection, SQLITE3_TEXT);
+                $stmt->bindValue(1, $collection, PDO::PARAM_STR);
                 $stmt->execute();
             }
 
@@ -245,9 +245,9 @@ try {
 
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $stmt = $db->prepare("UPDATE models SET creator = ? WHERE id IN ($placeholders) AND parent_id IS NULL");
-            $stmt->bindValue(1, $creator ?: null, $creator ? SQLITE3_TEXT : SQLITE3_NULL);
+            $stmt->bindValue(1, $creator ?: null, $creator ? PDO::PARAM_STR : PDO::PARAM_NULL);
             foreach ($ids as $i => $id) {
-                $stmt->bindValue($i + 2, $id, SQLITE3_INTEGER);
+                $stmt->bindValue($i + 2, $id, PDO::PARAM_INT);
             }
             $stmt->execute();
 
@@ -268,8 +268,8 @@ try {
             $added = 0;
             foreach ($ids as $id) {
                 $stmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (?, ?)');
-                $stmt->bindValue(1, $id, SQLITE3_INTEGER);
-                $stmt->bindValue(2, $categoryId, SQLITE3_INTEGER);
+                $stmt->bindValue(1, $id, PDO::PARAM_INT);
+                $stmt->bindValue(2, $categoryId, PDO::PARAM_INT);
                 $stmt->execute();
                 $added += $db->changes();
             }
@@ -289,9 +289,9 @@ try {
 
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $stmt = $db->prepare("DELETE FROM model_categories WHERE category_id = ? AND model_id IN ($placeholders)");
-            $stmt->bindValue(1, $categoryId, SQLITE3_INTEGER);
+            $stmt->bindValue(1, $categoryId, PDO::PARAM_INT);
             foreach ($ids as $i => $id) {
-                $stmt->bindValue($i + 2, $id, SQLITE3_INTEGER);
+                $stmt->bindValue($i + 2, $id, PDO::PARAM_INT);
             }
             $stmt->execute();
 

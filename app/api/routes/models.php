@@ -487,8 +487,8 @@ function deleteModel($id, $apiUser) {
     }
 
     // Delete from database (cascades to model_categories, model_tags, etc.)
-    $stmt = $db->prepare('DELETE FROM models WHERE id = :id OR parent_id = :id');
-    $stmt->execute([':id' => $id]);
+    $stmt = $db->prepare('DELETE FROM models WHERE id = :id1 OR parent_id = :id2');
+    $stmt->execute([':id1' => $id, ':id2' => $id]);
 
     // Log activity
     logActivity('delete', 'model', $id, $model['name'], ['via' => 'api']);

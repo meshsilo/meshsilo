@@ -29,9 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Check if user exists with this email
         $stmt = $db->prepare('SELECT id, username, email FROM users WHERE email = :email');
-        $stmt->bindValue(':email', $email, SQLITE3_TEXT);
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
         $result = $stmt->execute();
-        $user = $result->fetchArray(SQLITE3_ASSOC);
+        $user = $result->fetchArray(PDO::FETCH_ASSOC);
 
         // Always show success message to prevent email enumeration
         $emailSent = true;
@@ -40,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user) {
             // Check if user is OIDC-only (no password set)
             $stmt = $db->prepare('SELECT password FROM users WHERE id = :id');
-            $stmt->bindValue(':id', $user['id'], SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $user['id'], PDO::PARAM_INT);
             $result = $stmt->execute();
-            $userData = $result->fetchArray(SQLITE3_ASSOC);
+            $userData = $result->fetchArray(PDO::FETCH_ASSOC);
 
             // Generate reset token
             $token = bin2hex(random_bytes(32));
@@ -50,14 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Delete any existing tokens for this email
             $stmt = $db->prepare('DELETE FROM password_resets WHERE email = :email');
-            $stmt->bindValue(':email', $email, SQLITE3_TEXT);
+            $stmt->bindValue(':email', $email, PDO::PARAM_STR);
             $stmt->execute();
 
             // Insert new token
             $stmt = $db->prepare('INSERT INTO password_resets (email, token, expires_at) VALUES (:email, :token, :expires_at)');
-            $stmt->bindValue(':email', $email, SQLITE3_TEXT);
-            $stmt->bindValue(':token', $token, SQLITE3_TEXT);
-            $stmt->bindValue(':expires_at', $expiresAt, SQLITE3_TEXT);
+            $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+            $stmt->bindValue(':token', $token, PDO::PARAM_STR);
+            $stmt->bindValue(':expires_at', $expiresAt, PDO::PARAM_STR);
             $stmt->execute();
 
             // Send email

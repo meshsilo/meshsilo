@@ -1,11 +1,14 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/features.php';
+
+try {
+
 require_once 'includes/dedup.php';
 require_once 'includes/slicers.php';
-require_once 'includes/dimensions.php';
 require_once 'includes/gcode.php';
 require_once 'includes/VolumeCalculator.php';
-require_once 'includes/MeshAnalyzer.php';
+require_once 'includes/Markdown.php';
 
 $db = getDB();
 
@@ -19,9 +22,9 @@ if (!$modelId) {
 
 // Get model details
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     header('Location: ' . route('home'));
@@ -55,21 +58,22 @@ if (isLoggedIn()) {
 }
 
 // Get categories for this model
-$stmt = $db->prepare('
-    SELECT c.* FROM categories c
-    JOIN model_categories mc ON c.id = mc.category_id
-    WHERE mc.model_id = :model_id
-    ORDER BY c.name
-');
-$stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-$result = $stmt->execute();
 $categories = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    $categories[] = $row;
+try {
+    $stmt = $db->prepare('
+        SELECT c.* FROM categories c
+        JOIN model_categories mc ON c.id = mc.category_id
+        WHERE mc.model_id = :model_id
+        ORDER BY c.name
+    ');
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        $categories[] = $row;
+    }
+} catch (Exception $e) {
+    logError('Failed to load model categories', ['model_id' => $modelId, 'error' => $e->getMessage()]);
 }
-
-// Get model dimensions
-$dimensions = getModelDimensions($modelId);
 
 // Get related models
 $relatedModels = getRelatedModels($modelId);
@@ -106,25 +110,44 @@ if ($model['part_count'] > 0) {
     $stmt = $db->prepare('
         SELECT * FROM models
         WHERE parent_id = :parent_id
-        ORDER BY original_path ASC
+        ORDER BY sort_order ASC, original_path ASC
     ');
-    $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $parts[] = $row;
     }
-    // Use first part for preview
+    // Use first part for preview via preview endpoint
     if (!empty($parts)) {
-        // Add cache buster to prevent stale model files after conversion
-        // Use getRealFilePath to handle deduplicated files
-        $previewPath = getRealFilePath($parts[0]) . '?v=' . ($parts[0]['file_size'] ?? time());
+        $previewPath = '/actions/preview?id=' . $parts[0]['id'];
         $previewType = $parts[0]['file_type'];
     }
 } else {
-    // Single model - add cache buster
-    $previewPath = getRealFilePath($model) . '?v=' . ($model['file_size'] ?? time());
+    // Single model - use preview endpoint
+    $previewPath = '/actions/preview?id=' . $model['id'];
     $previewType = $model['file_type'];
 }
+
+// Calculate total model size and potential 3MF conversion savings
+$totalModelSize = 0;
+$stlTotalSize = 0;
+
+if (!empty($parts)) {
+    foreach ($parts as $part) {
+        $totalModelSize += ($part['file_size'] ?? 0);
+        if (($part['file_type'] ?? '') === 'stl') {
+            $stlTotalSize += ($part['file_size'] ?? 0);
+        }
+    }
+} else {
+    $totalModelSize = $model['file_size'] ?? 0;
+    if (($model['file_type'] ?? '') === 'stl') {
+        $stlTotalSize = $model['file_size'] ?? 0;
+    }
+}
+
+// Estimate 3MF conversion savings (~65% compression on STL data)
+$estimatedSavings = ($stlTotalSize > 0) ? (int)($stlTotalSize * 0.65) : 0;
 
 // Helper function to format bytes
 function formatBytes($bytes, $precision = 2) {
@@ -155,6 +178,46 @@ function groupPartsByDirectory($parts) {
 
 $groupedParts = groupPartsByDirectory($parts);
 
+// Get version history
+$versions = [];
+$versionCount = 0;
+try {
+    $stmt = $db->prepare('
+        SELECT mv.*, u.username as created_by_name
+        FROM model_versions mv
+        LEFT JOIN users u ON mv.created_by = u.id
+        WHERE mv.model_id = :model_id
+        ORDER BY mv.version_number DESC
+    ');
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        $versions[] = $row;
+    }
+    $versionCount = count($versions);
+} catch (Throwable $e) {
+    // model_versions table may not exist yet
+}
+
+$canManageVersions = false;
+if (isLoggedIn()) {
+    $vUser = getCurrentUser();
+    $canManageVersions = (!empty($model['user_id']) && $model['user_id'] == $vUser['id']) || !empty($vUser['is_admin']) || canEdit();
+}
+
+// Get external links
+$modelLinks = [];
+try {
+    $stmt = $db->prepare('SELECT * FROM model_links WHERE model_id = :model_id ORDER BY sort_order, created_at');
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        $modelLinks[] = $row;
+    }
+} catch (Throwable $e) {
+    // model_links table may not exist yet
+}
+
 // Check for session messages
 $message = '';
 $messageType = 'success';
@@ -178,11 +241,15 @@ require_once 'includes/header.php';
 
             <div class="model-detail">
                 <div class="model-detail-header">
-                    <div class="model-detail-thumbnail <?= ($previewPath && in_array($previewType, ['stl', '3mf', 'gcode'])) ? 'has-viewer' : '' ?>"
-                        <?php if ($previewPath && in_array($previewType, ['stl', '3mf', 'gcode'])): ?>
+                    <?php $thumbnailUrl = !empty($model['thumbnail_path']) ? '/assets/' . $model['thumbnail_path'] : null; ?>
+                    <div class="model-detail-thumbnail <?= (!$thumbnailUrl && $previewPath && in_array($previewType, ['stl', '3mf', 'gcode'])) ? 'has-viewer' : '' ?>"
+                        <?php if (!$thumbnailUrl && $previewPath && in_array($previewType, ['stl', '3mf', 'gcode'])): ?>
                         data-model-url="<?= htmlspecialchars($previewPath) ?>"
                         data-file-type="<?= htmlspecialchars($previewType) ?>"
                         <?php endif; ?>>
+                        <?php if ($thumbnailUrl): ?>
+                        <img src="<?= htmlspecialchars($thumbnailUrl) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image">
+                        <?php endif; ?>
                         <?php if ($model['part_count'] > 0): ?>
                         <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                         <?php endif; ?>
@@ -193,29 +260,33 @@ require_once 'includes/header.php';
                             <h1><?= htmlspecialchars($model['name']) ?></h1>
                             <?php if (isLoggedIn()): ?>
                             <div style="display: flex; gap: 0.5rem;">
+                                <?php if (isFeatureEnabled('print_queue')): ?>
                                 <button type="button" class="queue-btn <?= $inPrintQueue ? 'in-queue' : '' ?>" onclick="togglePrintQueue(<?= $model['id'] ?>, this)" title="<?= $inPrintQueue ? 'Remove from print queue' : 'Add to print queue' ?>">
                                     &#128424;
                                 </button>
+                                <?php endif; ?>
+                                <?php if (isFeatureEnabled('favorites')): ?>
                                 <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" onclick="toggleFavorite(<?= $model['id'] ?>, this)" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
                                     <?= $isFavorited ? '&#9829;' : '&#9825;' ?>
                                 </button>
+                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
                         </div>
 
-                        <?php if ($model['is_archived']): ?>
+                        <?php if (!empty($model['is_archived'])): ?>
                         <span class="archived-badge" style="margin-bottom: 0.5rem;">Archived</span>
                         <?php endif; ?>
 
-                        <?php if ($model['creator']): ?>
+                        <?php if (!empty($model['creator'])): ?>
                         <p class="model-creator">by <?= htmlspecialchars($model['creator']) ?></p>
                         <?php endif; ?>
 
                         <div class="model-meta">
-                            <span class="meta-item">
-                                <strong>Size:</strong> <?= formatBytes($model['file_size'] ?? 0) ?>
+                            <span class="meta-item"<?php if ($estimatedSavings > 0): ?> title="<?= formatBytes($stlTotalSize) ?> in STL files — converting to 3MF could save ~<?= formatBytes($estimatedSavings) ?>"<?php endif; ?>>
+                                <strong>Size:</strong> <?= formatBytes($totalModelSize) ?>
                             </span>
-                            <?php if ($model['collection']): ?>
+                            <?php if (!empty($model['collection'])): ?>
                             <span class="meta-item">
                                 <strong>Collection:</strong> <?= htmlspecialchars($model['collection']) ?>
                             </span>
@@ -228,18 +299,9 @@ require_once 'includes/header.php';
                                 <strong>Downloads:</strong> <?= number_format($model['download_count']) ?>
                             </span>
                             <?php endif; ?>
-                            <?php if ($dimensions): ?>
-                            <span class="meta-item dimensions">
-                                <strong>Dimensions:</strong> <?= htmlspecialchars(formatDimensions($dimensions['dim_x'], $dimensions['dim_y'], $dimensions['dim_z'], $dimensions['dim_unit'])) ?>
-                            </span>
-                            <?php elseif (canEdit()): ?>
-                            <span class="meta-item">
-                                <button type="button" class="btn btn-small" onclick="calculateDimensions(<?= $model['id'] ?>)" id="calc-dim-btn">Calculate Dimensions</button>
-                            </span>
-                            <?php endif; ?>
                         </div>
 
-                        <?php if ($model['license']): ?>
+                        <?php if (!empty($model['license'])): ?>
                         <div style="margin-top: 0.5rem;">
                             <span class="license-badge"><?= htmlspecialchars(getLicenseName($model['license'])) ?></span>
                         </div>
@@ -326,65 +388,6 @@ require_once 'includes/header.php';
                                 </div>
                             </div>
                         </div>
-                        <?php elseif (canEdit() && !in_array($model['file_type'] ?? '', ['gcode'])): ?>
-                        <div class="cost-estimate-card cost-estimate-placeholder">
-                            <button type="button" class="btn btn-small btn-secondary" onclick="calculateCost(<?= $model['id'] ?>)" id="calc-cost-btn">Calculate Print Cost</button>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php
-                        // Mesh status for STL files
-                        $meshStatus = null;
-                        if (strtolower($model['file_type'] ?? '') === 'stl' || $model['file_type'] === 'parent') {
-                            $meshStatus = MeshAnalyzer::getMeshStatus($model);
-                        }
-                        ?>
-                        <?php if ($meshStatus !== null): ?>
-                        <div class="mesh-status-card <?= $meshStatus['is_manifold'] ? 'mesh-ok' : 'mesh-issues' ?>">
-                            <?php if ($meshStatus['is_manifold']): ?>
-                                <span class="mesh-badge mesh-badge-ok">Mesh OK</span>
-                                <span class="mesh-text">Model is manifold (watertight)</span>
-                            <?php else: ?>
-                                <span class="mesh-badge mesh-badge-warning">Mesh Issues</span>
-                                <span class="mesh-text"><?= count($meshStatus['issues']) ?> issue(s) detected</span>
-                                <?php if (canEdit() && MeshAnalyzer::isAdmeshAvailable()): ?>
-                                <button type="button" class="btn btn-small btn-warning" onclick="repairMesh(<?= $model['id'] ?>)" id="repair-mesh-btn">Repair Mesh</button>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </div>
-                        <?php elseif (strtolower($model['file_type'] ?? '') === 'stl' && canEdit()): ?>
-                        <div class="mesh-status-card">
-                            <button type="button" class="btn btn-small btn-secondary" onclick="analyzeMesh(<?= $model['id'] ?>)" id="analyze-mesh-btn">Analyze Mesh</button>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (in_array($previewType ?? $model['file_type'], ['stl', '3mf'])): ?>
-                        <div class="annotation-panel" id="annotation-panel">
-                            <h4>Annotations</h4>
-                            <div class="annotation-controls">
-                                <button type="button" class="btn btn-small" id="toggle-annotations-btn" onclick="toggleAnnotations()">Show Annotations</button>
-                                <?php if (isLoggedIn()): ?>
-                                <button type="button" class="btn btn-small btn-secondary" id="add-annotation-btn" onclick="toggleAddAnnotationMode()">Add Annotation</button>
-                                <?php endif; ?>
-                            </div>
-                            <div class="annotation-form" id="annotation-form">
-                                <div class="form-group">
-                                    <label for="annotation-content">Note</label>
-                                    <textarea id="annotation-content" class="form-input" placeholder="Enter annotation..."></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label>Color</label>
-                                    <div class="color-picker-row">
-                                        <input type="color" id="annotation-color" value="#ff0000">
-                                        <span class="form-help">Click on the model to place annotation</span>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-small btn-secondary" onclick="cancelAddAnnotation()">Cancel</button>
-                            </div>
-                            <div class="annotation-list" id="annotation-list">
-                                <p class="text-muted">No annotations yet</p>
-                            </div>
-                        </div>
                         <?php endif; ?>
 
                         <?php if (!empty($categories)): ?>
@@ -415,19 +418,68 @@ require_once 'includes/header.php';
                         </div>
                         <?php endif; ?>
 
-                        <?php if ($model['source_url']): ?>
+                        <?php if (!empty($model['source_url'])): ?>
                         <p class="model-source">
                             <a href="<?= htmlspecialchars($model['source_url']) ?>" target="_blank" rel="noopener">View Original Source</a>
                         </p>
                         <?php endif; ?>
 
+                        <?php if (!empty($modelLinks) || canEdit()): ?>
+                        <div class="model-links">
+                            <h3>External Links</h3>
+                            <div class="model-links-list" id="model-links-list">
+                                <?php foreach ($modelLinks as $link): ?>
+                                <div class="model-link-item" data-link-id="<?= $link['id'] ?>">
+                                    <span class="model-link-type type-<?= htmlspecialchars($link['link_type']) ?>"><?= htmlspecialchars($link['link_type']) ?></span>
+                                    <a href="<?= htmlspecialchars($link['url']) ?>" target="_blank" rel="noopener noreferrer" class="model-link-title"><?= htmlspecialchars($link['title']) ?></a>
+                                    <?php if (canEdit()): ?>
+                                    <button type="button" class="model-link-delete" onclick="deleteModelLink(<?= $link['id'] ?>)" title="Remove link">&times;</button>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                                <?php if (empty($modelLinks)): ?>
+                                <p class="model-links-empty" id="model-links-empty">No external links yet.</p>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (canEdit()): ?>
+                            <button type="button" class="btn btn-small btn-secondary" id="add-link-toggle" onclick="toggleAddLinkForm()">Add Link</button>
+                            <div class="model-link-add-form" id="add-link-form" style="display:none;">
+                                <div class="link-form-row">
+                                    <input type="text" id="link-title" class="form-input" placeholder="Link title" required>
+                                    <input type="url" id="link-url" class="form-input" placeholder="https://..." required>
+                                    <select id="link-type" class="form-input">
+                                        <option value="other">Other</option>
+                                        <option value="documentation">Documentation</option>
+                                        <option value="video">Video</option>
+                                        <option value="forum">Forum</option>
+                                        <option value="repository">Repository</option>
+                                        <option value="source">Source</option>
+                                        <option value="store">Store</option>
+                                    </select>
+                                </div>
+                                <div class="link-form-actions">
+                                    <button type="button" class="btn btn-small btn-secondary" onclick="toggleAddLinkForm()">Cancel</button>
+                                    <button type="button" class="btn btn-small btn-primary" onclick="addModelLink()">Add</button>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
                         <div class="model-actions" style="margin-top: 1rem;">
-                            <?php if (isLoggedIn()): ?>
+                            <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>
                             <?php endif; ?>
+                            <?php if (!$costEstimate && canEdit() && !in_array($model['file_type'] ?? '', ['gcode'])): ?>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="calculateCost(<?= $model['id'] ?>)" id="calc-cost-btn">Calculate Print Cost</button>
+                            <?php endif; ?>
+                            <a href="<?= route('model.versions', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">Version History<?php if ($versionCount > 0): ?> (<?= $versionCount ?>)<?php endif; ?></a>
+                            <?php if ($canManageVersions): ?>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="showUploadVersionModal()">Upload New Version</button>
+                            <?php endif; ?>
                             <?php if (canEdit()): ?>
-                            <a href="<?= route('model.edit', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">Edit Model</a>
-                            <?php if ($model['is_archived']): ?>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="window.location.href='<?= route('model.edit', ['id' => $model['id']]) ?>'">Edit Model</button>
+                            <?php if (!empty($model['is_archived'])): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="toggleArchive(<?= $model['id'] ?>, false)">Unarchive</button>
                             <?php else: ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="toggleArchive(<?= $model['id'] ?>, true)">Archive</button>
@@ -440,10 +492,46 @@ require_once 'includes/header.php';
                     </div>
                 </div>
 
-                <?php if ($model['description']): ?>
+                <?php if (!empty($model['description'])): ?>
                 <div class="model-description">
                     <h2>Description</h2>
-                    <p><?= nl2br(htmlspecialchars($model['description'])) ?></p>
+                    <div class="markdown-content"><?= Markdown::render($model['description']) ?></div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($versionCount > 0): ?>
+                <div class="model-version-history" id="upload-version">
+                    <div class="parts-header">
+                        <h2>Version History</h2>
+                        <a href="<?= route('model.versions', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">View Full History</a>
+                    </div>
+                    <div class="version-timeline-compact">
+                        <?php foreach (array_slice($versions, 0, 3) as $v): ?>
+                        <div class="version-entry <?= ($v['version_number'] == ($model['current_version'] ?? 0)) ? 'version-current' : '' ?>">
+                            <div class="version-entry-header">
+                                <span class="version-entry-number">v<?= $v['version_number'] ?></span>
+                                <?php if ($v['version_number'] == ($model['current_version'] ?? 0)): ?>
+                                <span class="version-badge-current">Current</span>
+                                <?php endif; ?>
+                                <span class="version-entry-meta">
+                                    <?= date('M j, Y', strtotime($v['created_at'])) ?>
+                                    <?php if ($v['created_by_name']): ?>
+                                    &middot; <?= htmlspecialchars($v['created_by_name']) ?>
+                                    <?php endif; ?>
+                                    &middot; <?= formatBytes($v['file_size']) ?>
+                                </span>
+                            </div>
+                            <?php if ($v['changelog']): ?>
+                            <div class="version-entry-changelog"><?= htmlspecialchars($v['changelog']) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if ($versionCount > 3): ?>
+                        <div class="version-entry-more">
+                            <a href="<?= route('model.versions', ['id' => $model['id']]) ?>"><?= $versionCount - 3 ?> more version<?= ($versionCount - 3) !== 1 ? 's' : '' ?></a>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
 
@@ -451,10 +539,15 @@ require_once 'includes/header.php';
                 <div class="model-parts">
                     <div class="parts-header">
                         <h2>Parts (<?= count($parts) ?>)</h2>
+                        <?php if (canEdit()): ?>
+                        <button type="button" class="btn btn-secondary btn-small" onclick="showCreateFolderModal()">New Folder</button>
+                        <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
                         <div class="mass-actions" id="parts-mass-actions" style="display: none;">
                             <span class="mass-selection-count"><span id="selected-count">0</span> selected</span>
                             <?php if (canEdit()): ?>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="showMoveFolderModal(getSelectedPartIds())">Move to Folder</button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="showBatchRenameModal(getSelectedPartIds())">Rename</button>
                             <select id="mass-print-type" class="form-input form-input-small">
                                 <option value="">Set Print Type...</option>
                                 <option value="fdm">FDM</option>
@@ -470,57 +563,67 @@ require_once 'includes/header.php';
                     </div>
 
                     <?php foreach ($groupedParts as $dir => $dirParts): ?>
-                    <div class="parts-group">
-                        <?php if ($dir !== 'Root' && count($groupedParts) > 1): ?>
-                        <h3 class="parts-group-header"><?= htmlspecialchars($dir) ?></h3>
+                    <div class="parts-group" data-folder="<?= htmlspecialchars($dir) ?>">
+                        <?php if (count($groupedParts) > 1): ?>
+                        <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)">
+                            <span class="folder-toggle">&#9660;</span>
+                            <?= htmlspecialchars($dir === 'Root' ? 'Root' : $dir) ?>
+                            <span class="folder-part-count">(<?= count($dirParts) ?>)</span>
+                            <?php if (canEdit() && $dir !== 'Root'): ?>
+                            <span class="folder-actions" onclick="event.stopPropagation()">
+                                <button type="button" onclick="renameFolder('<?= htmlspecialchars(addslashes($dir)) ?>')" title="Rename folder">Rename</button>
+                                <button type="button" onclick="deleteFolder('<?= htmlspecialchars(addslashes($dir)) ?>')" title="Delete folder (moves parts to root)">Delete</button>
+                            </span>
+                            <?php endif; ?>
+                        </h3>
                         <?php endif; ?>
                         <div class="parts-list">
                             <?php foreach ($dirParts as $part): ?>
-                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="<?= htmlspecialchars(getRealFilePath($part)) ?>?v=<?= $part['file_size'] ?? time() ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="/actions/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                                <?php if (canEdit()): ?>
+                                <span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
+                                <?php endif; ?>
                                 <?php if (canEdit() || canDelete()): ?>
                                 <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>">
                                 <?php endif; ?>
                                 <div class="part-info part-preview-trigger" title="Click to preview">
                                     <span class="file-type-badge">.<?= htmlspecialchars($part['file_type']) ?></span>
                                     <span class="part-name"><?= htmlspecialchars($part['name']) ?></span>
-                                    <?php if ($part['print_type']): ?>
+                                    <?php if (!empty($part['print_type'])): ?>
                                     <span class="print-type-badge print-type-<?= htmlspecialchars($part['print_type']) ?>"><?= strtoupper($part['print_type']) ?></span>
                                     <?php endif; ?>
-                                    <?php if ($part['is_printed']): ?>
+                                    <?php if (!empty($part['is_printed'])): ?>
                                     <span class="printed-badge">Printed</span>
                                     <?php endif; ?>
-                                    <?php if ($part['notes']): ?>
+                                    <?php if (!empty($part['notes'])): ?>
                                     <span class="part-notes"><?= htmlspecialchars($part['notes']) ?></span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="part-actions">
+                                    <span class="part-size"<?php if (($part['file_type'] ?? '') === 'stl'): ?> title="STL file — converting to 3MF could save ~<?= formatBytes(($part['file_size'] ?? 0) * 0.65) ?>"<?php endif; ?>><?= formatBytes($part['file_size'] ?? 0) ?></span>
+                                    <?php if (!empty($part['original_size']) && $part['file_type'] === '3mf'): ?>
+                                    <span class="conversion-savings" title="Saved by converting to 3MF">-<?= round((1 - $part['file_size'] / $part['original_size']) * 100) ?>%</span>
+                                    <?php endif; ?>
                                     <?php if (canEdit()): ?>
                                     <label class="printed-checkbox" title="Mark as printed">
-                                        <input type="checkbox" class="printed-toggle" data-part-id="<?= $part['id'] ?>" <?= $part['is_printed'] ? 'checked' : '' ?>>
+                                        <input type="checkbox" class="printed-toggle" data-part-id="<?= $part['id'] ?>" <?= !empty($part['is_printed']) ? 'checked' : '' ?>>
                                         <span>Printed</span>
                                     </label>
                                     <select class="print-type-select" data-part-id="<?= $part['id'] ?>" title="Print type">
-                                        <option value="" <?= !$part['print_type'] ? 'selected' : '' ?>>--</option>
-                                        <option value="fdm" <?= $part['print_type'] === 'fdm' ? 'selected' : '' ?>>FDM</option>
-                                        <option value="sla" <?= $part['print_type'] === 'sla' ? 'selected' : '' ?>>SLA</option>
+                                        <option value="" <?= empty($part['print_type']) ? 'selected' : '' ?>>--</option>
+                                        <option value="fdm" <?= ($part['print_type'] ?? '') === 'fdm' ? 'selected' : '' ?>>FDM</option>
+                                        <option value="sla" <?= ($part['print_type'] ?? '') === 'sla' ? 'selected' : '' ?>>SLA</option>
                                     </select>
-                                    <?php if ($part['file_type'] === 'stl'): ?>
-                                    <button type="button" class="btn btn-small btn-secondary convert-btn" data-part-id="<?= $part['id'] ?>" title="Convert to 3MF for better compression">Convert</button>
                                     <?php endif; ?>
-                                    <?php if ($part['original_size'] && $part['file_type'] === '3mf'): ?>
-                                    <span class="conversion-savings" title="Saved by converting to 3MF">-<?= round((1 - $part['file_size'] / $part['original_size']) * 100) ?>%</span>
-                                    <?php endif; ?>
-                                    <?php endif; ?>
-                                    <span class="part-size"><?= formatBytes($part['file_size'] ?? 0) ?></span>
                                     <?php
                                     $partSlicers = getSlicersForFormat($part['file_type']);
                                     if (!empty($partSlicers)):
                                     ?>
-                                    <div class="dropdown open-in-dropdown">
-                                        <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="Open in slicer software">
+                                    <div class="dropdown slicer-dropdown">
+                                        <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="Open in slicer">
                                             Open in <span class="dropdown-arrow">&#9662;</span>
                                         </button>
-                                        <div class="dropdown-menu">
+                                        <div class="dropdown-menu dropdown-menu-right">
                                             <?php foreach ($partSlicers as $slicerKey => $slicer): ?>
                                             <a href="#" class="dropdown-item slicer-link"
                                                data-slicer="<?= htmlspecialchars($slicerKey) ?>"
@@ -528,9 +631,6 @@ require_once 'includes/header.php';
                                                data-has-protocol="<?= !empty($slicer['protocol']) ? '1' : '0' ?>"
                                                title="<?= htmlspecialchars($slicer['description']) ?>">
                                                 <?= htmlspecialchars($slicer['name']) ?>
-                                                <?php if (empty($slicer['protocol'])): ?>
-                                                <span class="slicer-download-hint">(download)</span>
-                                                <?php endif; ?>
                                             </a>
                                             <?php endforeach; ?>
                                         </div>
@@ -538,8 +638,27 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                     <a href="<?= route('actions.download', [], ['id' => $part['id']]) ?>" class="btn btn-small btn-primary">Download</a>
                                     <?php if (canDelete()): ?>
-                                    <a href="<?= route('actions.delete', [], ['id' => $model['id'], 'part_id' => $part['id']]) ?>" class="btn btn-small btn-danger">Delete</a>
+                                    <a href="<?= route('actions.delete', [], ['id' => $model['id'], 'part_id' => $part['id']]) ?>" class="btn btn-small btn-danger" title="Delete part">Delete</a>
                                     <?php endif; ?>
+                                    <div class="dropdown part-actions-dropdown">
+                                        <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="More actions">
+                                            &#8943;
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-right">
+                                            <a href="#" class="dropdown-item" onclick="calculatePartDimensions(<?= $part['id'] ?>, this); return false;">Calculate Dimensions</a>
+                                            <a href="#" class="dropdown-item" onclick="calculatePartVolume(<?= $part['id'] ?>, this); return false;">Calculate Volume</a>
+                                            <?php if (strtolower($part['file_type']) === 'stl'): ?>
+                                            <a href="#" class="dropdown-item" onclick="analyzePartMesh(<?= $part['id'] ?>, this); return false;">Analyze Mesh</a>
+                                            <?php endif; ?>
+                                            <?php if (canEdit()): ?>
+                                            <div class="dropdown-divider"></div>
+                                            <a href="#" class="dropdown-item" onclick="showMoveFolderModal([<?= $part['id'] ?>]); return false;">Move to Folder</a>
+                                            <?php endif; ?>
+                                            <?php if (canEdit() && $part['file_type'] === 'stl'): ?>
+                                            <a href="#" class="dropdown-item convert-btn" data-part-id="<?= $part['id'] ?>">Convert to 3MF</a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -630,7 +749,7 @@ require_once 'includes/header.php';
             </div>
         </div>
 
-        <?php if (isLoggedIn()): ?>
+        <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
         <!-- Share Modal -->
         <div id="share-modal" class="modal-overlay" style="display: none;">
             <div class="modal-content modal-large">
@@ -673,6 +792,118 @@ require_once 'includes/header.php';
                         <div id="share-links-list" class="share-links-list">
                             <p class="text-muted">Loading...</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (canEdit() && !empty($parts)): ?>
+        <!-- Create Folder Modal -->
+        <div id="create-folder-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h3>Create Folder</h3>
+                    <button type="button" class="modal-close" onclick="closeCreateFolderModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-folder-form" onsubmit="submitCreateFolder(event)">
+                        <div class="form-group">
+                            <label for="new-folder-name">Folder Name</label>
+                            <input type="text" id="new-folder-name" class="form-input" placeholder="Enter folder name" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Move to Folder Modal -->
+        <div id="move-folder-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h3>Move to Folder</h3>
+                    <button type="button" class="modal-close" onclick="closeMoveFolderModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="move-folder-list" class="folder-picker">
+                        <?php
+                        $folderNames = array_keys($groupedParts);
+                        ?>
+                        <label class="folder-picker-option">
+                            <input type="radio" name="target-folder" value="Root">
+                            <span>Root (no folder)</span>
+                        </label>
+                        <?php foreach ($folderNames as $fname): ?>
+                        <?php if ($fname !== 'Root'): ?>
+                        <label class="folder-picker-option">
+                            <input type="radio" name="target-folder" value="<?= htmlspecialchars($fname) ?>">
+                            <span><?= htmlspecialchars($fname) ?></span>
+                        </label>
+                        <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                    <input type="hidden" id="move-part-ids" value="">
+                    <button type="button" class="btn btn-primary" onclick="submitMoveToFolder()" style="margin-top: 1rem;">Move</button>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($canManageVersions): ?>
+        <!-- Upload New Version Modal -->
+        <div id="upload-version-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header">
+                    <h3>Upload New Version</h3>
+                    <button type="button" class="modal-close" onclick="closeUploadVersionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="upload-version-form" onsubmit="submitUploadVersion(event)">
+                        <div class="form-group">
+                            <label for="version-file">File</label>
+                            <input type="file" id="version-file" class="form-input" accept=".stl,.3mf,.gcode" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="version-changelog">Changelog (optional)</label>
+                            <textarea id="version-changelog" class="form-input" rows="3" placeholder="Describe what changed in this version..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="version-submit-btn">Upload Version</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Rename Modal -->
+        <div id="batch-rename-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header">
+                    <h3>Batch Rename Parts</h3>
+                    <button type="button" class="modal-close" onclick="closeBatchRenameModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="rename-pattern">Pattern</label>
+                        <input type="text" id="rename-pattern" class="form-input" placeholder="{name}" oninput="updateRenamePreview()">
+                        <small class="form-hint">Placeholders: {name} = current name, {index} = number (1,2,3...), {ext} = extension</small>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="rename-prefix">Prefix</label>
+                            <input type="text" id="rename-prefix" class="form-input" placeholder="(optional)" oninput="updateRenamePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label for="rename-suffix">Suffix</label>
+                            <input type="text" id="rename-suffix" class="form-input" placeholder="(optional)" oninput="updateRenamePreview()">
+                        </div>
+                    </div>
+                    <div class="rename-preview">
+                        <strong>Preview:</strong>
+                        <ul id="rename-preview-list"></ul>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeBatchRenameModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="applyBatchRename()">Rename</button>
                     </div>
                 </div>
             </div>
@@ -761,7 +992,7 @@ require_once 'includes/header.php';
                 this.disabled = true;
 
                 try {
-                    const estimateResponse = await fetch(`actions/convert-part.php?action=estimate&part_id=${partId}`);
+                    const estimateResponse = await fetch(`/actions/convert-part?action=estimate&part_id=${partId}`);
                     const estimate = await estimateResponse.json();
 
                     if (!estimate.success) {
@@ -806,7 +1037,7 @@ require_once 'includes/header.php';
                     formData.append('action', 'convert');
                     formData.append('part_id', partId);
 
-                    const convertResponse = await fetch('actions/convert-part.php', {
+                    const convertResponse = await fetch('/actions/convert-part', {
                         method: 'POST',
                         body: formData
                     });
@@ -842,7 +1073,7 @@ require_once 'includes/header.php';
                 formData.append('print_type', printType);
 
                 // Send AJAX request
-                fetch('actions/update-part.php', {
+                fetch('/actions/update-part', {
                     method: 'POST',
                     body: formData
                 })
@@ -882,7 +1113,7 @@ require_once 'includes/header.php';
                 const isPrinted = this.checked ? '1' : '0';
                 const partItem = this.closest('.part-item');
 
-                fetch('actions/update-part.php', {
+                fetch('/actions/update-part', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'part_id=' + partId + '&is_printed=' + isPrinted
@@ -961,7 +1192,7 @@ require_once 'includes/header.php';
                 ids.forEach(id => formData.append('ids[]', id));
 
                 try {
-                    const response = await fetch('actions/mass-action.php', { method: 'POST', body: formData });
+                    const response = await fetch('/actions/mass-action', { method: 'POST', body: formData });
                     const result = await response.json();
 
                     if (result.success) {
@@ -992,7 +1223,7 @@ require_once 'includes/header.php';
                 ids.forEach(id => formData.append('ids[]', id));
 
                 try {
-                    const response = await fetch('actions/mass-action.php', { method: 'POST', body: formData });
+                    const response = await fetch('/actions/mass-action', { method: 'POST', body: formData });
                     const result = await response.json();
 
                     if (result.success) {
@@ -1029,7 +1260,7 @@ require_once 'includes/header.php';
                 formData.append('part_file', file);
 
                 try {
-                    const response = await fetch('actions/add-part.php', {
+                    const response = await fetch('/actions/add-part', {
                         method: 'POST',
                         body: formData,
                         headers: {
@@ -1070,6 +1301,205 @@ require_once 'includes/header.php';
             }
         }
 
+        // Folder management
+        function toggleFolder(groupEl) {
+            groupEl.classList.toggle('collapsed');
+            const folder = groupEl.dataset.folder;
+            const key = 'model_<?= $model['id'] ?>_folder_' + folder;
+            sessionStorage.setItem(key, groupEl.classList.contains('collapsed') ? '1' : '0');
+        }
+
+        // Restore collapsed folder states on page load
+        document.querySelectorAll('.parts-group[data-folder]').forEach(group => {
+            const folder = group.dataset.folder;
+            const key = 'model_<?= $model['id'] ?>_folder_' + folder;
+            if (sessionStorage.getItem(key) === '1') {
+                group.classList.add('collapsed');
+            }
+        });
+
+        function showCreateFolderModal() {
+            document.getElementById('create-folder-modal').style.display = 'flex';
+            document.getElementById('new-folder-name').focus();
+        }
+
+        function closeCreateFolderModal() {
+            document.getElementById('create-folder-modal').style.display = 'none';
+            document.getElementById('new-folder-name').value = '';
+        }
+
+        document.getElementById('create-folder-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeCreateFolderModal();
+        });
+
+        async function submitCreateFolder(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-folder-name').value.trim();
+            if (!name) return;
+
+            const formData = new FormData();
+            formData.append('action', 'create');
+            formData.append('model_id', <?= $model['id'] ?>);
+            formData.append('folder_name', name);
+
+            try {
+                const response = await fetch('/actions/part-folders', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Create folder error:', err);
+                alert('Failed to create folder');
+            }
+        }
+
+        async function renameFolder(oldName) {
+            const newName = prompt('Rename folder:', oldName);
+            if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+
+            const formData = new FormData();
+            formData.append('action', 'rename');
+            formData.append('model_id', <?= $model['id'] ?>);
+            formData.append('old_folder', oldName);
+            formData.append('new_folder', newName.trim());
+
+            try {
+                const response = await fetch('/actions/part-folders', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Rename folder error:', err);
+                alert('Failed to rename folder');
+            }
+        }
+
+        async function deleteFolder(folderName) {
+            if (!confirm('Delete folder "' + folderName + '"? Parts will be moved to root.')) return;
+
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('model_id', <?= $model['id'] ?>);
+            formData.append('folder_name', folderName);
+
+            try {
+                const response = await fetch('/actions/part-folders', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Delete folder error:', err);
+                alert('Failed to delete folder');
+            }
+        }
+
+        let movingPartIds = [];
+
+        function showMoveFolderModal(partIds) {
+            movingPartIds = partIds;
+            document.getElementById('move-part-ids').value = partIds.join(',');
+            document.getElementById('move-folder-modal').style.display = 'flex';
+            // Uncheck all radios
+            document.querySelectorAll('#move-folder-list input[type="radio"]').forEach(r => r.checked = false);
+        }
+
+        function closeMoveFolderModal() {
+            document.getElementById('move-folder-modal').style.display = 'none';
+            movingPartIds = [];
+        }
+
+        document.getElementById('move-folder-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeMoveFolderModal();
+        });
+
+        async function submitMoveToFolder() {
+            const selected = document.querySelector('#move-folder-list input[type="radio"]:checked');
+            if (!selected) {
+                alert('Please select a folder');
+                return;
+            }
+
+            const targetFolder = selected.value;
+            const formData = new FormData();
+            formData.append('action', 'move');
+            formData.append('model_id', <?= $model['id'] ?>);
+            formData.append('target_folder', targetFolder);
+            movingPartIds.forEach(id => formData.append('part_ids[]', id));
+
+            try {
+                const response = await fetch('/actions/part-folders', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Move to folder error:', err);
+                alert('Failed to move parts');
+            }
+        }
+
+        // Version upload management
+        function showUploadVersionModal() {
+            document.getElementById('upload-version-modal').style.display = 'flex';
+        }
+
+        function closeUploadVersionModal() {
+            document.getElementById('upload-version-modal').style.display = 'none';
+            document.getElementById('upload-version-form').reset();
+        }
+
+        document.getElementById('upload-version-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeUploadVersionModal();
+        });
+
+        async function submitUploadVersion(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('version-file');
+            const changelog = document.getElementById('version-changelog').value.trim();
+            const submitBtn = document.getElementById('version-submit-btn');
+
+            if (!fileInput.files.length) {
+                alert('Please select a file');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+
+            const formData = new FormData();
+            formData.append('model_id', <?= $model['id'] ?>);
+            formData.append('version_file', fileInput.files[0]);
+            formData.append('changelog', changelog);
+
+            try {
+                const response = await fetch('/actions/upload-version', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    closeUploadVersionModal();
+                    location.reload();
+                } else {
+                    alert('Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Upload version error:', err);
+                alert('Failed to upload version');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload Version';
+            }
+        }
+
         // Slicer protocol definitions (must match includes/slicers.php)
         const slicerProtocols = {
             'bambustudio': 'bambustudio://open?file={url}',
@@ -1078,6 +1508,27 @@ require_once 'includes/header.php';
             'cura': 'cura://open?file={url}',
             'superslicer': 'superslicer://open?file={url}'
         };
+
+        // Position fixed dropdown menu relative to toggle button
+        function positionDropdownMenu(dropdown) {
+            const menu = dropdown.querySelector('.dropdown-menu');
+            const btn = dropdown.querySelector('.dropdown-toggle');
+            if (!menu || !btn) return;
+
+            const btnRect = btn.getBoundingClientRect();
+
+            // Check if dropdown is inside part-actions (needs fixed positioning)
+            const isPartDropdown = dropdown.classList.contains('part-actions-dropdown') ||
+                                   dropdown.classList.contains('slicer-dropdown');
+
+            if (isPartDropdown) {
+                // Position below the button, aligned to the right
+                const right = window.innerWidth - btnRect.right;
+                menu.style.top = (btnRect.bottom + 4) + 'px';
+                menu.style.right = right + 'px';
+                menu.style.left = 'auto';
+            }
+        }
 
         // Dropdown toggle handling
         document.querySelectorAll('.dropdown-toggle').forEach(btn => {
@@ -1094,18 +1545,31 @@ require_once 'includes/header.php';
                 // Toggle this dropdown
                 if (!wasOpen) {
                     dropdown.classList.add('open');
+                    positionDropdownMenu(dropdown);
                 }
             });
         });
 
-        // Close dropdowns when clicking outside
+        // Close dropdowns when clicking outside (but not when interacting with inline controls)
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.dropdown')) {
                 document.querySelectorAll('.dropdown.open').forEach(d => {
                     d.classList.remove('open');
                 });
+            } else if (e.target.closest('.dropdown-item') && !e.target.closest('.dropdown-item-inline') && !e.target.closest('select')) {
+                // Close dropdown on regular item click (but not inline controls)
+                document.querySelectorAll('.dropdown.open').forEach(d => {
+                    d.classList.remove('open');
+                });
             }
         });
+
+        // Close fixed-position dropdowns on scroll (since they won't move with the page)
+        window.addEventListener('scroll', function() {
+            document.querySelectorAll('.part-actions-dropdown.open, .slicer-dropdown.open').forEach(d => {
+                d.classList.remove('open');
+            });
+        }, { passive: true });
 
         // Handle slicer link clicks
         document.querySelectorAll('.slicer-link').forEach(link => {
@@ -1138,7 +1602,7 @@ require_once 'includes/header.php';
         // Favorite toggle
         async function toggleFavorite(modelId, btn) {
             try {
-                const response = await fetch('actions/favorite.php', {
+                const response = await fetch('/actions/favorite', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'model_id=' + modelId
@@ -1157,7 +1621,7 @@ require_once 'includes/header.php';
         // Print queue toggle
         async function togglePrintQueue(modelId, btn) {
             try {
-                const response = await fetch('actions/print-queue.php', {
+                const response = await fetch('/actions/print-queue', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'action=toggle&model_id=' + modelId
@@ -1169,237 +1633,6 @@ require_once 'includes/header.php';
                 }
             } catch (err) {
                 console.error('Failed to toggle print queue:', err);
-            }
-        }
-
-        // Analyze mesh
-        async function analyzeMesh(modelId) {
-            const btn = document.getElementById('analyze-mesh-btn');
-            if (btn) {
-                btn.textContent = 'Analyzing...';
-                btn.disabled = true;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'analyze');
-                formData.append('model_id', modelId);
-
-                const response = await fetch('actions/mesh-repair.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Could not analyze mesh: ' + (data.error || 'Unknown error'));
-                    if (btn) {
-                        btn.textContent = 'Analyze Mesh';
-                        btn.disabled = false;
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to analyze mesh:', err);
-                alert('Failed to analyze mesh');
-                if (btn) {
-                    btn.textContent = 'Analyze Mesh';
-                    btn.disabled = false;
-                }
-            }
-        }
-
-        // Annotation management
-        let annotationsEnabled = false;
-        let addAnnotationMode = false;
-        let pendingAnnotationPosition = null;
-
-        function toggleAnnotations() {
-            annotationsEnabled = !annotationsEnabled;
-            const btn = document.getElementById('toggle-annotations-btn');
-            btn.textContent = annotationsEnabled ? 'Hide Annotations' : 'Show Annotations';
-
-            if (annotationsEnabled) {
-                loadAnnotations();
-            } else {
-                document.getElementById('annotation-list').innerHTML = '<p class="text-muted">No annotations yet</p>';
-            }
-        }
-
-        function toggleAddAnnotationMode() {
-            addAnnotationMode = !addAnnotationMode;
-            const btn = document.getElementById('add-annotation-btn');
-            const form = document.getElementById('annotation-form');
-
-            if (addAnnotationMode) {
-                btn.classList.add('btn-primary');
-                btn.classList.remove('btn-secondary');
-                form.classList.add('active');
-                alert('Click on the 3D model to place an annotation marker');
-            } else {
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-secondary');
-                form.classList.remove('active');
-                pendingAnnotationPosition = null;
-            }
-        }
-
-        function cancelAddAnnotation() {
-            addAnnotationMode = false;
-            pendingAnnotationPosition = null;
-            const btn = document.getElementById('add-annotation-btn');
-            const form = document.getElementById('annotation-form');
-            btn.classList.remove('btn-primary');
-            btn.classList.add('btn-secondary');
-            form.classList.remove('active');
-            document.getElementById('annotation-content').value = '';
-        }
-
-        async function loadAnnotations() {
-            const list = document.getElementById('annotation-list');
-
-            try {
-                const response = await fetch('actions/annotations.php?action=list&model_id=<?= $model['id'] ?>');
-                const data = await response.json();
-
-                if (!data.success || !data.annotations.length) {
-                    list.innerHTML = '<p class="text-muted">No annotations yet</p>';
-                    return;
-                }
-
-                list.innerHTML = data.annotations.map((annotation, index) => `
-                    <div class="annotation-item" data-id="${annotation.id}">
-                        <span class="annotation-item-number" style="background: ${annotation.color}">${index + 1}</span>
-                        <div class="annotation-item-content">
-                            <div class="annotation-item-text">${escapeHtml(annotation.content)}</div>
-                            <div class="annotation-item-meta">by ${escapeHtml(annotation.username)}</div>
-                        </div>
-                        <?php if (isLoggedIn()): ?>
-                        <div class="annotation-item-actions">
-                            <button type="button" class="btn btn-small btn-danger" onclick="deleteAnnotation(${annotation.id})">Delete</button>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                `).join('');
-            } catch (err) {
-                console.error('Failed to load annotations:', err);
-                list.innerHTML = '<p class="text-muted">Failed to load annotations</p>';
-            }
-        }
-
-        async function saveAnnotation() {
-            if (!pendingAnnotationPosition) {
-                alert('Please click on the model to place the annotation');
-                return;
-            }
-
-            const content = document.getElementById('annotation-content').value.trim();
-            const color = document.getElementById('annotation-color').value;
-
-            if (!content) {
-                alert('Please enter annotation content');
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'create');
-                formData.append('model_id', <?= $model['id'] ?>);
-                formData.append('position_x', pendingAnnotationPosition.x);
-                formData.append('position_y', pendingAnnotationPosition.y);
-                formData.append('position_z', pendingAnnotationPosition.z);
-                formData.append('content', content);
-                formData.append('color', color);
-
-                const response = await fetch('actions/annotations.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    cancelAddAnnotation();
-                    loadAnnotations();
-                } else {
-                    alert('Failed to save annotation: ' + (data.error || 'Unknown error'));
-                }
-            } catch (err) {
-                console.error('Failed to save annotation:', err);
-                alert('Failed to save annotation');
-            }
-        }
-
-        async function deleteAnnotation(annotationId) {
-            if (!confirm('Delete this annotation?')) return;
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'delete');
-                formData.append('id', annotationId);
-
-                const response = await fetch('actions/annotations.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    loadAnnotations();
-                } else {
-                    alert('Failed to delete: ' + (data.error || 'Unknown error'));
-                }
-            } catch (err) {
-                console.error('Failed to delete annotation:', err);
-            }
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Repair mesh
-        async function repairMesh(modelId) {
-            if (!confirm('This will attempt to repair mesh issues. A backup will be created. Continue?')) {
-                return;
-            }
-
-            const btn = document.getElementById('repair-mesh-btn');
-            if (btn) {
-                btn.textContent = 'Repairing...';
-                btn.disabled = true;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'repair');
-                formData.append('model_id', modelId);
-
-                const response = await fetch('actions/mesh-repair.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    alert('Mesh repaired successfully!');
-                    location.reload();
-                } else {
-                    alert('Repair failed: ' + (data.error || 'Unknown error'));
-                    if (btn) {
-                        btn.textContent = 'Repair Mesh';
-                        btn.disabled = false;
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to repair mesh:', err);
-                alert('Failed to repair mesh');
-                if (btn) {
-                    btn.textContent = 'Repair Mesh';
-                    btn.disabled = false;
-                }
             }
         }
 
@@ -1415,7 +1648,7 @@ require_once 'includes/header.php';
                 const formData = new FormData();
                 formData.append('model_id', modelId);
 
-                const response = await fetch('actions/calculate-volume.php', {
+                const response = await fetch('/actions/calculate-volume', {
                     method: 'POST',
                     body: formData
                 });
@@ -1441,49 +1674,96 @@ require_once 'includes/header.php';
             }
         }
 
-        // Calculate dimensions
-        async function calculateDimensions(modelId) {
-            const btn = document.getElementById('calc-dim-btn');
-            if (btn) {
-                btn.textContent = 'Calculating...';
-                btn.disabled = true;
-            }
-
+        // Per-part actions
+        async function calculatePartDimensions(partId, linkEl) {
+            const originalText = linkEl.textContent;
+            linkEl.textContent = 'Calculating...';
             try {
                 const formData = new FormData();
-                formData.append('model_id', modelId);
-
-                const response = await fetch('actions/calculate-dimensions.php', {
-                    method: 'POST',
-                    body: formData
-                });
+                formData.append('model_id', partId);
+                const response = await fetch('/actions/calculate-dimensions', { method: 'POST', body: formData });
                 const data = await response.json();
-
                 if (data.success && data.formatted) {
-                    // Replace button with dimensions text
-                    const container = btn.parentElement;
-                    container.innerHTML = '<strong>Dimensions:</strong> ' + data.formatted;
-                } else {
-                    alert('Could not calculate dimensions: ' + (data.error || 'Unknown error'));
-                    if (btn) {
-                        btn.textContent = 'Calculate Dimensions';
-                        btn.disabled = false;
+                    const partItem = linkEl.closest('.part-item');
+                    // Add or update dimensions badge in part-info
+                    let dimsBadge = partItem.querySelector('.part-dimensions');
+                    if (!dimsBadge) {
+                        dimsBadge = document.createElement('span');
+                        dimsBadge.className = 'part-dimensions';
+                        partItem.querySelector('.part-info').appendChild(dimsBadge);
                     }
+                    dimsBadge.textContent = data.formatted;
+                    linkEl.textContent = 'Dimensions: ' + data.formatted;
+                } else {
+                    alert('Failed: ' + (data.error || 'Unknown error'));
+                    linkEl.textContent = originalText;
                 }
             } catch (err) {
-                console.error('Failed to calculate dimensions:', err);
+                console.error('Part dimensions error:', err);
                 alert('Failed to calculate dimensions');
-                if (btn) {
-                    btn.textContent = 'Calculate Dimensions';
-                    btn.disabled = false;
+                linkEl.textContent = originalText;
+            }
+        }
+
+        async function calculatePartVolume(partId, linkEl) {
+            const originalText = linkEl.textContent;
+            linkEl.textContent = 'Calculating...';
+            try {
+                const formData = new FormData();
+                formData.append('model_id', partId);
+                const response = await fetch('/actions/calculate-volume', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success && data.volume_cm3) {
+                    linkEl.textContent = 'Volume: ' + data.volume_cm3.toFixed(1) + ' cm\u00B3';
+                    if (data.cost_estimate) {
+                        linkEl.textContent += ' (~$' + data.cost_estimate.estimated_cost.toFixed(2) + ')';
+                    }
+                } else {
+                    alert('Failed: ' + (data.error || 'Unknown error'));
+                    linkEl.textContent = originalText;
                 }
+            } catch (err) {
+                console.error('Part volume error:', err);
+                alert('Failed to calculate volume');
+                linkEl.textContent = originalText;
+            }
+        }
+
+        async function analyzePartMesh(partId, linkEl) {
+            const originalText = linkEl.textContent;
+            linkEl.textContent = 'Analyzing...';
+            try {
+                const formData = new FormData();
+                formData.append('action', 'analyze');
+                formData.append('model_id', partId);
+                const response = await fetch('/actions/mesh-repair', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    if (data.analysis && data.analysis.is_manifold) {
+                        linkEl.textContent = 'Mesh OK';
+                        linkEl.style.color = 'var(--success-color, #10b981)';
+                    } else if (data.analysis) {
+                        const issues = data.analysis.issues ? data.analysis.issues.length : 0;
+                        linkEl.textContent = issues + ' issue(s)';
+                        linkEl.style.color = 'var(--warning-color, #f59e0b)';
+                    } else {
+                        linkEl.textContent = 'Analyzed';
+                    }
+                } else {
+                    alert('Failed: ' + (data.error || 'Unknown error'));
+                    linkEl.textContent = originalText;
+                }
+            } catch (err) {
+                console.error('Part mesh analysis error:', err);
+                alert('Failed to analyze mesh');
+                linkEl.textContent = originalText;
             }
         }
 
         // Archive toggle
         async function toggleArchive(modelId, archive) {
             try {
-                const response = await fetch('actions/update-model.php', {
+                const response = await fetch('/actions/update-model', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'model_id=' + modelId + '&is_archived=' + (archive ? '1' : '0')
@@ -1552,7 +1832,7 @@ require_once 'includes/header.php';
 
         async function addTag(tagName) {
             try {
-                const response = await fetch('actions/tag.php', {
+                const response = await fetch('/actions/tag', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'action=add&model_id=<?= $model['id'] ?>&tag_name=' + encodeURIComponent(tagName)
@@ -1574,7 +1854,7 @@ require_once 'includes/header.php';
 
         async function removeTag(modelId, tagId, element) {
             try {
-                const response = await fetch('actions/tag.php', {
+                const response = await fetch('/actions/tag', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'action=remove&model_id=' + modelId + '&tag_id=' + tagId
@@ -1616,7 +1896,7 @@ require_once 'includes/header.php';
             formData.append('password', document.getElementById('share-password').value);
 
             try {
-                const response = await fetch('actions/share-link.php', {
+                const response = await fetch('/actions/share-link', {
                     method: 'POST',
                     body: formData
                 });
@@ -1640,7 +1920,7 @@ require_once 'includes/header.php';
             const container = document.getElementById('share-links-list');
 
             try {
-                const response = await fetch('actions/share-link.php?action=list&model_id=<?= $model['id'] ?>');
+                const response = await fetch('/actions/share-link?action=list&model_id=<?= $model['id'] ?>');
                 const result = await response.json();
 
                 if (!result.success) {
@@ -1746,7 +2026,7 @@ require_once 'includes/header.php';
             formData.append('link_id', linkId);
 
             try {
-                const response = await fetch('actions/share-link.php', {
+                const response = await fetch('/actions/share-link', {
                     method: 'POST',
                     body: formData
                 });
@@ -1763,6 +2043,259 @@ require_once 'includes/header.php';
             }
         }
         <?php endif; ?>
+
+        // External Links
+        function toggleAddLinkForm() {
+            const form = document.getElementById('add-link-form');
+            const btn = document.getElementById('add-link-toggle');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('link-title').focus();
+            } else {
+                form.style.display = 'none';
+                btn.style.display = '';
+                document.getElementById('link-title').value = '';
+                document.getElementById('link-url').value = '';
+                document.getElementById('link-type').value = 'other';
+            }
+        }
+
+        async function addModelLink() {
+            const title = document.getElementById('link-title').value.trim();
+            const url = document.getElementById('link-url').value.trim();
+            const linkType = document.getElementById('link-type').value;
+
+            if (!title || !url) {
+                alert('Title and URL are required');
+                return;
+            }
+
+            try {
+                const response = await fetch('/actions/model-links', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'add',
+                        model_id: <?= $model['id'] ?>,
+                        title: title,
+                        url: url,
+                        link_type: linkType
+                    })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const list = document.getElementById('model-links-list');
+                    const empty = document.getElementById('model-links-empty');
+                    if (empty) empty.remove();
+
+                    const link = result.link;
+                    const item = document.createElement('div');
+                    item.className = 'model-link-item';
+                    item.dataset.linkId = link.id;
+                    item.innerHTML =
+                        '<span class="model-link-type type-' + escapeHtml(link.link_type) + '">' + escapeHtml(link.link_type) + '</span>' +
+                        '<a href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener noreferrer" class="model-link-title">' + escapeHtml(link.title) + '</a>' +
+                        '<button type="button" class="model-link-delete" onclick="deleteModelLink(' + link.id + ')" title="Remove link">&times;</button>';
+                    list.appendChild(item);
+
+                    toggleAddLinkForm();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function deleteModelLink(linkId) {
+            if (!confirm('Remove this link?')) return;
+
+            try {
+                const response = await fetch('/actions/model-links', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', link_id: linkId })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const item = document.querySelector('[data-link-id="' + linkId + '"]');
+                    if (item) item.remove();
+
+                    // Show empty state if no links remain
+                    const list = document.getElementById('model-links-list');
+                    if (!list.querySelector('.model-link-item')) {
+                        const p = document.createElement('p');
+                        p.className = 'model-links-empty';
+                        p.id = 'model-links-empty';
+                        p.textContent = 'No external links yet.';
+                        list.appendChild(p);
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Drag and drop reordering
+        <?php if (canEdit()): ?>
+        function initSortable() {
+            document.querySelectorAll('.parts-list').forEach(list => {
+                new Sortable(list, {
+                    handle: '.drag-handle',
+                    animation: 150,
+                    ghostClass: 'part-item-ghost',
+                    chosenClass: 'part-item-chosen',
+                    onEnd: async function(evt) {
+                        // Collect all part IDs in new order
+                        const partIds = Array.from(list.querySelectorAll('.part-item'))
+                            .map(item => item.dataset.partId);
+
+                        const formData = new FormData();
+                        formData.append('parent_id', <?= $modelId ?>);
+                        partIds.forEach(id => formData.append('part_ids[]', id));
+
+                        try {
+                            const response = await fetch('/actions/reorder-parts', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            const result = await response.json();
+                            if (!result.success) {
+                                console.error('Failed to save order:', result.error);
+                                location.reload(); // Revert on failure
+                            }
+                        } catch (err) {
+                            console.error('Error saving order:', err);
+                            location.reload();
+                        }
+                    }
+                });
+            });
+        }
+
+        // Load SortableJS and initialize
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js';
+            script.onload = initSortable;
+            document.head.appendChild(script);
+        })();
+
+        // Batch rename
+        let batchRenamePartIds = [];
+
+        function showBatchRenameModal(partIds) {
+            batchRenamePartIds = partIds;
+            document.getElementById('rename-pattern').value = '{name}';
+            document.getElementById('rename-prefix').value = '';
+            document.getElementById('rename-suffix').value = '';
+            document.getElementById('batch-rename-modal').style.display = 'flex';
+            updateRenamePreview();
+        }
+
+        function closeBatchRenameModal() {
+            document.getElementById('batch-rename-modal').style.display = 'none';
+            batchRenamePartIds = [];
+        }
+
+        function updateRenamePreview() {
+            const pattern = document.getElementById('rename-pattern').value || '{name}';
+            const prefix = document.getElementById('rename-prefix').value;
+            const suffix = document.getElementById('rename-suffix').value;
+            const previewList = document.getElementById('rename-preview-list');
+
+            // Get part names for preview
+            const previews = batchRenamePartIds.slice(0, 3).map((id, idx) => {
+                const partEl = document.querySelector(`.part-item[data-part-id="${id}"]`);
+                if (!partEl) return null;
+                const name = partEl.dataset.partName;
+                const ext = partEl.dataset.partType;
+
+                let newName = pattern
+                    .replace('{name}', name)
+                    .replace('{index}', idx + 1)
+                    .replace('{ext}', ext);
+                newName = prefix + newName + suffix;
+
+                return { old: name, new: newName };
+            }).filter(Boolean);
+
+            previewList.innerHTML = previews.map(p =>
+                `<li><span class="old-name">${escapeHtml(p.old)}</span> &rarr; <span class="new-name">${escapeHtml(p.new)}</span></li>`
+            ).join('');
+
+            if (batchRenamePartIds.length > 3) {
+                previewList.innerHTML += `<li>...and ${batchRenamePartIds.length - 3} more</li>`;
+            }
+        }
+
+        async function applyBatchRename() {
+            const pattern = document.getElementById('rename-pattern').value || '{name}';
+            const prefix = document.getElementById('rename-prefix').value;
+            const suffix = document.getElementById('rename-suffix').value;
+
+            if (!pattern && !prefix && !suffix) {
+                alert('Please enter a pattern, prefix, or suffix');
+                return;
+            }
+
+            try {
+                const response = await fetch('/actions/batch-rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        parent_id: <?= $modelId ?>,
+                        part_ids: batchRenamePartIds,
+                        pattern: pattern,
+                        prefix: prefix,
+                        suffix: suffix
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+        <?php endif; ?>
         </script>
 
 <?php require_once 'includes/footer.php'; ?>
+<?php
+} catch (Throwable $e) {
+    $errorContext = [
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'model_id' => $modelId ?? 'unknown',
+        'exception' => get_class($e),
+        'trace' => $e->getTraceAsString()
+    ];
+    logError('Model page error: ' . $e->getMessage(), $errorContext);
+
+    // Write error details to a known location for easy debugging
+    $debugFile = dirname(__DIR__, 2) . '/storage/logs/model-page-error.log';
+    @file_put_contents($debugFile, date('[Y-m-d H:i:s] ') . $e->getMessage() . "\n" .
+        "File: {$e->getFile()}:{$e->getLine()}\n" .
+        "Model ID: " . ($modelId ?? 'unknown') . "\n" .
+        "Exception: " . get_class($e) . "\n" .
+        "Trace:\n{$e->getTraceAsString()}\n\n", FILE_APPEND | LOCK_EX);
+
+    throw $e;
+}
+?>

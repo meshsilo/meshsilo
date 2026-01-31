@@ -35,9 +35,9 @@ $db = getDB();
 
 // Get model details
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     echo json_encode(['success' => false, 'error' => 'Model not found']);
@@ -53,10 +53,10 @@ if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
 
 // Get the version to revert to
 $stmt = $db->prepare('SELECT * FROM model_versions WHERE model_id = :model_id AND version_number = :version');
-$stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-$stmt->bindValue(':version', $versionNumber, SQLITE3_INTEGER);
+$stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+$stmt->bindValue(':version', $versionNumber, PDO::PARAM_INT);
 $result = $stmt->execute();
-$targetVersion = $result->fetchArray(SQLITE3_ASSOC);
+$targetVersion = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$targetVersion) {
     echo json_encode(['success' => false, 'error' => 'Version not found']);
@@ -72,15 +72,15 @@ if ($currentVersion == $versionNumber) {
 
 // Get source file path
 $sourceFilePath = __DIR__ . '/../../storage/assets/' . $targetVersion['file_path'];
-if (!file_exists($sourceFilePath)) {
+if (!is_file($sourceFilePath)) {
     echo json_encode(['success' => false, 'error' => 'Version file not found']);
     exit;
 }
 
 // Calculate next version number
 $stmt = $db->prepare('SELECT MAX(version_number) as max_ver FROM model_versions WHERE model_id = :model_id');
-$stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-$row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+$stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+$row = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 $nextVersion = ($row && $row['max_ver']) ? $row['max_ver'] + 1 : 1;
 
 // Create version directory if needed
@@ -131,11 +131,11 @@ $stmt = $db->prepare('
         current_version = :version
     WHERE id = :id
 ');
-$stmt->bindValue(':file_path', $newFilePath, SQLITE3_TEXT);
-$stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
-$stmt->bindValue(':file_hash', $fileHash, SQLITE3_TEXT);
-$stmt->bindValue(':version', $newVersionId, SQLITE3_INTEGER);
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':file_path', $newFilePath, PDO::PARAM_STR);
+$stmt->bindValue(':file_size', $fileSize, PDO::PARAM_INT);
+$stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
+$stmt->bindValue(':version', $newVersionId, PDO::PARAM_INT);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $stmt->execute();
 
 // Log activity

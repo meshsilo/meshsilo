@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 require_once __DIR__ . '/../../includes/VolumeCalculator.php';
 
 header('Content-Type: application/json');
@@ -27,9 +28,9 @@ $db = getDB();
 
 // Get model info
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     echo json_encode(['success' => false, 'error' => 'Model not found']);
@@ -42,12 +43,12 @@ $partVolumes = [];
 
 if ($model['part_count'] > 0) {
     $stmt = $db->prepare('SELECT * FROM models WHERE parent_id = :id');
-    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
 
-    while ($part = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($part = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $filePath = getAbsoluteFilePath($part);
-        if ($filePath && file_exists($filePath)) {
+        if ($filePath && is_file($filePath)) {
             $volume = VolumeCalculator::calculateVolume($filePath, $part['file_type']);
             if ($volume !== null) {
                 $partVolumes[] = [
@@ -63,7 +64,7 @@ if ($model['part_count'] > 0) {
 } else {
     // Single model
     $filePath = getAbsoluteFilePath($model);
-    if ($filePath && file_exists($filePath)) {
+    if ($filePath && is_file($filePath)) {
         $totalVolume = VolumeCalculator::calculateVolume($filePath, $model['file_type']);
         if ($totalVolume !== null) {
             VolumeCalculator::updateModelVolume($modelId, $totalVolume);

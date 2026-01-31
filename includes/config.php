@@ -5,6 +5,7 @@ define('MESHSILO_VERSION', '1.0.0');
 // Load local configuration if exists
 // Check persistent location first (storage/db/config.local.php for Docker)
 // Fall back to old locations for backwards compatibility
+// config.local.php should ONLY contain database connection settings
 if (file_exists(__DIR__ . '/../storage/db/config.local.php')) {
     require_once __DIR__ . '/../storage/db/config.local.php';
 } elseif (file_exists(__DIR__ . '/../db/config.local.php')) {
@@ -12,12 +13,6 @@ if (file_exists(__DIR__ . '/../storage/db/config.local.php')) {
 } elseif (file_exists(__DIR__ . '/../config.local.php')) {
     require_once __DIR__ . '/../config.local.php';
 }
-
-// Site Configuration (defaults, can be overridden in config.local.php)
-if (!defined('SITE_NAME')) define('SITE_NAME', 'MeshSilo');
-if (!defined('SITE_DESCRIPTION')) define('SITE_DESCRIPTION', '3D Model Storage');
-if (!defined('SITE_URL')) define('SITE_URL', '/');
-if (!defined('FORCE_SITE_URL')) define('FORCE_SITE_URL', false);
 
 // Database Configuration (defaults to SQLite)
 if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
@@ -40,17 +35,58 @@ function basePath($path = '') {
     return '/' . ltrim($path, '/');
 }
 
-// Include logging, database, authentication, permissions, OIDC, mail and licensing
+// Include logging and database first
 require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/db.php';
+
+// Load site configuration from database
+// All settings are stored in the database, not in config files
+// This ensures settings can be managed via admin panel and can't be overwritten by file changes
+if (!defined('SITE_NAME')) {
+    $dbSiteName = null;
+    try {
+        $dbSiteName = getSetting('site_name', 'MeshSilo');
+    } catch (Exception $e) {
+        $dbSiteName = 'MeshSilo';
+    }
+    define('SITE_NAME', $dbSiteName);
+}
+if (!defined('SITE_DESCRIPTION')) {
+    $dbSiteDesc = null;
+    try {
+        $dbSiteDesc = getSetting('site_description', '3D Model Storage');
+    } catch (Exception $e) {
+        $dbSiteDesc = '3D Model Storage';
+    }
+    define('SITE_DESCRIPTION', $dbSiteDesc);
+}
+if (!defined('SITE_URL')) {
+    $dbSiteUrl = null;
+    try {
+        $dbSiteUrl = getSetting('site_url', '/');
+    } catch (Exception $e) {
+        $dbSiteUrl = '/';
+    }
+    define('SITE_URL', $dbSiteUrl ?: '/');
+}
+if (!defined('FORCE_SITE_URL')) {
+    $dbForceUrl = null;
+    try {
+        $dbForceUrl = getSetting('force_site_url', '0');
+    } catch (Exception $e) {
+        $dbForceUrl = '0';
+    }
+    define('FORCE_SITE_URL', $dbForceUrl === '1' || $dbForceUrl === true);
+}
+
+// Include authentication, permissions, OIDC, mail and licensing
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/oidc.php';
 require_once __DIR__ . '/saml.php';
 require_once __DIR__ . '/ldap.php';
+require_once __DIR__ . '/Queue.php';
 require_once __DIR__ . '/Mail.php';
-require_once __DIR__ . '/license.php';
-
 // Include router and helpers (if not already loaded by front controller)
 if (!class_exists('Router')) {
     require_once __DIR__ . '/Router.php';
@@ -69,6 +105,7 @@ require_once __DIR__ . '/Scheduler.php';
 require_once __DIR__ . '/AuditLogger.php';
 require_once __DIR__ . '/RetentionManager.php';
 require_once __DIR__ . '/Analytics.php';
+require_once __DIR__ . '/DemoMode.php';
 
 // Load infrastructure components
 require_once __DIR__ . '/Csrf.php';
@@ -79,9 +116,6 @@ require_once __DIR__ . '/Search.php';
 require_once __DIR__ . '/Asset.php';
 require_once __DIR__ . '/HttpCache.php';
 require_once __DIR__ . '/ErrorHandler.php';
-require_once __DIR__ . '/Queue.php';
-// require_once __DIR__ . '/RateLimiter.php';  // Temporarily disabled for debugging
-// require_once __DIR__ . '/UpdateChecker.php'; // Temporarily disabled for debugging
 
 // Load route definitions (for URL generation)
 // Only load if routes haven't been loaded yet

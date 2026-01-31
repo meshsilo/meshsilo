@@ -6,8 +6,12 @@ require_once __DIR__ . '/../../includes/UpdateChecker.php';
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
-// Require admin permission
-requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+// Require settings management permission
+if (!isLoggedIn() || !canManageSettings()) {
+    $_SESSION['error'] = 'You do not have permission to manage settings.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $pageTitle = 'Admin Settings';
 $activePage = '';
@@ -29,6 +33,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_oidc'])) {
     $result = testOIDCConnection();
     echo json_encode($result);
     exit;
+}
+
+// Handle demo reset request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['demo_reset'])) {
+    if (getSetting('demo_mode', '0') === '1') {
+        require_once __DIR__ . '/../../includes/DemoMode.php';
+        try {
+            $demoMode = new DemoMode();
+            $result = $demoMode->resetToDemo();
+            if ($result['success']) {
+                $message = 'Demo reset completed. Models created: ' . ($result['models_created'] ?? 0);
+                if (!empty($result['errors'])) {
+                    $message .= ' (with ' . count($result['errors']) . ' warnings)';
+                }
+                logInfo('Demo reset triggered from admin settings', ['by' => getCurrentUser()['username'], 'models_created' => $result['models_created'] ?? 0]);
+            } else {
+                $error = 'Demo reset failed: ' . ($result['error'] ?? 'Unknown error');
+            }
+        } catch (Exception $e) {
+            $error = 'Demo reset failed: ' . $e->getMessage();
+            logError('Demo reset failed', ['error' => $e->getMessage(), 'by' => getCurrentUser()['username']]);
+        }
+    } else {
+        $error = 'Demo mode is not enabled.';
+    }
 }
 
 // Handle Email test AJAX request
@@ -147,10 +176,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $oidcManageGroups = isset($_POST['oidc_manage_groups']) ? '1' : '0';
     $oidcRedirectUri = trim($_POST['oidc_redirect_uri'] ?? '');
 
-    // URL settings
+    // Site settings (stored in database, not config file)
+    $siteName = trim($_POST['site_name'] ?? 'MeshSilo');
+    $siteDescription = trim($_POST['site_description'] ?? '3D Model Storage');
     $siteUrl = trim($_POST['site_url'] ?? '');
     $forceSiteUrl = isset($_POST['force_site_url']) ? '1' : '0';
 
+    setSetting('site_name', $siteName);
+    setSetting('site_description', $siteDescription);
     setSetting('auto_convert_stl', $autoConvert);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
@@ -291,12 +324,14 @@ require_once __DIR__ . '/../../includes/header.php';
 
                         <div class="form-group">
                             <label for="site-name">Site Name</label>
-                            <input type="text" id="site-name" name="site_name" class="form-input" value="<?= htmlspecialchars(SITE_NAME) ?>">
+                            <input type="text" id="site-name" name="site_name" class="form-input" value="<?= htmlspecialchars(getSetting('site_name', 'MeshSilo')) ?>">
+                            <p class="form-help">Displayed in the header and page titles</p>
                         </div>
 
                         <div class="form-group">
                             <label for="site-description">Site Description</label>
-                            <input type="text" id="site-description" name="site_description" class="form-input" value="<?= htmlspecialchars(SITE_DESCRIPTION) ?>">
+                            <input type="text" id="site-description" name="site_description" class="form-input" value="<?= htmlspecialchars(getSetting('site_description', '3D Model Storage')) ?>">
+                            <p class="form-help">Displayed in the footer and meta tags</p>
                         </div>
 
                         <div class="form-group">
@@ -791,6 +826,26 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </section>
                 </form>
+                <?php if (getSetting('demo_mode', '0') === '1'): ?>
+                <form class="settings-form" method="POST" style="margin-top: 2rem;" id="demo-reset-form">
+                    <section class="settings-section">
+                        <h2>Demo Mode</h2>
+                        <p class="form-help" style="margin-bottom: 1rem;">
+                            This instance is running in demo mode. Use the button below to reset all data and reload sample models.
+                        </p>
+                        <div class="alert alert-error" style="margin-bottom: 1rem;">
+                            <strong>Warning:</strong> This will delete ALL models, users, tags, and other data, then recreate demo content.
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" name="demo_reset" value="1" class="btn btn-primary"
+                                onclick="return confirm('Are you sure you want to reset all demo data? This cannot be undone.');">
+                                Reset Demo Data
+                            </button>
+                        </div>
+                    </section>
+                </form>
+                <?php endif; ?>
+
             </div>
         </div>
 

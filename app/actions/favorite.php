@@ -3,8 +3,16 @@
  * Toggle favorite status for a model
  */
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 
 header('Content-Type: application/json');
+
+// Check if favorites feature is enabled
+if (!isFeatureEnabled('favorites')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Favorites feature is disabled']);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -29,9 +37,9 @@ if (!$modelId) {
 // Verify model exists
 $db = getDB();
 $stmt = $db->prepare('SELECT id, name FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     http_response_code(404);

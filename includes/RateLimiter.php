@@ -2,340 +2,248 @@
 /**
  * Rate Limiter
  *
- * Provides request rate limiting using various storage backends:
- * - Database (SQLite/MySQL)
- * - APCu (if available)
- * - File-based (fallback)
- *
- * Supports multiple rate limit strategies:
- * - Fixed window
- * - Sliding window
- * - Token bucket
+ * Enterprise-grade rate limiting with configurable tiers and per-key limits
  */
 
 class RateLimiter {
-    private static ?self $instance = null;
-    private string $driver = 'database';
-    private string $cachePath;
-    private $db = null;
-
-    // Default limits
-    const DEFAULT_LIMIT = 60;        // Requests per window
-    const DEFAULT_WINDOW = 60;       // Window in seconds (1 minute)
-    const DEFAULT_DECAY = 60;        // Decay time for blocking
+    private static $db;
+    private static $tiers = null;
 
     /**
-     * Get singleton instance
+     * Initialize database connection
      */
-    public static function getInstance(): self {
-        if (self::$instance === null) {
-            self::$instance = new self();
+    private static function init() {
+        if (!self::$db) {
+            self::$db = getDB();
         }
-        return self::$instance;
     }
 
     /**
-     * Constructor
+     * Get rate limit tiers
      */
-    private function __construct() {
-        $this->cachePath = dirname(__DIR__) . '/storage/cache/ratelimit/';
-
-        // Select best available driver
-        if (function_exists('apcu_fetch') && apcu_enabled()) {
-            $this->driver = 'apcu';
-        } elseif (function_exists('getDB')) {
-            $this->driver = 'database';
-            $this->db = getDB();
-            $this->ensureTable();
-        } else {
-            $this->driver = 'file';
-            if (!is_dir($this->cachePath)) {
-                mkdir($this->cachePath, 0755, true);
+    public static function getTiers() {
+        if (self::$tiers === null) {
+            $tiersJson = getSetting('rate_limit_tiers', '');
+            if ($tiersJson) {
+                self::$tiers = json_decode($tiersJson, true);
+            } else {
+                // Default tiers
+                self::$tiers = [
+                    'anonymous' => [
+                        'name' => 'Anonymous',
+                        'requests_per_minute' => 30,
+                        'requests_per_hour' => 500,
+                        'requests_per_day' => 5000
+                    ],
+                    'authenticated' => [
+                        'name' => 'Authenticated User',
+                        'requests_per_minute' => 60,
+                        'requests_per_hour' => 1000,
+                        'requests_per_day' => 10000
+                    ],
+                    'premium' => [
+                        'name' => 'Premium',
+                        'requests_per_minute' => 120,
+                        'requests_per_hour' => 3000,
+                        'requests_per_day' => 50000
+                    ],
+                    'unlimited' => [
+                        'name' => 'Unlimited',
+                        'requests_per_minute' => 0,
+                        'requests_per_hour' => 0,
+                        'requests_per_day' => 0
+                    ]
+                ];
             }
         }
+        return self::$tiers;
     }
 
     /**
-     * Ensure rate limit table exists
+     * Save rate limit tiers
      */
-    private function ensureTable(): void {
-        if (!$this->db) return;
-
-        // Use database-appropriate syntax
-        if (defined('DB_TYPE') && DB_TYPE === 'mysql') {
-            $this->db->exec("
-                CREATE TABLE IF NOT EXISTS rate_limits (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    `key` VARCHAR(255) NOT NULL UNIQUE,
-                    hits INT DEFAULT 1,
-                    expires_at DATETIME NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ");
-        } else {
-            $this->db->exec("
-                CREATE TABLE IF NOT EXISTS rate_limits (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    key TEXT NOT NULL UNIQUE,
-                    hits INTEGER DEFAULT 1,
-                    expires_at DATETIME NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ");
-        }
-
-        $this->db->exec("CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits(`key`)");
-        $this->db->exec("CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at)");
+    public static function saveTiers($tiers) {
+        setSetting('rate_limit_tiers', json_encode($tiers));
+        self::$tiers = $tiers;
     }
 
     /**
-     * Check if a request should be rate limited
+     * Check rate limit and increment counter
      *
-     * @param string $key Unique identifier (e.g., user_id, IP address, API key)
-     * @param int $maxAttempts Maximum attempts allowed
-     * @param int $decaySeconds Time window in seconds
-     * @return array ['allowed' => bool, 'remaining' => int, 'reset' => timestamp]
+     * @param string $identifier User ID, API key, or IP address
+     * @param string $tier Rate limit tier name
+     * @param string $endpoint Optional endpoint-specific limiting
+     * @return array ['allowed' => bool, 'remaining' => int, 'reset' => timestamp, 'tier' => string]
      */
-    public function attempt(string $key, int $maxAttempts = self::DEFAULT_LIMIT, int $decaySeconds = self::DEFAULT_WINDOW): array {
-        $key = $this->sanitizeKey($key);
+    public static function check($identifier, $tier = 'anonymous', $endpoint = 'default') {
+        self::init();
 
-        switch ($this->driver) {
-            case 'apcu':
-                return $this->attemptApcu($key, $maxAttempts, $decaySeconds);
-            case 'database':
-                return $this->attemptDatabase($key, $maxAttempts, $decaySeconds);
-            default:
-                return $this->attemptFile($key, $maxAttempts, $decaySeconds);
-        }
-    }
+        $tiers = self::getTiers();
+        $tierConfig = $tiers[$tier] ?? $tiers['anonymous'];
 
-    /**
-     * Check rate limit without incrementing
-     */
-    public function check(string $key, int $maxAttempts = self::DEFAULT_LIMIT, int $decaySeconds = self::DEFAULT_WINDOW): array {
-        $key = $this->sanitizeKey($key);
-        $data = $this->getData($key);
-
-        if (!$data || $data['expires_at'] < time()) {
+        // Unlimited tier bypasses checks
+        if ($tier === 'unlimited' ||
+            ($tierConfig['requests_per_minute'] == 0 &&
+             $tierConfig['requests_per_hour'] == 0 &&
+             $tierConfig['requests_per_day'] == 0)) {
             return [
                 'allowed' => true,
-                'remaining' => $maxAttempts,
-                'reset' => time() + $decaySeconds,
-                'hits' => 0
+                'remaining' => -1,
+                'reset' => null,
+                'tier' => $tier
             ];
         }
 
-        $remaining = max(0, $maxAttempts - $data['hits']);
+        $now = time();
+        $minuteWindow = $now - 60;
+        $hourWindow = $now - 3600;
+        $dayWindow = $now - 86400;
+
+        // Create rate_limits table if needed
+        self::ensureTable();
+
+        // Clean old entries
+        $stmt = self::$db->prepare('DELETE FROM rate_limits WHERE timestamp < :cutoff');
+        $stmt->bindValue(':cutoff', $dayWindow, PDO::PARAM_INT);
+        $stmt->execute();
+
+        // Count requests in windows
+        $key = hash('sha256', $identifier . ':' . $endpoint);
+
+        $minuteCount = self::getCount($key, $minuteWindow);
+        $hourCount = self::getCount($key, $hourWindow);
+        $dayCount = self::getCount($key, $dayWindow);
+
+        // Check against limits
+        $allowed = true;
+        $remaining = PHP_INT_MAX;
+        $reset = null;
+
+        if ($tierConfig['requests_per_minute'] > 0) {
+            $minRemaining = $tierConfig['requests_per_minute'] - $minuteCount;
+            if ($minRemaining <= 0) {
+                $allowed = false;
+                $reset = $now + 60;
+            }
+            $remaining = min($remaining, max(0, $minRemaining));
+        }
+
+        if ($tierConfig['requests_per_hour'] > 0) {
+            $hourRemaining = $tierConfig['requests_per_hour'] - $hourCount;
+            if ($hourRemaining <= 0) {
+                $allowed = false;
+                if (!$reset) $reset = $now + 3600;
+            }
+            $remaining = min($remaining, max(0, $hourRemaining));
+        }
+
+        if ($tierConfig['requests_per_day'] > 0) {
+            $dayRemaining = $tierConfig['requests_per_day'] - $dayCount;
+            if ($dayRemaining <= 0) {
+                $allowed = false;
+                if (!$reset) $reset = $now + 86400;
+            }
+            $remaining = min($remaining, max(0, $dayRemaining));
+        }
+
+        // Record this request
+        if ($allowed) {
+            self::record($key);
+        }
 
         return [
-            'allowed' => $remaining > 0,
+            'allowed' => $allowed,
             'remaining' => $remaining,
-            'reset' => $data['expires_at'],
-            'hits' => $data['hits']
+            'reset' => $reset,
+            'tier' => $tier,
+            'limits' => [
+                'minute' => ['count' => $minuteCount + 1, 'limit' => $tierConfig['requests_per_minute']],
+                'hour' => ['count' => $hourCount + 1, 'limit' => $tierConfig['requests_per_hour']],
+                'day' => ['count' => $dayCount + 1, 'limit' => $tierConfig['requests_per_day']]
+            ]
         ];
     }
 
     /**
-     * APCu-based rate limiting
+     * Get request count since timestamp
      */
-    private function attemptApcu(string $key, int $maxAttempts, int $decaySeconds): array {
-        $expiresKey = $key . ':expires';
-        $hitsKey = $key . ':hits';
-
-        $expires = apcu_fetch($expiresKey);
-        $hits = apcu_fetch($hitsKey);
-
-        // If no record or expired, start fresh
-        if ($expires === false || $expires < time()) {
-            $expires = time() + $decaySeconds;
-            $hits = 1;
-            apcu_store($expiresKey, $expires, $decaySeconds);
-            apcu_store($hitsKey, $hits, $decaySeconds);
-        } else {
-            // Increment hits
-            $hits = apcu_inc($hitsKey);
-        }
-
-        $remaining = max(0, $maxAttempts - $hits);
-
-        return [
-            'allowed' => $hits <= $maxAttempts,
-            'remaining' => $remaining,
-            'reset' => $expires,
-            'hits' => $hits
-        ];
+    private static function getCount($key, $since) {
+        $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limits WHERE key_hash = :key AND timestamp >= :since');
+        $stmt->bindValue(':key', $key, PDO::PARAM_STR);
+        $stmt->bindValue(':since', $since, PDO::PARAM_INT);
+        $result = $stmt->execute();
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
+        return $row['count'] ?? 0;
     }
 
     /**
-     * Database-based rate limiting
+     * Record a request
      */
-    private function attemptDatabase(string $key, int $maxAttempts, int $decaySeconds): array {
-        if (!$this->db) {
-            return ['allowed' => true, 'remaining' => $maxAttempts, 'reset' => time() + $decaySeconds, 'hits' => 0];
-        }
-
-        $now = date('Y-m-d H:i:s');
-        $expires = date('Y-m-d H:i:s', time() + $decaySeconds);
-
-        // Try to get existing record
-        $stmt = $this->db->prepare("SELECT hits, expires_at FROM rate_limits WHERE `key` = :key");
-        $stmt->execute([':key' => $key]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$row || $row['expires_at'] < $now) {
-            // No record or expired - create new (use REPLACE for cross-DB compatibility)
-            $stmt = $this->db->prepare("REPLACE INTO rate_limits (`key`, hits, expires_at) VALUES (:key, 1, :expires)");
-            $stmt->execute([':key' => $key, ':expires' => $expires]);
-
-            return [
-                'allowed' => true,
-                'remaining' => $maxAttempts - 1,
-                'reset' => time() + $decaySeconds,
-                'hits' => 1
-            ];
-        }
-
-        // Increment existing record
-        $hits = $row['hits'] + 1;
-        $stmt = $this->db->prepare("UPDATE rate_limits SET hits = :hits WHERE `key` = :key");
-        $stmt->execute([':hits' => $hits, ':key' => $key]);
-
-        $remaining = max(0, $maxAttempts - $hits);
-        $expiresTimestamp = strtotime($row['expires_at']);
-
-        return [
-            'allowed' => $hits <= $maxAttempts,
-            'remaining' => $remaining,
-            'reset' => $expiresTimestamp,
-            'hits' => $hits
-        ];
+    private static function record($key) {
+        $stmt = self::$db->prepare('INSERT INTO rate_limits (key_hash, timestamp) VALUES (:key, :ts)');
+        $stmt->bindValue(':key', $key, PDO::PARAM_STR);
+        $stmt->bindValue(':ts', time(), PDO::PARAM_INT);
+        $stmt->execute();
     }
 
     /**
-     * File-based rate limiting
+     * Ensure rate_limits table exists
      */
-    private function attemptFile(string $key, int $maxAttempts, int $decaySeconds): array {
-        $file = $this->cachePath . md5($key) . '.json';
+    private static function ensureTable() {
+        self::$db->exec('
+            CREATE TABLE IF NOT EXISTS rate_limits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key_hash TEXT NOT NULL,
+                timestamp INTEGER NOT NULL
+            )
+        ');
 
-        $data = null;
-        if (file_exists($file)) {
-            $data = json_decode(file_get_contents($file), true);
-        }
-
-        // If no record or expired, start fresh
-        if (!$data || $data['expires_at'] < time()) {
-            $data = [
-                'hits' => 1,
-                'expires_at' => time() + $decaySeconds
-            ];
-        } else {
-            $data['hits']++;
-        }
-
-        file_put_contents($file, json_encode($data), LOCK_EX);
-
-        $remaining = max(0, $maxAttempts - $data['hits']);
-
-        return [
-            'allowed' => $data['hits'] <= $maxAttempts,
-            'remaining' => $remaining,
-            'reset' => $data['expires_at'],
-            'hits' => $data['hits']
-        ];
+        // Create index if not exists
+        self::$db->exec('CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits (key_hash, timestamp)');
     }
 
     /**
-     * Get current data for a key
+     * Get tier for user/API key
      */
-    private function getData(string $key): ?array {
-        switch ($this->driver) {
-            case 'apcu':
-                $expires = apcu_fetch($key . ':expires');
-                $hits = apcu_fetch($key . ':hits');
-                if ($expires === false) return null;
-                return ['hits' => $hits, 'expires_at' => $expires];
+    public static function getTierForUser($userId = null, $apiKey = null) {
+        self::init();
 
-            case 'database':
-                if (!$this->db) return null;
-                $stmt = $this->db->prepare("SELECT hits, expires_at FROM rate_limits WHERE `key` = :key");
-                $stmt->execute([':key' => $key]);
-                $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$row) return null;
-                return ['hits' => $row['hits'], 'expires_at' => strtotime($row['expires_at'])];
-
-            default:
-                $file = $this->cachePath . md5($key) . '.json';
-                if (!file_exists($file)) return null;
-                return json_decode(file_get_contents($file), true);
-        }
-    }
-
-    /**
-     * Clear rate limit for a key
-     */
-    public function clear(string $key): bool {
-        $key = $this->sanitizeKey($key);
-
-        switch ($this->driver) {
-            case 'apcu':
-                apcu_delete($key . ':expires');
-                apcu_delete($key . ':hits');
-                return true;
-
-            case 'database':
-                if (!$this->db) return false;
-                $stmt = $this->db->prepare("DELETE FROM rate_limits WHERE `key` = :key");
-                return $stmt->execute([':key' => $key]);
-
-            default:
-                $file = $this->cachePath . md5($key) . '.json';
-                return file_exists($file) ? unlink($file) : true;
-        }
-    }
-
-    /**
-     * Clear all expired rate limits
-     */
-    public function clearExpired(): int {
-        $cleared = 0;
-
-        switch ($this->driver) {
-            case 'database':
-                if (!$this->db) return 0;
-                $stmt = $this->db->prepare("DELETE FROM rate_limits WHERE expires_at < :now");
-                $stmt->execute([':now' => date('Y-m-d H:i:s')]);
-                $cleared = $stmt->rowCount();
-                break;
-
-            case 'file':
-                $files = glob($this->cachePath . '*.json');
-                foreach ($files as $file) {
-                    $data = json_decode(file_get_contents($file), true);
-                    if ($data && $data['expires_at'] < time()) {
-                        unlink($file);
-                        $cleared++;
-                    }
-                }
-                break;
+        // Check API key tier
+        if ($apiKey) {
+            $stmt = self::$db->prepare('SELECT rate_limit_tier FROM api_keys WHERE key_hash = :key AND is_active = 1');
+            $stmt->bindValue(':key', hash('sha256', $apiKey), PDO::PARAM_STR);
+            $result = $stmt->execute();
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
+            if ($row && $row['rate_limit_tier']) {
+                return $row['rate_limit_tier'];
+            }
         }
 
-        return $cleared;
+        // Check user tier
+        if ($userId) {
+            $stmt = self::$db->prepare('SELECT rate_limit_tier FROM users WHERE id = :id');
+            $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
+            $result = $stmt->execute();
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
+            if ($row && $row['rate_limit_tier']) {
+                return $row['rate_limit_tier'];
+            }
+            return 'authenticated';
+        }
+
+        return 'anonymous';
     }
 
     /**
-     * Sanitize key for storage
+     * Set rate limit headers on response
      */
-    private function sanitizeKey(string $key): string {
-        return 'ratelimit:' . preg_replace('/[^a-zA-Z0-9:_-]/', '_', $key);
-    }
-
-    /**
-     * Send rate limit headers
-     */
-    public static function sendHeaders(array $result, int $limit): void {
-        header('X-RateLimit-Limit: ' . $limit);
-        header('X-RateLimit-Remaining: ' . $result['remaining']);
-        header('X-RateLimit-Reset: ' . $result['reset']);
+    public static function setHeaders($result) {
+        header('X-RateLimit-Limit: ' . ($result['limits']['minute']['limit'] ?? 0));
+        header('X-RateLimit-Remaining: ' . max(0, $result['remaining']));
+        if ($result['reset']) {
+            header('X-RateLimit-Reset: ' . $result['reset']);
+        }
+        header('X-RateLimit-Tier: ' . $result['tier']);
 
         if (!$result['allowed']) {
             header('Retry-After: ' . ($result['reset'] - time()));
@@ -343,134 +251,97 @@ class RateLimiter {
     }
 
     /**
-     * Handle rate limit exceeded
+     * Get rate limit statistics
      */
-    public static function tooManyRequests(array $result): never {
-        http_response_code(429);
-        header('Content-Type: application/json');
-        header('Retry-After: ' . ($result['reset'] - time()));
+    public static function getStats() {
+        self::init();
+        self::ensureTable();
 
-        echo json_encode([
-            'error' => true,
-            'message' => 'Too many requests. Please try again later.',
-            'retry_after' => $result['reset'] - time()
-        ]);
-        exit;
+        $now = time();
+        $stats = [];
+
+        // Requests in last hour
+        $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limits WHERE timestamp >= :since');
+        $stmt->bindValue(':since', $now - 3600, PDO::PARAM_INT);
+        $result = $stmt->execute();
+        $stats['requests_hour'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+
+        // Unique identifiers in last hour
+        $stmt = self::$db->prepare('SELECT COUNT(DISTINCT key_hash) as count FROM rate_limits WHERE timestamp >= :since');
+        $stmt->bindValue(':since', $now - 3600, PDO::PARAM_INT);
+        $result = $stmt->execute();
+        $stats['unique_keys_hour'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+
+        // Rate limited requests (approximate - those who hit limits)
+        $stmt = self::$db->prepare('
+            SELECT key_hash, COUNT(*) as count
+            FROM rate_limits
+            WHERE timestamp >= :since
+            GROUP BY key_hash
+            HAVING count > 60
+        ');
+        $stmt->bindValue(':since', $now - 3600, PDO::PARAM_INT);
+        $result = $stmt->execute();
+        $heavyUsers = 0;
+        while ($result->fetchArray()) {
+            $heavyUsers++;
+        }
+        $stats['heavy_users_hour'] = $heavyUsers;
+
+        return $stats;
     }
 
     /**
-     * Middleware-style rate limit check
-     *
-     * @param string $key Identifier for rate limiting
-     * @param int $limit Max requests per window
-     * @param int $window Window in seconds
-     * @param bool $exitOnLimit Whether to exit with 429 if limit exceeded
-     * @return array Rate limit result
+     * Get top consumers
      */
-    public static function throttle(string $key, int $limit = self::DEFAULT_LIMIT, int $window = self::DEFAULT_WINDOW, bool $exitOnLimit = true): array {
-        $limiter = self::getInstance();
-        $result = $limiter->attempt($key, $limit, $window);
+    public static function getTopConsumers($limit = 10, $period = 3600) {
+        self::init();
+        self::ensureTable();
 
-        self::sendHeaders($result, $limit);
+        $consumers = [];
+        $stmt = self::$db->prepare('
+            SELECT key_hash, COUNT(*) as request_count
+            FROM rate_limits
+            WHERE timestamp >= :since
+            GROUP BY key_hash
+            ORDER BY request_count DESC
+            LIMIT :limit
+        ');
+        $stmt->bindValue(':since', time() - $period, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $result = $stmt->execute();
 
-        if (!$result['allowed'] && $exitOnLimit) {
-            self::tooManyRequests($result);
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            $consumers[] = $row;
         }
 
-        return $result;
+        return $consumers;
     }
 
     /**
-     * Rate limit by IP address
+     * Reset rate limits for identifier
      */
-    public static function byIp(int $limit = self::DEFAULT_LIMIT, int $window = self::DEFAULT_WINDOW): array {
-        $ip = $_SERVER['HTTP_CF_CONNECTING_IP']
-            ?? $_SERVER['HTTP_X_FORWARDED_FOR']
-            ?? $_SERVER['HTTP_X_REAL_IP']
-            ?? $_SERVER['REMOTE_ADDR']
-            ?? 'unknown';
+    public static function reset($identifier, $endpoint = 'default') {
+        self::init();
+        self::ensureTable();
 
-        // Handle comma-separated IPs
-        if (str_contains($ip, ',')) {
-            $ip = trim(explode(',', $ip)[0]);
-        }
-
-        return self::throttle('ip:' . $ip, $limit, $window);
+        $key = hash('sha256', $identifier . ':' . $endpoint);
+        $stmt = self::$db->prepare('DELETE FROM rate_limits WHERE key_hash = :key');
+        $stmt->bindValue(':key', $key, PDO::PARAM_STR);
+        $stmt->execute();
     }
 
     /**
-     * Rate limit by API key
+     * Cleanup old rate limit records
      */
-    public static function byApiKey(string $apiKey, int $limit = 1000, int $window = 3600): array {
-        return self::throttle('api:' . $apiKey, $limit, $window);
+    public static function cleanup($olderThan = 86400) {
+        self::init();
+        self::ensureTable();
+
+        $stmt = self::$db->prepare('DELETE FROM rate_limits WHERE timestamp < :cutoff');
+        $stmt->bindValue(':cutoff', time() - $olderThan, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return self::$db->changes();
     }
-
-    /**
-     * Rate limit by user ID
-     */
-    public static function byUser(int $userId, int $limit = self::DEFAULT_LIMIT, int $window = self::DEFAULT_WINDOW): array {
-        return self::throttle('user:' . $userId, $limit, $window);
-    }
-
-    /**
-     * Rate limit by route/endpoint
-     */
-    public static function byRoute(string $route, int $limit = self::DEFAULT_LIMIT, int $window = self::DEFAULT_WINDOW): array {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        return self::throttle('route:' . $route . ':' . $ip, $limit, $window);
-    }
-
-    /**
-     * Combined rate limiting (multiple strategies)
-     *
-     * @param array $strategies Array of ['key' => string, 'limit' => int, 'window' => int]
-     * @return array First failed result or last successful result
-     */
-    public static function multi(array $strategies): array {
-        $limiter = self::getInstance();
-
-        foreach ($strategies as $strategy) {
-            $result = $limiter->attempt(
-                $strategy['key'],
-                $strategy['limit'] ?? self::DEFAULT_LIMIT,
-                $strategy['window'] ?? self::DEFAULT_WINDOW
-            );
-
-            if (!$result['allowed']) {
-                self::sendHeaders($result, $strategy['limit'] ?? self::DEFAULT_LIMIT);
-                return $result;
-            }
-        }
-
-        // All passed, send headers for the most restrictive
-        $lastStrategy = end($strategies);
-        self::sendHeaders($result, $lastStrategy['limit'] ?? self::DEFAULT_LIMIT);
-
-        return $result;
-    }
-}
-
-// ========================================
-// Helper Functions
-// ========================================
-
-/**
- * Throttle requests (convenience function)
- */
-function throttle(string $key, int $limit = 60, int $window = 60): array {
-    return RateLimiter::throttle($key, $limit, $window);
-}
-
-/**
- * Rate limit by IP (convenience function)
- */
-function rate_limit_ip(int $limit = 60, int $window = 60): array {
-    return RateLimiter::byIp($limit, $window);
-}
-
-/**
- * Rate limit by API key (convenience function)
- */
-function rate_limit_api(string $apiKey, int $limit = 1000, int $window = 3600): array {
-    return RateLimiter::byApiKey($apiKey, $limit, $window);
 }

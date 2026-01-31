@@ -10,6 +10,100 @@
 // Increase memory limit for large operations
 ini_set('memory_limit', '512M');
 
+// ============================================================================
+// EMERGENCY DATABASE FIX - runs before config.php to avoid middleware errors
+// Access via: /update?fix_rate_limits=1
+// ============================================================================
+if (isset($_GET['fix_rate_limits']) && $_GET['fix_rate_limits'] === '1') {
+    // Find config file
+    $configPaths = [
+        __DIR__ . '/config.local.php',
+        __DIR__ . '/storage/db/config.local.php',
+        __DIR__ . '/db/config.local.php',
+    ];
+
+    $configFile = null;
+    foreach ($configPaths as $path) {
+        if (file_exists($path)) {
+            $configFile = $path;
+            break;
+        }
+    }
+
+    if ($configFile) {
+        $localConfig = require $configFile;
+
+        try {
+            // Create minimal PDO connection
+            if (isset($localConfig['db_type']) && $localConfig['db_type'] === 'mysql') {
+                $dsn = "mysql:host={$localConfig['db_host']};dbname={$localConfig['db_name']};charset=utf8mb4";
+                $pdo = new PDO($dsn, $localConfig['db_user'], $localConfig['db_pass'], [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ]);
+
+                // Fix rate_limits table for MySQL
+                $pdo->exec('DROP TABLE IF EXISTS rate_limits');
+                $pdo->exec('CREATE TABLE rate_limits (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    key_name VARCHAR(255) NOT NULL UNIQUE,
+                    data TEXT,
+                    expires_at INT NOT NULL,
+                    INDEX idx_rate_limits_expires (expires_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+            } else {
+                // SQLite
+                $dbPath = $localConfig['db_path'] ?? __DIR__ . '/storage/db/silo.sqlite';
+                $pdo = new PDO("sqlite:$dbPath", null, null, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ]);
+
+                // Fix rate_limits table for SQLite
+                $pdo->exec('DROP TABLE IF EXISTS rate_limits');
+                $pdo->exec('CREATE TABLE rate_limits (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key_name TEXT NOT NULL UNIQUE,
+                    data TEXT,
+                    expires_at INTEGER NOT NULL
+                )');
+                $pdo->exec('CREATE INDEX idx_rate_limits_expires ON rate_limits(expires_at)');
+            }
+
+            echo "<!DOCTYPE html><html><head><title>Fix Applied</title></head><body style='font-family: sans-serif; padding: 2rem;'>";
+            echo "<h2 style='color: green;'>Rate limits table fixed successfully!</h2>";
+            echo "<p>The rate_limits table has been recreated with the correct schema.</p>";
+            echo "<p><a href='/update'>Go to Update Page</a> | <a href='/'>Go to Homepage</a></p>";
+            echo "</body></html>";
+            exit;
+        } catch (PDOException $e) {
+            echo "<!DOCTYPE html><html><head><title>Error</title></head><body style='font-family: sans-serif; padding: 2rem;'>";
+            echo "<h2 style='color: red;'>Error fixing rate_limits table</h2>";
+            echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "</body></html>";
+            exit;
+        }
+    } else {
+        echo "<!DOCTYPE html><html><head><title>Error</title></head><body style='font-family: sans-serif; padding: 2rem;'>";
+        echo "<h2 style='color: red;'>Configuration file not found</h2>";
+        echo "<p>Searched in:</p><ul>";
+        foreach ($configPaths as $path) {
+            echo "<li>" . htmlspecialchars($path) . "</li>";
+        }
+        echo "</ul></body></html>";
+        exit;
+    }
+}
+
+// Redirect to installer if not yet installed
+if (!file_exists(__DIR__ . '/storage/db/config.local.php')
+    && !file_exists(__DIR__ . '/db/config.local.php')
+    && !file_exists(__DIR__ . '/config.local.php')
+) {
+    if (file_exists(__DIR__ . '/install.php')) {
+        header('Location: /install.php');
+        exit;
+    }
+}
+
 // Check if this is a routed request (not the homepage)
 $routePath = $_GET['route'] ?? '';
 $routePath = '/' . trim($routePath, '/');
@@ -69,21 +163,12 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
         exit; // Route was handled
     }
 
-    // Route not found - show 404
-    http_response_code(404);
-    $pageTitle = 'Page Not Found';
-    $activePage = '';
-    require_once 'includes/header.php';
-    ?>
-    <div class="page-container" style="text-align: center; padding: 4rem 1rem;">
-        <h1 style="font-size: 4rem; margin-bottom: 1rem;">404</h1>
-        <p style="font-size: 1.25rem; color: var(--text-secondary); margin-bottom: 2rem;">
-            The page you're looking for doesn't exist.
-        </p>
-        <a href="<?= route('home') ?>" class="btn btn-primary">Go to Homepage</a>
-    </div>
-    <?php
-    require_once 'includes/footer.php';
+    // Route not found - redirect to appropriate root
+    if (str_starts_with($routePath, '/admin')) {
+        header('Location: ' . route('admin.settings'));
+    } else {
+        header('Location: /');
+    }
     exit;
 }
 
@@ -108,57 +193,75 @@ $activePage = 'browse';
 $db = getDB();
 
 // Get recent models (only parent/standalone models, not parts)
-// Optimized: Only select columns we actually use
-$result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, print_type, creator, created_at, is_archived FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
-$models = [];
-$modelIds = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    if ($row['part_count'] > 0) {
-        $modelIds[] = $row['id'];
-    } else {
-        // Add cache buster for single models
-        $row['preview_path'] = getRealFilePath($row) . '?v=' . ($row['file_size'] ?? time());
-        $row['preview_type'] = $row['file_type'];
-        $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
+// Wrapped in try/catch to gracefully handle MySQL query differences
+try {
+    $result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, print_type, creator, created_at, is_archived, thumbnail_path FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
+    $models = [];
+    $modelIds = [];
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        if ($row['part_count'] > 0) {
+            $modelIds[] = $row['id'];
+        } else {
+            // Use preview endpoint for single models
+            $row['preview_path'] = '/actions/preview?id=' . $row['id'];
+            $row['preview_type'] = $row['file_type'];
+            $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
+        }
+        $models[] = $row;
     }
-    $models[] = $row;
+} catch (Throwable $e) {
+    logException($e, ['action' => 'homepage_recent_models']);
+    $models = [];
+    $modelIds = [];
 }
 
 // Bulk load first parts for multi-part models (eliminates N+1 queries)
 if (!empty($modelIds)) {
-    $firstParts = getFirstPartsForModels($modelIds);
+    try {
+        $firstParts = getFirstPartsForModels($modelIds);
 
-    // Get distinct print types for multi-part models in one query
-    $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
-    $printStmt = $db->prepare("SELECT parent_id, GROUP_CONCAT(DISTINCT print_type) as print_types FROM models WHERE parent_id IN ($placeholders) AND print_type IS NOT NULL GROUP BY parent_id");
-    foreach ($modelIds as $index => $id) {
-        $printStmt->bindValue($index + 1, $id, SQLITE3_INTEGER);
-    }
-    $printResult = $printStmt->execute();
-    $printTypesByParent = [];
-    while ($row = $printResult->fetchArray(SQLITE3_ASSOC)) {
-        $printTypesByParent[$row['parent_id']] = explode(',', $row['print_types']);
-    }
-
-    // Assign to models
-    foreach ($models as &$model) {
-        if ($model['part_count'] > 0) {
-            $firstPart = $firstParts[$model['id']] ?? null;
-            if ($firstPart) {
-                $model['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
-                $model['preview_type'] = $firstPart['file_type'];
-            }
-            $model['print_types'] = $printTypesByParent[$model['id']] ?? [];
+        // Get distinct print types for multi-part models in one query
+        $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
+        $printStmt = $db->prepare("SELECT parent_id, GROUP_CONCAT(DISTINCT print_type) as print_types FROM models WHERE parent_id IN ($placeholders) AND print_type IS NOT NULL GROUP BY parent_id");
+        foreach ($modelIds as $index => $id) {
+            $printStmt->bindValue($index + 1, $id, PDO::PARAM_INT);
         }
+        $printResult = $printStmt->execute();
+        $printTypesByParent = [];
+        while ($row = $printResult->fetchArray(PDO::FETCH_ASSOC)) {
+            $printTypesByParent[$row['parent_id']] = explode(',', $row['print_types']);
+        }
+
+        // Assign to models
+        foreach ($models as &$model) {
+            if ($model['part_count'] > 0) {
+                $firstPart = $firstParts[$model['id']] ?? null;
+                if ($firstPart) {
+                    // Use preview endpoint for multi-part models
+                    $model['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
+                    $model['preview_type'] = $firstPart['file_type'];
+                }
+                $model['print_types'] = $printTypesByParent[$model['id']] ?? [];
+            }
+        }
+        unset($model);
+    } catch (Throwable $e) {
+        logException($e, ['action' => 'homepage_multipart_models']);
     }
-    unset($model);
 }
 
 // Get categories with model counts
-$result = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
+try {
+    $result = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
+} catch (Throwable $e) {
+    logException($e, ['action' => 'homepage_categories']);
+    $result = null;
+}
 $categories = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-    $categories[] = $row;
+if ($result) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        $categories[] = $row;
+    }
 }
 
 $message = '';
@@ -191,16 +294,16 @@ $recentlyViewed = getRecentlyViewed(6);
 $rvMultiPartIds = array_column(array_filter($recentlyViewed, fn($m) => $m['part_count'] > 0), 'id');
 $rvParts = !empty($rvMultiPartIds) ? getFirstPartsForModels($rvMultiPartIds) : [];
 
-// Enhance with preview data
+// Enhance with preview data using preview endpoint
 foreach ($recentlyViewed as &$rv) {
     if ($rv['part_count'] > 0) {
         $firstPart = $rvParts[$rv['id']] ?? null;
         if ($firstPart) {
-            $rv['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+            $rv['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
             $rv['preview_type'] = $firstPart['file_type'];
         }
     } else {
-        $rv['preview_path'] = getRealFilePath($rv) . '?v=' . ($rv['file_size'] ?? time());
+        $rv['preview_path'] = '/actions/preview?id=' . $rv['id'];
         $rv['preview_type'] = $rv['file_type'];
     }
 }
@@ -224,9 +327,13 @@ if (getSetting('enable_tags', '1') === '1') {
 
     // Regenerate cache if needed
     if (!$cacheValid) {
-        $tagResult = $db->query('SELECT t.id, t.name, t.color, COUNT(mt.model_id) as model_count FROM tags t JOIN model_tags mt ON t.id = mt.tag_id GROUP BY t.id ORDER BY model_count DESC LIMIT 10');
-        while ($row = $tagResult->fetchArray(SQLITE3_ASSOC)) {
-            $popularTags[] = $row;
+        try {
+            $tagResult = $db->query('SELECT t.id, t.name, t.color, COUNT(mt.model_id) as model_count FROM tags t JOIN model_tags mt ON t.id = mt.tag_id GROUP BY t.id ORDER BY model_count DESC LIMIT 10');
+            while ($row = $tagResult->fetchArray(PDO::FETCH_ASSOC)) {
+                $popularTags[] = $row;
+            }
+        } catch (Throwable $e) {
+            logException($e, ['action' => 'homepage_popular_tags']);
         }
 
         // Save to cache
@@ -260,11 +367,13 @@ require_once 'includes/header.php';
                 <?php foreach ($recentlyViewed as $rv): ?>
                 <article class="model-card recently-viewed-card" onclick="window.location='<?= route('model.show', ['id' => $rv['id']]) ?>'">
                     <div class="model-thumbnail"
-                        <?php if (!empty($rv['preview_path'])): ?>
+                        <?php if (empty($rv['thumbnail_path']) && !empty($rv['preview_path'])): ?>
                         data-model-url="<?= htmlspecialchars($rv['preview_path']) ?>"
                         data-file-type="<?= htmlspecialchars($rv['preview_type']) ?>"
                         <?php endif; ?>>
-                        <span class="file-type-badge">.<?= htmlspecialchars($rv['preview_type'] ?? $rv['file_type'] ?? 'stl') ?></span>
+                        <?php if (!empty($rv['thumbnail_path'])): ?>
+                        <img src="/assets/<?= htmlspecialchars($rv['thumbnail_path']) ?>" alt="<?= htmlspecialchars($rv['name']) ?>" class="model-thumbnail-image">
+                        <?php endif; ?>
                     </div>
                     <div class="model-info">
                         <h3 class="model-title"><?= htmlspecialchars($rv['name']) ?></h3>
@@ -287,14 +396,16 @@ require_once 'includes/header.php';
                     <?php foreach ($models as $model): ?>
                     <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'">
                         <div class="model-thumbnail"
-                            <?php if (!empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
+                            <?php if (!empty($model['thumbnail_path'])): ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image">
+                            <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
-                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
                             <?php if (!empty($model['print_types'])): ?>
                             <div class="print-type-indicators">
                                 <?php if (in_array('fdm', $model['print_types'])): ?>

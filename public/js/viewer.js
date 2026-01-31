@@ -74,67 +74,89 @@ class ModelViewer {
     }
 
     async loadSTL(url) {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.STLLoader();
-            loader.load(
-                url,
-                (geometry) => {
-                    this.clearModel();
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Pre-flight check: verify URL returns valid data
+                const response = await fetch(url, { method: 'HEAD' });
+                if (!response.ok) {
+                    reject(new Error(`File not found: ${response.status}`));
+                    return;
+                }
 
-                    // Ensure normals are computed correctly
-                    geometry.computeVertexNormals();
+                const loader = new THREE.STLLoader();
+                loader.load(
+                    url,
+                    (geometry) => {
+                        this.clearModel();
 
-                    const material = new THREE.MeshPhongMaterial({
-                        color: 0x888888,
-                        specular: 0x222222,
-                        shininess: 20
-                    });
+                        // Ensure normals are computed correctly
+                        geometry.computeVertexNormals();
 
-                    this.model = new THREE.Mesh(geometry, material);
-                    this.centerAndScaleModel();
-                    this.scene.add(this.model);
-                    this.startAnimation();
-                    resolve(this.model);
-                },
-                undefined,
-                (error) => reject(error)
-            );
+                        const material = new THREE.MeshPhongMaterial({
+                            color: 0x888888,
+                            specular: 0x222222,
+                            shininess: 20
+                        });
+
+                        this.model = new THREE.Mesh(geometry, material);
+                        this.centerAndScaleModel();
+                        this.scene.add(this.model);
+                        this.startAnimation();
+                        resolve(this.model);
+                    },
+                    undefined,
+                    (error) => reject(error)
+                );
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
     async load3MF(url) {
-        return new Promise((resolve, reject) => {
-            const loader = new THREE.ThreeMFLoader();
-            loader.load(
-                url,
-                (object) => {
-                    this.clearModel();
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Pre-flight check: verify URL returns valid data
+                const response = await fetch(url, { method: 'HEAD' });
+                if (!response.ok) {
+                    reject(new Error(`File not found: ${response.status}`));
+                    return;
+                }
 
-                    // 3MF files can contain multiple meshes
-                    this.model = object;
+                const loader = new THREE.ThreeMFLoader();
+                loader.load(
+                    url,
+                    (object) => {
+                        this.clearModel();
 
-                    // Apply material to all meshes
-                    this.model.traverse((child) => {
-                        if (child.isMesh) {
-                            if (child.geometry) {
-                                child.geometry.computeVertexNormals();
+                        // 3MF files can contain multiple meshes
+                        this.model = object;
+
+                        // Apply material to all meshes
+                        this.model.traverse((child) => {
+                            if (child.isMesh) {
+                                if (child.geometry) {
+                                    child.geometry.computeVertexNormals();
+                                }
+                                child.material = new THREE.MeshPhongMaterial({
+                                    color: 0x888888,
+                                    specular: 0x222222,
+                                    shininess: 20
+                                });
                             }
-                            child.material = new THREE.MeshPhongMaterial({
-                                color: 0x888888,
-                                specular: 0x222222,
-                                shininess: 20
-                            });
-                        }
-                    });
+                        });
 
-                    this.centerAndScaleModel();
-                    this.scene.add(this.model);
-                    this.startAnimation();
-                    resolve(this.model);
-                },
-                undefined,
-                (error) => reject(error)
-            );
+                        this.centerAndScaleModel();
+                        this.scene.add(this.model);
+                        this.startAnimation();
+                        resolve(this.model);
+                    },
+                    undefined,
+                    (error) => reject(error)
+                );
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -820,5 +842,5 @@ function initDetailViewer(containerId, url, fileType) {
     return viewer;
 }
 
-// Auto-init on DOM ready
-document.addEventListener('DOMContentLoaded', initThumbnailViewers);
+// Auto-init is handled by LazyModelLoader in main.js for better performance
+// The lazy loader uses IntersectionObserver to only load visible thumbnails

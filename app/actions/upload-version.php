@@ -1,6 +1,6 @@
 <?php
-require_once '../includes/config.php';
-require_once '../includes/dedup.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
 
@@ -27,9 +27,9 @@ if (!isset($_FILES['version_file']) || $_FILES['version_file']['error'] !== UPLO
 // Verify model exists
 $db = getDB();
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     echo json_encode(['success' => false, 'error' => 'Model not found']);
@@ -62,14 +62,14 @@ if (!is_dir($versionDir)) {
 
 // Get next version number
 $stmt = $db->prepare('SELECT MAX(version_number) as max_ver FROM model_versions WHERE model_id = :model_id');
-$stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-$row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+$stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+$row = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 $nextVersion = ($row && $row['max_ver']) ? $row['max_ver'] + 1 : 1;
 
 // If this is version 1, archive the current file first
 if ($nextVersion === 1 && $model['file_path']) {
     $currentPath = getAbsoluteFilePath($model);
-    if ($currentPath && file_exists($currentPath)) {
+    if ($currentPath && is_file($currentPath)) {
         $currentHash = calculateContentHash($currentPath, $model['file_type']);
         $archivePath = 'versions/' . $modelId . '/v0_' . basename($model['file_path']);
 
@@ -78,13 +78,13 @@ if ($nextVersion === 1 && $model['file_path']) {
 
         // Add version 0 (original)
         $stmt = $db->prepare('INSERT INTO model_versions (model_id, version_number, file_path, file_size, file_hash, changelog, created_by, created_at) VALUES (:model_id, 0, :file_path, :file_size, :file_hash, :changelog, :created_by, :created_at)');
-        $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-        $stmt->bindValue(':file_path', $archivePath, SQLITE3_TEXT);
-        $stmt->bindValue(':file_size', $model['file_size'], SQLITE3_INTEGER);
-        $stmt->bindValue(':file_hash', $currentHash, SQLITE3_TEXT);
-        $stmt->bindValue(':changelog', 'Original version', SQLITE3_TEXT);
-        $stmt->bindValue(':created_by', $model['user_id'], SQLITE3_INTEGER);
-        $stmt->bindValue(':created_at', $model['created_at'], SQLITE3_TEXT);
+        $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+        $stmt->bindValue(':file_path', $archivePath, PDO::PARAM_STR);
+        $stmt->bindValue(':file_size', $model['file_size'], PDO::PARAM_INT);
+        $stmt->bindValue(':file_hash', $currentHash, PDO::PARAM_STR);
+        $stmt->bindValue(':changelog', 'Original version', PDO::PARAM_STR);
+        $stmt->bindValue(':created_by', $model['user_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':created_at', $model['created_at'], PDO::PARAM_STR);
         $stmt->execute();
     }
 }
@@ -105,12 +105,12 @@ $result = addModelVersion($modelId, $versionPath, $file['size'], $hash, $changel
 if ($result) {
     // Update main model to point to new file
     $stmt = $db->prepare('UPDATE models SET file_path = :file_path, file_size = :file_size, file_hash = :file_hash, file_type = :file_type, current_version = :version WHERE id = :id');
-    $stmt->bindValue(':file_path', $versionPath, SQLITE3_TEXT);
-    $stmt->bindValue(':file_size', $file['size'], SQLITE3_INTEGER);
-    $stmt->bindValue(':file_hash', $hash, SQLITE3_TEXT);
-    $stmt->bindValue(':file_type', $ext, SQLITE3_TEXT);
-    $stmt->bindValue(':version', $result, SQLITE3_INTEGER);
-    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':file_path', $versionPath, PDO::PARAM_STR);
+    $stmt->bindValue(':file_size', $file['size'], PDO::PARAM_INT);
+    $stmt->bindValue(':file_hash', $hash, PDO::PARAM_STR);
+    $stmt->bindValue(':file_type', $ext, PDO::PARAM_STR);
+    $stmt->bindValue(':version', $result, PDO::PARAM_INT);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $stmt->execute();
 
     logActivity($user['id'], 'upload_version', 'model', $modelId, $model['name'] . ' v' . $result);

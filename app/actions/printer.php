@@ -6,8 +6,16 @@
  */
 
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 
 header('Content-Type: application/json');
+
+// Check if printers feature is enabled
+if (!isFeatureEnabled('printers')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Printers feature is disabled']);
+    exit;
+}
 
 if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'error' => 'Not logged in']);

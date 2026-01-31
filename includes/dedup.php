@@ -48,7 +48,7 @@ function findDuplicateHashes() {
     ');
 
     $duplicates = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $duplicates[] = $row;
     }
     return $duplicates;
@@ -66,11 +66,11 @@ function getPartsByHash($hash) {
         WHERE m.file_hash = :hash
         ORDER BY m.id
     ');
-    $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+    $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
     $result = $stmt->execute();
 
     $parts = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $parts[] = $row;
     }
     return $parts;
@@ -134,8 +134,8 @@ function deduplicateByHash($hash) {
 
         // Update database to point to dedup file
         $stmt = $db->prepare('UPDATE models SET dedup_path = :dedup_path WHERE id = :id');
-        $stmt->bindValue(':dedup_path', $dedupPath, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $part['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':dedup_path', $dedupPath, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $part['id'], PDO::PARAM_INT);
         $stmt->execute();
 
         // Delete original file if it exists and is not the dedup file
@@ -209,9 +209,9 @@ function runDeduplicationScan() {
 function canDeleteDedupFile($dedupPath) {
     $db = getDB();
     $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
-    $stmt->bindValue(':path', $dedupPath, SQLITE3_TEXT);
+    $stmt->bindValue(':path', $dedupPath, PDO::PARAM_STR);
     $result = $stmt->execute();
-    $row = $result->fetchArray(SQLITE3_ASSOC);
+    $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
     return $row['count'] <= 1;
 }
@@ -222,9 +222,9 @@ function canDeleteDedupFile($dedupPath) {
 function getDedupReferenceCount($dedupPath) {
     $db = getDB();
     $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
-    $stmt->bindValue(':path', $dedupPath, SQLITE3_TEXT);
+    $stmt->bindValue(':path', $dedupPath, PDO::PARAM_STR);
     $result = $stmt->execute();
-    $row = $result->fetchArray(SQLITE3_ASSOC);
+    $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
     return $row['count'];
 }
@@ -238,9 +238,9 @@ function migrateDedupBack($modelId) {
 
     // Get the model
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $model = $result->fetchArray(SQLITE3_ASSOC);
+    $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model || empty($model['dedup_path'])) {
         return ['success' => false, 'error' => 'Model not found or not deduplicated'];
@@ -265,7 +265,7 @@ function migrateDedupBack($modelId) {
         if (rename($dedupPath, $originalPath)) {
             // Clear dedup_path in database
             $stmt = $db->prepare('UPDATE models SET dedup_path = NULL WHERE id = :id');
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
             logInfo('Migrated dedup file back', ['model_id' => $modelId]);
@@ -292,7 +292,7 @@ function runDedupCleanupScan() {
     ');
 
     $migratedCount = 0;
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $result2 = migrateDedupBack($row['model_id']);
         if ($result2['success']) {
             $migratedCount++;
@@ -315,11 +315,11 @@ function getDeduplicationStats() {
 
     // Count deduplicated files
     $result = $db->query('SELECT COUNT(DISTINCT dedup_path) as count FROM models WHERE dedup_path IS NOT NULL');
-    $dedupFileCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+    $dedupFileCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
     // Count parts using deduplicated files
     $result = $db->query('SELECT COUNT(*) as count FROM models WHERE dedup_path IS NOT NULL');
-    $dedupPartCount = $result->fetchArray(SQLITE3_ASSOC)['count'];
+    $dedupPartCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
     // Calculate space saved (parts using dedup - actual dedup files)
     $result = $db->query('
@@ -327,7 +327,7 @@ function getDeduplicationStats() {
         FROM models
         WHERE dedup_path IS NOT NULL
     ');
-    $virtualSize = $result->fetchArray(SQLITE3_ASSOC)['total'] ?? 0;
+    $virtualSize = $result->fetchArray(PDO::FETCH_ASSOC)['total'] ?? 0;
 
     // Get actual size of dedup folder
     $dedupFolder = __DIR__ . '/../' . DEDUP_FOLDER;
@@ -440,15 +440,15 @@ function calculateMissingHashes() {
     ');
 
     $updated = 0;
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $filePath = __DIR__ . '/../' . getRealFilePath($row);
 
         if (file_exists($filePath) && is_file($filePath)) {
             $hash = calculateContentHash($filePath);
             if ($hash) {
                 $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
-                $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
-                $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+                $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
+                $stmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
                 $stmt->execute();
                 $updated++;
             }
@@ -474,15 +474,15 @@ function recalculate3mfHashes() {
     ');
 
     $updated = 0;
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $filePath = __DIR__ . '/../' . getRealFilePath($row);
 
         if (file_exists($filePath) && is_file($filePath)) {
             $hash = calculateContentHash($filePath);
             if ($hash) {
                 $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
-                $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
-                $stmt->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+                $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
+                $stmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
                 $stmt->execute();
                 $updated++;
             }
@@ -511,11 +511,11 @@ function findExistingByHash($hash) {
         ORDER BY m.created_at DESC
         LIMIT 10
     ');
-    $stmt->bindValue(':hash', $hash, SQLITE3_TEXT);
+    $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
     $result = $stmt->execute();
 
     $models = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $models[] = $row;
     }
     return $models;
@@ -589,12 +589,12 @@ function findSimilarByName($name) {
     ';
     $stmt = $db->prepare($sql);
     foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value, SQLITE3_TEXT);
+        $stmt->bindValue($key, $value, PDO::PARAM_STR);
     }
     $result = $stmt->execute();
 
     $models = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $models[] = $row;
     }
     return $models;

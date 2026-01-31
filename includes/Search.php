@@ -142,9 +142,9 @@ class Search {
             WHERE m.id = :id
             GROUP BY m.id
         ");
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $model = $result->fetchArray(SQLITE3_ASSOC);
+        $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$model) return false;
 
@@ -172,7 +172,7 @@ class Search {
         try {
             // Delete existing entry
             $stmt = $this->db->prepare("DELETE FROM search_index WHERE model_id = :id");
-            $stmt->bindValue(':id', $data['model_id'], SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $data['model_id'], PDO::PARAM_INT);
             $stmt->execute();
 
             // Insert new entry
@@ -181,12 +181,12 @@ class Search {
                 VALUES (:model_id, :name, :description, :tags, :category, :file_names)
             ");
 
-            $stmt->bindValue(':model_id', $data['model_id'], SQLITE3_INTEGER);
-            $stmt->bindValue(':name', $data['name'], SQLITE3_TEXT);
-            $stmt->bindValue(':description', $data['description'], SQLITE3_TEXT);
-            $stmt->bindValue(':tags', $data['tags'], SQLITE3_TEXT);
-            $stmt->bindValue(':category', $data['category'], SQLITE3_TEXT);
-            $stmt->bindValue(':file_names', $data['file_names'], SQLITE3_TEXT);
+            $stmt->bindValue(':model_id', $data['model_id'], PDO::PARAM_INT);
+            $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+            $stmt->bindValue(':description', $data['description'], PDO::PARAM_STR);
+            $stmt->bindValue(':tags', $data['tags'], PDO::PARAM_STR);
+            $stmt->bindValue(':category', $data['category'], PDO::PARAM_STR);
+            $stmt->bindValue(':file_names', $data['file_names'], PDO::PARAM_STR);
 
             return $stmt->execute() !== false;
         } catch (Exception $e) {
@@ -217,14 +217,14 @@ class Search {
                 VALUES (:model_id, :name, :description, :tags, :category, :file_names, :search_text, :updated_at)
             ");
 
-            $stmt->bindValue(':model_id', $data['model_id'], SQLITE3_INTEGER);
-            $stmt->bindValue(':name', $data['name'], SQLITE3_TEXT);
-            $stmt->bindValue(':description', $data['description'], SQLITE3_TEXT);
-            $stmt->bindValue(':tags', $data['tags'], SQLITE3_TEXT);
-            $stmt->bindValue(':category', $data['category'], SQLITE3_TEXT);
-            $stmt->bindValue(':file_names', $data['file_names'], SQLITE3_TEXT);
-            $stmt->bindValue(':search_text', $searchText, SQLITE3_TEXT);
-            $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+            $stmt->bindValue(':model_id', $data['model_id'], PDO::PARAM_INT);
+            $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+            $stmt->bindValue(':description', $data['description'], PDO::PARAM_STR);
+            $stmt->bindValue(':tags', $data['tags'], PDO::PARAM_STR);
+            $stmt->bindValue(':category', $data['category'], PDO::PARAM_STR);
+            $stmt->bindValue(':file_names', $data['file_names'], PDO::PARAM_STR);
+            $stmt->bindValue(':search_text', $searchText, PDO::PARAM_STR);
+            $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
             return $stmt->execute() !== false;
         } catch (Exception $e) {
@@ -243,7 +243,7 @@ class Search {
 
         try {
             $stmt = $this->db->prepare("DELETE FROM search_index WHERE model_id = :id");
-            $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             return $stmt->execute() !== false;
         } catch (Exception $e) {
             return false;
@@ -295,16 +295,16 @@ class Search {
 
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->bindValue(':query', $ftsQuery, SQLITE3_TEXT);
-            $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
-            $stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
+            $stmt->bindValue(':query', $ftsQuery, PDO::PARAM_STR);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
             if ($categoryId !== null) {
-                $stmt->bindValue(':category_id', $categoryId, SQLITE3_INTEGER);
+                $stmt->bindValue(':category_id', $categoryId, PDO::PARAM_INT);
             }
 
             $result = $stmt->execute();
             $results = [];
-            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $results[] = $row;
             }
 
@@ -321,11 +321,11 @@ class Search {
             }
 
             $stmt = $this->db->prepare($countSql);
-            $stmt->bindValue(':query', $ftsQuery, SQLITE3_TEXT);
+            $stmt->bindValue(':query', $ftsQuery, PDO::PARAM_STR);
             if ($categoryId !== null) {
-                $stmt->bindValue(':category_id', $categoryId, SQLITE3_INTEGER);
+                $stmt->bindValue(':category_id', $categoryId, PDO::PARAM_INT);
             }
-            $countResult = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+            $countResult = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
             return [
                 'results' => $results,
@@ -385,13 +385,13 @@ class Search {
         try {
             $stmt = $this->db->prepare($sql);
             foreach ($params as $key => $value) {
-                $type = is_int($value) ? SQLITE3_INTEGER : SQLITE3_TEXT;
+                $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
                 $stmt->bindValue($key, $value, $type);
             }
 
             $result = $stmt->execute();
             $results = [];
-            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $results[] = $row;
             }
 
@@ -410,10 +410,10 @@ class Search {
             $stmt = $this->db->prepare($countSql);
             foreach ($params as $key => $value) {
                 if ($key === ':limit' || $key === ':offset') continue;
-                $type = is_int($value) ? SQLITE3_INTEGER : SQLITE3_TEXT;
+                $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
                 $stmt->bindValue($key, $value, $type);
             }
-            $countResult = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+            $countResult = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
             return [
                 'results' => $results,
@@ -467,7 +467,7 @@ class Search {
         $indexed = 0;
         $failed = 0;
 
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             if ($this->indexModel($row['id'])) {
                 $indexed++;
             } else {
@@ -502,12 +502,12 @@ class Search {
             ORDER BY download_count DESC
             LIMIT :limit
         ");
-        $stmt->bindValue(':query', $query . '%', SQLITE3_TEXT);
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+        $stmt->bindValue(':query', $query . '%', PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $result = $stmt->execute();
         $suggestions = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $suggestions[] = $row['name'];
         }
 
@@ -518,11 +518,11 @@ class Search {
             WHERE LOWER(name) LIKE :query
             LIMIT :limit
         ");
-        $stmt->bindValue(':query', $query . '%', SQLITE3_TEXT);
-        $stmt->bindValue(':limit', $limit - count($suggestions), SQLITE3_INTEGER);
+        $stmt->bindValue(':query', $query . '%', PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit - count($suggestions), PDO::PARAM_INT);
 
         $result = $stmt->execute();
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $suggestions[] = $row['name'];
         }
 

@@ -35,6 +35,12 @@ class LazyModelLoader {
         const fileType = thumbnail.dataset.fileType;
         if (!url || !fileType) return;
 
+        // Check if required libraries are available
+        if (typeof THREE === 'undefined' || typeof ModelViewer === 'undefined') {
+            console.warn('3D viewer libraries not loaded');
+            return;
+        }
+
         // Add loading state - use lazy placeholder effect
         thumbnail.classList.add('loading', 'lazy-load-placeholder');
 
@@ -58,12 +64,12 @@ class LazyModelLoader {
         // Load model
         viewer.loadModel(url, fileType)
             .then(() => {
-                thumbnail.classList.remove('loading');
+                thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                 thumbnail.classList.add('has-viewer', 'loaded');
             })
             .catch(err => {
                 console.warn('Failed to load thumbnail model:', err);
-                thumbnail.classList.remove('loading');
+                thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                 thumbnail.classList.add('load-error');
                 viewerContainer.remove();
             });

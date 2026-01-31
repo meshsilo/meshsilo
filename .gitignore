@@ -6,6 +6,8 @@ storage/logs/*
 !storage/logs/.gitkeep
 storage/cache/*
 !storage/cache/.gitkeep
+storage/demo-seed/*
+!storage/demo-seed/.gitkeep
 
 # Local configuration
 config.local.php
@@ -22,6 +24,7 @@ cache/*
 .vscode/
 *.swp
 *.swo
+*.kate-swp
 
 # OS
 .DS_Store

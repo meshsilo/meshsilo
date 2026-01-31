@@ -6,6 +6,11 @@
  * It should be deleted after installation is complete.
  */
 
+// Show errors during installation for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+
 // Prevent running if already installed
 if (file_exists(__DIR__ . '/storage/db/config.local.php') || file_exists(__DIR__ . '/config.local.php')) {
     http_response_code(200);
@@ -39,7 +44,9 @@ if (file_exists(__DIR__ . '/storage/db/config.local.php') || file_exists(__DIR__
     exit;
 }
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Initialize installation state
 if (!isset($_SESSION['install'])) {
@@ -134,7 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'name' => trim($_POST['site_name'] ?? 'MeshSilo'),
                 'description' => trim($_POST['site_description'] ?? '3D Model Library'),
                 'url' => trim($_POST['site_url'] ?? ''),
-                'force_url' => isset($_POST['force_url']) ? '1' : '0'
+                'force_url' => isset($_POST['force_url']) ? '1' : '0',
+                'demo_mode' => isset($_POST['demo_mode']) ? '1' : '0'
             ];
             $step = 5;
             $_SESSION['install']['step'] = $step;
@@ -314,35 +322,45 @@ function performInstallation($config) {
             if (function_exists('runMigrations')) {
                 runMigrations($db);
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // Log but don't fail - migrations can be run manually
             error_log('Post-install migrations warning: ' . $e->getMessage());
         }
 
         return true;
-    } catch (Exception $e) {
-        return 'Installation failed: ' . $e->getMessage();
+    } catch (Throwable $e) {
+        return 'Installation failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine();
     }
 }
 
 /**
  * Generate configuration file content
+ *
+ * IMPORTANT: This file should ONLY contain database connection settings.
+ * All other settings (site name, URL, server UUID, etc.) are stored in the database.
+ * This ensures settings can be managed via admin panel and can't be overwritten by file changes.
  */
 function generateConfigFile($config) {
     $dbType = $config['db_type'];
-    $site = $config['site'];
-    $oidc = $config['oidc'];
 
     $content = "<?php\n";
-    $content .= "// MeshSilo Local Configuration\n";
-    $content .= "// Generated: " . date('Y-m-d H:i:s') . "\n\n";
+    $content .= "/**\n";
+    $content .= " * MeshSilo Database Configuration\n";
+    $content .= " *\n";
+    $content .= " * This file contains ONLY database connection settings.\n";
+    $content .= " * All other settings are stored in the database and managed via the admin panel.\n";
+    $content .= " * DO NOT add other settings here - they will be ignored.\n";
+    $content .= " *\n";
+    $content .= " * Generated: " . date('Y-m-d H:i:s') . "\n";
+    $content .= " */\n\n";
 
-    // Database configuration
-    $content .= "// Database Configuration\n";
+    // Database configuration only
+    $content .= "// Database Type: sqlite or mysql\n";
     $content .= "define('DB_TYPE', '{$dbType}');\n";
 
     if ($dbType === 'mysql') {
         $db = $config['db_config'];
+        $content .= "\n// MySQL Connection Settings\n";
         $content .= "define('DB_HOST', '{$db['host']}');\n";
         $content .= "define('DB_PORT', '{$db['port']}');\n";
         $content .= "define('DB_NAME', '{$db['name']}');\n";
@@ -350,19 +368,7 @@ function generateConfigFile($config) {
         $content .= "define('DB_PASS', '" . addslashes($db['pass']) . "');\n";
     }
 
-    $content .= "\n// Site Configuration\n";
-    if (!empty($site['name'])) {
-        $content .= "define('SITE_NAME', '" . addslashes($site['name']) . "');\n";
-    }
-    if (!empty($site['description'])) {
-        $content .= "define('SITE_DESCRIPTION', '" . addslashes($site['description']) . "');\n";
-    }
-    if (!empty($site['url'])) {
-        $content .= "define('SITE_URL', '" . addslashes($site['url']) . "');\n";
-        $content .= "define('FORCE_SITE_URL', " . ($site['force_url'] === '1' ? 'true' : 'false') . ");\n";
-    }
-
-    $content .= "\n// Installation completed\n";
+    $content .= "\n// Installation marker\n";
     $content .= "define('INSTALLED', true);\n";
 
     return $content;
@@ -392,9 +398,9 @@ function initializeSQLiteDatabase($config) {
         $hash = password_hash($admin['password'], PASSWORD_DEFAULT);
 
         $stmt = $db->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 1)');
-        $stmt->bindValue(':username', $admin['username'], SQLITE3_TEXT);
-        $stmt->bindValue(':email', $admin['email'], SQLITE3_TEXT);
-        $stmt->bindValue(':password', $hash, SQLITE3_TEXT);
+        $stmt->bindValue(':username', $admin['username'], PDO::PARAM_STR);
+        $stmt->bindValue(':email', $admin['email'], PDO::PARAM_STR);
+        $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
         $stmt->execute();
 
         $userId = $db->lastInsertRowID();
@@ -407,33 +413,80 @@ function initializeSQLiteDatabase($config) {
             $oidc = $config['oidc'];
             $db->exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_enabled', '1')");
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_provider_url', :val)");
-            $stmt->bindValue(':val', $oidc['provider_url'], SQLITE3_TEXT);
+            $stmt->bindValue(':val', $oidc['provider_url'], PDO::PARAM_STR);
             $stmt->execute();
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_client_id', :val)");
-            $stmt->bindValue(':val', $oidc['client_id'], SQLITE3_TEXT);
+            $stmt->bindValue(':val', $oidc['client_id'], PDO::PARAM_STR);
             $stmt->execute();
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_client_secret', :val)");
-            $stmt->bindValue(':val', $oidc['client_secret'], SQLITE3_TEXT);
+            $stmt->bindValue(':val', $oidc['client_secret'], PDO::PARAM_STR);
             $stmt->execute();
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_button_text', :val)");
-            $stmt->bindValue(':val', $oidc['button_text'], SQLITE3_TEXT);
+            $stmt->bindValue(':val', $oidc['button_text'], PDO::PARAM_STR);
             $stmt->execute();
         }
 
-        // Save site settings
+        // Save site settings to database (all settings are stored in DB, not config file)
         $site = $config['site'];
         if (!empty($site['name'])) {
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_name', :val)");
-            $stmt->bindValue(':val', $site['name'], SQLITE3_TEXT);
+            $stmt->bindValue(':val', $site['name'], PDO::PARAM_STR);
+            $stmt->execute();
+        }
+        if (!empty($site['description'])) {
+            $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_description', :val)");
+            $stmt->bindValue(':val', $site['description'], PDO::PARAM_STR);
             $stmt->execute();
         }
         if (!empty($site['url'])) {
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_url', :val)");
-            $stmt->bindValue(':val', $site['url'], SQLITE3_TEXT);
+            $stmt->bindValue(':val', $site['url'], PDO::PARAM_STR);
             $stmt->execute();
-            $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('force_site_url', :val)");
-            $stmt->bindValue(':val', $site['force_url'], SQLITE3_TEXT);
+        }
+        // Always save force_site_url setting
+        $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('force_site_url', :val)");
+        $stmt->bindValue(':val', $site['force_url'] ?? '0', PDO::PARAM_STR);
+        $stmt->execute();
+
+        // Generate and save server UUID for license tracking
+        $serverUuid = sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+        $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('server_uuid', :val)");
+        $stmt->bindValue(':val', $serverUuid, PDO::PARAM_STR);
+        $stmt->execute();
+
+        // Save demo mode setting (can only be set during installation)
+        $demoMode = $site['demo_mode'] ?? '0';
+        $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('demo_mode', :val)");
+        $stmt->bindValue(':val', $demoMode, PDO::PARAM_STR);
+        $stmt->execute();
+
+        if ($demoMode === '1') {
+            // Create demo user (regular)
+            $demoPassword = password_hash('demo123', PASSWORD_DEFAULT);
+            $stmt = $db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 0)');
+            $stmt->bindValue(':u', 'demo', PDO::PARAM_STR);
+            $stmt->bindValue(':e', 'demo@example.com', PDO::PARAM_STR);
+            $stmt->bindValue(':p', $demoPassword, PDO::PARAM_STR);
             $stmt->execute();
+            $demoUserId = $db->lastInsertRowID();
+            $db->exec("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT $demoUserId, id FROM groups WHERE name = 'Users'");
+
+            // Create demo admin
+            $demoAdminPassword = password_hash('demoadmin123', PASSWORD_DEFAULT);
+            $stmt = $db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 1)');
+            $stmt->bindValue(':u', 'demoadmin', PDO::PARAM_STR);
+            $stmt->bindValue(':e', 'demoadmin@example.com', PDO::PARAM_STR);
+            $stmt->bindValue(':p', $demoAdminPassword, PDO::PARAM_STR);
+            $stmt->execute();
+            $demoAdminId = $db->lastInsertRowID();
+            $db->exec("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT $demoAdminId, id FROM groups WHERE name = 'Admin'");
         }
 
         $db->close();
@@ -485,15 +538,51 @@ function initializeMySQLDatabase($config) {
             $stmt->execute([':k' => 'oidc_button_text', ':v' => $oidc['button_text'], ':v2' => $oidc['button_text']]);
         }
 
-        // Save site settings
+        // Save site settings to database (all settings are stored in DB, not config file)
         $site = $config['site'];
         $stmt = $pdo->prepare("INSERT INTO settings (`key`, `value`) VALUES (:k, :v) ON DUPLICATE KEY UPDATE `value` = :v2");
         if (!empty($site['name'])) {
             $stmt->execute([':k' => 'site_name', ':v' => $site['name'], ':v2' => $site['name']]);
         }
+        if (!empty($site['description'])) {
+            $stmt->execute([':k' => 'site_description', ':v' => $site['description'], ':v2' => $site['description']]);
+        }
         if (!empty($site['url'])) {
             $stmt->execute([':k' => 'site_url', ':v' => $site['url'], ':v2' => $site['url']]);
-            $stmt->execute([':k' => 'force_site_url', ':v' => $site['force_url'], ':v2' => $site['force_url']]);
+        }
+        // Always save force_site_url setting
+        $forceUrl = $site['force_url'] ?? '0';
+        $stmt->execute([':k' => 'force_site_url', ':v' => $forceUrl, ':v2' => $forceUrl]);
+
+        // Generate and save server UUID for license tracking
+        $serverUuid = sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+        $stmt->execute([':k' => 'server_uuid', ':v' => $serverUuid, ':v2' => $serverUuid]);
+
+        // Save demo mode setting (can only be set during installation)
+        $demoMode = $site['demo_mode'] ?? '0';
+        $stmt->execute([':k' => 'demo_mode', ':v' => $demoMode, ':v2' => $demoMode]);
+
+        if ($demoMode === '1') {
+            // Create demo user (regular)
+            $demoPassword = password_hash('demo123', PASSWORD_DEFAULT);
+            $demoStmt = $pdo->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 0)');
+            $demoStmt->execute([':username' => 'demo', ':email' => 'demo@example.com', ':password' => $demoPassword]);
+            $demoUserId = $pdo->lastInsertId();
+            $pdo->exec("INSERT INTO user_groups (user_id, group_id) SELECT $demoUserId, id FROM `groups` WHERE name = 'Users'");
+
+            // Create demo admin
+            $demoAdminPassword = password_hash('demoadmin123', PASSWORD_DEFAULT);
+            $demoStmt = $pdo->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 1)');
+            $demoStmt->execute([':username' => 'demoadmin', ':email' => 'demoadmin@example.com', ':password' => $demoAdminPassword]);
+            $demoAdminId = $pdo->lastInsertId();
+            $pdo->exec("INSERT INTO user_groups (user_id, group_id) SELECT $demoAdminId, id FROM `groups` WHERE name = 'Admin'");
         }
 
         return true;
@@ -618,13 +707,28 @@ INSERT IGNORE INTO settings (`key`, `value`) VALUES
     ('require_approval', '0'),
     ('enable_categories', '1'),
     ('enable_collections', '1'),
+    ('enable_tags', '1'),
     ('allowed_extensions', 'stl,3mf,gcode,zip'),
     ('auto_deduplication', '0'),
+    ('default_theme', 'dark'),
+    ('allow_user_theme', '1'),
+    ('default_sort', 'newest'),
+    ('default_view', 'grid'),
+    ('enable_activity_log', '1'),
+    ('activity_log_retention_days', '90'),
+    ('maintenance_mode', '0'),
+    ('storage_type', 'local'),
+    ('rate_limiting', '1'),
+    ('mail_driver', 'mail'),
+    ('mail_from_address', 'noreply@example.com'),
+    ('webhooks_enabled', '1'),
     ('oidc_enabled', '0'),
     ('oidc_provider_url', ''),
     ('oidc_client_id', ''),
     ('oidc_client_secret', ''),
-    ('oidc_button_text', 'Sign in with SSO');
+    ('oidc_button_text', 'Sign in with SSO'),
+    ('ldap_enabled', '0'),
+    ('saml_enabled', '0');
 SQL;
     } else {
         return <<<'SQL'
@@ -738,13 +842,28 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('require_approval', '0'),
     ('enable_categories', '1'),
     ('enable_collections', '1'),
+    ('enable_tags', '1'),
     ('allowed_extensions', 'stl,3mf,gcode,zip'),
     ('auto_deduplication', '0'),
+    ('default_theme', 'dark'),
+    ('allow_user_theme', '1'),
+    ('default_sort', 'newest'),
+    ('default_view', 'grid'),
+    ('enable_activity_log', '1'),
+    ('activity_log_retention_days', '90'),
+    ('maintenance_mode', '0'),
+    ('storage_type', 'local'),
+    ('rate_limiting', '1'),
+    ('mail_driver', 'mail'),
+    ('mail_from_address', 'noreply@example.com'),
+    ('webhooks_enabled', '1'),
     ('oidc_enabled', '0'),
     ('oidc_provider_url', ''),
     ('oidc_client_id', ''),
     ('oidc_client_secret', ''),
-    ('oidc_button_text', 'Sign in with SSO');
+    ('oidc_button_text', 'Sign in with SSO'),
+    ('ldap_enabled', '0'),
+    ('saml_enabled', '0');
 SQL;
     }
 }
@@ -1145,6 +1264,16 @@ foreach ($requirements as $req) {
                 <p class="form-help">Reject requests that don't match the configured URL.</p>
             </div>
 
+            <div class="toggle-section">
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="demo_mode" <?= ($_SESSION['install']['site']['demo_mode'] ?? '') === '1' ? 'checked' : '' ?>>
+                        <span>Enable Demo Mode</span>
+                    </label>
+                    <p class="form-help">Sets up the instance as a demo with sample models and a demo user. A banner will be shown to visitors. The instance can be periodically reset via cron. <strong>This cannot be changed after installation.</strong></p>
+                </div>
+            </div>
+
             <div class="btn-group">
                 <button type="submit" name="action" value="go_back" class="btn btn-secondary">Back</button>
                 <button type="submit" class="btn btn-primary">Continue</button>
@@ -1224,6 +1353,9 @@ foreach ($requirements as $req) {
             <li><strong>Site URL:</strong> <?= htmlspecialchars($_SESSION['install']['site']['url']) ?></li>
             <?php endif; ?>
             <li><strong>OIDC:</strong> <?= !empty($_SESSION['install']['oidc']['enabled']) ? 'Enabled' : 'Disabled' ?></li>
+            <?php if (($_SESSION['install']['site']['demo_mode'] ?? '0') === '1'): ?>
+            <li><strong>Demo Mode:</strong> <span style="color: var(--color-warning);">Enabled</span></li>
+            <?php endif; ?>
         </ul>
 
         <form method="post">

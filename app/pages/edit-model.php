@@ -16,9 +16,9 @@ if (!$modelId) {
 
 // Get model
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     header('Location: /');
@@ -34,16 +34,16 @@ $modelTags = getModelTags($modelId);
 // Get all categories
 $categories = [];
 $catResult = $db->query('SELECT * FROM categories ORDER BY name');
-while ($row = $catResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $catResult->fetchArray(PDO::FETCH_ASSOC)) {
     $categories[] = $row;
 }
 
 // Get current categories
 $stmt = $db->prepare('SELECT category_id FROM model_categories WHERE model_id = :model_id');
-$stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
 $catIdsResult = $stmt->execute();
 $selectedCategories = [];
-while ($row = $catIdsResult->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $catIdsResult->fetchArray(PDO::FETCH_ASSOC)) {
     $selectedCategories[] = $row['category_id'];
 }
 
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':creator', $creator);
         $stmt->bindValue(':source_url', $sourceUrl);
         $stmt->bindValue(':license', $license);
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
 
         // Update categories
@@ -87,16 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Refresh model data
         $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $model = $result->fetchArray(SQLITE3_ASSOC);
+        $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
         // Refresh categories
         $stmt = $db->prepare('SELECT category_id FROM model_categories WHERE model_id = :model_id');
-        $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
+        $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
         $catIdsResult = $stmt->execute();
         $selectedCategories = [];
-        while ($row = $catIdsResult->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $catIdsResult->fetchArray(PDO::FETCH_ASSOC)) {
             $selectedCategories[] = $row['category_id'];
         }
     }
@@ -126,6 +126,7 @@ require_once 'includes/header.php';
                 <div class="form-group">
                     <label for="description">Description</label>
                     <textarea id="description" name="description" class="form-input" rows="4"><?= htmlspecialchars($model['description'] ?? '') ?></textarea>
+                    <small class="form-hint">Supports Markdown: **bold**, *italic*, `code`, [links](url), lists, headings (##), and more.</small>
                 </div>
 
                 <div class="form-group">

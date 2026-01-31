@@ -4,8 +4,12 @@ require_once __DIR__ . '/../../includes/config.php';
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
-// Require admin permission
-requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+// Require user management permission
+if (!isLoggedIn() || !canManageUsers()) {
+    $_SESSION['error'] = 'You do not have permission to manage users.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $pageTitle = 'Manage Users';
 $activePage = '';
@@ -30,9 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $db->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 0)');
-                $stmt->bindValue(':username', $username, SQLITE3_TEXT);
-                $stmt->bindValue(':email', $email, SQLITE3_TEXT);
-                $stmt->bindValue(':password', $hash, SQLITE3_TEXT);
+                $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+                $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+                $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
                 $stmt->execute();
 
                 $userId = $db->lastInsertRowID();
@@ -40,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Assign groups
                 foreach ($selectedGroups as $groupId) {
                     $stmt = $db->prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (:user_id, :group_id)');
-                    $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
-                    $stmt->bindValue(':group_id', (int)$groupId, SQLITE3_INTEGER);
+                    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+                    $stmt->bindValue(':group_id', (int)$groupId, PDO::PARAM_INT);
                     $stmt->execute();
                 }
 
@@ -65,11 +69,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Delete user group associations first
             $stmt = $db->prepare('DELETE FROM user_groups WHERE user_id = :id');
-            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
 
             $stmt = $db->prepare('DELETE FROM users WHERE id = :id');
-            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             header('Location: ' . route('admin.users', [], ['deleted' => '1']));
             exit;
@@ -88,22 +92,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Remove all existing group associations
             $stmt = $db->prepare('DELETE FROM user_groups WHERE user_id = :id');
-            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
 
             // Add new group associations
             foreach ($selectedGroups as $groupId) {
                 $stmt = $db->prepare('INSERT INTO user_groups (user_id, group_id) VALUES (:user_id, :group_id)');
-                $stmt->bindValue(':user_id', $id, SQLITE3_INTEGER);
-                $stmt->bindValue(':group_id', (int)$groupId, SQLITE3_INTEGER);
+                $stmt->bindValue(':user_id', $id, PDO::PARAM_INT);
+                $stmt->bindValue(':group_id', (int)$groupId, PDO::PARAM_INT);
                 $stmt->execute();
             }
 
             // Update is_admin based on Admin group membership
             $isAdmin = $adminGroupId && in_array($adminGroupId, $selectedGroups) ? 1 : 0;
             $stmt = $db->prepare('UPDATE users SET is_admin = :is_admin WHERE id = :id');
-            $stmt->bindValue(':is_admin', $isAdmin, SQLITE3_INTEGER);
-            $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+            $stmt->bindValue(':is_admin', $isAdmin, PDO::PARAM_INT);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
 
             header('Location: ' . route('admin.users', [], ['updated' => '1']));
@@ -123,20 +127,20 @@ if (isset($_GET['success'])) {
 // Get all groups
 $result = $db->query('SELECT * FROM groups ORDER BY name');
 $groups = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $groups[$row['id']] = $row;
 }
 
 // Get users with their groups
 $result = $db->query('SELECT * FROM users ORDER BY username');
 $users = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     // Get user's groups
     $stmt = $db->prepare('SELECT group_id FROM user_groups WHERE user_id = :user_id');
-    $stmt->bindValue(':user_id', $row['id'], SQLITE3_INTEGER);
+    $stmt->bindValue(':user_id', $row['id'], PDO::PARAM_INT);
     $groupResult = $stmt->execute();
     $row['group_ids'] = [];
-    while ($g = $groupResult->fetchArray(SQLITE3_ASSOC)) {
+    while ($g = $groupResult->fetchArray(PDO::FETCH_ASSOC)) {
         $row['group_ids'][] = $g['group_id'];
     }
     $users[] = $row;

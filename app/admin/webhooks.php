@@ -3,7 +3,17 @@
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 require_once __DIR__ . '/../../includes/config.php';
-requirePermission(PERM_ADMIN);
+require_once __DIR__ . '/../../includes/features.php';
+
+// Require feature to be enabled
+requireFeature('webhooks');
+
+// Require webhooks management permission
+if (!isLoggedIn() || !canManageWebhooks()) {
+    $_SESSION['error'] = 'You do not have permission to manage webhooks.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $error = '';
 $success = '';
@@ -147,19 +157,19 @@ $pageTitle = 'Webhooks - ' . $siteName;
 
                         <div class="form-group">
                             <label for="name">Webhook Name (optional)</label>
-                            <input type="text" id="name" name="name"
+                            <input type="text" id="name" name="name" class="form-input"
                                    placeholder="e.g., Discord Notifications, Backup Service">
                         </div>
 
                         <div class="form-group">
                             <label for="url">Webhook URL</label>
-                            <input type="url" id="url" name="url" required
+                            <input type="url" id="url" name="url" required class="form-input"
                                    placeholder="https://your-server.com/webhook">
                         </div>
 
                         <div class="form-group">
                             <label for="secret">Secret (optional)</label>
-                            <input type="text" id="secret" name="secret"
+                            <input type="text" id="secret" name="secret" class="form-input"
                                    placeholder="Used to sign webhook payloads for verification">
                             <small class="text-muted">If provided, payloads will be signed with HMAC-SHA256</small>
                         </div>

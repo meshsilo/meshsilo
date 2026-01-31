@@ -4,8 +4,12 @@ require_once __DIR__ . '/../../includes/config.php';
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
-// Require admin permission
-requirePermission(PERM_ADMIN, $baseDir . 'index.php');
+// Require category management permission
+if (!isLoggedIn() || !canManageCategories()) {
+    $_SESSION['error'] = 'You do not have permission to manage categories.';
+    header('Location: ' . route('home'));
+    exit;
+}
 
 $pageTitle = 'Manage Categories';
 $activePage = '';
@@ -15,7 +19,7 @@ $adminPage = 'categories';
 $db = getDB();
 $result = $db->query('SELECT * FROM categories ORDER BY name');
 $categories = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $categories[] = $row;
 }
 
@@ -29,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($name)) {
             try {
                 $stmt = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
-                $stmt->bindValue(':name', $name, SQLITE3_TEXT);
+                $stmt->bindValue(':name', $name, PDO::PARAM_STR);
                 $stmt->execute();
                 $message = 'Category added successfully.';
                 header('Location: ' . route('admin.categories', [], ['success' => '1']));
@@ -43,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['delete_category'])) {
         $id = (int)$_POST['category_id'];
         $stmt = $db->prepare('DELETE FROM categories WHERE id = :id');
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
         header('Location: ' . route('admin.categories', [], ['deleted' => '1']));
         exit;
@@ -59,7 +63,7 @@ if (isset($_GET['success'])) {
 // Refresh categories list
 $result = $db->query('SELECT * FROM categories ORDER BY name');
 $categories = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $categories[] = $row;
 }
 
@@ -114,8 +118,8 @@ require_once __DIR__ . '/../../includes/header.php';
                                         <td>
                                             <?php
                                             $stmt = $db->prepare('SELECT COUNT(*) as count FROM model_categories WHERE category_id = :id');
-                                            $stmt->bindValue(':id', $category['id'], SQLITE3_INTEGER);
-                                            $count = $stmt->execute()->fetchArray(SQLITE3_ASSOC)['count'];
+                                            $stmt->bindValue(':id', $category['id'], PDO::PARAM_INT);
+                                            $count = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
                                             echo $count;
                                             ?>
                                         </td>

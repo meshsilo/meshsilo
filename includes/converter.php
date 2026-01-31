@@ -229,7 +229,7 @@ class STLConverter {
      * @return array Result with success status and file info
      */
     public function convertTo3MF($stlPath, $outputPath = null) {
-        if (!file_exists($stlPath)) {
+        if (!is_file($stlPath)) {
             throw new Exception('STL file not found: ' . $stlPath);
         }
 
@@ -282,7 +282,7 @@ class STLConverter {
      * @return array Estimated sizes and savings
      */
     public function estimateConversion($stlPath) {
-        if (!file_exists($stlPath)) {
+        if (!is_file($stlPath)) {
             throw new Exception('STL file not found');
         }
 
@@ -323,9 +323,9 @@ function convertPartTo3MF($partId) {
 
     // Get part details
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-    $stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $part = $result->fetchArray(SQLITE3_ASSOC);
+    $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$part) {
         return ['success' => false, 'error' => 'Part not found'];
@@ -335,16 +335,16 @@ function convertPartTo3MF($partId) {
         return ['success' => false, 'error' => 'Only STL files can be converted'];
     }
 
-    $stlPath = __DIR__ . '/../' . $part['file_path'];
+    $stlPath = getAbsoluteFilePath($part);
 
-    if (!file_exists($stlPath)) {
+    if (!$stlPath || !is_file($stlPath)) {
         return ['success' => false, 'error' => 'File not found on disk'];
     }
 
     try {
         $converter = new STLConverter();
 
-        // Generate new filename
+        // Generate new filename - place output next to source file
         $newFilename = preg_replace('/\.stl$/i', '.3mf', $part['filename']);
         $newFilePath = dirname($stlPath) . '/' . $newFilename;
 
@@ -352,8 +352,13 @@ function convertPartTo3MF($partId) {
         $result = $converter->convertTo3MF($stlPath, $newFilePath);
 
         if ($result['success'] && $result['savings'] > 0) {
-            // Update database - use case-insensitive replacement for file_path
-            $newDbFilePath = preg_replace('/\.stl$/i', '.3mf', $part['file_path']);
+            // Compute new DB-relative file_path
+            if (!empty($part['dedup_path'])) {
+                // Source was dedup'd - new file sits next to dedup file
+                $newDbFilePath = dirname($part['dedup_path']) . '/' . $newFilename;
+            } else {
+                $newDbFilePath = preg_replace('/\.stl$/i', '.3mf', $part['file_path']);
+            }
 
             // Calculate new file hash (content-based for 3MF)
             $newFileHash = calculateContentHash($newFilePath);
@@ -365,16 +370,17 @@ function convertPartTo3MF($partId) {
                     file_type = :file_type,
                     file_size = :file_size,
                     file_hash = :file_hash,
-                    original_size = :original_size
+                    original_size = :original_size,
+                    dedup_path = NULL
                 WHERE id = :id
             ');
-            $stmt->bindValue(':filename', $newFilename, SQLITE3_TEXT);
-            $stmt->bindValue(':file_path', $newDbFilePath, SQLITE3_TEXT);
-            $stmt->bindValue(':file_type', '3mf', SQLITE3_TEXT);
-            $stmt->bindValue(':file_size', $result['new_size'], SQLITE3_INTEGER);
-            $stmt->bindValue(':file_hash', $newFileHash, SQLITE3_TEXT);
-            $stmt->bindValue(':original_size', $result['original_size'], SQLITE3_INTEGER);
-            $stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
+            $stmt->bindValue(':filename', $newFilename, PDO::PARAM_STR);
+            $stmt->bindValue(':file_path', $newDbFilePath, PDO::PARAM_STR);
+            $stmt->bindValue(':file_type', '3mf', PDO::PARAM_STR);
+            $stmt->bindValue(':file_size', $result['new_size'], PDO::PARAM_INT);
+            $stmt->bindValue(':file_hash', $newFileHash, PDO::PARAM_STR);
+            $stmt->bindValue(':original_size', $result['original_size'], PDO::PARAM_INT);
+            $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
             $stmt->execute();
 
             // Delete original STL file
@@ -396,7 +402,7 @@ function convertPartTo3MF($partId) {
             ];
         } else {
             // Remove the 3MF if it wasn't beneficial
-            if (file_exists($newFilePath)) {
+            if (is_file($newFilePath)) {
                 unlink($newFilePath);
             }
             return ['success' => false, 'error' => 'Conversion would not save space'];
@@ -414,17 +420,17 @@ function estimatePartConversion($partId) {
     $db = getDB();
 
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-    $stmt->bindValue(':id', $partId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $part = $result->fetchArray(SQLITE3_ASSOC);
+    $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$part || $part['file_type'] !== 'stl') {
         return null;
     }
 
-    $stlPath = __DIR__ . '/../' . $part['file_path'];
+    $stlPath = getAbsoluteFilePath($part);
 
-    if (!file_exists($stlPath)) {
+    if (!$stlPath || !is_file($stlPath)) {
         return null;
     }
 

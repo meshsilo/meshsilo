@@ -15,20 +15,20 @@ $db = getDB();
 // Load categories from database
 $result = $db->query('SELECT * FROM categories ORDER BY name');
 $categories = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $categories[] = $row;
 }
 
 // Load collections from database for datalist
 $db->exec('CREATE TABLE IF NOT EXISTS collections (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )');
 $result = $db->query('SELECT name FROM collections ORDER BY name');
 $collections = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row['name'];
 }
 
@@ -83,18 +83,18 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
         try {
             // Insert into database
             $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash, description, creator, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :file_hash, :description, :creator, :collection, :source_url, :parent_id, :original_path)');
-            $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-            $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
-            $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $filename, SQLITE3_TEXT);
-            $stmt->bindValue(':file_size', $fileSize, SQLITE3_INTEGER);
-            $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
-            $stmt->bindValue(':file_hash', $fileHash, SQLITE3_TEXT);
-            $stmt->bindValue(':description', $parentId ? '' : $description, SQLITE3_TEXT); // Only set description on parent
-            $stmt->bindValue(':creator', $parentId ? '' : $creator, SQLITE3_TEXT);
-            $stmt->bindValue(':collection', $parentId ? '' : $collection, SQLITE3_TEXT);
-            $stmt->bindValue(':source_url', $parentId ? '' : $source_url, SQLITE3_TEXT);
-            $stmt->bindValue(':parent_id', $parentId, SQLITE3_INTEGER);
-            $stmt->bindValue(':original_path', $originalPath, SQLITE3_TEXT);
+            $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+            $stmt->bindValue(':filename', $filename, PDO::PARAM_STR);
+            $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $filename, PDO::PARAM_STR);
+            $stmt->bindValue(':file_size', $fileSize, PDO::PARAM_INT);
+            $stmt->bindValue(':file_type', $extension, PDO::PARAM_STR);
+            $stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
+            $stmt->bindValue(':description', $parentId ? '' : $description, PDO::PARAM_STR); // Only set description on parent
+            $stmt->bindValue(':creator', $parentId ? '' : $creator, PDO::PARAM_STR);
+            $stmt->bindValue(':collection', $parentId ? '' : $collection, PDO::PARAM_STR);
+            $stmt->bindValue(':source_url', $parentId ? '' : $source_url, PDO::PARAM_STR);
+            $stmt->bindValue(':parent_id', $parentId, PDO::PARAM_INT);
+            $stmt->bindValue(':original_path', $originalPath, PDO::PARAM_STR);
             $stmt->execute();
 
             $modelId = $db->lastInsertRowID();
@@ -103,8 +103,8 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
             if (!$parentId && !empty($selectedCategories)) {
                 foreach ($selectedCategories as $categoryId) {
                     $stmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
-                    $stmt->bindValue(':model_id', $modelId, SQLITE3_INTEGER);
-                    $stmt->bindValue(':category_id', (int)$categoryId, SQLITE3_INTEGER);
+                    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+                    $stmt->bindValue(':category_id', (int)$categoryId, PDO::PARAM_INT);
                     $stmt->execute();
                 }
             }
@@ -149,15 +149,15 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
 function createParentModel($db, $name, $description, $creator, $collection, $source_url, $selectedCategories, $totalSize, $folderId) {
     try {
         $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, creator, collection, source_url, part_count) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :creator, :collection, :source_url, 0)');
-        $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-        $stmt->bindValue(':filename', $folderId, SQLITE3_TEXT);
-        $stmt->bindValue(':file_path', 'assets/' . $folderId, SQLITE3_TEXT);
-        $stmt->bindValue(':file_size', $totalSize, SQLITE3_INTEGER);
-        $stmt->bindValue(':file_type', 'parent', SQLITE3_TEXT);
-        $stmt->bindValue(':description', $description, SQLITE3_TEXT);
-        $stmt->bindValue(':creator', $creator, SQLITE3_TEXT);
-        $stmt->bindValue(':collection', $collection, SQLITE3_TEXT);
-        $stmt->bindValue(':source_url', $source_url, SQLITE3_TEXT);
+        $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+        $stmt->bindValue(':filename', $folderId, PDO::PARAM_STR);
+        $stmt->bindValue(':file_path', 'assets/' . $folderId, PDO::PARAM_STR);
+        $stmt->bindValue(':file_size', $totalSize, PDO::PARAM_INT);
+        $stmt->bindValue(':file_type', 'parent', PDO::PARAM_STR);
+        $stmt->bindValue(':description', $description, PDO::PARAM_STR);
+        $stmt->bindValue(':creator', $creator, PDO::PARAM_STR);
+        $stmt->bindValue(':collection', $collection, PDO::PARAM_STR);
+        $stmt->bindValue(':source_url', $source_url, PDO::PARAM_STR);
         $stmt->execute();
 
         $parentId = $db->lastInsertRowID();
@@ -166,8 +166,8 @@ function createParentModel($db, $name, $description, $creator, $collection, $sou
         if (!empty($selectedCategories)) {
             foreach ($selectedCategories as $categoryId) {
                 $stmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
-                $stmt->bindValue(':model_id', $parentId, SQLITE3_INTEGER);
-                $stmt->bindValue(':category_id', (int)$categoryId, SQLITE3_INTEGER);
+                $stmt->bindValue(':model_id', $parentId, PDO::PARAM_INT);
+                $stmt->bindValue(':category_id', (int)$categoryId, PDO::PARAM_INT);
                 $stmt->execute();
             }
         }
@@ -183,9 +183,9 @@ function createParentModel($db, $name, $description, $creator, $collection, $sou
 function updateParentModel($db, $parentId, $partCount, $totalSize) {
     try {
         $stmt = $db->prepare('UPDATE models SET part_count = :part_count, file_size = :file_size WHERE id = :id');
-        $stmt->bindValue(':part_count', $partCount, SQLITE3_INTEGER);
-        $stmt->bindValue(':file_size', $totalSize, SQLITE3_INTEGER);
-        $stmt->bindValue(':id', $parentId, SQLITE3_INTEGER);
+        $stmt->bindValue(':part_count', $partCount, PDO::PARAM_INT);
+        $stmt->bindValue(':file_size', $totalSize, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $parentId, PDO::PARAM_INT);
         $stmt->execute();
         return true;
     } catch (Exception $e) {
@@ -281,8 +281,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $zip->close();
 
-                    // First pass: collect all model files with their paths
+                    // First pass: collect all model files and images with their paths
                     $modelFiles = [];
+                    $imageFiles = [];
+                    $imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
                     $iterator = new RecursiveIteratorIterator(
                         new RecursiveDirectoryIterator($extractDir, RecursiveDirectoryIterator::SKIP_DOTS)
                     );
@@ -298,6 +300,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'filename' => $fileInfo->getFilename(),
                                     'relative_path' => $relativePath,
                                     'size' => $fileInfo->getSize()
+                                ];
+                            } elseif (in_array($fileExt, $imageExtensions)) {
+                                $imageFiles[] = [
+                                    'path' => $fileInfo->getPathname(),
+                                    'filename' => $fileInfo->getFilename(),
+                                    'extension' => $fileExt
                                 ];
                             }
                         }
@@ -329,6 +337,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Update parent with final part count
                             updateParentModel($db, $parentId, $uploadedCount, $totalSize);
+
+                            // Save first image from ZIP as model thumbnail
+                            if (!empty($imageFiles)) {
+                                $img = $imageFiles[0];
+                                $thumbDir = 'thumbnails';
+                                $thumbFullDir = UPLOAD_PATH . $thumbDir;
+                                if (!is_dir($thumbFullDir)) {
+                                    mkdir($thumbFullDir, 0755, true);
+                                }
+                                $thumbFilename = $parentId . '_' . time() . '.' . $img['extension'];
+                                $thumbDest = $thumbFullDir . '/' . $thumbFilename;
+                                if (copy($img['path'], $thumbDest)) {
+                                    $thumbRelative = $thumbDir . '/' . $thumbFilename;
+                                    $stmt = $db->prepare('UPDATE models SET thumbnail_path = :path WHERE id = :id');
+                                    $stmt->bindValue(':path', $thumbRelative, PDO::PARAM_STR);
+                                    $stmt->bindValue(':id', $parentId, PDO::PARAM_INT);
+                                    $stmt->execute();
+                                    logInfo('Saved image from ZIP as thumbnail', ['parent_id' => $parentId, 'image' => $img['filename']]);
+                                }
+                            }
+
                             logInfo('ZIP extraction complete', ['file' => $originalName, 'parent_id' => $parentId, 'parts' => $uploadedCount, 'folder' => $folderId]);
                         } else {
                             $error = 'Failed to create model entry.';
@@ -401,7 +430,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($uploadedCount > 0 && !empty($collection)) {
                 try {
                     $stmt = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
-                    $stmt->bindValue(':name', $collection, SQLITE3_TEXT);
+                    $stmt->bindValue(':name', $collection, PDO::PARAM_STR);
                     $stmt->execute();
                 } catch (Exception $e) {
                     // Ignore if already exists
@@ -471,6 +500,7 @@ require_once 'includes/header.php';
                 <div class="form-group">
                     <label for="model-description">Description</label>
                     <textarea id="model-description" name="description" class="form-input form-textarea" placeholder="Describe your model..." rows="4"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                    <small class="form-hint">Supports Markdown: **bold**, *italic*, `code`, [links](url), lists, headings (##), and more.</small>
                 </div>
 
                 <!-- Advanced Options (collapsible on mobile) -->
@@ -516,6 +546,41 @@ require_once 'includes/header.php';
                     <button type="submit" class="btn btn-primary" id="submit-btn">Upload Model</button>
                 </div>
             </form>
+
+            <?php if (isAdmin()): ?>
+            <div class="import-section" style="margin-top: 2rem;">
+                <h2>Import from Export</h2>
+                <p class="form-hint">Import models from a Silo export ZIP file (created via batch Export).</p>
+
+                <div class="import-dropzone" id="import-dropzone" onclick="document.getElementById('import-file').click()">
+                    <input type="file" id="import-file" accept=".zip" style="display:none" onchange="handleImportFile(this.files[0])">
+                    <p>Drop a .zip export file here or click to browse</p>
+                </div>
+
+                <div id="import-preview" style="display:none;">
+                    <div class="import-preview-info">
+                        <h3>Export Contents</h3>
+                        <div id="import-preview-details"></div>
+                    </div>
+                    <div class="import-options">
+                        <label><input type="checkbox" id="import-skip-existing" checked> Skip existing models (by hash)</label>
+                        <label><input type="checkbox" id="import-categories" checked> Import categories</label>
+                        <label><input type="checkbox" id="import-tags" checked> Import tags</label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="cancelImport()">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="import-btn" onclick="startImport()">Import</button>
+                    </div>
+                </div>
+
+                <div id="import-progress" style="display:none;">
+                    <div class="progress-bar"><div class="progress-fill" id="import-progress-fill"></div></div>
+                    <p id="import-progress-text">Importing...</p>
+                </div>
+
+                <div id="import-result" style="display:none;"></div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <script>
@@ -660,6 +725,114 @@ require_once 'includes/header.php';
         const advancedOptions = document.getElementById('advanced-options');
         if (window.innerWidth >= 768) {
             advancedOptions.setAttribute('open', '');
+        }
+
+        // Import functionality
+        let importFile = null;
+
+        const importDropzone = document.getElementById('import-dropzone');
+        if (importDropzone) {
+            importDropzone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+            importDropzone.addEventListener('dragleave', function() {
+                this.classList.remove('dragover');
+            });
+            importDropzone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleImportFile(e.dataTransfer.files[0]);
+                }
+            });
+        }
+
+        async function handleImportFile(file) {
+            if (!file || !file.name.endsWith('.zip')) {
+                alert('Please select a .zip file');
+                return;
+            }
+
+            importFile = file;
+
+            // Preview the import
+            const formData = new FormData();
+            formData.append('action', 'preview_import');
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/actions/export-import', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    const p = result.preview;
+                    document.getElementById('import-preview-details').innerHTML =
+                        '<p><strong>Exported:</strong> ' + (p.exported_at || 'Unknown') + ' by ' + (p.exported_by || 'Unknown') + '</p>' +
+                        '<p><strong>Models:</strong> ' + p.model_count + '</p>' +
+                        '<p><strong>Categories:</strong> ' + p.category_count + '</p>' +
+                        '<p><strong>Tags:</strong> ' + p.tag_count + '</p>';
+                    document.getElementById('import-preview').style.display = 'block';
+                    document.getElementById('import-dropzone').style.display = 'none';
+                } else {
+                    alert('Preview failed: ' + result.error);
+                }
+            } catch (err) {
+                alert('Preview failed: ' + err.message);
+            }
+        }
+
+        function cancelImport() {
+            importFile = null;
+            document.getElementById('import-preview').style.display = 'none';
+            document.getElementById('import-dropzone').style.display = '';
+            document.getElementById('import-file').value = '';
+        }
+
+        async function startImport() {
+            if (!importFile) return;
+
+            const btn = document.getElementById('import-btn');
+            btn.disabled = true;
+            btn.textContent = 'Importing...';
+
+            document.getElementById('import-progress').style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('action', 'import');
+            formData.append('file', importFile);
+            if (document.getElementById('import-skip-existing').checked) formData.append('skip_existing', '1');
+            if (document.getElementById('import-categories').checked) formData.append('import_categories', '1');
+            if (document.getElementById('import-tags').checked) formData.append('import_tags', '1');
+
+            try {
+                const response = await fetch('/actions/export-import', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                document.getElementById('import-progress').style.display = 'none';
+
+                const resultDiv = document.getElementById('import-result');
+                if (result.success) {
+                    let html = '<div class="alert alert-success">' +
+                        '<strong>Import complete!</strong> ' + result.imported + ' models imported';
+                    if (result.skipped > 0) html += ', ' + result.skipped + ' skipped';
+                    if (result.errors && result.errors.length > 0) {
+                        html += '<br><small>Errors: ' + result.errors.join(', ') + '</small>';
+                    }
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-error">' + result.error + '</div>';
+                }
+                resultDiv.style.display = 'block';
+
+                document.getElementById('import-preview').style.display = 'none';
+            } catch (err) {
+                document.getElementById('import-progress').style.display = 'none';
+                alert('Import failed: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Import';
+            }
         }
         </script>
 

@@ -41,12 +41,12 @@ class Analytics {
 
         // Models this period
         $stmt = $db->prepare('SELECT COUNT(*) FROM models WHERE created_at >= :start');
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $stats['new_models'] = $stmt->execute()->fetchArray()[0];
 
         // Total storage
         $result = $db->query('SELECT SUM(file_size) as total FROM models');
-        $row = $result->fetchArray(SQLITE3_ASSOC);
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
         $stats['total_storage'] = $row['total'] ?? 0;
 
         // Downloads this period
@@ -54,8 +54,8 @@ class Analytics {
             SELECT COUNT(*) FROM activity_log
             WHERE action = :action AND created_at >= :start
         ');
-        $stmt->bindValue(':action', 'download', SQLITE3_TEXT);
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':action', 'download', PDO::PARAM_STR);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $stats['downloads'] = $stmt->execute()->fetchArray()[0];
 
         // Active users this period
@@ -63,7 +63,7 @@ class Analytics {
             SELECT COUNT(DISTINCT user_id) FROM activity_log
             WHERE created_at >= :start AND user_id IS NOT NULL
         ');
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $stats['active_users'] = $stmt->execute()->fetchArray()[0];
 
         // Total users
@@ -71,12 +71,12 @@ class Analytics {
 
         // Views this period
         $stmt = $db->prepare('SELECT COUNT(*) FROM recently_viewed WHERE viewed_at >= :start');
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $stats['views'] = $stmt->execute()->fetchArray()[0];
 
         // Favorites this period
         $stmt = $db->prepare('SELECT COUNT(*) FROM favorites WHERE created_at >= :start');
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $stats['favorites'] = $stmt->execute()->fetchArray()[0];
 
         return $stats;
@@ -94,40 +94,45 @@ class Analytics {
 
         switch ($metric) {
             case 'uploads':
+                $dateExpr = self::buildDateFormatSQL('created_at', $dateFormat);
                 $sql = "
-                    SELECT strftime(:format, created_at) as period, COUNT(*) as value
+                    SELECT $dateExpr as period, COUNT(*) as value
                     FROM models WHERE created_at >= :start
                     GROUP BY period ORDER BY period
                 ";
                 break;
 
             case 'downloads':
+                $dateExpr = self::buildDateFormatSQL('created_at', $dateFormat);
                 $sql = "
-                    SELECT strftime(:format, created_at) as period, COUNT(*) as value
+                    SELECT $dateExpr as period, COUNT(*) as value
                     FROM activity_log WHERE action = 'download' AND created_at >= :start
                     GROUP BY period ORDER BY period
                 ";
                 break;
 
             case 'views':
+                $dateExpr = self::buildDateFormatSQL('viewed_at', $dateFormat);
                 $sql = "
-                    SELECT strftime(:format, viewed_at) as period, COUNT(*) as value
+                    SELECT $dateExpr as period, COUNT(*) as value
                     FROM recently_viewed WHERE viewed_at >= :start
                     GROUP BY period ORDER BY period
                 ";
                 break;
 
             case 'users':
+                $dateExpr = self::buildDateFormatSQL('created_at', $dateFormat);
                 $sql = "
-                    SELECT strftime(:format, created_at) as period, COUNT(*) as value
+                    SELECT $dateExpr as period, COUNT(*) as value
                     FROM users WHERE created_at >= :start
                     GROUP BY period ORDER BY period
                 ";
                 break;
 
             case 'storage':
+                $dateExpr = self::buildDateFormatSQL('created_at', $dateFormat);
                 $sql = "
-                    SELECT strftime(:format, created_at) as period, SUM(file_size) as value
+                    SELECT $dateExpr as period, SUM(file_size) as value
                     FROM models WHERE created_at >= :start
                     GROUP BY period ORDER BY period
                 ";
@@ -138,11 +143,10 @@ class Analytics {
         }
 
         $stmt = $db->prepare($sql);
-        $stmt->bindValue(':format', $dateFormat, SQLITE3_TEXT);
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $result = $stmt->execute();
 
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -170,8 +174,8 @@ class Analytics {
                     ORDER BY period_downloads DESC, m.download_count DESC
                     LIMIT :limit
                 ");
-                $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
-                $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+                $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
                 break;
 
             case 'categories':
@@ -185,7 +189,7 @@ class Analytics {
                     ORDER BY model_count DESC
                     LIMIT :limit
                 ");
-                $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
                 break;
 
             case 'users':
@@ -198,8 +202,8 @@ class Analytics {
                     ORDER BY activity_count DESC
                     LIMIT :limit
                 ");
-                $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
-                $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+                $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
                 break;
 
             case 'tags':
@@ -212,7 +216,7 @@ class Analytics {
                     ORDER BY usage_count DESC
                     LIMIT :limit
                 ");
-                $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
                 break;
 
             default:
@@ -220,7 +224,7 @@ class Analytics {
         }
 
         $result = $stmt->execute();
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -244,7 +248,7 @@ class Analytics {
 
         $result = $db->query($sql);
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -252,7 +256,7 @@ class Analytics {
         $uncategorized = $db->query("
             SELECT COUNT(*) as model_count, COALESCE(SUM(file_size), 0) as total_size
             FROM models WHERE category_id IS NULL
-        ")->fetchArray(SQLITE3_ASSOC);
+        ")->fetchArray(PDO::FETCH_ASSOC);
 
         if ($uncategorized['model_count'] > 0) {
             $data[] = [
@@ -280,11 +284,11 @@ class Analytics {
             GROUP BY action
             ORDER BY count DESC
         ");
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -373,11 +377,11 @@ class Analytics {
             ORDER BY file_size DESC
             LIMIT :limit
         ");
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -401,11 +405,11 @@ class Analytics {
             GROUP BY c.id
             ORDER BY downloads DESC
         ");
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -428,11 +432,11 @@ class Analytics {
             HAVING uploads > 0
             ORDER BY uploads DESC
         ");
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -453,11 +457,11 @@ class Analytics {
             GROUP BY c.id
             ORDER BY uploads DESC
         ");
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -477,14 +481,14 @@ class Analytics {
             FROM activity_log
             WHERE created_at >= :start AND user_id IS NOT NULL
         ");
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $active = $stmt->execute()->fetchArray()[0];
 
         // New users this period
         $stmt = $db->prepare("
             SELECT COUNT(*) FROM users WHERE created_at >= :start
         ");
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $new = $stmt->execute()->fetchArray()[0];
 
         // Total users
@@ -584,7 +588,7 @@ class Analytics {
 
         $result = $db->query($sql);
         $reports = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $row['filters'] = json_decode($row['filters'], true) ?: [];
             $row['recipients'] = json_decode($row['recipients'], true) ?: [];
             $reports[] = $row;
@@ -600,9 +604,9 @@ class Analytics {
         $db = getDB();
 
         $stmt = $db->prepare('SELECT * FROM scheduled_reports WHERE id = :id');
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $report = $result->fetchArray(SQLITE3_ASSOC);
+        $report = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if ($report) {
             $report['filters'] = json_decode($report['filters'], true) ?: [];
@@ -623,15 +627,15 @@ class Analytics {
             VALUES (:name, :report_type, :filters, :schedule, :recipients, :format, :is_active, :created_at, :updated_at)
         ');
 
-        $stmt->bindValue(':name', $data['name'], SQLITE3_TEXT);
-        $stmt->bindValue(':report_type', $data['report_type'], SQLITE3_TEXT);
-        $stmt->bindValue(':filters', json_encode($data['filters'] ?? []), SQLITE3_TEXT);
-        $stmt->bindValue(':schedule', $data['schedule'], SQLITE3_TEXT);
-        $stmt->bindValue(':recipients', json_encode($data['recipients'] ?? []), SQLITE3_TEXT);
-        $stmt->bindValue(':format', $data['format'] ?? 'csv', SQLITE3_TEXT);
-        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, SQLITE3_INTEGER);
-        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+        $stmt->bindValue(':report_type', $data['report_type'], PDO::PARAM_STR);
+        $stmt->bindValue(':filters', json_encode($data['filters'] ?? []), PDO::PARAM_STR);
+        $stmt->bindValue(':schedule', $data['schedule'], PDO::PARAM_STR);
+        $stmt->bindValue(':recipients', json_encode($data['recipients'] ?? []), PDO::PARAM_STR);
+        $stmt->bindValue(':format', $data['format'] ?? 'csv', PDO::PARAM_STR);
+        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, PDO::PARAM_INT);
+        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
         if ($stmt->execute()) {
             return $db->lastInsertRowID();
@@ -654,15 +658,15 @@ class Analytics {
             WHERE id = :id
         ');
 
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
-        $stmt->bindValue(':name', $data['name'], SQLITE3_TEXT);
-        $stmt->bindValue(':report_type', $data['report_type'], SQLITE3_TEXT);
-        $stmt->bindValue(':filters', json_encode($data['filters'] ?? []), SQLITE3_TEXT);
-        $stmt->bindValue(':schedule', $data['schedule'], SQLITE3_TEXT);
-        $stmt->bindValue(':recipients', json_encode($data['recipients'] ?? []), SQLITE3_TEXT);
-        $stmt->bindValue(':format', $data['format'] ?? 'csv', SQLITE3_TEXT);
-        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, SQLITE3_INTEGER);
-        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+        $stmt->bindValue(':report_type', $data['report_type'], PDO::PARAM_STR);
+        $stmt->bindValue(':filters', json_encode($data['filters'] ?? []), PDO::PARAM_STR);
+        $stmt->bindValue(':schedule', $data['schedule'], PDO::PARAM_STR);
+        $stmt->bindValue(':recipients', json_encode($data['recipients'] ?? []), PDO::PARAM_STR);
+        $stmt->bindValue(':format', $data['format'] ?? 'csv', PDO::PARAM_STR);
+        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, PDO::PARAM_INT);
+        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
         return $stmt->execute() !== false;
     }
@@ -674,7 +678,7 @@ class Analytics {
         $db = getDB();
 
         $stmt = $db->prepare('DELETE FROM scheduled_reports WHERE id = :id');
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
         return $stmt->execute() !== false;
     }
@@ -718,10 +722,10 @@ class Analytics {
             VALUES (:report_id, :executed_at, :success, :error)
         ');
 
-        $stmt->bindValue(':report_id', $reportId, SQLITE3_INTEGER);
-        $stmt->bindValue(':executed_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':success', $success ? 1 : 0, SQLITE3_INTEGER);
-        $stmt->bindValue(':error', $error, SQLITE3_TEXT);
+        $stmt->bindValue(':report_id', $reportId, PDO::PARAM_INT);
+        $stmt->bindValue(':executed_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':success', $success ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':error', $error, PDO::PARAM_STR);
 
         return $stmt->execute() !== false;
     }
@@ -765,13 +769,13 @@ class Analytics {
 
         $stmt = $db->prepare($sql);
         if ($reportId) {
-            $stmt->bindValue(':report_id', $reportId, SQLITE3_INTEGER);
+            $stmt->bindValue(':report_id', $reportId, PDO::PARAM_INT);
         }
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $result = $stmt->execute();
         $history = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $history[] = $row;
         }
 
@@ -797,22 +801,37 @@ class Analytics {
     }
 
     /**
-     * Get SQLite date format string
+     * Get date format string for the database type
      */
     private static function getDateFormat($groupBy) {
+        $db = getDB();
+        $isMySQL = $db->getType() === 'mysql';
+
         switch ($groupBy) {
             case 'hour':
-                return '%Y-%m-%d %H:00';
+                return $isMySQL ? '%Y-%m-%d %H:00' : '%Y-%m-%d %H:00';
             case 'day':
                 return '%Y-%m-%d';
             case 'week':
-                return '%Y-W%W';
+                return $isMySQL ? '%Y-W%v' : '%Y-W%W';
             case 'month':
                 return '%Y-%m';
             case 'year':
                 return '%Y';
             default:
                 return '%Y-%m-%d';
+        }
+    }
+
+    /**
+     * Build date formatting SQL expression for the database type
+     */
+    private static function buildDateFormatSQL($column, $format) {
+        $db = getDB();
+        if ($db->getType() === 'mysql') {
+            return "DATE_FORMAT($column, '$format')";
+        } else {
+            return "strftime('$format', $column)";
         }
     }
 
@@ -834,7 +853,7 @@ class Analytics {
 
         // Printed this period
         $stmt = $db->prepare('SELECT COUNT(*) FROM models WHERE is_printed = 1 AND printed_at >= :start');
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
         $stats['printed_this_period'] = $stmt->execute()->fetchArray()[0];
 
         // Print success rate (models marked printed vs total models)
@@ -846,7 +865,7 @@ class Analytics {
         $stmt = $db->prepare("SELECT print_type, COUNT(*) as count FROM models WHERE is_printed = 1 AND print_type IS NOT NULL GROUP BY print_type");
         $result = $stmt->execute();
         $stats['by_type'] = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $stats['by_type'][$row['print_type']] = $row['count'];
         }
 
@@ -860,19 +879,19 @@ class Analytics {
         $db = getDB();
         $periodStart = self::getPeriodStart($period);
         $dateFormat = self::getDateFormat($groupBy);
+        $dateExpr = self::buildDateFormatSQL('printed_at', $dateFormat);
 
         $stmt = $db->prepare("
-            SELECT strftime(:format, printed_at) as period, COUNT(*) as value
+            SELECT $dateExpr as period, COUNT(*) as value
             FROM models
             WHERE is_printed = 1 AND printed_at >= :start AND printed_at IS NOT NULL
             GROUP BY period ORDER BY period
         ");
-        $stmt->bindValue(':format', $dateFormat, SQLITE3_TEXT);
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -895,11 +914,11 @@ class Analytics {
             ORDER BY printed_parts DESC
             LIMIT :limit
         ");
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -920,7 +939,7 @@ class Analytics {
         ");
 
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -934,21 +953,21 @@ class Analytics {
         $db = getDB();
         $periodStart = self::getPeriodStart($period);
         $dateFormat = self::getDateFormat('day');
+        $dateExpr = self::buildDateFormatSQL('printed_at', $dateFormat);
 
         $stmt = $db->prepare("
-            SELECT strftime(:format, printed_at) as period,
+            SELECT $dateExpr as period,
                    SUM(CASE WHEN print_type = 'fdm' THEN file_size ELSE 0 END) as fdm_size,
                    SUM(CASE WHEN print_type = 'sla' THEN file_size ELSE 0 END) as sla_size
             FROM models
             WHERE is_printed = 1 AND printed_at >= :start AND printed_at IS NOT NULL
             GROUP BY period ORDER BY period
         ");
-        $stmt->bindValue(':format', $dateFormat, SQLITE3_TEXT);
-        $stmt->bindValue(':start', $periodStart, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $periodStart, PDO::PARAM_STR);
 
         $result = $stmt->execute();
         $data = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $data[] = $row;
         }
 
@@ -966,7 +985,7 @@ class Analytics {
         // Queue size
         if ($userId) {
             $stmt = $db->prepare('SELECT COUNT(*) FROM print_queue WHERE user_id = :user_id');
-            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stats['queue_size'] = $stmt->execute()->fetchArray()[0];
         } else {
             $stats['queue_size'] = $db->querySingle('SELECT COUNT(*) FROM print_queue');
@@ -975,7 +994,7 @@ class Analytics {
         // Total printed from queue
         if ($userId) {
             $stmt = $db->prepare('SELECT COUNT(*) FROM print_queue WHERE user_id = :user_id AND is_printed = 1');
-            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stats['completed'] = $stmt->execute()->fetchArray()[0];
         } else {
             $stats['completed'] = $db->querySingle('SELECT COUNT(*) FROM print_queue WHERE is_printed = 1');
@@ -995,7 +1014,7 @@ class Analytics {
 
         if ($userId) {
             $stmt = $db->prepare('SELECT * FROM dashboard_widgets WHERE user_id = :user_id ORDER BY position');
-            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         } else {
             // Get default widgets
             $stmt = $db->prepare('SELECT * FROM dashboard_widgets WHERE user_id IS NULL ORDER BY position');
@@ -1003,7 +1022,7 @@ class Analytics {
 
         $result = $stmt->execute();
         $widgets = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $row['config'] = json_decode($row['config'], true) ?: [];
             $widgets[] = $row;
         }
@@ -1022,8 +1041,8 @@ class Analytics {
             SELECT id FROM dashboard_widgets
             WHERE user_id = :user_id AND widget_type = :widget_type
         ');
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
-        $stmt->bindValue(':widget_type', $widgetType, SQLITE3_TEXT);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':widget_type', $widgetType, PDO::PARAM_STR);
         $existing = $stmt->execute()->fetchArray();
 
         if ($existing) {
@@ -1032,20 +1051,20 @@ class Analytics {
                 SET config = :config, position = :position, updated_at = :updated_at
                 WHERE id = :id
             ');
-            $stmt->bindValue(':id', $existing['id'], SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $existing['id'], PDO::PARAM_INT);
         } else {
             $stmt = $db->prepare('
                 INSERT INTO dashboard_widgets (user_id, widget_type, config, position, created_at, updated_at)
                 VALUES (:user_id, :widget_type, :config, :position, :created_at, :updated_at)
             ');
-            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
-            $stmt->bindValue(':widget_type', $widgetType, SQLITE3_TEXT);
-            $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':widget_type', $widgetType, PDO::PARAM_STR);
+            $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
         }
 
-        $stmt->bindValue(':config', json_encode($config), SQLITE3_TEXT);
-        $stmt->bindValue(':position', $position, SQLITE3_INTEGER);
-        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':config', json_encode($config), PDO::PARAM_STR);
+        $stmt->bindValue(':position', $position, PDO::PARAM_INT);
+        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
         return $stmt->execute() !== false;
     }

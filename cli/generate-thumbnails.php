@@ -60,9 +60,9 @@ if ($modelId) {
     echo "Processing model ID: $modelId\n\n";
 
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
-    $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $model = $result->fetchArray(SQLITE3_ASSOC);
+    $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) {
         echo "\033[31mError: Model not found.\033[0m\n";
@@ -105,11 +105,11 @@ if ($dryRun) {
         ORDER BY CASE WHEN file_type = '3mf' THEN 0 ELSE 1 END, id DESC
         LIMIT :limit
     ");
-    $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $result = $stmt->execute();
 
     $count = 0;
-    while ($model = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($model = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $count++;
         echo "  Would process: [{$model['file_type']}] {$model['name']}\n";
     }

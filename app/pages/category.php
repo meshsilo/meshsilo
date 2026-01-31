@@ -20,9 +20,9 @@ if (!$categoryId) {
 
 // Get category info
 $stmt = $db->prepare('SELECT * FROM categories WHERE id = :id');
-$stmt->bindValue(':id', $categoryId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $categoryId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$category = $result->fetchArray(SQLITE3_ASSOC);
+$category = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$category) {
     header('Location: categories.php');
@@ -41,33 +41,33 @@ $stmt = $db->prepare('
       AND m.parent_id IS NULL
     ORDER BY m.created_at DESC
 ');
-$stmt->bindValue(':category_id', $categoryId, SQLITE3_INTEGER);
+$stmt->bindValue(':category_id', $categoryId, PDO::PARAM_INT);
 $result = $stmt->execute();
 
 $models = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     // For multi-part models, get the first part for preview
     if ($row['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
+        $partStmt = $db->prepare('SELECT id, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt->bindValue(':parent_id', $row['id'], PDO::PARAM_INT);
         $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(SQLITE3_ASSOC);
+        $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
-            $row['preview_path'] = getRealFilePath($firstPart) . '?v=' . ($firstPart['file_size'] ?? time());
+            $row['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
             $row['preview_type'] = $firstPart['file_type'];
         }
 
         // Get distinct print types for this model's parts
         $printStmt = $db->prepare('SELECT DISTINCT print_type FROM models WHERE parent_id = :parent_id AND print_type IS NOT NULL');
-        $printStmt->bindValue(':parent_id', $row['id'], SQLITE3_INTEGER);
+        $printStmt->bindValue(':parent_id', $row['id'], PDO::PARAM_INT);
         $printResult = $printStmt->execute();
         $printTypes = [];
-        while ($printRow = $printResult->fetchArray(SQLITE3_ASSOC)) {
+        while ($printRow = $printResult->fetchArray(PDO::FETCH_ASSOC)) {
             $printTypes[] = $printRow['print_type'];
         }
         $row['print_types'] = $printTypes;
     } else {
-        $row['preview_path'] = getRealFilePath($row) . '?v=' . ($row['file_size'] ?? time());
+        $row['preview_path'] = '/actions/preview?id=' . $row['id'];
         $row['preview_type'] = $row['file_type'];
         $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
     }
@@ -100,7 +100,6 @@ require_once 'includes/header.php';
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
-                            <span class="file-type-badge">.<?= htmlspecialchars($model['preview_type'] ?? $model['file_type'] ?? 'stl') ?></span>
                             <?php if (!empty($model['print_types'])): ?>
                             <div class="print-type-indicators">
                                 <?php if (in_array('fdm', $model['print_types'])): ?>

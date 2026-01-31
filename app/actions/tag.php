@@ -30,9 +30,9 @@ if (!$modelId) {
 // Verify model exists
 $db = getDB();
 $stmt = $db->prepare('SELECT id, name FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     http_response_code(404);
@@ -61,9 +61,9 @@ switch ($action) {
         if (addTagToModel($modelId, $tagId)) {
             // Get the tag info to return
             $stmt = $db->prepare('SELECT * FROM tags WHERE id = :id');
-            $stmt->bindValue(':id', $tagId, SQLITE3_INTEGER);
+            $stmt->bindValue(':id', $tagId, PDO::PARAM_INT);
             $tagResult = $stmt->execute();
-            $tag = $tagResult->fetchArray(SQLITE3_ASSOC);
+            $tag = $tagResult->fetchArray(PDO::FETCH_ASSOC);
 
             logActivity('add_tag', 'model', $modelId, $model['name'], ['tag' => $tagName]);
             echo json_encode(['success' => true, 'tag' => $tag]);
@@ -82,7 +82,7 @@ switch ($action) {
 
         // Get tag name for logging
         $stmt = $db->prepare('SELECT name FROM tags WHERE id = :id');
-        $stmt->bindValue(':id', $tagId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $tagId, PDO::PARAM_INT);
         $tagName = $stmt->fetchColumn();
 
         if (removeTagFromModel($modelId, $tagId)) {

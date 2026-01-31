@@ -289,9 +289,9 @@ function findOrCreateLDAPUser($ldapData) {
 
     // Try to find existing user by LDAP DN or GUID
     $stmt = $db->prepare('SELECT * FROM users WHERE ldap_dn = :dn OR ldap_guid = :guid');
-    $stmt->bindValue(':dn', $dn, SQLITE3_TEXT);
-    $stmt->bindValue(':guid', $guid, SQLITE3_TEXT);
-    $existingUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $stmt->bindValue(':dn', $dn, PDO::PARAM_STR);
+    $stmt->bindValue(':guid', $guid, PDO::PARAM_STR);
+    $existingUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
     if ($existingUser) {
         // Update user info
@@ -301,12 +301,12 @@ function findOrCreateLDAPUser($ldapData) {
                 ldap_synced_at = :now, last_auth_at = :now, auth_method = :method
             WHERE id = :id
         ');
-        $stmt->bindValue(':dn', $dn, SQLITE3_TEXT);
-        $stmt->bindValue(':guid', $guid, SQLITE3_TEXT);
-        $stmt->bindValue(':groups', json_encode($ldapData['groups']), SQLITE3_TEXT);
-        $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':method', 'ldap', SQLITE3_TEXT);
-        $stmt->bindValue(':id', $existingUser['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':dn', $dn, PDO::PARAM_STR);
+        $stmt->bindValue(':guid', $guid, PDO::PARAM_STR);
+        $stmt->bindValue(':groups', json_encode($ldapData['groups']), PDO::PARAM_STR);
+        $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':method', 'ldap', PDO::PARAM_STR);
+        $stmt->bindValue(':id', $existingUser['id'], PDO::PARAM_INT);
         $stmt->execute();
 
         // Sync groups if enabled
@@ -316,16 +316,16 @@ function findOrCreateLDAPUser($ldapData) {
 
         // Refresh user data
         $stmt = $db->prepare('SELECT * FROM users WHERE id = :id');
-        $stmt->bindValue(':id', $existingUser['id'], SQLITE3_INTEGER);
-        $existingUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        $stmt->bindValue(':id', $existingUser['id'], PDO::PARAM_INT);
+        $existingUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         return ['success' => true, 'user' => $existingUser, 'is_new' => false];
     }
 
     // Try to find by username
     $stmt = $db->prepare('SELECT * FROM users WHERE username = :username');
-    $stmt->bindValue(':username', $username, SQLITE3_TEXT);
-    $existingUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+    $existingUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
     if ($existingUser) {
         // Link existing account to LDAP
@@ -335,12 +335,12 @@ function findOrCreateLDAPUser($ldapData) {
                 ldap_synced_at = :now, last_auth_at = :now, auth_method = :method
             WHERE id = :id
         ');
-        $stmt->bindValue(':dn', $dn, SQLITE3_TEXT);
-        $stmt->bindValue(':guid', $guid, SQLITE3_TEXT);
-        $stmt->bindValue(':groups', json_encode($ldapData['groups']), SQLITE3_TEXT);
-        $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':method', 'ldap', SQLITE3_TEXT);
-        $stmt->bindValue(':id', $existingUser['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':dn', $dn, PDO::PARAM_STR);
+        $stmt->bindValue(':guid', $guid, PDO::PARAM_STR);
+        $stmt->bindValue(':groups', json_encode($ldapData['groups']), PDO::PARAM_STR);
+        $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':method', 'ldap', PDO::PARAM_STR);
+        $stmt->bindValue(':id', $existingUser['id'], PDO::PARAM_INT);
         $stmt->execute();
 
         if (getSetting('ldap_sync_groups', '0') === '1') {
@@ -348,8 +348,8 @@ function findOrCreateLDAPUser($ldapData) {
         }
 
         $stmt = $db->prepare('SELECT * FROM users WHERE id = :id');
-        $stmt->bindValue(':id', $existingUser['id'], SQLITE3_INTEGER);
-        $existingUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        $stmt->bindValue(':id', $existingUser['id'], PDO::PARAM_INT);
+        $existingUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         return ['success' => true, 'user' => $existingUser, 'is_new' => false];
     }
@@ -367,13 +367,13 @@ function findOrCreateLDAPUser($ldapData) {
         INSERT INTO users (username, email, ldap_dn, ldap_guid, ldap_groups, ldap_synced_at, is_admin, auth_method, created_at)
         VALUES (:username, :email, :dn, :guid, :groups, :now, 0, :method, :now)
     ');
-    $stmt->bindValue(':username', $username, SQLITE3_TEXT);
-    $stmt->bindValue(':email', $email, SQLITE3_TEXT);
-    $stmt->bindValue(':dn', $dn, SQLITE3_TEXT);
-    $stmt->bindValue(':guid', $guid, SQLITE3_TEXT);
-    $stmt->bindValue(':groups', json_encode($ldapData['groups']), SQLITE3_TEXT);
-    $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-    $stmt->bindValue(':method', 'ldap', SQLITE3_TEXT);
+    $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+    $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+    $stmt->bindValue(':dn', $dn, PDO::PARAM_STR);
+    $stmt->bindValue(':guid', $guid, PDO::PARAM_STR);
+    $stmt->bindValue(':groups', json_encode($ldapData['groups']), PDO::PARAM_STR);
+    $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+    $stmt->bindValue(':method', 'ldap', PDO::PARAM_STR);
     $stmt->execute();
 
     $userId = $db->lastInsertRowID();
@@ -381,8 +381,8 @@ function findOrCreateLDAPUser($ldapData) {
     // Assign to default group
     if ($defaultGroupId) {
         $stmt = $db->prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (:uid, :gid)');
-        $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
-        $stmt->bindValue(':gid', $defaultGroupId, SQLITE3_INTEGER);
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':gid', $defaultGroupId, PDO::PARAM_INT);
         $stmt->execute();
     }
 
@@ -393,8 +393,8 @@ function findOrCreateLDAPUser($ldapData) {
 
     // Get the created user
     $stmt = $db->prepare('SELECT * FROM users WHERE id = :id');
-    $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
-    $newUser = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
+    $newUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
     logActivity($userId, 'ldap_register', 'user', $userId, 'New LDAP user: ' . $username);
 
@@ -421,10 +421,10 @@ function syncLDAPGroups($userId, $ldapGroups) {
 
     // Get current groups
     $stmt = $db->prepare('SELECT group_id FROM user_groups WHERE user_id = :uid');
-    $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
+    $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
     $result = $stmt->execute();
     $currentGroups = [];
-    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $currentGroups[] = $row['group_id'];
     }
 
@@ -446,8 +446,8 @@ function syncLDAPGroups($userId, $ldapGroups) {
     foreach ($targetGroups as $groupId) {
         if (!in_array($groupId, $currentGroups)) {
             $stmt = $db->prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (:uid, :gid)');
-            $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
-            $stmt->bindValue(':gid', $groupId, SQLITE3_INTEGER);
+            $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':gid', $groupId, PDO::PARAM_INT);
             $stmt->execute();
         }
     }
@@ -457,8 +457,8 @@ function syncLDAPGroups($userId, $ldapGroups) {
         foreach ($currentGroups as $groupId) {
             if (!in_array($groupId, $targetGroups)) {
                 $stmt = $db->prepare('DELETE FROM user_groups WHERE user_id = :uid AND group_id = :gid');
-                $stmt->bindValue(':uid', $userId, SQLITE3_INTEGER);
-                $stmt->bindValue(':gid', $groupId, SQLITE3_INTEGER);
+                $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+                $stmt->bindValue(':gid', $groupId, PDO::PARAM_INT);
                 $stmt->execute();
             }
         }
@@ -510,7 +510,7 @@ function syncAllLDAPUsers() {
     $stmt = $db->prepare('SELECT id, username, ldap_dn FROM users WHERE ldap_dn IS NOT NULL');
     $result = $stmt->execute();
 
-    while ($user = $result->fetchArray(SQLITE3_ASSOC)) {
+    while ($user = $result->fetchArray(PDO::FETCH_ASSOC)) {
         try {
             // Search for user in LDAP
             $ldapUser = ldapSearchUser($conn, $user['username']);
@@ -524,11 +524,11 @@ function syncAllLDAPUsers() {
                     SET ldap_dn = :dn, ldap_guid = :guid, ldap_groups = :groups, ldap_synced_at = :now
                     WHERE id = :id
                 ');
-                $stmt2->bindValue(':dn', $normalized['dn'], SQLITE3_TEXT);
-                $stmt2->bindValue(':guid', $normalized['guid'], SQLITE3_TEXT);
-                $stmt2->bindValue(':groups', json_encode($normalized['groups']), SQLITE3_TEXT);
-                $stmt2->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-                $stmt2->bindValue(':id', $user['id'], SQLITE3_INTEGER);
+                $stmt2->bindValue(':dn', $normalized['dn'], PDO::PARAM_STR);
+                $stmt2->bindValue(':guid', $normalized['guid'], PDO::PARAM_STR);
+                $stmt2->bindValue(':groups', json_encode($normalized['groups']), PDO::PARAM_STR);
+                $stmt2->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+                $stmt2->bindValue(':id', $user['id'], PDO::PARAM_INT);
                 $stmt2->execute();
 
                 // Sync groups
@@ -541,7 +541,7 @@ function syncAllLDAPUsers() {
                 // User not found in LDAP
                 if (getSetting('ldap_disable_missing_users', '0') === '1') {
                     $stmt2 = $db->prepare('UPDATE users SET is_active = 0 WHERE id = :id');
-                    $stmt2->bindValue(':id', $user['id'], SQLITE3_INTEGER);
+                    $stmt2->bindValue(':id', $user['id'], PDO::PARAM_INT);
                     $stmt2->execute();
                 }
                 $errors++;

@@ -35,9 +35,9 @@ if (!$modelId) {
 
 // Verify model exists and is a parent model
 $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
-$stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
-$model = $result->fetchArray(SQLITE3_ASSOC);
+$model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
 
     // Create directory for model if it doesn't exist
     $relativeDir = 'assets/' . substr(md5($model['name'] . $model['id']), 0, 12);
-    $modelDir = __DIR__ . '/../' . $relativeDir;
+    $modelDir = __DIR__ . '/../../' . $relativeDir;
     if (!file_exists($modelDir)) {
         mkdir($modelDir, 0755, true);
     }
@@ -119,30 +119,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
 
     // Insert part into database
     try {
+        $now = date('Y-m-d H:i:s');
         $stmt = $db->prepare('
             INSERT INTO models (name, filename, file_path, file_size, file_type, parent_id, file_hash, created_at)
-            VALUES (:name, :filename, :file_path, :file_size, :file_type, :parent_id, :file_hash, datetime("now"))
+            VALUES (:name, :filename, :file_path, :file_size, :file_type, :parent_id, :file_hash, :created_at)
         ');
-        $stmt->bindValue(':name', pathinfo($filename, PATHINFO_FILENAME), SQLITE3_TEXT);
-        $stmt->bindValue(':filename', $filename, SQLITE3_TEXT);
-        $stmt->bindValue(':file_path', $relativePath, SQLITE3_TEXT);
-        $stmt->bindValue(':file_size', filesize($destPath), SQLITE3_INTEGER);
-        $stmt->bindValue(':file_type', $extension, SQLITE3_TEXT);
-        $stmt->bindValue(':parent_id', $modelId, SQLITE3_INTEGER);
-        $stmt->bindValue(':file_hash', $fileHash, SQLITE3_TEXT);
+        $stmt->bindValue(':name', pathinfo($filename, PATHINFO_FILENAME), PDO::PARAM_STR);
+        $stmt->bindValue(':filename', $filename, PDO::PARAM_STR);
+        $stmt->bindValue(':file_path', $relativePath, PDO::PARAM_STR);
+        $stmt->bindValue(':file_size', filesize($destPath), PDO::PARAM_INT);
+        $stmt->bindValue(':file_type', $extension, PDO::PARAM_STR);
+        $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
+        $stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
+        $stmt->bindValue(':created_at', $now, PDO::PARAM_STR);
         $stmt->execute();
 
         $partId = $db->lastInsertRowID();
 
         // Update parent model's part count
-        $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :id) WHERE id = :id');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
+        $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :id1) WHERE id = :id2');
+        $stmt->bindValue(':id1', $modelId, PDO::PARAM_INT);
+        $stmt->bindValue(':id2', $modelId, PDO::PARAM_INT);
         $stmt->execute();
 
         // Get new part count
         $stmt = $db->prepare('SELECT part_count FROM models WHERE id = :id');
-        $stmt->bindValue(':id', $modelId, SQLITE3_INTEGER);
-        $newPartCount = $stmt->execute()->fetchArray(SQLITE3_ASSOC)['part_count'];
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $newPartCount = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['part_count'];
 
         logUpload('Part added to model', [
             'model_id' => $modelId,

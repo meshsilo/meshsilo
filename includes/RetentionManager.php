@@ -33,7 +33,7 @@ class RetentionManager {
 
         $result = $db->query($sql);
         $policies = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $row['conditions'] = json_decode($row['conditions'], true) ?: [];
             $policies[] = $row;
         }
@@ -48,9 +48,9 @@ class RetentionManager {
         $db = getDB();
 
         $stmt = $db->prepare('SELECT * FROM retention_policies WHERE id = :id');
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $policy = $result->fetchArray(SQLITE3_ASSOC);
+        $policy = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if ($policy) {
             $policy['conditions'] = json_decode($policy['conditions'], true) ?: [];
@@ -70,14 +70,14 @@ class RetentionManager {
             VALUES (:name, :description, :entity_type, :conditions, :action, :is_active, :created_at, :updated_at)
         ');
 
-        $stmt->bindValue(':name', $data['name'], SQLITE3_TEXT);
-        $stmt->bindValue(':description', $data['description'] ?? null, SQLITE3_TEXT);
-        $stmt->bindValue(':entity_type', $data['entity_type'], SQLITE3_TEXT);
-        $stmt->bindValue(':conditions', json_encode($data['conditions'] ?? []), SQLITE3_TEXT);
-        $stmt->bindValue(':action', $data['action'], SQLITE3_TEXT);
-        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, SQLITE3_INTEGER);
-        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+        $stmt->bindValue(':description', $data['description'] ?? null, PDO::PARAM_STR);
+        $stmt->bindValue(':entity_type', $data['entity_type'], PDO::PARAM_STR);
+        $stmt->bindValue(':conditions', json_encode($data['conditions'] ?? []), PDO::PARAM_STR);
+        $stmt->bindValue(':action', $data['action'], PDO::PARAM_STR);
+        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, PDO::PARAM_INT);
+        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
         if ($stmt->execute()) {
             $id = $db->lastInsertRowID();
@@ -110,14 +110,14 @@ class RetentionManager {
             WHERE id = :id
         ');
 
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
-        $stmt->bindValue(':name', $data['name'], SQLITE3_TEXT);
-        $stmt->bindValue(':description', $data['description'] ?? null, SQLITE3_TEXT);
-        $stmt->bindValue(':entity_type', $data['entity_type'], SQLITE3_TEXT);
-        $stmt->bindValue(':conditions', json_encode($data['conditions'] ?? []), SQLITE3_TEXT);
-        $stmt->bindValue(':action', $data['action'], SQLITE3_TEXT);
-        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, SQLITE3_INTEGER);
-        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+        $stmt->bindValue(':description', $data['description'] ?? null, PDO::PARAM_STR);
+        $stmt->bindValue(':entity_type', $data['entity_type'], PDO::PARAM_STR);
+        $stmt->bindValue(':conditions', json_encode($data['conditions'] ?? []), PDO::PARAM_STR);
+        $stmt->bindValue(':action', $data['action'], PDO::PARAM_STR);
+        $stmt->bindValue(':is_active', $data['is_active'] ?? 1, PDO::PARAM_INT);
+        $stmt->bindValue(':updated_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
         if ($stmt->execute()) {
             AuditLogger::logAdmin('retention_policy_updated', [
@@ -145,7 +145,7 @@ class RetentionManager {
         }
 
         $stmt = $db->prepare('DELETE FROM retention_policies WHERE id = :id');
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             AuditLogger::logAdmin('retention_policy_deleted', [
@@ -170,11 +170,11 @@ class RetentionManager {
             WHERE entity_type = :type AND entity_id = :id
             AND (expires_at IS NULL OR expires_at > :now)
         ');
-        $stmt->bindValue(':type', $entityType, SQLITE3_TEXT);
-        $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
-        $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':type', $entityType, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
+        $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
-        $result = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        $result = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
         return $result['count'] > 0;
     }
 
@@ -198,12 +198,12 @@ class RetentionManager {
 
         $stmt = $db->prepare($sql);
         if ($activeOnly) {
-            $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+            $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
         }
 
         $result = $stmt->execute();
         $holds = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $holds[] = $row;
         }
 
@@ -222,12 +222,12 @@ class RetentionManager {
             VALUES (:entity_type, :entity_id, :reason, :created_by, :expires_at, :created_at)
         ');
 
-        $stmt->bindValue(':entity_type', $entityType, SQLITE3_TEXT);
-        $stmt->bindValue(':entity_id', $entityId, SQLITE3_INTEGER);
-        $stmt->bindValue(':reason', $reason, SQLITE3_TEXT);
-        $stmt->bindValue(':created_by', $user['id'] ?? null, SQLITE3_INTEGER);
-        $stmt->bindValue(':expires_at', $expiresAt, SQLITE3_TEXT);
-        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':entity_type', $entityType, PDO::PARAM_STR);
+        $stmt->bindValue(':entity_id', $entityId, PDO::PARAM_INT);
+        $stmt->bindValue(':reason', $reason, PDO::PARAM_STR);
+        $stmt->bindValue(':created_by', $user['id'] ?? null, PDO::PARAM_INT);
+        $stmt->bindValue(':expires_at', $expiresAt, PDO::PARAM_STR);
+        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
         if ($stmt->execute()) {
             $id = $db->lastInsertRowID();
@@ -250,15 +250,15 @@ class RetentionManager {
 
         // Get hold info first
         $stmt = $db->prepare('SELECT * FROM legal_holds WHERE id = :id');
-        $stmt->bindValue(':id', $holdId, SQLITE3_INTEGER);
-        $hold = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        $stmt->bindValue(':id', $holdId, PDO::PARAM_INT);
+        $hold = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$hold) {
             return false;
         }
 
         $stmt = $db->prepare('DELETE FROM legal_holds WHERE id = :id');
-        $stmt->bindValue(':id', $holdId, SQLITE3_INTEGER);
+        $stmt->bindValue(':id', $holdId, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             AuditLogger::logSecurity('legal_hold_removed', [
@@ -420,7 +420,7 @@ class RetentionManager {
 
         $result = $stmt->execute();
         $entities = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $entities[] = $row;
         }
 
@@ -463,7 +463,7 @@ class RetentionManager {
 
         $result = $stmt->execute();
         $entities = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $entities[] = $row;
         }
 
@@ -498,7 +498,7 @@ class RetentionManager {
 
         $result = $stmt->execute();
         $entities = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $entities[] = $row;
         }
 
@@ -538,7 +538,7 @@ class RetentionManager {
 
         $result = $stmt->execute();
         $entities = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $entities[] = $row;
         }
 
@@ -568,7 +568,7 @@ class RetentionManager {
 
         $result = $stmt->execute();
         $entities = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $entities[] = $row;
         }
 
@@ -605,7 +605,7 @@ class RetentionManager {
         switch ($entityType) {
             case self::ENTITY_MODEL:
                 $stmt = $db->prepare('UPDATE models SET is_archived = 1 WHERE id = :id');
-                $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
                 return $stmt->execute() !== false;
 
             default:
@@ -625,36 +625,36 @@ class RetentionManager {
                 // This should use the existing model deletion logic
                 // For now, just mark as archived to be safe
                 $stmt = $db->prepare('UPDATE models SET is_archived = 1 WHERE id = :id');
-                $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
                 return $stmt->execute() !== false;
 
             case self::ENTITY_VERSION:
                 // Delete version file and record
                 $stmt = $db->prepare('SELECT * FROM model_versions WHERE id = :id');
-                $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
-                $version = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+                $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
+                $version = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
                 if ($version && !empty($version['file_path']) && file_exists($version['file_path'])) {
                     unlink($version['file_path']);
                 }
 
                 $stmt = $db->prepare('DELETE FROM model_versions WHERE id = :id');
-                $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
                 return $stmt->execute() !== false;
 
             case self::ENTITY_ACTIVITY:
                 $stmt = $db->prepare('DELETE FROM activity_log WHERE id = :id');
-                $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
                 return $stmt->execute() !== false;
 
             case self::ENTITY_AUDIT:
                 $stmt = $db->prepare('DELETE FROM audit_log WHERE id = :id');
-                $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
                 return $stmt->execute() !== false;
 
             case self::ENTITY_SESSION:
                 $stmt = $db->prepare('DELETE FROM user_sessions WHERE id = :id');
-                $stmt->bindValue(':id', $entityId, SQLITE3_INTEGER);
+                $stmt->bindValue(':id', $entityId, PDO::PARAM_INT);
                 return $stmt->execute() !== false;
 
             default:
@@ -680,95 +680,113 @@ class RetentionManager {
      * Log retention action to retention_log table
      */
     private static function logRetentionAction($policyId, $entityType, $entityId, $action) {
-        $db = getDB();
+        try {
+            $db = getDB();
 
-        $stmt = $db->prepare('
-            INSERT INTO retention_log (policy_id, entity_type, entity_id, action, executed_at)
-            VALUES (:policy_id, :entity_type, :entity_id, :action, :executed_at)
-        ');
+            // Use the actual schema columns from migrations
+            $stmt = $db->prepare('
+                INSERT INTO retention_log (policy_id, action_taken, items_processed, items_affected, details, started_at, completed_at)
+                VALUES (:policy_id, :action_taken, 1, 1, :details, :started_at, :completed_at)
+            ');
 
-        $stmt->bindValue(':policy_id', $policyId, SQLITE3_INTEGER);
-        $stmt->bindValue(':entity_type', $entityType, SQLITE3_TEXT);
-        $stmt->bindValue(':entity_id', $entityId, SQLITE3_INTEGER);
-        $stmt->bindValue(':action', $action, SQLITE3_TEXT);
-        $stmt->bindValue(':executed_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+            $details = json_encode(['entity_type' => $entityType, 'entity_id' => $entityId]);
+            $now = date('Y-m-d H:i:s');
 
-        return $stmt->execute() !== false;
+            $stmt->bindValue(':policy_id', $policyId, PDO::PARAM_INT);
+            $stmt->bindValue(':action_taken', $action, PDO::PARAM_STR);
+            $stmt->bindValue(':details', $details, PDO::PARAM_STR);
+            $stmt->bindValue(':started_at', $now, PDO::PARAM_STR);
+            $stmt->bindValue(':completed_at', $now, PDO::PARAM_STR);
+
+            return $stmt->execute() !== false;
+        } catch (Exception $e) {
+            // Table may not exist or have different schema
+            return false;
+        }
     }
 
     /**
      * Get retention log with pagination
      */
     public static function getRetentionLog($filters = [], $limit = 100, $offset = 0) {
-        $db = getDB();
+        try {
+            $db = getDB();
 
-        $where = ['1=1'];
-        $params = [];
+            $where = ['1=1'];
+            $params = [];
 
-        if (!empty($filters['policy_id'])) {
-            $where[] = 'rl.policy_id = :policy_id';
-            $params[':policy_id'] = $filters['policy_id'];
+            if (!empty($filters['policy_id'])) {
+                $where[] = 'rl.policy_id = :policy_id';
+                $params[':policy_id'] = $filters['policy_id'];
+            }
+
+            // Use action_taken instead of action (matches migration schema)
+            if (!empty($filters['action'])) {
+                $where[] = 'rl.action_taken = :action';
+                $params[':action'] = $filters['action'];
+            }
+
+            // Use created_at instead of executed_at (matches migration schema)
+            if (!empty($filters['date_from'])) {
+                $where[] = 'rl.created_at >= :date_from';
+                $params[':date_from'] = $filters['date_from'];
+            }
+
+            if (!empty($filters['date_to'])) {
+                $where[] = 'rl.created_at <= :date_to';
+                $params[':date_to'] = $filters['date_to'];
+            }
+
+            $whereClause = implode(' AND ', $where);
+
+            // Get count
+            $countSql = "SELECT COUNT(*) as total FROM retention_log rl WHERE $whereClause";
+            $stmt = $db->prepare($countSql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $result = $stmt->execute();
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
+            $total = (int)($row['total'] ?? 0);
+
+            // Get results - use created_at for ordering
+            $sql = "
+                SELECT rl.*, rp.name as policy_name
+                FROM retention_log rl
+                LEFT JOIN retention_policies rp ON rl.policy_id = rp.id
+                WHERE $whereClause
+                ORDER BY rl.created_at DESC
+                LIMIT :limit OFFSET :offset
+            ";
+
+            $stmt = $db->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+            $result = $stmt->execute();
+            $logs = [];
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                $logs[] = $row;
+            }
+
+            return [
+                'data' => $logs,
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset
+            ];
+        } catch (Exception $e) {
+            // Table may not exist or have different schema
+            return [
+                'data' => [],
+                'total' => 0,
+                'limit' => $limit,
+                'offset' => $offset
+            ];
         }
-
-        if (!empty($filters['entity_type'])) {
-            $where[] = 'rl.entity_type = :entity_type';
-            $params[':entity_type'] = $filters['entity_type'];
-        }
-
-        if (!empty($filters['action'])) {
-            $where[] = 'rl.action = :action';
-            $params[':action'] = $filters['action'];
-        }
-
-        if (!empty($filters['date_from'])) {
-            $where[] = 'rl.executed_at >= :date_from';
-            $params[':date_from'] = $filters['date_from'];
-        }
-
-        if (!empty($filters['date_to'])) {
-            $where[] = 'rl.executed_at <= :date_to';
-            $params[':date_to'] = $filters['date_to'];
-        }
-
-        $whereClause = implode(' AND ', $where);
-
-        // Get count
-        $countSql = "SELECT COUNT(*) as total FROM retention_log rl WHERE $whereClause";
-        $stmt = $db->prepare($countSql);
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-        $total = $stmt->execute()->fetchArray(SQLITE3_ASSOC)['total'];
-
-        // Get results
-        $sql = "
-            SELECT rl.*, rp.name as policy_name
-            FROM retention_log rl
-            LEFT JOIN retention_policies rp ON rl.policy_id = rp.id
-            WHERE $whereClause
-            ORDER BY rl.executed_at DESC
-            LIMIT :limit OFFSET :offset
-        ";
-
-        $stmt = $db->prepare($sql);
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
-        $stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
-
-        $result = $stmt->execute();
-        $logs = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $logs[] = $row;
-        }
-
-        return [
-            'data' => $logs,
-            'total' => $total,
-            'limit' => $limit,
-            'offset' => $offset
-        ];
     }
 
     /**
@@ -777,33 +795,57 @@ class RetentionManager {
     public static function getStats() {
         $db = getDB();
 
-        $stats = [];
+        $stats = [
+            'active_policies' => 0,
+            'active_legal_holds' => 0,
+            'actions_30_days' => 0,
+            'actions_by_type' => []
+        ];
 
-        // Active policies count
-        $stats['active_policies'] = $db->querySingle('SELECT COUNT(*) FROM retention_policies WHERE is_active = 1');
+        try {
+            // Active policies count
+            $stats['active_policies'] = (int)$db->querySingle('SELECT COUNT(*) FROM retention_policies WHERE is_active = 1');
+        } catch (Exception $e) {
+            // Table may not exist yet
+        }
 
-        // Active legal holds
-        $stmt = $db->prepare('SELECT COUNT(*) FROM legal_holds WHERE expires_at IS NULL OR expires_at > :now');
-        $stmt->bindValue(':now', date('Y-m-d H:i:s'), SQLITE3_TEXT);
-        $stats['active_legal_holds'] = $stmt->execute()->fetchArray()[0];
+        try {
+            // Active legal holds (not released and not expired)
+            $stmt = $db->prepare('SELECT COUNT(*) FROM legal_holds WHERE released_at IS NULL AND (expires_at IS NULL OR expires_at > :now)');
+            $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+            $result = $stmt->execute();
+            $row = $result->fetchArray();
+            $stats['active_legal_holds'] = (int)($row[0] ?? 0);
+        } catch (Exception $e) {
+            // Table may not exist yet
+        }
 
-        // Actions in last 30 days
-        $stmt = $db->prepare('SELECT COUNT(*) FROM retention_log WHERE executed_at > :cutoff');
-        $stmt->bindValue(':cutoff', date('Y-m-d H:i:s', strtotime('-30 days')), SQLITE3_TEXT);
-        $stats['actions_30_days'] = $stmt->execute()->fetchArray()[0];
+        try {
+            // Actions in last 30 days
+            $stmt = $db->prepare('SELECT COUNT(*) FROM retention_log WHERE created_at > :cutoff');
+            $stmt->bindValue(':cutoff', date('Y-m-d H:i:s', strtotime('-30 days')), PDO::PARAM_STR);
+            $result = $stmt->execute();
+            $row = $result->fetchArray();
+            $stats['actions_30_days'] = (int)($row[0] ?? 0);
+        } catch (Exception $e) {
+            // Table may not exist yet
+        }
 
-        // Actions by type (last 30 days)
-        $stmt = $db->prepare('
-            SELECT action, COUNT(*) as count
-            FROM retention_log
-            WHERE executed_at > :cutoff
-            GROUP BY action
-        ');
-        $stmt->bindValue(':cutoff', date('Y-m-d H:i:s', strtotime('-30 days')), SQLITE3_TEXT);
-        $result = $stmt->execute();
-        $stats['actions_by_type'] = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $stats['actions_by_type'][$row['action']] = $row['count'];
+        try {
+            // Actions by type (last 30 days)
+            $stmt = $db->prepare('
+                SELECT action_taken, COUNT(*) as count
+                FROM retention_log
+                WHERE created_at > :cutoff
+                GROUP BY action_taken
+            ');
+            $stmt->bindValue(':cutoff', date('Y-m-d H:i:s', strtotime('-30 days')), PDO::PARAM_STR);
+            $result = $stmt->execute();
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                $stats['actions_by_type'][$row['action_taken']] = $row['count'];
+            }
+        } catch (Exception $e) {
+            // Table may not exist yet
         }
 
         return $stats;

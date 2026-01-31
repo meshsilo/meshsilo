@@ -1,6 +1,10 @@
 <?php
-// Search API endpoint for AJAX search
+/**
+ * Search API endpoint for AJAX search
+ * Uses full-text search when available, falls back to LIKE queries
+ */
 require_once 'includes/config.php';
+require_once 'includes/Search.php';
 
 header('Content-Type: application/json');
 
@@ -12,9 +16,28 @@ if (strlen($query) < 2) {
     exit;
 }
 
+// Try full-text search first
+$search = Search::getInstance();
+$searchResult = $search->search($query, ['limit' => $limit]);
+
+if (!empty($searchResult['results'])) {
+    // Full-text search returned results
+    $models = array_map(function($row) {
+        return [
+            'id' => (int)$row['model_id'],
+            'name' => $row['name'],
+            'creator' => $row['creator'] ?? '',
+            'collection' => $row['collection'] ?? ''
+        ];
+    }, $searchResult['results']);
+
+    echo json_encode($models);
+    exit;
+}
+
+// Fallback to LIKE query if FTS not available or no results
 $db = getDB();
 
-// Search models by name, description, creator, and collection
 $stmt = $db->prepare('
     SELECT id, name, creator, collection, description
     FROM models
@@ -31,13 +54,13 @@ $stmt = $db->prepare('
     LIMIT :limit
 ');
 
-$stmt->bindValue(':query', '%' . $query . '%', SQLITE3_TEXT);
-$stmt->bindValue(':exact', $query . '%', SQLITE3_TEXT);
-$stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
+$stmt->bindValue(':query', '%' . $query . '%', PDO::PARAM_STR);
+$stmt->bindValue(':exact', $query . '%', PDO::PARAM_STR);
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 $result = $stmt->execute();
 
 $models = [];
-while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $models[] = [
         'id' => (int)$row['id'],
         'name' => $row['name'],

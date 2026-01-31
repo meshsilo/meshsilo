@@ -66,21 +66,21 @@ class AuditLogger {
             )
         ');
 
-        $stmt->bindValue(':event_type', $eventType, SQLITE3_TEXT);
-        $stmt->bindValue(':event_name', $eventName, SQLITE3_TEXT);
-        $stmt->bindValue(':severity', $severity, SQLITE3_TEXT);
-        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
-        $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? null, SQLITE3_TEXT);
-        $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500), SQLITE3_TEXT);
-        $stmt->bindValue(':resource_type', $data['resource_type'] ?? null, SQLITE3_TEXT);
-        $stmt->bindValue(':resource_id', $data['resource_id'] ?? null, SQLITE3_INTEGER);
-        $stmt->bindValue(':resource_name', $data['resource_name'] ?? null, SQLITE3_TEXT);
-        $stmt->bindValue(':old_value', isset($data['old_value']) ? json_encode($data['old_value']) : null, SQLITE3_TEXT);
-        $stmt->bindValue(':new_value', isset($data['new_value']) ? json_encode($data['new_value']) : null, SQLITE3_TEXT);
-        $stmt->bindValue(':metadata', isset($data['metadata']) ? json_encode($data['metadata']) : null, SQLITE3_TEXT);
-        $stmt->bindValue(':session_id', $sessionId, SQLITE3_TEXT);
-        $stmt->bindValue(':request_id', self::getRequestId(), SQLITE3_TEXT);
-        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $stmt->bindValue(':event_type', $eventType, PDO::PARAM_STR);
+        $stmt->bindValue(':event_name', $eventName, PDO::PARAM_STR);
+        $stmt->bindValue(':severity', $severity, PDO::PARAM_STR);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? null, PDO::PARAM_STR);
+        $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500), PDO::PARAM_STR);
+        $stmt->bindValue(':resource_type', $data['resource_type'] ?? null, PDO::PARAM_STR);
+        $stmt->bindValue(':resource_id', $data['resource_id'] ?? null, PDO::PARAM_INT);
+        $stmt->bindValue(':resource_name', $data['resource_name'] ?? null, PDO::PARAM_STR);
+        $stmt->bindValue(':old_value', isset($data['old_value']) ? json_encode($data['old_value']) : null, PDO::PARAM_STR);
+        $stmt->bindValue(':new_value', isset($data['new_value']) ? json_encode($data['new_value']) : null, PDO::PARAM_STR);
+        $stmt->bindValue(':metadata', isset($data['metadata']) ? json_encode($data['metadata']) : null, PDO::PARAM_STR);
+        $stmt->bindValue(':session_id', $sessionId, PDO::PARAM_STR);
+        $stmt->bindValue(':request_id', self::getRequestId(), PDO::PARAM_STR);
+        $stmt->bindValue(':created_at', date('Y-m-d H:i:s'), PDO::PARAM_STR);
 
         return $stmt->execute() !== false;
     }
@@ -193,7 +193,7 @@ class AuditLogger {
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
         }
-        $total = $stmt->execute()->fetchArray(SQLITE3_ASSOC)['total'];
+        $total = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['total'];
 
         // Get results
         $sql = "
@@ -209,12 +209,12 @@ class AuditLogger {
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
         }
-        $stmt->bindValue(':limit', $limit, SQLITE3_INTEGER);
-        $stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 
         $result = $stmt->execute();
         $logs = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             // Decode JSON fields
             if ($row['old_value']) $row['old_value'] = json_decode($row['old_value'], true);
             if ($row['new_value']) $row['new_value'] = json_decode($row['new_value'], true);
@@ -325,11 +325,11 @@ class AuditLogger {
             WHERE created_at >= :start AND created_at <= :end
             GROUP BY event_type
         ');
-        $stmt->bindValue(':start', $startDate, SQLITE3_TEXT);
-        $stmt->bindValue(':end', $endDate, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+        $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
         $result = $stmt->execute();
         $report['summary']['events_by_type'] = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $report['summary']['events_by_type'][$row['event_type']] = $row['count'];
         }
 
@@ -340,11 +340,11 @@ class AuditLogger {
             WHERE created_at >= :start AND created_at <= :end
             GROUP BY severity
         ');
-        $stmt->bindValue(':start', $startDate, SQLITE3_TEXT);
-        $stmt->bindValue(':end', $endDate, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+        $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
         $result = $stmt->execute();
         $report['summary']['events_by_severity'] = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $report['summary']['events_by_severity'][$row['severity']] = $row['count'];
         }
 
@@ -356,12 +356,12 @@ class AuditLogger {
             AND event_type = :type
             GROUP BY event_name
         ');
-        $stmt->bindValue(':start', $startDate, SQLITE3_TEXT);
-        $stmt->bindValue(':end', $endDate, SQLITE3_TEXT);
-        $stmt->bindValue(':type', self::TYPE_AUTH, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+        $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
+        $stmt->bindValue(':type', self::TYPE_AUTH, PDO::PARAM_STR);
         $result = $stmt->execute();
         $report['summary']['auth_events'] = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $report['summary']['auth_events'][$row['event_name']] = $row['count'];
         }
 
@@ -372,9 +372,9 @@ class AuditLogger {
             WHERE created_at >= :start AND created_at <= :end
             AND user_id IS NOT NULL
         ');
-        $stmt->bindValue(':start', $startDate, SQLITE3_TEXT);
-        $stmt->bindValue(':end', $endDate, SQLITE3_TEXT);
-        $report['summary']['unique_users'] = $stmt->execute()->fetchArray(SQLITE3_ASSOC)['count'];
+        $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+        $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
+        $report['summary']['unique_users'] = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
 
         // Unique IPs
         $stmt = $db->prepare('
@@ -383,9 +383,9 @@ class AuditLogger {
             WHERE created_at >= :start AND created_at <= :end
             AND ip_address IS NOT NULL
         ');
-        $stmt->bindValue(':start', $startDate, SQLITE3_TEXT);
-        $stmt->bindValue(':end', $endDate, SQLITE3_TEXT);
-        $report['summary']['unique_ips'] = $stmt->execute()->fetchArray(SQLITE3_ASSOC)['count'];
+        $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+        $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
+        $report['summary']['unique_ips'] = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
 
         // Security events (warning and above)
         $stmt = $db->prepare('
@@ -396,14 +396,14 @@ class AuditLogger {
             GROUP BY event_name, severity
             ORDER BY count DESC
         ');
-        $stmt->bindValue(':start', $startDate, SQLITE3_TEXT);
-        $stmt->bindValue(':end', $endDate, SQLITE3_TEXT);
-        $stmt->bindValue(':warn', self::SEVERITY_WARNING, SQLITE3_TEXT);
-        $stmt->bindValue(':error', self::SEVERITY_ERROR, SQLITE3_TEXT);
-        $stmt->bindValue(':critical', self::SEVERITY_CRITICAL, SQLITE3_TEXT);
+        $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+        $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
+        $stmt->bindValue(':warn', self::SEVERITY_WARNING, PDO::PARAM_STR);
+        $stmt->bindValue(':error', self::SEVERITY_ERROR, PDO::PARAM_STR);
+        $stmt->bindValue(':critical', self::SEVERITY_CRITICAL, PDO::PARAM_STR);
         $result = $stmt->execute();
         $report['summary']['security_events'] = [];
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $report['summary']['security_events'][] = $row;
         }
 
@@ -418,13 +418,13 @@ class AuditLogger {
                 ORDER BY al.created_at DESC
                 LIMIT 1000
             ');
-            $stmt->bindValue(':start', $startDate, SQLITE3_TEXT);
-            $stmt->bindValue(':end', $endDate, SQLITE3_TEXT);
-            $stmt->bindValue(':error', self::SEVERITY_ERROR, SQLITE3_TEXT);
-            $stmt->bindValue(':critical', self::SEVERITY_CRITICAL, SQLITE3_TEXT);
+            $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+            $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
+            $stmt->bindValue(':error', self::SEVERITY_ERROR, PDO::PARAM_STR);
+            $stmt->bindValue(':critical', self::SEVERITY_CRITICAL, PDO::PARAM_STR);
             $result = $stmt->execute();
 
-            while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $report['details'][] = $row;
             }
         }
@@ -440,7 +440,7 @@ class AuditLogger {
         $cutoff = date('Y-m-d H:i:s', strtotime("-{$daysToKeep} days"));
 
         $stmt = $db->prepare('DELETE FROM audit_log WHERE created_at < :cutoff');
-        $stmt->bindValue(':cutoff', $cutoff, SQLITE3_TEXT);
+        $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
         $stmt->execute();
 
         return $db->changes();
@@ -452,22 +452,33 @@ class AuditLogger {
     public static function getStats() {
         $db = getDB();
 
-        $stats = [];
+        $stats = [
+            'total' => 0,
+            'today' => 0,
+            'oldest' => null,
+            'estimated_rows' => 0
+        ];
 
-        // Total logs
-        $stats['total'] = $db->querySingle('SELECT COUNT(*) FROM audit_log');
+        try {
+            // Total logs
+            $stats['total'] = (int)$db->querySingle('SELECT COUNT(*) FROM audit_log');
 
-        // Logs today
-        $today = date('Y-m-d');
-        $stmt = $db->prepare('SELECT COUNT(*) FROM audit_log WHERE date(created_at) = :today');
-        $stmt->bindValue(':today', $today, SQLITE3_TEXT);
-        $stats['today'] = $stmt->execute()->fetchArray()[0];
+            // Logs today - use DATE() for MySQL compatibility
+            $today = date('Y-m-d');
+            $stmt = $db->prepare('SELECT COUNT(*) as cnt FROM audit_log WHERE DATE(created_at) = :today');
+            $stmt->bindValue(':today', $today, PDO::PARAM_STR);
+            $result = $stmt->execute();
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
+            $stats['today'] = (int)($row['cnt'] ?? 0);
 
-        // Oldest log
-        $stats['oldest'] = $db->querySingle('SELECT MIN(created_at) FROM audit_log');
+            // Oldest log
+            $stats['oldest'] = $db->querySingle('SELECT MIN(created_at) FROM audit_log');
 
-        // Database size estimate (row count * average row size)
-        $stats['estimated_rows'] = $stats['total'];
+            // Database size estimate (row count * average row size)
+            $stats['estimated_rows'] = $stats['total'];
+        } catch (Exception $e) {
+            // Table might not exist yet
+        }
 
         return $stats;
     }

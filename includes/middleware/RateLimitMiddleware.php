@@ -20,6 +20,9 @@ class RateLimitMiddleware implements MiddlewareInterface {
     // Storage directory for rate limit data
     private const STORAGE_DIR = __DIR__ . '/../../cache/ratelimit';
 
+    // Flag to track if database storage failed (use file fallback)
+    private static bool $databaseFailed = false;
+
     /**
      * Create rate limit middleware
      *
@@ -128,6 +131,11 @@ class RateLimitMiddleware implements MiddlewareInterface {
      * Check if we should use database storage
      */
     private function useDatabase(): bool {
+        // If database storage already failed this request, use file storage
+        if (self::$databaseFailed) {
+            return false;
+        }
+
         return function_exists('getDB') && function_exists('getSetting')
             && getSetting('rate_limit_storage', 'file') === 'database';
     }
@@ -139,15 +147,17 @@ class RateLimitMiddleware implements MiddlewareInterface {
         try {
             $db = getDB();
             $stmt = $db->prepare('SELECT data, expires_at FROM rate_limits WHERE key_name = :key');
-            $stmt->bindValue(':key', $key, SQLITE3_TEXT);
+            $stmt->bindValue(':key', $key, PDO::PARAM_STR);
             $result = $stmt->execute();
-            $row = $result->fetchArray(SQLITE3_ASSOC);
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
             if ($row && $row['expires_at'] > time()) {
                 return json_decode($row['data'], true) ?: [];
             }
         } catch (Exception $e) {
-            // Fall through to return empty
+            // Schema mismatch or other database error - fall back to file storage
+            self::$databaseFailed = true;
+            return $this->getFileData($key);
         }
 
         return [];
@@ -160,17 +170,28 @@ class RateLimitMiddleware implements MiddlewareInterface {
         try {
             $db = getDB();
             $expiresAt = time() + $this->windowSeconds + 60; // Add buffer
+            $jsonData = json_encode($data);
 
-            $stmt = $db->prepare('
-                INSERT OR REPLACE INTO rate_limits (key_name, data, expires_at)
-                VALUES (:key, :data, :expires)
-            ');
-            $stmt->bindValue(':key', $key, SQLITE3_TEXT);
-            $stmt->bindValue(':data', json_encode($data), SQLITE3_TEXT);
-            $stmt->bindValue(':expires', $expiresAt, SQLITE3_INTEGER);
+            if ($db->getType() === 'mysql') {
+                $stmt = $db->prepare('
+                    INSERT INTO rate_limits (key_name, data, expires_at)
+                    VALUES (:key, :data, :expires)
+                    ON DUPLICATE KEY UPDATE data = VALUES(data), expires_at = VALUES(expires_at)
+                ');
+            } else {
+                $stmt = $db->prepare('
+                    INSERT OR REPLACE INTO rate_limits (key_name, data, expires_at)
+                    VALUES (:key, :data, :expires)
+                ');
+            }
+            $stmt->bindValue(':key', $key, PDO::PARAM_STR);
+            $stmt->bindValue(':data', $jsonData, PDO::PARAM_STR);
+            $stmt->bindValue(':expires', $expiresAt, PDO::PARAM_INT);
             $stmt->execute();
         } catch (Exception $e) {
-            // Silently fail
+            // Schema mismatch or other database error - fall back to file storage
+            self::$databaseFailed = true;
+            $this->saveFileData($key, $data);
         }
     }
 
@@ -327,13 +348,19 @@ class RateLimitMiddleware implements MiddlewareInterface {
             }
         }
 
-        // Clean database storage
-        if (function_exists('getDB')) {
+        // Clean database storage (only if schema is correct)
+        if (function_exists('getDB') && !self::$databaseFailed) {
             try {
                 $db = getDB();
+                // Check if the table has the expected schema before cleaning
+                $stmt = $db->prepare('SELECT 1 FROM rate_limits WHERE key_name IS NOT NULL AND expires_at < :time LIMIT 1');
+                $stmt->bindValue(':time', time(), PDO::PARAM_INT);
+                $stmt->execute();
+                // If that worked, do the actual cleanup
                 $db->exec('DELETE FROM rate_limits WHERE expires_at < ' . time());
             } catch (Exception $e) {
-                // Ignore
+                // Schema mismatch or table doesn't exist - skip database cleanup
+                self::$databaseFailed = true;
             }
         }
 

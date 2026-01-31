@@ -7,33 +7,34 @@
     # If you're running Silo in a subdirectory, uncomment and set the base path
     # RewriteBase /silo/
 
-    # Redirect direct app/admin/*.php access to clean router URLs (SEO + security)
-    # Handles both simple URLs and URLs with query strings
+    # Block access to .git, .claude directories
+    RewriteRule ^\.(?:git|claude)(/|$) - [F,L]
+
+    # Block direct access to app/ directory (accessed via PHP router only)
+    # First, redirect known .php paths to clean URLs
     RewriteCond %{THE_REQUEST} \s/app/admin/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
     RewriteRule ^app/admin/([a-zA-Z0-9_-]+)\.php$ /admin/$1 [R=302,L,QSA]
 
-    # Redirect direct app/pages/*.php access to clean router URLs
     RewriteCond %{THE_REQUEST} \s/app/pages/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
     RewriteRule ^app/pages/([a-zA-Z0-9_-]+)\.php$ /$1 [R=302,L,QSA]
 
-    # Redirect direct app/actions/*.php access to clean router URLs
     RewriteCond %{THE_REQUEST} \s/app/actions/([a-zA-Z0-9_-]+)\.php(?:\?|\ |\s|$) [NC]
     RewriteRule ^app/actions/([a-zA-Z0-9_-]+)\.php$ /actions/$1 [R=302,L,QSA]
 
+    # Block any remaining direct access to app/ and storage/
+    RewriteRule ^app/ - [F,L]
+    RewriteRule ^storage/ - [F,L]
+
+    # Serve PWA files from public directory
+    RewriteRule ^sw\.js$ public/sw.js [L]
+    RewriteRule ^manifest\.json$ public/manifest.json [L]
+
     # Don't rewrite requests for files or directories that exist
-    # (except for PHP files which are handled above)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
 
     # Rewrite all other requests to index.php with the route parameter
     RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]
-</IfModule>
-
-# Protect sensitive directories
-<IfModule mod_authz_core.c>
-    <DirectoryMatch "^/.*/\.(git|claude)">
-        Require all denied
-    </DirectoryMatch>
 </IfModule>
 
 # Protect database files
@@ -56,20 +57,6 @@
         Require all denied
     </IfModule>
 </FilesMatch>
-
-# Protect app directory (should only be accessed via router)
-<IfModule mod_authz_core.c>
-    <Directory "app">
-        Require all denied
-    </Directory>
-</IfModule>
-
-# Protect storage directory (data files should be served via download handlers)
-<IfModule mod_authz_core.c>
-    <Directory "storage">
-        Require all denied
-    </Directory>
-</IfModule>
 
 # Security headers
 <IfModule mod_headers.c>
