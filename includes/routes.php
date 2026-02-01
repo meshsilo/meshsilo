@@ -268,6 +268,9 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Volume calculation
     $router->post('/calculate-volume', ['file' => 'app/actions/calculate-volume.php'], 'actions.volume');
+
+    // Real User Monitoring (RUM) data collection
+    $router->post('/rum', ['file' => 'app/actions/rum.php'], 'actions.rum');
 });
 
 // ============================================================================
@@ -325,6 +328,13 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
 
     // Statistics
     $router->get('/stats', ['file' => 'app/admin/stats.php'], 'admin.stats');
+
+    // Real User Monitoring
+    $router->get('/rum', ['file' => 'app/admin/rum.php'], 'admin.rum');
+
+    // CLI Tools
+    $router->get('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools');
+    $router->post('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools.run');
 
     // Activity log
     $router->get('/activity', ['file' => 'app/admin/activity.php'], 'admin.activity');

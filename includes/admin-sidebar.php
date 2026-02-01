@@ -23,6 +23,7 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.backups') ?>" <?= ($adminPage ?? '') === 'backups' ? 'class="active"' : '' ?>>Backups</a>
                             <a href="<?= route('admin.scheduler') ?>" <?= ($adminPage ?? '') === 'scheduler' ? 'class="active"' : '' ?>>Scheduled Tasks</a>
                             <a href="<?= route('admin.stats') ?>" <?= ($adminPage ?? '') === 'stats' ? 'class="active"' : '' ?>>Statistics</a>
+                            <a href="<?= route('admin.rum') ?>" <?= ($adminPage ?? '') === 'rum' ? 'class="active"' : '' ?>>Real User Monitoring</a>
                         </div>
                     </div>
 
@@ -102,6 +103,7 @@ if (!function_exists('isFeatureEnabled')) {
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active"' : '' ?>>Routes</a>
+                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active"' : '' ?>>CLI Tools</a>
                         </div>
                     </div>
                 </nav>

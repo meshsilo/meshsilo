@@ -5388,3 +5388,43 @@ body.batch-mode .model-list-item:hover {
 .version-meta .check-now:hover {
     text-decoration: underline;
 }
+
+/* =====================================================
+   Model Parts List Styling (scoped to model page only)
+   ===================================================== */
+.model-parts .part-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.model-parts .drag-handle {
+    flex-shrink: 0;
+}
+
+.model-parts .part-checkbox {
+    flex-shrink: 0;
+}
+
+.model-parts .part-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.model-parts .part-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.model-parts .part-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+}
