@@ -727,9 +727,21 @@ if (!function_exists('retry')) {
 
 if (!function_exists('dump')) {
     /**
-     * Dump variables for debugging
+     * Dump variables for debugging (only works when DEBUG mode is enabled)
      */
     function dump(...$vars): void {
+        // Only output in CLI or when DEBUG is explicitly enabled
+        $debugEnabled = (defined('DEBUG') && DEBUG === true) || php_sapi_name() === 'cli';
+        if (!$debugEnabled) {
+            // Log instead of outputting in production
+            if (function_exists('logDebug')) {
+                foreach ($vars as $var) {
+                    logDebug('dump() called in production', ['value' => print_r($var, true)]);
+                }
+            }
+            return;
+        }
+
         foreach ($vars as $var) {
             echo '<pre>';
             var_dump($var);
@@ -740,7 +752,7 @@ if (!function_exists('dump')) {
 
 if (!function_exists('dd')) {
     /**
-     * Dump and die
+     * Dump and die (only outputs when DEBUG mode is enabled)
      */
     function dd(...$vars): never {
         dump(...$vars);

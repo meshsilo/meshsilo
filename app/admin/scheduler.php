@@ -12,6 +12,58 @@ if (!canManageScheduler()) {
 }
 
 require_once __DIR__ . '/../../includes/Scheduler.php';
+require_once __DIR__ . '/../../includes/dedup.php';
+
+// Helper functions (must be defined before use)
+function formatBytes($bytes, $precision = 2) {
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= pow(1024, $pow);
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+function describeCronSchedule($schedule) {
+    $parts = preg_split('/\s+/', trim($schedule));
+    if (count($parts) !== 5) return 'Invalid';
+
+    [$min, $hour, $dom, $mon, $dow] = $parts;
+
+    if ($schedule === '* * * * *') return 'Every minute';
+
+    if (preg_match('/^\*\/(\d+)$/', $min, $m) && $hour === '*' && $dom === '*' && $mon === '*' && $dow === '*') {
+        return "Every {$m[1]} minutes";
+    }
+
+    if ($min !== '*' && $hour === '*' && $dom === '*' && $mon === '*' && $dow === '*') {
+        return "Every hour at minute $min";
+    }
+
+    if ($min === '0' && preg_match('/^\*\/(\d+)$/', $hour, $m) && $dom === '*' && $mon === '*' && $dow === '*') {
+        return "Every {$m[1]} hours";
+    }
+
+    if ($min !== '*' && $hour !== '*' && $dom === '*' && $mon === '*' && $dow === '*') {
+        return "Daily at " . sprintf('%02d:%02d', $hour, $min);
+    }
+
+    if ($dom === '*' && $mon === '*' && $dow !== '*') {
+        $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        $dayName = $days[$dow] ?? 'day ' . $dow;
+        return "Weekly on $dayName";
+    }
+
+    return 'Custom schedule';
+}
+
+function humanTimeDiff($seconds) {
+    if ($seconds < 0) return 'overdue';
+    if ($seconds < 60) return 'in ' . $seconds . 's';
+    if ($seconds < 3600) return 'in ' . floor($seconds / 60) . 'm';
+    if ($seconds < 86400) return 'in ' . floor($seconds / 3600) . 'h';
+    return 'in ' . floor($seconds / 86400) . 'd';
+}
 
 // Handle actions
 $message = '';
@@ -73,6 +125,10 @@ $customTasks = json_decode(getSetting('scheduler_custom_tasks', '[]'), true) ?? 
 // Calculate next run times
 $now = time();
 
+// Get deduplication statistics
+$dedupStats = getDeduplicationStats();
+$dedupTask = $tasks[Scheduler::TASK_DEDUP_SCAN] ?? null;
+
 include __DIR__ . '/../../includes/header.php';
 ?>
 
@@ -106,12 +162,96 @@ include __DIR__ . '/../../includes/header.php';
                 <a href="<?= route('admin.health') ?>" class="btn btn-secondary ml-2">View System Health</a>
 
                 <div class="mt-3">
-                    <h4>Cron Setup</h4>
-                    <p class="text-muted">Add this line to your crontab to run tasks automatically:</p>
-                    <pre class="code-block">* * * * * php <?= realpath(__DIR__ . '/../../cli/scheduler.php') ?></pre>
-                    <p class="text-muted mt-2">Or use the web endpoint with a secret key:</p>
-                    <pre class="code-block">* * * * * curl -s "<?= rtrim(getSetting('site_url', ''), '/') ?>/api/cron?key=YOUR_CRON_KEY"</pre>
+                    <h4>Cron Setup (Single Entry Point)</h4>
+                    <p class="text-muted">Add this single line to your crontab to run all scheduled tasks:</p>
+                    <pre class="code-block">* * * * * php <?= realpath(__DIR__ . '/../../cli/cron.php') ?> >> <?= realpath(__DIR__ . '/../../storage/logs') ?>/cron.log 2>&1</pre>
+                    <p class="text-muted mt-2">This unified cron handles: scheduler, queue processing, retention, thumbnails, deduplication, and demo reset (if enabled).</p>
+
                 </div>
+            </div>
+        </div>
+
+        <!-- Deduplication Status -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-between align-center">
+                <h2>File Deduplication</h2>
+                <div>
+                    <?php if ($dedupTask): ?>
+                        <?php if ($dedupTask['enabled']): ?>
+                            <span class="badge badge-success">Scheduled</span>
+                        <?php else: ?>
+                            <span class="badge badge-secondary">Disabled</span>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="dedup-stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value"><?= number_format($dedupStats['dedup_file_count']) ?></div>
+                        <div class="stat-label">Deduplicated Files</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value"><?= number_format($dedupStats['dedup_part_count']) ?></div>
+                        <div class="stat-label">Parts Using Dedup</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value"><?= formatBytes($dedupStats['space_saved']) ?></div>
+                        <div class="stat-label">Space Saved</div>
+                    </div>
+                    <div class="stat-box <?= $dedupStats['potential_duplicates'] > 0 ? 'stat-warning' : '' ?>">
+                        <div class="stat-value"><?= number_format($dedupStats['potential_duplicates']) ?></div>
+                        <div class="stat-label">Pending Duplicates</div>
+                    </div>
+                    <?php if ($dedupStats['potential_savings'] > 0): ?>
+                    <div class="stat-box stat-info">
+                        <div class="stat-value"><?= formatBytes($dedupStats['potential_savings']) ?></div>
+                        <div class="stat-label">Potential Savings</div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="dedup-actions mt-3">
+                    <form method="post" style="display: inline;">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="task" value="<?= Scheduler::TASK_DEDUP_SCAN ?>">
+                        <input type="hidden" name="action" value="run">
+                        <button type="submit" class="btn btn-primary">Run Dedup Now</button>
+                    </form>
+
+                    <?php if ($dedupTask): ?>
+                        <?php if ($dedupTask['enabled']): ?>
+                            <form method="post" style="display: inline;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="task" value="<?= Scheduler::TASK_DEDUP_SCAN ?>">
+                                <input type="hidden" name="action" value="disable">
+                                <button type="submit" class="btn btn-secondary">Disable Scheduled Dedup</button>
+                            </form>
+                        <?php else: ?>
+                            <form method="post" style="display: inline;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="task" value="<?= Scheduler::TASK_DEDUP_SCAN ?>">
+                                <input type="hidden" name="action" value="enable">
+                                <button type="submit" class="btn btn-success">Enable Scheduled Dedup</button>
+                            </form>
+                        <?php endif; ?>
+                    <?php endif; ?>
+
+                    <a href="<?= route('admin.storage') ?>" class="btn btn-secondary">View Storage</a>
+                </div>
+
+                <?php if ($dedupTask): ?>
+                <p class="text-muted mt-3">
+                    <strong>Schedule:</strong> <code><?= htmlspecialchars($dedupTask['schedule']) ?></code>
+                    (<?= describeCronSchedule($dedupTask['schedule']) ?>)
+                    <?php
+                    $nextDedupRun = Scheduler::getNextRun($dedupTask['schedule']);
+                    if ($nextDedupRun && $dedupTask['enabled']):
+                    ?>
+                    &mdash; Next run: <?= date('M j, H:i', $nextDedupRun) ?> (<?= humanTimeDiff($nextDedupRun - $now) ?>)
+                    <?php endif; ?>
+                </p>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -317,61 +457,63 @@ include __DIR__ . '/../../includes/header.php';
 .badge-secondary { background: #6b7280; color: white; }
 
 .ml-2 { margin-left: 0.5rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 1rem; }
+.cursor-pointer { cursor: pointer; }
+
+details summary {
+    padding: 0.5rem;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius);
+}
+details[open] summary {
+    margin-bottom: 0.5rem;
+}
+
+.dedup-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.stat-box {
+    background: var(--color-surface-hover);
+    padding: 1rem;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.stat-box.stat-warning {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.stat-box.stat-info {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+}
+
+.d-flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.align-center { align-items: center; }
+
+.dedup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
 </style>
 
-<?php
-/**
- * Describe a cron schedule in human terms
- */
-function describeCronSchedule($schedule) {
-    $parts = preg_split('/\s+/', trim($schedule));
-    if (count($parts) !== 5) return 'Invalid';
-
-    [$min, $hour, $dom, $mon, $dow] = $parts;
-
-    // Every minute
-    if ($schedule === '* * * * *') return 'Every minute';
-
-    // Every N minutes
-    if (preg_match('/^\*\/(\d+)$/', $min, $m) && $hour === '*' && $dom === '*' && $mon === '*' && $dow === '*') {
-        return "Every {$m[1]} minutes";
-    }
-
-    // Every hour at specific minute
-    if ($min !== '*' && $hour === '*' && $dom === '*' && $mon === '*' && $dow === '*') {
-        return "Every hour at minute $min";
-    }
-
-    // Every N hours
-    if ($min === '0' && preg_match('/^\*\/(\d+)$/', $hour, $m) && $dom === '*' && $mon === '*' && $dow === '*') {
-        return "Every {$m[1]} hours";
-    }
-
-    // Daily at specific time
-    if ($min !== '*' && $hour !== '*' && $dom === '*' && $mon === '*' && $dow === '*') {
-        return "Daily at " . sprintf('%02d:%02d', $hour, $min);
-    }
-
-    // Weekly
-    if ($dom === '*' && $mon === '*' && $dow !== '*') {
-        $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        $dayName = $days[$dow] ?? 'day ' . $dow;
-        return "Weekly on $dayName";
-    }
-
-    return 'Custom schedule';
-}
-
-/**
- * Human-readable time difference
- */
-function humanTimeDiff($seconds) {
-    if ($seconds < 0) return 'overdue';
-    if ($seconds < 60) return 'in ' . $seconds . 's';
-    if ($seconds < 3600) return 'in ' . floor($seconds / 60) . 'm';
-    if ($seconds < 86400) return 'in ' . floor($seconds / 3600) . 'h';
-    return 'in ' . floor($seconds / 86400) . 'd';
-}
-
-include __DIR__ . '/../../includes/footer.php';
-?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>

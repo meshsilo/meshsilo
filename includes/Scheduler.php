@@ -29,6 +29,10 @@ class Scheduler {
     public const TASK_STATS_CALCULATE = 'stats:calculate';
     public const TASK_WEBHOOKS_RETRY = 'webhooks:retry';
     public const TASK_DEMO_RESET = 'demo:reset';
+    public const TASK_QUEUE_PROCESS = 'queue:process';
+    public const TASK_RETENTION_APPLY = 'retention:apply';
+    public const TASK_THUMBNAILS_GENERATE = 'thumbnails:generate';
+    public const TASK_MESH_ANALYZE = 'mesh:analyze';
 
     /**
      * Initialize scheduler with default tasks
@@ -490,6 +494,86 @@ class Scheduler {
             }
             return 'Skipped';
         }, ['description' => 'Optimize database (VACUUM and ANALYZE)']);
+
+        // Queue processing - every minute
+        self::register(self::TASK_QUEUE_PROCESS, '* * * * *', function() {
+            if (!class_exists('Queue')) {
+                require_once __DIR__ . '/Queue.php';
+            }
+
+            $maxJobs = 10;
+            $processed = 0;
+            $failed = 0;
+
+            for ($i = 0; $i < $maxJobs; $i++) {
+                $job = Queue::pop();
+                if (!$job) break;
+
+                try {
+                    if (Queue::process($job)) {
+                        $processed++;
+                    } else {
+                        $failed++;
+                    }
+                } catch (Exception $e) {
+                    $failed++;
+                }
+            }
+
+            if ($processed === 0 && $failed === 0) {
+                return 'No jobs in queue';
+            }
+            return "Processed {$processed} jobs, {$failed} failed";
+        }, ['description' => 'Process background job queue']);
+
+        // Retention policy application - daily at 2am
+        self::register(self::TASK_RETENTION_APPLY, '0 2 * * *', function() {
+            if (!class_exists('RetentionManager')) {
+                require_once __DIR__ . '/RetentionManager.php';
+            }
+
+            $result = RetentionManager::applyAll();
+            $affected = $result['affected'] ?? 0;
+            return "Retention policies applied, {$affected} items affected";
+        }, ['description' => 'Apply data retention policies']);
+
+        // Thumbnail generation - every 5 minutes
+        self::register(self::TASK_THUMBNAILS_GENERATE, '*/5 * * * *', function() {
+            if (!class_exists('ThumbnailGenerator')) {
+                require_once __DIR__ . '/ThumbnailGenerator.php';
+            }
+
+            $count = ThumbnailGenerator::processPending(10);
+            if ($count === 0) {
+                return 'No pending thumbnails';
+            }
+            return "Generated {$count} thumbnails";
+        }, ['description' => 'Generate thumbnails for new models']);
+
+        // Deduplication scan - daily at 1am
+        self::register(self::TASK_DEDUP_SCAN, '0 1 * * *', function() {
+            require_once __DIR__ . '/dedup.php';
+
+            if (function_exists('runDeduplication')) {
+                $result = runDeduplication(['scan' => true, 'limit' => 100]);
+                $found = $result['duplicates_found'] ?? 0;
+                return "Dedup scan complete, {$found} duplicates found";
+            }
+            return 'Deduplication function not available';
+        }, ['description' => 'Scan for duplicate files']);
+
+        // Mesh analysis - every 10 minutes
+        self::register(self::TASK_MESH_ANALYZE, '*/10 * * * *', function() {
+            if (!class_exists('MeshAnalyzer')) {
+                require_once __DIR__ . '/MeshAnalyzer.php';
+            }
+
+            $count = MeshAnalyzer::processPending(5);
+            if ($count === 0) {
+                return 'No pending mesh analysis';
+            }
+            return "Analyzed {$count} meshes";
+        }, ['description' => 'Analyze mesh files for metadata']);
     }
 
     /**

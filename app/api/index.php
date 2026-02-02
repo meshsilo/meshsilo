@@ -36,6 +36,7 @@ require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/api-auth.php';
 require_once __DIR__ . '/../../includes/api-helpers.php';
 require_once __DIR__ . '/../../includes/ApiVersion.php';
+require_once __DIR__ . '/../../includes/RateLimiter.php';
 
 // Set up error handling
 setupErrorHandler();
@@ -70,6 +71,26 @@ $subResource = $segments[2] ?? null;
 $apiUser = authenticateApiRequest();
 if (!$apiUser) {
     apiError('Unauthorized. Provide a valid API key via X-API-Key header or api_key parameter.', 401);
+}
+
+// Apply rate limiting
+$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+$tier = RateLimiter::getTierForUser($apiUser['id'] ?? null, $apiKey);
+$rateLimitResult = RateLimiter::check(
+    $apiKey ?: ($apiUser['id'] ?? $_SERVER['REMOTE_ADDR']),
+    $tier,
+    'api:' . $resource
+);
+RateLimiter::setHeaders($rateLimitResult);
+
+if (!$rateLimitResult['allowed']) {
+    http_response_code(429);
+    echo json_encode([
+        'error' => 'Rate limit exceeded',
+        'retry_after' => $rateLimitResult['reset'] - time(),
+        'tier' => $rateLimitResult['tier']
+    ]);
+    exit;
 }
 
 // Log API request

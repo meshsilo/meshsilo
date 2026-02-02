@@ -3,15 +3,14 @@
  * Demo Mode Reset CLI Script
  *
  * Resets the Silo instance to demo mode with sample models.
- * This should be run via cron for automatic periodic resets.
+ *
+ * NOTE: This task runs automatically via the unified cron when demo mode is enabled.
+ * For scheduled execution, use: php cli/cron.php (runs demo:reset task hourly)
  *
  * Usage:
  *   php cli/demo-reset.php              # Run reset
  *   php cli/demo-reset.php --force      # Skip confirmation
  *   php cli/demo-reset.php --dry-run    # Show what would happen
- *
- * Cron example (reset every hour):
- *   0 * * * * php /path/to/silo/cli/demo-reset.php --force
  */
 
 // Ensure running from CLI
@@ -95,13 +94,17 @@ try {
 }
 
 // Show what will be done
+$demoUser = getenv('DEMO_USER') ?: 'demo';
+$demoAdmin = getenv('DEMO_ADMIN_USER') ?: 'demoadmin';
 echo "This will:\n";
 echo "  1. Delete ALL existing models and parts\n";
 echo "  2. Delete ALL user accounts\n";
 echo "  3. Clear favorites, tags, activity logs\n";
 echo "  4. Download sample models from NASA\n";
-echo "  5. Create demo user (demo / demo123)\n";
-echo "  6. Create demo admin (demoadmin / demoadmin123)\n\n";
+echo "  5. Create demo user ({$demoUser})\n";
+echo "  6. Create demo admin ({$demoAdmin})\n";
+echo "\nNote: Set DEMO_PASSWORD and DEMO_ADMIN_PASSWORD env vars to specify credentials.\n";
+echo "      If not set, random secure passwords will be generated and displayed.\n\n";
 
 if ($dryRun) {
     echo "[DRY RUN] Would reset to demo mode with " . count($demoMode->getSampleModels()) . " sample models.\n";
@@ -133,8 +136,11 @@ try {
         echo "\n✓ Demo reset completed successfully in {$elapsed}s\n\n";
         echo "Summary:\n";
         echo "  - Models created: " . ($result['models_created'] ?? 0) . "\n";
-        echo "  - Demo user: demo / demo123\n";
-        echo "  - Demo admin: demoadmin / demoadmin123\n";
+        foreach ($result['messages'] ?? [] as $msg) {
+            if (strpos($msg, 'Created demo') !== false) {
+                echo "  - $msg\n";
+            }
+        }
 
         if (!empty($result['errors'])) {
             echo "\nWarnings:\n";

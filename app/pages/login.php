@@ -9,6 +9,12 @@ if (isset($_SESSION['oidc_error'])) {
     unset($_SESSION['oidc_error']);
 }
 
+// Check for session timeout message
+if (isset($_SESSION['session_timeout_message'])) {
+    $error = $_SESSION['session_timeout_message'];
+    unset($_SESSION['session_timeout_message']);
+}
+
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';

@@ -97,8 +97,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <div class="settings-form">
-                    <section class="settings-section">
-                        <h2>Add Category</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Add Category</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="input-with-button">
@@ -106,10 +106,10 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <button type="submit" name="add_category" class="btn btn-primary">Add</button>
                             </div>
                         </form>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Existing Categories</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Existing Categories</h2></summary>
                         <?php if (empty($categories)): ?>
                             <p class="text-muted">No categories yet.</p>
                         <?php else: ?>
@@ -145,7 +145,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 </tbody>
                             </table>
                         <?php endif; ?>
-                    </section>
+                    </details>
                 </div>
             </div>
         </div>

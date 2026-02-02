@@ -194,8 +194,8 @@ require_once __DIR__ . '/../../includes/header.php';
 
                 <div class="settings-form">
                     <!-- Profile Section -->
-                    <section class="settings-section">
-                        <h2>Profile Information</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Profile Information</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="form-row-grid">
@@ -222,11 +222,11 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
                         </form>
-                    </section>
+                    </details>
 
                     <!-- Password Section -->
-                    <section class="settings-section">
-                        <h2>Change Password</h2>
+                    <details class="settings-section">
+                        <summary><h2>Change Password</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="form-row-grid">
@@ -243,11 +243,11 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
                         </form>
-                    </section>
+                    </details>
 
                     <!-- Groups Section -->
-                    <section class="settings-section">
-                        <h2>Group Memberships</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Group Memberships</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="form-group">
@@ -273,11 +273,11 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <button type="submit" name="update_groups" class="btn btn-primary">Update Groups</button>
                         </form>
-                    </section>
+                    </details>
 
                     <!-- Effective Permissions Section -->
-                    <section class="settings-section">
-                        <h2>Effective Permissions</h2>
+                    <details class="settings-section">
+                        <summary><h2>Effective Permissions</h2></summary>
                         <p class="text-muted">Permissions granted through group memberships:</p>
                         <div class="permission-list">
                             <?php
@@ -291,18 +291,18 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <?php endforeach; ?>
                         </div>
-                    </section>
+                    </details>
 
                     <!-- Danger Zone -->
                     <?php if (!$isCurrentUser): ?>
-                    <section class="settings-section danger-zone">
-                        <h2>Danger Zone</h2>
+                    <details class="settings-section danger-zone">
+                        <summary><h2>Danger Zone</h2></summary>
                         <form method="post" onsubmit="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
                             <?= csrf_field() ?>
                             <p>Permanently delete this user account. This cannot be undone.</p>
                             <button type="submit" name="delete_user" class="btn btn-danger">Delete User</button>
                         </form>
-                    </section>
+                    </details>
                     <?php endif; ?>
                 </div>
             </div>

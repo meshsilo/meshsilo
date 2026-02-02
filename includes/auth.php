@@ -25,6 +25,42 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Session idle timeout check (default 30 minutes, configurable via settings)
+if (php_sapi_name() !== 'cli' && isset($_SESSION['user_id'])) {
+    $idleTimeout = 1800; // 30 minutes default
+    if (function_exists('getSetting')) {
+        $idleTimeout = (int)getSetting('session_idle_timeout', 1800);
+    }
+
+    if ($idleTimeout > 0) {
+        $lastActivity = $_SESSION['last_activity'] ?? time();
+        $idleTime = time() - $lastActivity;
+
+        if ($idleTime > $idleTimeout) {
+            // Session has been idle too long - destroy it
+            if (function_exists('logAuthEvent') && isset($_SESSION['user']['username'])) {
+                logAuthEvent('session_timeout', $_SESSION['user']['username'], true, [
+                    'user_id' => $_SESSION['user_id'],
+                    'idle_seconds' => $idleTime
+                ]);
+            }
+
+            session_unset();
+            session_destroy();
+
+            // Start a new session for the error message
+            session_start();
+            $_SESSION['session_timeout_message'] = 'Your session has expired due to inactivity. Please log in again.';
+
+            header('Location: /login');
+            exit;
+        }
+    }
+
+    // Update last activity timestamp
+    $_SESSION['last_activity'] = time();
+}
+
 // Check URL enforcement (must happen before any output)
 // First check config file, then database settings
 $siteUrl = defined('SITE_URL') ? SITE_URL : '';

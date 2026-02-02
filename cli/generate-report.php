@@ -3,9 +3,8 @@
 /**
  * CLI Tool: Generate Scheduled Reports
  *
- * This script should be run via cron to generate and send scheduled reports.
- * Example cron entry (daily at 6am):
- *   0 6 * * * /usr/bin/php /path/to/silo/cli/generate-report.php --schedule=daily
+ * NOTE: For scheduled execution, use: php cli/cron.php
+ * This script is for manual report generation or custom schedules.
  *
  * Usage:
  *   php cli/generate-report.php [options]

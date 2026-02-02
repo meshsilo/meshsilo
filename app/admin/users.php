@@ -170,8 +170,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <div class="settings-form">
-                    <section class="settings-section">
-                        <h2>Add User</h2>
+                    <details class="settings-section">
+                        <summary><h2>Add User</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="form-row-grid">
@@ -201,10 +201,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <button type="submit" name="add_user" class="btn btn-primary">Add User</button>
                         </form>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Existing Users</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Existing Users</h2></summary>
                         <table class="admin-table">
                             <thead>
                                 <tr>
@@ -260,7 +260,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-                    </section>
+                    </details>
                 </div>
             </div>
         </div>

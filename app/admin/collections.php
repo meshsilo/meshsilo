@@ -98,8 +98,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <div class="settings-form">
-                    <section class="settings-section">
-                        <h2>Add Collection</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Add Collection</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="form-group">
@@ -112,10 +112,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <button type="submit" name="add_collection" class="btn btn-primary">Add Collection</button>
                         </form>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Existing Collections</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Existing Collections</h2></summary>
                         <?php if (empty($collections)): ?>
                             <p class="text-muted">No collections yet.</p>
                         <?php else: ?>
@@ -153,7 +153,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 </tbody>
                             </table>
                         <?php endif; ?>
-                    </section>
+                    </details>
                 </div>
             </div>
         </div>

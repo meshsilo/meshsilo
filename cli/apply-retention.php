@@ -3,9 +3,8 @@
 /**
  * CLI Tool: Apply Retention Policies
  *
- * This script should be run via cron to automatically apply retention policies.
- * Example cron entry (daily at 2am):
- *   0 2 * * * /usr/bin/php /path/to/silo/cli/apply-retention.php
+ * NOTE: This task runs automatically via the unified cron. Manual use only when needed.
+ * For scheduled execution, use: php cli/cron.php (runs retention:apply task daily at 2am)
  *
  * Usage:
  *   php cli/apply-retention.php [options]

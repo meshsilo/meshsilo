@@ -5,8 +5,12 @@
  * Provides functionality to run Silo in demo mode with:
  * - Sample models from legal sources (NASA, public domain)
  * - Periodic reset of data via CLI cron job
- * - Demo banner display with credentials
- * - Demo user (demo / demo123) and demo admin (demoadmin / demoadmin123)
+ * - Demo banner display
+ * - Demo users created from environment variables or random passwords
+ *
+ * Environment variables for demo credentials:
+ *   DEMO_USER, DEMO_PASSWORD - Regular demo user
+ *   DEMO_ADMIN_USER, DEMO_ADMIN_PASSWORD - Demo admin user
  *
  * Demo mode can only be enabled during installation (install.php).
  */
@@ -230,27 +234,33 @@ class DemoMode {
             $this->progress($progressCallback, 'Resetting demo users...');
             $this->db->exec('DELETE FROM users WHERE is_admin = 0');
 
-            // Create demo user (regular)
-            $demoPassword = password_hash('demo123', PASSWORD_DEFAULT);
+            // Create demo user (regular) - credentials from environment or secure random
+            $demoUsername = getenv('DEMO_USER') ?: 'demo';
+            $demoUserPassword = getenv('DEMO_PASSWORD') ?: bin2hex(random_bytes(8));
+            $demoPassword = password_hash($demoUserPassword, PASSWORD_DEFAULT);
             $stmt = $this->db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 0)');
-            $stmt->execute([':u' => 'demo', ':e' => 'demo@example.com', ':p' => $demoPassword]);
+            $stmt->execute([':u' => $demoUsername, ':e' => $demoUsername . '@example.com', ':p' => $demoPassword]);
             $demoUserId = $this->db->lastInsertId();
             if ($demoUserId) {
                 $stmt = $this->db->prepare("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT :uid, id FROM groups WHERE name = 'Users'");
                 $stmt->execute([':uid' => $demoUserId]);
             }
-            $messages[] = 'Created demo user (demo / demo123)';
+            $credentialSource = getenv('DEMO_PASSWORD') ? '[from DEMO_PASSWORD env]' : $demoUserPassword;
+            $messages[] = "Created demo user ({$demoUsername} / {$credentialSource})";
 
-            // Create demo admin
-            $demoAdminPassword = password_hash('demoadmin123', PASSWORD_DEFAULT);
+            // Create demo admin - credentials from environment or secure random
+            $demoAdminUsername = getenv('DEMO_ADMIN_USER') ?: 'demoadmin';
+            $demoAdminPasswordPlain = getenv('DEMO_ADMIN_PASSWORD') ?: bin2hex(random_bytes(12));
+            $demoAdminPassword = password_hash($demoAdminPasswordPlain, PASSWORD_DEFAULT);
             $stmt = $this->db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 1)');
-            $stmt->execute([':u' => 'demoadmin', ':e' => 'demoadmin@example.com', ':p' => $demoAdminPassword]);
+            $stmt->execute([':u' => $demoAdminUsername, ':e' => $demoAdminUsername . '@example.com', ':p' => $demoAdminPassword]);
             $demoAdminId = $this->db->lastInsertId();
             if ($demoAdminId) {
                 $stmt = $this->db->prepare("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT :uid, id FROM groups WHERE name = 'Admin'");
                 $stmt->execute([':uid' => $demoAdminId]);
             }
-            $messages[] = 'Created demo admin (demoadmin / demoadmin123)';
+            $adminCredentialSource = getenv('DEMO_ADMIN_PASSWORD') ? '[from DEMO_ADMIN_PASSWORD env]' : $demoAdminPasswordPlain;
+            $messages[] = "Created demo admin ({$demoAdminUsername} / {$adminCredentialSource})";
 
             $this->db->getPDO()->commit();
 

@@ -47,14 +47,14 @@ class SecurityHeaders {
     public static function getDefaults(): array {
         return [
             'hsts' => [
-                'enabled' => false,
+                'enabled' => true,
                 'max_age' => 31536000, // 1 year
                 'include_subdomains' => false,
                 'preload' => false,
             ],
             'csp' => [
-                'enabled' => false,
-                'report_only' => true,
+                'enabled' => true,
+                'report_only' => false,
                 'directives' => [
                     'default-src' => ["'self'"],
                     'script-src' => ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
@@ -86,7 +86,7 @@ class SecurityHeaders {
                 'value' => 'strict-origin-when-cross-origin',
             ],
             'permissions_policy' => [
-                'enabled' => false,
+                'enabled' => true,
                 'directives' => [
                     'camera' => [],
                     'microphone' => [],

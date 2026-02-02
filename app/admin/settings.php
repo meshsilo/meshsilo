@@ -325,8 +325,8 @@ require_once __DIR__ . '/../../includes/header.php';
 
                 <form class="settings-form" method="POST">
                     <?= csrf_field() ?>
-                    <section class="settings-section">
-                        <h2>General</h2>
+                    <details class="settings-section">
+                        <summary><h2>General</h2></summary>
 
                         <div class="form-group">
                             <label for="site-name">Site Name</label>
@@ -344,10 +344,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             <label for="models-per-page">Models Per Page</label>
                             <input type="number" id="models-per-page" name="models_per_page" class="form-input" value="20" min="1" max="100">
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>URL &amp; Reverse Proxy</h2>
+                    <details class="settings-section">
+                        <summary><h2>URL &amp; Reverse Proxy</h2></summary>
 
                         <div class="form-group">
                             <label for="site_url">Site URL</label>
@@ -365,10 +365,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             </label>
                             <p class="form-help">When enabled, requests from other URLs will be rejected.</p>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Uploads</h2>
+                    <details class="settings-section">
+                        <summary><h2>Uploads</h2></summary>
 
                         <div class="form-group">
                             <label for="max-file-size">Max File Size (MB)</label>
@@ -399,10 +399,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             <p class="form-help">Select which 3D model formats can be uploaded. ZIP files are always allowed for multi-part uploads.</p>
                         </div>
 
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>File Conversion</h2>
+                    <details class="settings-section">
+                        <summary><h2>File Conversion</h2></summary>
 
                         <div class="form-group">
                             <label class="toggle-label">
@@ -412,10 +412,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             </label>
                             <p class="form-help">When enabled, STL files will automatically be converted to 3MF format during upload if conversion saves space.</p>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Registration</h2>
+                    <details class="settings-section">
+                        <summary><h2>Registration</h2></summary>
 
                         <div class="form-group">
                             <label class="toggle-label">
@@ -432,10 +432,10 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span>Require admin approval for new accounts</span>
                             </label>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Storage &amp; Deduplication</h2>
+                    <details class="settings-section">
+                        <summary><h2>Storage &amp; Deduplication</h2></summary>
 
                         <div class="form-group">
                             <label class="toggle-label">
@@ -453,10 +453,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             <p class="form-value"><?= htmlspecialchars($settings['last_deduplication']) ?></p>
                         </div>
                         <?php endif; ?>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Slicer Integration</h2>
+                    <details class="settings-section">
+                        <summary><h2>Slicer Integration</h2></summary>
                         <p class="form-help" style="margin-bottom: 1rem;">Select which slicer software options appear in the "Open in" menu on model pages. Slicers with URL protocol support can open files directly.</p>
 
                         <?php
@@ -485,10 +485,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <p class="form-help">Slicers marked with "URL" can open files directly from your browser if the software is installed. Others will download the file for manual opening.</p>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Single Sign-On (OIDC)</h2>
+                    <details class="settings-section">
+                        <summary><h2>Single Sign-On (OIDC)</h2></summary>
                         <p class="form-help" style="margin-bottom: 1rem;">Configure OpenID Connect to allow users to sign in with an external identity provider (Google, Azure AD, Keycloak, Authentik, etc.)</p>
 
                         <div class="form-group">
@@ -659,10 +659,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             <button type="button" id="test-oidc" class="btn btn-secondary">Test Connection</button>
                             <div id="oidc-test-result" style="margin-top: 0.5rem;"></div>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Email / SMTP Settings</h2>
+                    <details class="settings-section">
+                        <summary><h2>Email / SMTP Settings</h2></summary>
                         <p class="form-help" style="margin-bottom: 1rem;">Configure email settings for password reset links, notifications, and other system emails.</p>
 
                         <div class="form-group">
@@ -759,7 +759,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div id="email-test-result" style="margin-top: 0.5rem;"></div>
                             <p class="form-help">Save settings first, then send a test email to verify your configuration.</p>
                         </div>
-                    </section>
+                    </details>
 
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary">Reset to Defaults</button>
@@ -963,20 +963,6 @@ if (testEmailBtn) {
     });
 }
 
-// Collapsible settings sections - simplified version
-// CSS handles hiding via .collapsed h2 ~ * selector
-document.querySelectorAll('.settings-section').forEach(function(section) {
-    var h2 = section.querySelector('h2');
-    if (!h2) return;
-
-    // Start collapsed
-    section.classList.add('collapsed');
-
-    // Toggle on click
-    h2.onclick = function() {
-        section.classList.toggle('collapsed');
-    };
-});
 </script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

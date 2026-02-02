@@ -159,8 +159,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <div class="settings-form">
-                    <section class="settings-section">
-                        <h2>Storage Overview</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Storage Overview</h2></summary>
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-value"><?= formatBytes($assetsSize) ?></div>
@@ -179,10 +179,10 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="stat-label">Database Size</div>
                             </div>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>File Types</h2>
+                    <details class="settings-section">
+                        <summary><h2>File Types</h2></summary>
                         <table class="admin-table">
                             <thead>
                                 <tr>
@@ -205,11 +205,11 @@ require_once __DIR__ . '/../../includes/header.php';
                                 </tr>
                             </tbody>
                         </table>
-                    </section>
+                    </details>
 
                     <?php if ($dedupSavings['saved_size'] > 0): ?>
-                    <section class="settings-section">
-                        <h2>Deduplication Savings</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Deduplication Savings</h2></summary>
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-value"><?= formatBytes($dedupSavings['total_size']) ?></div>
@@ -228,11 +228,11 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="stat-label">Savings Rate</div>
                             </div>
                         </div>
-                    </section>
+                    </details>
                     <?php endif; ?>
 
-                    <section class="settings-section">
-                        <h2>Storage by Category</h2>
+                    <details class="settings-section">
+                        <summary><h2>Storage by Category</h2></summary>
                         <?php if (empty($usageByCategory)): ?>
                         <p class="text-muted">No categories found</p>
                         <?php else: ?>
@@ -265,10 +265,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             </tbody>
                         </table>
                         <?php endif; ?>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Storage by User</h2>
+                    <details class="settings-section">
+                        <summary><h2>Storage by User</h2></summary>
                         <?php if (empty($usageByUser)): ?>
                         <p class="text-muted">No users found</p>
                         <?php else: ?>
@@ -301,10 +301,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             </tbody>
                         </table>
                         <?php endif; ?>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Paths</h2>
+                    <details class="settings-section">
+                        <summary><h2>Paths</h2></summary>
                         <div class="form-group">
                             <label>Assets Directory</label>
                             <p class="form-hint"><?= htmlspecialchars($assetsPath) ?></p>
@@ -313,10 +313,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             <label>Database File</label>
                             <p class="form-hint"><?= htmlspecialchars($dbPath) ?></p>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="settings-section">
-                        <h2>Storage Backend</h2>
+                    <details class="settings-section" open>
+                        <summary><h2>Storage Backend</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="form-group">
@@ -398,7 +398,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             </form>
                         </div>
                         <?php endif; ?>
-                    </section>
+                    </details>
 
                     <script>
                     function toggleS3Settings() {
@@ -415,8 +415,8 @@ require_once __DIR__ . '/../../includes/header.php';
                     }
                     </script>
 
-                    <section class="settings-section">
-                        <h2>Maintenance</h2>
+                    <details class="settings-section">
+                        <summary><h2>Maintenance</h2></summary>
                         <div class="button-group">
                             <form method="post" style="display:inline;">
                                 <?= csrf_field() ?>
@@ -427,7 +427,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <button type="submit" name="clear_orphans" class="btn btn-secondary">Clean Orphaned Files</button>
                             </form>
                         </div>
-                    </section>
+                    </details>
                 </div>
             </div>
         </div>

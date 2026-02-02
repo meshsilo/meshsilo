@@ -11,8 +11,10 @@
  *   php cli/scheduler.php --run <name> Run a specific task
  *   php cli/scheduler.php --history    Show task run history
  *
- * Cron setup (run every minute):
- *   * * * * * php /path/to/silo/cli/scheduler.php >> /path/to/silo/logs/scheduler.log 2>&1
+ * NOTE: For cron setup, use the unified cron.php instead:
+ *   * * * * * php /path/to/silo/cli/cron.php >> /path/to/silo/storage/logs/cron.log 2>&1
+ *
+ * All tasks are manageable via Admin > Scheduled Tasks.
  */
 
 // Ensure we're running from CLI

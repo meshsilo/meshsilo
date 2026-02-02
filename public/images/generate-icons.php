@@ -9,9 +9,10 @@
  * Or access via browser: /images/generate-icons.php
  */
 
-// Prevent web access in production
-if (php_sapi_name() !== 'cli' && !isset($_GET['generate'])) {
-    die('Add ?generate=1 to URL to run icon generation');
+// Only allow CLI access - this script should not be accessible via web
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die('This script can only be run from the command line.');
 }
 
 $sizes = [192, 512];

@@ -468,25 +468,33 @@ function initializeSQLiteDatabase($config) {
         $stmt->execute();
 
         if ($demoMode === '1') {
-            // Create demo user (regular)
-            $demoPassword = password_hash('demo123', PASSWORD_DEFAULT);
+            // Create demo user - credentials from environment or secure random
+            $demoUsername = getenv('DEMO_USER') ?: 'demo';
+            $demoUserPassword = getenv('DEMO_PASSWORD') ?: bin2hex(random_bytes(8));
+            $demoPassword = password_hash($demoUserPassword, PASSWORD_DEFAULT);
             $stmt = $db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 0)');
-            $stmt->bindValue(':u', 'demo', PDO::PARAM_STR);
-            $stmt->bindValue(':e', 'demo@example.com', PDO::PARAM_STR);
+            $stmt->bindValue(':u', $demoUsername, PDO::PARAM_STR);
+            $stmt->bindValue(':e', $demoUsername . '@example.com', PDO::PARAM_STR);
             $stmt->bindValue(':p', $demoPassword, PDO::PARAM_STR);
             $stmt->execute();
             $demoUserId = $db->lastInsertRowID();
-            $db->exec("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT $demoUserId, id FROM groups WHERE name = 'Users'");
+            $groupStmt = $db->prepare("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT :uid, id FROM groups WHERE name = 'Users'");
+            $groupStmt->bindValue(':uid', $demoUserId, PDO::PARAM_INT);
+            $groupStmt->execute();
 
-            // Create demo admin
-            $demoAdminPassword = password_hash('demoadmin123', PASSWORD_DEFAULT);
+            // Create demo admin - credentials from environment or secure random
+            $demoAdminUsername = getenv('DEMO_ADMIN_USER') ?: 'demoadmin';
+            $demoAdminPasswordPlain = getenv('DEMO_ADMIN_PASSWORD') ?: bin2hex(random_bytes(12));
+            $demoAdminPassword = password_hash($demoAdminPasswordPlain, PASSWORD_DEFAULT);
             $stmt = $db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 1)');
-            $stmt->bindValue(':u', 'demoadmin', PDO::PARAM_STR);
-            $stmt->bindValue(':e', 'demoadmin@example.com', PDO::PARAM_STR);
+            $stmt->bindValue(':u', $demoAdminUsername, PDO::PARAM_STR);
+            $stmt->bindValue(':e', $demoAdminUsername . '@example.com', PDO::PARAM_STR);
             $stmt->bindValue(':p', $demoAdminPassword, PDO::PARAM_STR);
             $stmt->execute();
             $demoAdminId = $db->lastInsertRowID();
-            $db->exec("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT $demoAdminId, id FROM groups WHERE name = 'Admin'");
+            $groupStmt = $db->prepare("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT :uid, id FROM groups WHERE name = 'Admin'");
+            $groupStmt->bindValue(':uid', $demoAdminId, PDO::PARAM_INT);
+            $groupStmt->execute();
         }
 
         $db->close();
@@ -570,19 +578,25 @@ function initializeMySQLDatabase($config) {
         $stmt->execute([':k' => 'demo_mode', ':v' => $demoMode, ':v2' => $demoMode]);
 
         if ($demoMode === '1') {
-            // Create demo user (regular)
-            $demoPassword = password_hash('demo123', PASSWORD_DEFAULT);
+            // Create demo user - credentials from environment or secure random
+            $demoUsername = getenv('DEMO_USER') ?: 'demo';
+            $demoUserPassword = getenv('DEMO_PASSWORD') ?: bin2hex(random_bytes(8));
+            $demoPassword = password_hash($demoUserPassword, PASSWORD_DEFAULT);
             $demoStmt = $pdo->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 0)');
-            $demoStmt->execute([':username' => 'demo', ':email' => 'demo@example.com', ':password' => $demoPassword]);
+            $demoStmt->execute([':username' => $demoUsername, ':email' => $demoUsername . '@example.com', ':password' => $demoPassword]);
             $demoUserId = $pdo->lastInsertId();
-            $pdo->exec("INSERT INTO user_groups (user_id, group_id) SELECT $demoUserId, id FROM `groups` WHERE name = 'Users'");
+            $groupStmt = $pdo->prepare("INSERT INTO user_groups (user_id, group_id) SELECT :uid, id FROM `groups` WHERE name = 'Users'");
+            $groupStmt->execute([':uid' => $demoUserId]);
 
-            // Create demo admin
-            $demoAdminPassword = password_hash('demoadmin123', PASSWORD_DEFAULT);
+            // Create demo admin - credentials from environment or secure random
+            $demoAdminUsername = getenv('DEMO_ADMIN_USER') ?: 'demoadmin';
+            $demoAdminPasswordPlain = getenv('DEMO_ADMIN_PASSWORD') ?: bin2hex(random_bytes(12));
+            $demoAdminPassword = password_hash($demoAdminPasswordPlain, PASSWORD_DEFAULT);
             $demoStmt = $pdo->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 1)');
-            $demoStmt->execute([':username' => 'demoadmin', ':email' => 'demoadmin@example.com', ':password' => $demoAdminPassword]);
+            $demoStmt->execute([':username' => $demoAdminUsername, ':email' => $demoAdminUsername . '@example.com', ':password' => $demoAdminPassword]);
             $demoAdminId = $pdo->lastInsertId();
-            $pdo->exec("INSERT INTO user_groups (user_id, group_id) SELECT $demoAdminId, id FROM `groups` WHERE name = 'Admin'");
+            $groupStmt = $pdo->prepare("INSERT INTO user_groups (user_id, group_id) SELECT :uid, id FROM `groups` WHERE name = 'Admin'");
+            $groupStmt->execute([':uid' => $demoAdminId]);
         }
 
         return true;

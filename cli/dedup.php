@@ -3,13 +3,13 @@
 /**
  * CLI script for running deduplication
  *
+ * NOTE: This task runs automatically via the unified cron. Manual use only when needed.
+ * For scheduled execution, use: php cli/cron.php (runs dedup:scan task daily at 1am)
+ *
  * Usage:
  *   php cli/dedup.php              # Run deduplication
  *   php cli/dedup.php --dry-run    # Show what would be deduplicated without making changes
  *   php cli/dedup.php --force      # Run even if auto_deduplication is disabled
- *
- * Add to crontab for scheduled execution:
- *   0 2 * * * cd /path/to/silo && php cli/dedup.php >> logs/dedup.log 2>&1
  */
 
 // Ensure we're running from CLI

@@ -208,8 +208,8 @@ require_once __DIR__ . '/../../includes/header.php';
             <?php endif; ?>
         </div>
 
-        <section class="settings-section">
-            <h2>Database Information</h2>
+        <details class="settings-section" open>
+            <summary><h2>Database Information</h2></summary>
             <table class="data-table">
                 <tr>
                     <th>Schema Version</th>
@@ -230,10 +230,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 </tr>
                 <?php endif; ?>
             </table>
-        </section>
+        </details>
 
-        <section class="settings-section">
-            <h2>Table Statistics</h2>
+        <details class="settings-section">
+            <summary><h2>Table Statistics</h2></summary>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -250,10 +250,10 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        </section>
+        </details>
 
-        <section class="settings-section">
-            <h2>Migration Status</h2>
+        <details class="settings-section" open>
+            <summary><h2>Migration Status</h2></summary>
             <?php if ($pendingCount > 0): ?>
                 <div class="alert alert-warning" style="margin-bottom: 1rem;">
                     <?= $pendingCount ?> migration(s) pending. Run migrations to update your database schema.
@@ -286,10 +286,10 @@ require_once __DIR__ . '/../../includes/header.php';
                     </button>
                 </form>
             <?php endif; ?>
-        </section>
+        </details>
 
-        <section class="settings-section">
-            <h2>Database Maintenance</h2>
+        <details class="settings-section">
+            <summary><h2>Database Maintenance</h2></summary>
             <div class="button-group">
                 <?php if ($dbType === 'sqlite'): ?>
                 <form method="post" style="display: inline;">
@@ -313,10 +313,10 @@ require_once __DIR__ . '/../../includes/header.php';
                     Optimize runs OPTIMIZE TABLE on all tables to reclaim space and update statistics.
                 <?php endif; ?>
             </p>
-        </section>
+        </details>
 
-        <section class="settings-section">
-            <h2>CLI Tool</h2>
+        <details class="settings-section">
+            <summary><h2>CLI Tool</h2></summary>
             <p>For automated updates and scripting, use the CLI migration tool:</p>
             <pre style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code># Check migration status
 php cli/migrate.php --status
@@ -329,7 +329,7 @@ php cli/migrate.php --dry-run
 
 # Run via bin/meshsilo
 ./bin/meshsilo migrate</code></pre>
-                </section>
+                </details>
             </div>
         </div>
 

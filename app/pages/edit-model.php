@@ -73,11 +73,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
 
-        // Update categories
-        $db->exec("DELETE FROM model_categories WHERE model_id = $modelId");
+        // Update categories using prepared statements
+        $deleteStmt = $db->prepare('DELETE FROM model_categories WHERE model_id = :model_id');
+        $deleteStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+        $deleteStmt->execute();
+
+        $insertStmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
         foreach ($categoryIds as $catId) {
-            $catId = (int)$catId;
-            $db->exec("INSERT INTO model_categories (model_id, category_id) VALUES ($modelId, $catId)");
+            $insertStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+            $insertStmt->bindValue(':category_id', (int)$catId, PDO::PARAM_INT);
+            $insertStmt->execute();
         }
 
         logActivity('edit', 'model', $modelId, $name);

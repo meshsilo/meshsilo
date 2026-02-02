@@ -6,17 +6,23 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
+// Helper function for error responses
+function downloadError(int $code, string $message): never {
+    http_response_code($code);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => $message]);
+    exit;
+}
+
 // Require authentication
 if (!isLoggedIn()) {
-    http_response_code(401);
-    die('Not authenticated');
+    downloadError(401, 'Authentication required');
 }
 
 $partId = (int)($_GET['id'] ?? 0);
 
 if (!$partId) {
-    http_response_code(400);
-    die('Invalid request');
+    downloadError(400, 'Invalid request: missing file ID');
 }
 
 $db = getDB();
@@ -26,16 +32,18 @@ $result = $stmt->execute();
 $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$part) {
-    http_response_code(404);
-    die('File not found');
+    downloadError(404, 'File not found');
 }
 
 // Get the real file path (handles deduplicated files)
 $filePath = getAbsoluteFilePath($part);
 
 if (!$filePath || !is_file($filePath)) {
-    http_response_code(404);
-    die('File not found on disk');
+    logError('Download failed: file not found on disk', [
+        'part_id' => $partId,
+        'expected_path' => $part['file_path'] ?? 'unknown'
+    ]);
+    downloadError(404, 'File not found on disk');
 }
 
 // Get the original filename for download and sanitize for header use
