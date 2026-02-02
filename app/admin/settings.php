@@ -165,8 +165,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $allowedExtensions = implode(',', $formats);
 
-    $autoDeduplication = isset($_POST['auto_deduplication']) ? '1' : '0';
-
     // OIDC settings
     $oidcEnabled = isset($_POST['oidc_enabled']) ? '1' : '0';
     $oidcProviderUrl = trim($_POST['oidc_provider_url'] ?? '');
@@ -197,7 +195,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
     setSetting('allowed_extensions', $allowedExtensions);
-    setSetting('auto_deduplication', $autoDeduplication);
     setSetting('oidc_enabled', $oidcEnabled);
     setSetting('oidc_provider_url', $oidcProviderUrl);
     setSetting('oidc_client_id', $oidcClientId);
@@ -251,7 +248,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'allow_registration' => $allowRegistration,
         'require_approval' => $requireApproval,
         'allowed_extensions' => $allowedExtensions,
-        'auto_deduplication' => $autoDeduplication,
         'oidc_enabled' => $oidcEnabled
     ]);
 
@@ -432,27 +428,6 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span>Require admin approval for new accounts</span>
                             </label>
                         </div>
-                    </details>
-
-                    <details class="settings-section">
-                        <summary><h2>Storage &amp; Deduplication</h2></summary>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="auto_deduplication" <?= ($settings['auto_deduplication'] ?? '0') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Enable scheduled deduplication</span>
-                            </label>
-                            <p class="form-help">When enabled, the CLI deduplication script will run when called by cron. Add to crontab:</p>
-                            <code class="code-block">0 2 * * * cd <?= realpath(__DIR__ . '/..') ?> && php cli/dedup.php >> logs/dedup.log 2>&1</code>
-                        </div>
-
-                        <?php if ($settings['last_deduplication'] ?? ''): ?>
-                        <div class="form-group">
-                            <label>Last Deduplication Run</label>
-                            <p class="form-value"><?= htmlspecialchars($settings['last_deduplication']) ?></p>
-                        </div>
-                        <?php endif; ?>
                     </details>
 
                     <details class="settings-section">

@@ -15,15 +15,9 @@ require_once __DIR__ . '/../../includes/Scheduler.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
 // Helper functions (must be defined before use)
-function formatBytes($bytes, $precision = 2) {
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $bytes = max($bytes, 0);
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    $bytes /= pow(1024, $pow);
-    return round($bytes, $precision) . ' ' . $units[$pow];
-}
+// Note: formatBytes() is already defined in helpers.php
 
+if (!function_exists('describeCronSchedule')) {
 function describeCronSchedule($schedule) {
     $parts = preg_split('/\s+/', trim($schedule));
     if (count($parts) !== 5) return 'Invalid';
@@ -56,13 +50,16 @@ function describeCronSchedule($schedule) {
 
     return 'Custom schedule';
 }
+}
 
+if (!function_exists('humanTimeDiff')) {
 function humanTimeDiff($seconds) {
     if ($seconds < 0) return 'overdue';
     if ($seconds < 60) return 'in ' . $seconds . 's';
     if ($seconds < 3600) return 'in ' . floor($seconds / 60) . 'm';
     if ($seconds < 86400) return 'in ' . floor($seconds / 3600) . 'h';
     return 'in ' . floor($seconds / 86400) . 'd';
+}
 }
 
 // Handle actions
