@@ -17,28 +17,50 @@ $message = '';
 $error = '';
 
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $features = getAvailableFeatures();
-    $enabledFeatures = $_POST['features'] ?? [];
-
-    foreach ($features as $key => $meta) {
-        if (in_array($key, $enabledFeatures)) {
-            enableFeature($key);
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if applying a preset
+    if (isset($_POST['apply_preset'])) {
+        $presetName = $_POST['apply_preset'];
+        if (applyFeaturePreset($presetName)) {
+            $presets = getFeaturePresets();
+            logInfo('Feature preset applied', [
+                'preset' => $presetName,
+                'by' => getCurrentUser()['username']
+            ]);
+            $message = "Applied '{$presets[$presetName]['name']}' preset successfully.";
         } else {
-            disableFeature($key);
+            $error = 'Invalid preset selected.';
         }
+    } else {
+        // Normal feature save
+        $features = getAvailableFeatures();
+        $enabledFeatures = $_POST['features'] ?? [];
+
+        foreach ($features as $key => $meta) {
+            if (in_array($key, $enabledFeatures)) {
+                enableFeature($key);
+            } else {
+                disableFeature($key);
+            }
+        }
+
+        logInfo('Features updated', [
+            'enabled' => $enabledFeatures,
+            'by' => getCurrentUser()['username']
+        ]);
+
+        $message = 'Feature settings saved successfully.';
     }
-
-    logInfo('Features updated', [
-        'enabled' => $enabledFeatures,
-        'by' => getCurrentUser()['username']
-    ]);
-
-    $message = 'Feature settings saved successfully.';
 }
 
 // Get features grouped by category
 $featuresByCategory = getFeaturesByCategory();
+
+// Get usage statistics
+$usageStats = getFeatureUsageStats();
 
 require_once __DIR__ . '/../../includes/header.php';
 ?>
@@ -60,7 +82,26 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
+                <div class="presets-section">
+                    <h3>Quick Presets</h3>
+                    <div class="presets-grid">
+                        <?php foreach (getFeaturePresets() as $key => $preset): ?>
+                        <form method="post" class="preset-card">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="apply_preset" value="<?= htmlspecialchars($key) ?>">
+                            <div class="preset-header">
+                                <span class="preset-name"><?= htmlspecialchars($preset['name']) ?></span>
+                                <span class="preset-count"><?= count(array_filter($preset['features'])) ?>/<?= count($preset['features']) ?> features</span>
+                            </div>
+                            <p class="preset-description"><?= htmlspecialchars($preset['description']) ?></p>
+                            <button type="submit" class="btn btn-sm btn-secondary">Apply Preset</button>
+                        </form>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
                 <form method="post" class="features-form">
+                    <?= csrf_field() ?>
                     <div class="features-grid">
                         <?php foreach ($featuresByCategory as $category => $features): ?>
                         <section class="feature-category">
@@ -73,7 +114,8 @@ require_once __DIR__ . '/../../includes/header.php';
                                 ?>
                                 <label class="feature-item <?= $feature['enabled'] ? 'enabled' : 'disabled' ?><?= !empty($missingDeps) ? ' has-warning' : '' ?>"
                                        data-feature="<?= htmlspecialchars($feature['key']) ?>"
-                                       data-dependents="<?= htmlspecialchars(json_encode($dependents)) ?>">
+                                       data-dependents="<?= htmlspecialchars(json_encode($dependents)) ?>"
+                                       data-usage="<?= $usageStats[$feature['key']] ?? 0 ?>">
                                     <div class="feature-toggle">
                                         <input type="checkbox"
                                                name="features[]"
@@ -89,6 +131,9 @@ require_once __DIR__ . '/../../includes/header.php';
                                             <span class="feature-name"><?= htmlspecialchars($feature['name']) ?></span>
                                             <?php if ($feature['default']): ?>
                                             <span class="feature-badge default">Default</span>
+                                            <?php endif; ?>
+                                            <?php if (isset($usageStats[$feature['key']]) && $usageStats[$feature['key']] > 0): ?>
+                                            <span class="feature-badge usage"><?= number_format($usageStats[$feature['key']]) ?> items</span>
                                             <?php endif; ?>
                                         </div>
                                         <p class="feature-description"><?= htmlspecialchars($feature['description']) ?></p>
@@ -121,6 +166,67 @@ require_once __DIR__ . '/../../includes/header.php';
         </div>
 
         <style>
+        .presets-section {
+            margin-bottom: 2rem;
+        }
+
+        .presets-section h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--color-text);
+        }
+
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .preset-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .preset-card:hover {
+            border-color: var(--color-primary);
+        }
+
+        .preset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .preset-name {
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .preset-count {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            background: var(--color-border);
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+        }
+
+        .preset-description {
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+            margin: 0 0 1rem;
+            line-height: 1.4;
+        }
+
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+        }
+
         .features-grid {
             display: flex;
             flex-direction: column;
@@ -132,8 +238,8 @@ require_once __DIR__ . '/../../includes/header.php';
             font-weight: 600;
             margin-bottom: 1rem;
             padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-text);
         }
 
         .feature-list {
@@ -147,21 +253,21 @@ require_once __DIR__ . '/../../includes/header.php';
             align-items: flex-start;
             gap: 1rem;
             padding: 1rem;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .feature-item:hover {
-            border-color: var(--primary-color);
+            border-color: var(--color-primary);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .feature-item.enabled {
-            border-color: var(--success-color);
-            background: rgba(34, 197, 94, 0.05);
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
         }
 
         .feature-toggle {
@@ -180,7 +286,7 @@ require_once __DIR__ . '/../../includes/header.php';
             display: block;
             width: 44px;
             height: 24px;
-            background: var(--border-color);
+            background: #64748b;
             border-radius: 12px;
             transition: background 0.2s ease;
             position: relative;
@@ -200,7 +306,7 @@ require_once __DIR__ . '/../../includes/header.php';
         }
 
         .feature-toggle input:checked + .toggle-slider {
-            background: var(--success-color);
+            background: #22c55e;
         }
 
         .feature-toggle input:checked + .toggle-slider::before {
@@ -228,7 +334,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         .feature-name {
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--color-text);
         }
 
         .feature-badge {
@@ -240,24 +346,51 @@ require_once __DIR__ . '/../../includes/header.php';
         }
 
         .feature-badge.default {
-            background: var(--primary-color);
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .feature-badge.usage {
+            background: #6366f1;
             color: white;
         }
 
         .feature-description {
             font-size: 0.85rem;
-            color: var(--text-secondary);
+            color: var(--color-text-muted);
             margin: 0;
             line-height: 1.4;
+        }
+
+        .feature-warning {
+            font-size: 0.75rem;
+            color: #f59e0b;
+            margin: 0.25rem 0 0;
+            padding: 0.25rem 0.5rem;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 4px;
+        }
+
+        .feature-dependents {
+            font-size: 0.75rem;
+            color: #3b82f6;
+            margin: 0.25rem 0 0;
+            padding: 0.25rem 0.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 4px;
+        }
+
+        .feature-item.has-warning {
+            border-color: #f59e0b;
         }
 
         .sticky-actions {
             position: sticky;
             bottom: 0;
-            background: var(--bg-primary);
+            background: var(--color-bg);
             padding: 1rem;
             margin: 2rem -1.5rem -1.5rem;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--color-border);
             display: flex;
             gap: 1rem;
             justify-content: flex-start;
@@ -267,6 +400,39 @@ require_once __DIR__ . '/../../includes/header.php';
             .feature-list {
                 grid-template-columns: 1fr;
             }
+        }
+
+        /* Saving indicator */
+        .feature-toggle.saving .toggle-slider {
+            opacity: 0.6;
+        }
+
+        .feature-toggle.saving .toggle-slider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 12px;
+            border: 2px solid transparent;
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Success feedback */
+        .feature-item.just-saved {
+            animation: save-flash 0.5s ease;
+        }
+
+        @keyframes save-flash {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+            50% { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4); }
         }
         </style>
 
@@ -280,8 +446,12 @@ require_once __DIR__ . '/../../includes/header.php';
 
             document.querySelectorAll('.feature-item input[type="checkbox"]').forEach(checkbox => {
                 const key = checkbox.value;
-                checkbox.checked = defaults[key] === true;
-                updateFeatureItemState(checkbox);
+                const newState = defaults[key] === true;
+                if (checkbox.checked !== newState) {
+                    checkbox.checked = newState;
+                    updateFeatureItemState(checkbox);
+                    saveFeatureState(key, newState);
+                }
             });
         }
 
@@ -296,12 +466,121 @@ require_once __DIR__ . '/../../includes/header.php';
             }
         }
 
-        // Update visual state when checkbox changes
+        // Save feature state via AJAX
+        async function saveFeatureState(feature, enabled) {
+            const item = document.querySelector(`[data-feature="${feature}"]`);
+            const toggle = item?.querySelector('.feature-toggle');
+
+            // Add saving indicator
+            if (toggle) {
+                toggle.classList.add('saving');
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'toggle');
+                formData.append('feature', feature);
+                formData.append('enabled', enabled ? '1' : '0');
+
+                const response = await fetch('<?= route('actions.features') ?>', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show brief success feedback
+                    if (item) {
+                        item.classList.add('just-saved');
+                        setTimeout(() => item.classList.remove('just-saved'), 1000);
+                    }
+                } else {
+                    alert('Failed to save: ' + (data.error || 'Unknown error'));
+                    // Revert the checkbox state
+                    const checkbox = item?.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = !enabled;
+                        updateFeatureItemState(checkbox);
+                    }
+                }
+            } catch (error) {
+                console.error('Error saving feature:', error);
+                alert('Failed to save feature state');
+                // Revert the checkbox state
+                const checkbox = item?.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = !enabled;
+                    updateFeatureItemState(checkbox);
+                }
+            } finally {
+                if (toggle) {
+                    toggle.classList.remove('saving');
+                }
+            }
+        }
+
+        // Update visual state when checkbox changes and save via AJAX
         document.querySelectorAll('.feature-item input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            checkbox.addEventListener('change', async function() {
+                const item = this.closest('.feature-item');
+                const feature = item.dataset.feature;
+                const enabled = this.checked;
+
+                // Check dependencies first (for disabling)
+                if (!enabled && !checkDependencies(this)) {
+                    return; // User cancelled
+                }
+
                 updateFeatureItemState(this);
+                await saveFeatureState(feature, enabled);
             });
         });
+
+        // Check if disabling a feature breaks dependencies or has existing data
+        // Returns true if user confirms or no warnings, false if user cancels
+        function checkDependencies(checkbox) {
+            if (checkbox.checked) return true; // Only check when disabling
+
+            const item = checkbox.closest('.feature-item');
+            const featureName = item.querySelector('.feature-name').textContent;
+            const usage = parseInt(item.dataset.usage) || 0;
+            const dependents = JSON.parse(item.dataset.dependents || '[]');
+
+            let warnings = [];
+
+            // Check for existing data
+            if (usage > 0) {
+                warnings.push(`This feature has ${usage.toLocaleString()} existing item(s). Disabling will hide this data but not delete it.`);
+            }
+
+            // Check if any dependents are still enabled
+            const enabledDependents = [];
+            dependents.forEach(dep => {
+                const depItem = document.querySelector(`[data-feature="${dep}"]`);
+                if (depItem) {
+                    const depCheckbox = depItem.querySelector('input[type="checkbox"]');
+                    if (depCheckbox && depCheckbox.checked) {
+                        const name = depItem.querySelector('.feature-name').textContent;
+                        enabledDependents.push(name);
+                    }
+                }
+            });
+
+            if (enabledDependents.length > 0) {
+                warnings.push(`${enabledDependents.length} feature(s) depend on this: ${enabledDependents.join(', ')}`);
+            }
+
+            if (warnings.length > 0) {
+                const message = `Warning for "${featureName}":\n\n` + warnings.join('\n\n') + '\n\nContinue?';
+                if (!confirm(message)) {
+                    checkbox.checked = true;
+                    updateFeatureItemState(checkbox);
+                    return false;
+                }
+            }
+            return true;
+        }
         </script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

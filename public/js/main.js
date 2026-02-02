@@ -16,7 +16,8 @@ class LazyModelLoader {
             { rootMargin: '100px', threshold: 0.1 }
         );
 
-        document.querySelectorAll('.model-thumbnail[data-model-url]').forEach(el => {
+        // Observe both grid and list view thumbnails
+        document.querySelectorAll('.model-thumbnail[data-model-url], .model-list-thumbnail[data-model-url]').forEach(el => {
             this.observer.observe(el);
         });
     }
@@ -44,35 +45,47 @@ class LazyModelLoader {
         // Add loading state - use lazy placeholder effect
         thumbnail.classList.add('loading', 'lazy-load-placeholder');
 
-        // Create viewer container
-        const viewerContainer = document.createElement('div');
-        viewerContainer.className = 'thumbnail-viewer';
-        viewerContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%;';
-        thumbnail.appendChild(viewerContainer);
-
-        // Get background color based on current theme
-        const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
-        const bgColor = isLightTheme ? 0xf8fafc : 0x1e293b;
-
-        // Initialize viewer
-        const viewer = new ModelViewer(viewerContainer, {
-            autoRotate: true,
-            interactive: false,
-            backgroundColor: bgColor
-        });
-
-        // Load model
-        viewer.loadModel(url, fileType)
-            .then(() => {
+        // Small delay before loading to avoid loading models that are quickly scrolled past
+        setTimeout(() => {
+            // Check if still in viewport
+            const rect = thumbnail.getBoundingClientRect();
+            const inViewport = rect.top < window.innerHeight && rect.bottom > 0;
+            if (!inViewport) {
                 thumbnail.classList.remove('loading', 'lazy-load-placeholder');
-                thumbnail.classList.add('has-viewer', 'loaded');
-            })
-            .catch(err => {
-                console.warn('Failed to load thumbnail model:', err);
-                thumbnail.classList.remove('loading', 'lazy-load-placeholder');
-                thumbnail.classList.add('load-error');
-                viewerContainer.remove();
+                this.loadedViewers.delete(thumbnail);
+                return;
+            }
+
+            // Create viewer container
+            const viewerContainer = document.createElement('div');
+            viewerContainer.className = 'thumbnail-viewer';
+            viewerContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%;';
+            thumbnail.appendChild(viewerContainer);
+
+            // Get background color based on current theme
+            const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
+            const bgColor = isLightTheme ? 0xf8fafc : 0x1e293b;
+
+            // Initialize viewer
+            const viewer = new ModelViewer(viewerContainer, {
+                autoRotate: true,
+                interactive: false,
+                backgroundColor: bgColor
             });
+
+            // Load model
+            viewer.loadModel(url, fileType)
+                .then(() => {
+                    thumbnail.classList.remove('loading', 'lazy-load-placeholder');
+                    thumbnail.classList.add('has-viewer', 'loaded');
+                })
+                .catch(err => {
+                    console.warn('Failed to load thumbnail model:', err);
+                    thumbnail.classList.remove('loading', 'lazy-load-placeholder');
+                    thumbnail.classList.add('load-error');
+                    viewerContainer.remove();
+                });
+        }, 200); // 200ms delay
     }
 }
 

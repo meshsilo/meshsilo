@@ -130,38 +130,52 @@ class ModelViewer {
                 }
 
                 const loader = new THREE.ThreeMFLoader();
+
+                // Set a timeout to prevent hanging on problematic files
+                const timeoutId = setTimeout(() => {
+                    reject(new Error('3MF loading timed out'));
+                }, 30000);
+
                 loader.load(
                     url,
                     (object) => {
-                        this.clearModel();
+                        clearTimeout(timeoutId);
+                        try {
+                            this.clearModel();
 
-                        // 3MF files can contain multiple meshes
-                        this.model = object;
+                            // 3MF files can contain multiple meshes
+                            this.model = object;
 
-                        // Apply material to all meshes
-                        this.model.traverse((child) => {
-                            if (child.isMesh) {
-                                if (child.geometry) {
-                                    child.geometry.computeVertexNormals();
+                            // Apply material to all meshes
+                            this.model.traverse((child) => {
+                                if (child.isMesh) {
+                                    if (child.geometry) {
+                                        child.geometry.computeVertexNormals();
+                                    }
+                                    child.material = new THREE.MeshPhongMaterial({
+                                        color: 0x888888,
+                                        specular: 0x222222,
+                                        shininess: 20
+                                    });
                                 }
-                                child.material = new THREE.MeshPhongMaterial({
-                                    color: 0x888888,
-                                    specular: 0x222222,
-                                    shininess: 20
-                                });
-                            }
-                        });
+                            });
 
-                        this.centerAndScaleModel();
-                        this.scene.add(this.model);
-                        this.startAnimation();
-                        resolve(this.model);
+                            this.centerAndScaleModel();
+                            this.scene.add(this.model);
+                            this.startAnimation();
+                            resolve(this.model);
+                        } catch (err) {
+                            reject(new Error('Failed to process 3MF model: ' + err.message));
+                        }
                     },
                     undefined,
-                    (error) => reject(error)
+                    (error) => {
+                        clearTimeout(timeoutId);
+                        reject(error);
+                    }
                 );
             } catch (error) {
-                reject(error);
+                reject(new Error('3MF loading failed: ' + error.message));
             }
         });
     }

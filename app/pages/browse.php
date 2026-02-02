@@ -28,10 +28,14 @@ if (isset($_GET['view'])) {
 $where = ['m.parent_id IS NULL'];
 $params = [];
 
-// Search filter
+// Search filter (includes model name, description, creator, and part names)
 if ($search !== '') {
-    $where[] = '(m.name LIKE :search OR m.description LIKE :search OR m.creator LIKE :search)';
-    $params[':search'] = '%' . $search . '%';
+    $where[] = '(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3 OR EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND p.name LIKE :search4))';
+    $searchTerm = '%' . $search . '%';
+    $params[':search1'] = $searchTerm;
+    $params[':search2'] = $searchTerm;
+    $params[':search3'] = $searchTerm;
+    $params[':search4'] = $searchTerm;
 }
 
 // Category filter
@@ -71,6 +75,7 @@ $countStmt = $db->prepare($countSql);
 foreach ($params as $key => $value) {
     $countStmt->bindValue($key, $value);
 }
+$countStmt->execute();
 $totalModels = (int)$countStmt->fetchColumn();
 $totalPages = ceil($totalModels / $perPage);
 
@@ -99,11 +104,11 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $partResult = $partStmt->execute();
         $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
-            $row['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
+            $row['preview_path'] = '/preview?id=' . $firstPart['id'];
             $row['preview_type'] = $firstPart['file_type'];
         }
     } else {
-        $row['preview_path'] = '/actions/preview?id=' . $row['id'];
+        $row['preview_path'] = '/preview?id=' . $row['id'];
         $row['preview_type'] = $row['file_type'];
     }
 
@@ -151,15 +156,7 @@ if ($tagId > 0) {
     $activeTag = $tagStmt->fetch();
 }
 
-// Helper function
-function formatBytes($bytes, $precision = 2) {
-    $units = ['B', 'KB', 'MB', 'GB'];
-    $bytes = max($bytes, 0);
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    $bytes /= pow(1024, $pow);
-    return round($bytes, $precision) . ' ' . $units[$pow];
-}
+// formatBytes is defined in includes/helpers.php
 
 // Build URL helper for pagination/sorting
 function buildUrl($params = []) {
@@ -221,6 +218,12 @@ require_once 'includes/header.php';
                         <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <select id="batch-print-type-select" class="batch-select" onchange="batchSetPrintType(this.value)">
+                        <option value="">Print Type</option>
+                        <option value="fdm">FDM</option>
+                        <option value="sla">SLA</option>
+                        <option value="__clear__">Clear</option>
+                    </select>
                     <button type="button" class="btn btn-small" onclick="batchSetCreator()" title="Set creator for selected">Set Creator</button>
                     <button type="button" class="btn btn-small" onclick="batchSetCollection()" title="Set collection for selected">Set Collection</button>
                     <button type="button" class="btn btn-small" onclick="batchExport()" title="Export selected with metadata">Export</button>
@@ -248,14 +251,16 @@ require_once 'includes/header.php';
                         <option value="<?= buildUrl(['sort' => 'downloads', 'page' => 1]) ?>" <?= $sort === 'downloads' ? 'selected' : '' ?>>Most Downloads</option>
                     </select>
 
+                    <?php if (isFeatureEnabled('categories') && !empty($categories)): ?>
                     <select class="sort-select" onchange="if(this.value) location.href=this.value">
                         <option value="">Filter by Category...</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= buildUrl(['category' => $cat['id'], 'page' => 1]) ?>" <?= $categoryId == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?> (<?= $cat['model_count'] ?>)</option>
                         <?php endforeach; ?>
                     </select>
+                    <?php endif; ?>
 
-                    <?php if (!empty($tags)): ?>
+                    <?php if (isFeatureEnabled('tags') && !empty($tags)): ?>
                     <select class="sort-select" onchange="if(this.value) location.href=this.value">
                         <option value="">Filter by Tag...</option>
                         <?php foreach ($tags as $tag): ?>
@@ -272,13 +277,13 @@ require_once 'includes/header.php';
                             <a href="<?= buildUrl(['q' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
                         </span>
                         <?php endif; ?>
-                        <?php if ($activeCategory): ?>
+                        <?php if (isFeatureEnabled('categories') && $activeCategory): ?>
                         <span class="active-filter">
                             <?= htmlspecialchars($activeCategory) ?>
                             <a href="<?= buildUrl(['category' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
                         </span>
                         <?php endif; ?>
-                        <?php if ($activeTag): ?>
+                        <?php if (isFeatureEnabled('tags') && $activeTag): ?>
                         <span class="active-filter" style="background-color: <?= htmlspecialchars($activeTag['color']) ?>">
                             <?= htmlspecialchars($activeTag['name']) ?>
                             <a href="<?= buildUrl(['tag' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
@@ -327,11 +332,11 @@ require_once 'includes/header.php';
                                 <span><?= $model['part_count'] ?> parts</span>
                                 <?php endif; ?>
                                 <span><?= date('M j, Y', strtotime($model['created_at'])) ?></span>
-                                <?php if ($model['download_count'] > 0): ?>
+                                <?php if (isFeatureEnabled('download_tracking') && $model['download_count'] > 0): ?>
                                 <span class="download-count"><?= number_format($model['download_count']) ?> downloads</span>
                                 <?php endif; ?>
                             </div>
-                            <?php if (!empty($model['tags'])): ?>
+                            <?php if (isFeatureEnabled('tags') && !empty($model['tags'])): ?>
                             <div class="model-tags" style="margin-top: 0.5rem; margin-bottom: 0;">
                                 <?php foreach ($model['tags'] as $tag): ?>
                                 <span class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>"><?= htmlspecialchars($tag['name']) ?></span>
@@ -374,7 +379,7 @@ require_once 'includes/header.php';
                         <div class="model-info">
                             <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
                             <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
-                            <?php if ($model['download_count'] > 0): ?>
+                            <?php if (isFeatureEnabled('download_tracking') && $model['download_count'] > 0): ?>
                             <p class="download-count" style="margin-top: 0.25rem;"><?= number_format($model['download_count']) ?> downloads</p>
                             <?php endif; ?>
                         </div>
@@ -674,6 +679,46 @@ require_once 'includes/header.php';
             } catch (err) {
                 console.error('Batch category error:', err);
                 alert('Failed to apply category');
+            }
+
+            select.value = '';
+        }
+
+        async function batchSetPrintType(printType) {
+            const select = document.getElementById('batch-print-type-select');
+            if (!printType) {
+                select.value = '';
+                return;
+            }
+
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                alert('Please select models first');
+                select.value = '';
+                return;
+            }
+
+            // Handle clear option
+            const actualType = printType === '__clear__' ? '' : printType;
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'set_print_type');
+                formData.append('print_type', actualType);
+                ids.forEach(id => formData.append('model_ids[]', id));
+
+                const response = await fetch('actions/mass-action.php', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.success) {
+                    const message = actualType ? `Set print type to ${actualType.toUpperCase()} for ${result.affected} model(s)` : `Cleared print type for ${result.affected} model(s)`;
+                    alert(message);
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Batch print type error:', err);
+                alert('Failed to set print type');
             }
 
             select.value = '';

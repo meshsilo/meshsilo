@@ -149,30 +149,88 @@ if (!empty($parts)) {
 // Estimate 3MF conversion savings (~65% compression on STL data)
 $estimatedSavings = ($stlTotalSize > 0) ? (int)($stlTotalSize * 0.65) : 0;
 
-// Helper function to format bytes
-function formatBytes($bytes, $precision = 2) {
-    $units = ['B', 'KB', 'MB', 'GB'];
-    $bytes = max($bytes, 0);
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    $bytes /= pow(1024, $pow);
-    return round($bytes, $precision) . ' ' . $units[$pow];
-}
+// formatBytes is defined in includes/helpers.php
 
-// Group parts by directory
-function groupPartsByDirectory($parts) {
+// Group parts by directory with relative display names
+function groupPartsByDirectory($partsArray) {
     $grouped = [];
-    foreach ($parts as $part) {
+    $dirs = [];
+
+    // First pass: collect all directories
+    foreach ($partsArray as $part) {
         $path = $part['original_path'] ?? $part['name'];
+        // Normalize path separators
+        $path = str_replace('\\', '/', $path);
         $dir = dirname($path);
         if ($dir === '.') {
             $dir = 'Root';
         }
-        if (!isset($grouped[$dir])) {
-            $grouped[$dir] = [];
-        }
-        $grouped[$dir][] = $part;
+        $dirs[$dir] = true;
     }
+
+    // Find common base path (excluding 'Root')
+    $realDirs = [];
+    foreach (array_keys($dirs) as $d) {
+        if ($d !== 'Root') {
+            $realDirs[] = $d;
+        }
+    }
+
+    $basePath = '';
+    if (count($realDirs) > 0) {
+        $pathSegments = [];
+        foreach ($realDirs as $d) {
+            $pathSegments[] = explode('/', $d);
+        }
+        $baseParts = [];
+        if (count($pathSegments) > 0) {
+            $lengths = array_map('count', $pathSegments);
+            $minLen = min($lengths);
+            for ($i = 0; $i < $minLen; $i++) {
+                $segment = $pathSegments[0][$i];
+                $allMatch = true;
+                foreach ($pathSegments as $ps) {
+                    if ($ps[$i] !== $segment) {
+                        $allMatch = false;
+                        break;
+                    }
+                }
+                if ($allMatch) {
+                    $baseParts[] = $segment;
+                } else {
+                    break;
+                }
+            }
+        }
+        $basePath = implode('/', $baseParts);
+    }
+
+    // Second pass: group with relative names
+    foreach ($partsArray as $part) {
+        $path = $part['original_path'] ?? $part['name'];
+        $path = str_replace('\\', '/', $path);
+        $dir = dirname($path);
+        if ($dir === '.') {
+            $dir = 'Root';
+            $displayDir = 'Root';
+        } else {
+            // Strip common base path for display
+            $displayDir = $dir;
+            if ($basePath && strpos($dir, $basePath) === 0) {
+                $displayDir = substr($dir, strlen($basePath));
+                $displayDir = ltrim($displayDir, '/');
+                if ($displayDir === '') {
+                    $displayDir = basename($dir);
+                }
+            }
+        }
+
+        if (!isset($grouped[$dir])) {
+            $grouped[$dir] = ['display' => $displayDir, 'parts' => []];
+        }
+        $grouped[$dir]['parts'][] = $part;
+    }
+
     return $grouped;
 }
 
@@ -218,6 +276,23 @@ try {
     // model_links table may not exist yet
 }
 
+// Get model attachments (images and PDFs)
+$attachments = ['images' => [], 'documents' => []];
+try {
+    $stmt = $db->prepare('SELECT * FROM model_attachments WHERE model_id = :model_id ORDER BY display_order, created_at');
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        if ($row['file_type'] === 'image') {
+            $attachments['images'][] = $row;
+        } else {
+            $attachments['documents'][] = $row;
+        }
+    }
+} catch (Throwable $e) {
+    // model_attachments table may not exist yet
+}
+
 // Check for session messages
 $message = '';
 $messageType = 'success';
@@ -234,7 +309,7 @@ if (isset($_SESSION['success'])) {
 require_once 'includes/header.php';
 ?>
 
-        <div class="page-container">
+        <div class="page-container-wide model-page">
             <?php if ($message): ?>
             <div class="alert alert-<?= $messageType ?>" style="margin-bottom: 1.5rem;"><?= htmlspecialchars($message) ?></div>
             <?php endif; ?>
@@ -294,7 +369,7 @@ require_once 'includes/header.php';
                             <span class="meta-item">
                                 <strong>Added:</strong> <?= date('M j, Y', strtotime($model['created_at'])) ?>
                             </span>
-                            <?php if (($model['download_count'] ?? 0) > 0): ?>
+                            <?php if (isFeatureEnabled('download_tracking') && ($model['download_count'] ?? 0) > 0): ?>
                             <span class="meta-item download-count">
                                 <strong>Downloads:</strong> <?= number_format($model['download_count']) ?>
                             </span>
@@ -398,6 +473,7 @@ require_once 'includes/header.php';
                         </div>
                         <?php endif; ?>
 
+                        <?php if (isFeatureEnabled('tags')): ?>
                         <?php if (!empty($modelTags)): ?>
                         <div class="model-tags">
                             <?php foreach ($modelTags as $tag): ?>
@@ -417,6 +493,7 @@ require_once 'includes/header.php';
                             <div id="tag-suggestions" class="tag-suggestions" style="display: none;"></div>
                         </div>
                         <?php endif; ?>
+                        <?php endif; ?>
 
                         <?php if (!empty($model['source_url'])): ?>
                         <p class="model-source">
@@ -424,7 +501,7 @@ require_once 'includes/header.php';
                         </p>
                         <?php endif; ?>
 
-                        <?php if (!empty($modelLinks) || canEdit()): ?>
+                        <?php if (isFeatureEnabled('external_links') && (!empty($modelLinks) || canEdit())): ?>
                         <div class="model-links">
                             <h3>External Links</h3>
                             <div class="model-links-list" id="model-links-list">
@@ -466,19 +543,79 @@ require_once 'includes/header.php';
                         </div>
                         <?php endif; ?>
 
+                        <?php if (isFeatureEnabled('attachments') && (!empty($attachments['images']) || !empty($attachments['documents']) || canEdit())): ?>
+                        <div class="model-attachments">
+                            <h3>Attachments</h3>
+
+                            <?php if (!empty($attachments['images'])): ?>
+                            <div class="attachment-section">
+                                <h4>Images</h4>
+                                <div class="attachment-grid" id="attachment-images">
+                                    <?php foreach ($attachments['images'] as $att): ?>
+                                    <div class="attachment-image" data-attachment-id="<?= $att['id'] ?>">
+                                        <img src="/storage/assets/<?= htmlspecialchars($att['file_path']) ?>"
+                                             alt="<?= htmlspecialchars($att['original_filename']) ?>"
+                                             loading="lazy"
+                                             onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/storage/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)">
+                                        <?php if (canEdit()): ?>
+                                        <button type="button" class="attachment-delete" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($attachments['documents'])): ?>
+                            <div class="attachment-section">
+                                <h4>Documents</h4>
+                                <div class="attachment-documents" id="attachment-documents">
+                                    <?php foreach ($attachments['documents'] as $att): ?>
+                                    <div class="attachment-document" data-attachment-id="<?= $att['id'] ?>">
+                                        <span class="file-type-badge">.pdf</span>
+                                        <a href="/storage/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" class="attachment-doc-name">
+                                            <?= htmlspecialchars($att['original_filename']) ?>
+                                        </a>
+                                        <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>
+                                        <?php if (canEdit()): ?>
+                                        <button type="button" class="attachment-delete" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (empty($attachments['images']) && empty($attachments['documents'])): ?>
+                            <p class="attachments-empty" id="attachments-empty">No attachments yet.</p>
+                            <?php endif; ?>
+
+                            <?php if (canEdit()): ?>
+                            <div class="attachment-upload">
+                                <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" multiple style="display:none" onchange="uploadAttachments(this.files)">
+                                <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('attachment-file-input').click()">Add Attachment</button>
+                                <span class="attachment-hint">Images (JPG, PNG, GIF, WebP) &amp; PDFs</span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
                         <div class="model-actions" style="margin-top: 1rem;">
                             <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>
                             <?php endif; ?>
-                            <?php if (!$costEstimate && canEdit() && !in_array($model['file_type'] ?? '', ['gcode'])): ?>
+                            <?php if (!$costEstimate && canEdit() && in_array($model['file_type'] ?? '', ['gcode'])): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="calculateCost(<?= $model['id'] ?>)" id="calc-cost-btn">Calculate Print Cost</button>
                             <?php endif; ?>
+                            <?php if (isFeatureEnabled('version_history')): ?>
                             <a href="<?= route('model.versions', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">Version History<?php if ($versionCount > 0): ?> (<?= $versionCount ?>)<?php endif; ?></a>
                             <?php if ($canManageVersions): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showUploadVersionModal()">Upload New Version</button>
                             <?php endif; ?>
+                            <?php endif; ?>
                             <?php if (canEdit()): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="window.location.href='<?= route('model.edit', ['id' => $model['id']]) ?>'">Edit Model</button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="showCreateFolderModal()">New Folder</button>
                             <?php if (!empty($model['is_archived'])): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="toggleArchive(<?= $model['id'] ?>, false)">Unarchive</button>
                             <?php else: ?>
@@ -499,7 +636,7 @@ require_once 'includes/header.php';
                 </div>
                 <?php endif; ?>
 
-                <?php if ($versionCount > 0): ?>
+                <?php if (isFeatureEnabled('version_history') && $versionCount > 0): ?>
                 <div class="model-version-history" id="upload-version">
                     <div class="parts-header">
                         <h2>Version History</h2>
@@ -538,18 +675,19 @@ require_once 'includes/header.php';
                 <?php if (!empty($parts)): ?>
                 <div class="model-parts">
                     <div class="parts-header">
-                        <h2>Parts (<?= count($parts) ?>)</h2>
-                        <?php if (canEdit()): ?>
-                        <button type="button" class="btn btn-secondary btn-small" onclick="showCreateFolderModal()">New Folder</button>
+                        <?php if (canEdit() || canDelete()): ?>
+                        <input type="checkbox" class="select-all-checkbox" id="select-all-parts" onclick="toggleSelectAllParts(this)" title="Select all parts">
                         <?php endif; ?>
+                        <h2>Parts (<?= count($parts) ?>)</h2>
                         <?php if (canEdit() || canDelete()): ?>
                         <div class="mass-actions" id="parts-mass-actions" style="display: none;">
                             <span class="mass-selection-count"><span id="selected-count">0</span> selected</span>
                             <?php if (canEdit()): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showMoveFolderModal(getSelectedPartIds())">Move to Folder</button>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showBatchRenameModal(getSelectedPartIds())">Rename</button>
-                            <select id="mass-print-type" class="form-input form-input-small">
-                                <option value="">Set Print Type...</option>
+                            <button type="button" class="btn btn-secondary btn-small" id="mass-convert-3mf">Convert to 3MF</button>
+                            <select id="mass-print-type" class="btn btn-secondary btn-small mass-action-select">
+                                <option value="">Print Type</option>
                                 <option value="fdm">FDM</option>
                                 <option value="sla">SLA</option>
                                 <option value="">Clear</option>
@@ -562,12 +700,16 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                     </div>
 
-                    <?php foreach ($groupedParts as $dir => $dirParts): ?>
+                    <?php foreach ($groupedParts as $dir => $dirData): ?>
+                    <?php $displayName = $dirData['display']; $dirParts = $dirData['parts']; ?>
                     <div class="parts-group" data-folder="<?= htmlspecialchars($dir) ?>">
                         <?php if (count($groupedParts) > 1): ?>
                         <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)">
                             <span class="folder-toggle">&#9660;</span>
-                            <?= htmlspecialchars($dir === 'Root' ? 'Root' : $dir) ?>
+                            <?php if (canEdit() || canDelete()): ?>
+                            <input type="checkbox" class="folder-checkbox" onclick="event.stopPropagation(); selectFolderParts(this);" title="Select all parts in this folder">
+                            <?php endif; ?>
+                            <?= htmlspecialchars($displayName) ?>
                             <span class="folder-part-count">(<?= count($dirParts) ?>)</span>
                             <?php if (canEdit() && $dir !== 'Root'): ?>
                             <span class="folder-actions" onclick="event.stopPropagation()">
@@ -586,16 +728,15 @@ require_once 'includes/header.php';
                                 <?php if (canEdit() || canDelete()): ?>
                                 <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>">
                                 <?php endif; ?>
-                                <div class="part-info part-preview-trigger" title="Click to preview">
-                                    <span class="file-type-badge">.<?= htmlspecialchars($part['file_type']) ?></span>
-                                    <span class="part-name"><?= htmlspecialchars($part['name']) ?></span>
+                                <div class="part-info part-preview-trigger">
+                                    <span class="part-name" title="Click to preview"><?= htmlspecialchars($part['name']) ?><?= !empty($part['file_type']) ? '.' . htmlspecialchars($part['file_type']) : '' ?></span>
                                     <?php if (!empty($part['print_type'])): ?>
                                     <span class="print-type-badge print-type-<?= htmlspecialchars($part['print_type']) ?>"><?= strtoupper($part['print_type']) ?></span>
                                     <?php endif; ?>
                                     <?php if (!empty($part['is_printed'])): ?>
                                     <span class="printed-badge">Printed</span>
                                     <?php endif; ?>
-                                    <?php if (!empty($part['notes'])): ?>
+                                    <?php if (isFeatureEnabled('model_notes') && !empty($part['notes'])): ?>
                                     <span class="part-notes"><?= htmlspecialchars($part['notes']) ?></span>
                                     <?php endif; ?>
                                 </div>
@@ -615,7 +756,7 @@ require_once 'includes/header.php';
                                         <option value="sla" <?= ($part['print_type'] ?? '') === 'sla' ? 'selected' : '' ?>>SLA</option>
                                     </select>
                                     <?php endif; ?>
-                                    <?php
+                                    <?php if (isFeatureEnabled('slicer_integration')):
                                     $partSlicers = getSlicersForFormat($part['file_type']);
                                     if (!empty($partSlicers)):
                                     ?>
@@ -635,6 +776,7 @@ require_once 'includes/header.php';
                                             <?php endforeach; ?>
                                         </div>
                                     </div>
+                                    <?php endif; ?>
                                     <?php endif; ?>
                                     <a href="<?= route('actions.download', [], ['id' => $part['id']]) ?>" class="btn btn-small btn-primary">Download</a>
                                     <?php if (canDelete()): ?>
@@ -676,7 +818,7 @@ require_once 'includes/header.php';
                 </div>
                 <?php elseif (canUpload()): ?>
                 <div class="model-download">
-                    <?php
+                    <?php if (isFeatureEnabled('slicer_integration')):
                     $modelSlicers = getSlicersForFormat($model['file_type'] ?? 'stl');
                     if (!empty($modelSlicers)):
                     ?>
@@ -700,13 +842,14 @@ require_once 'includes/header.php';
                         </div>
                     </div>
                     <?php endif; ?>
+                    <?php endif; ?>
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
                     <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
-                    <?php
+                    <?php if (isFeatureEnabled('slicer_integration')):
                     $modelSlicers = getSlicersForFormat($model['file_type'] ?? 'stl');
                     if (!empty($modelSlicers)):
                     ?>
@@ -729,6 +872,7 @@ require_once 'includes/header.php';
                             <?php endforeach; ?>
                         </div>
                     </div>
+                    <?php endif; ?>
                     <?php endif; ?>
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                 </div>
@@ -827,18 +971,15 @@ require_once 'includes/header.php';
                 </div>
                 <div class="modal-body">
                     <div id="move-folder-list" class="folder-picker">
-                        <?php
-                        $folderNames = array_keys($groupedParts);
-                        ?>
                         <label class="folder-picker-option">
                             <input type="radio" name="target-folder" value="Root">
                             <span>Root (no folder)</span>
                         </label>
-                        <?php foreach ($folderNames as $fname): ?>
-                        <?php if ($fname !== 'Root'): ?>
+                        <?php foreach ($groupedParts as $fpath => $fdata): ?>
+                        <?php if ($fpath !== 'Root'): ?>
                         <label class="folder-picker-option">
-                            <input type="radio" name="target-folder" value="<?= htmlspecialchars($fname) ?>">
-                            <span><?= htmlspecialchars($fname) ?></span>
+                            <input type="radio" name="target-folder" value="<?= htmlspecialchars($fpath) ?>">
+                            <span><?= htmlspecialchars($fdata['display']) ?></span>
                         </label>
                         <?php endif; ?>
                         <?php endforeach; ?>
@@ -1174,8 +1315,49 @@ require_once 'includes/header.php';
             return Array.from(document.querySelectorAll('.part-checkbox:checked')).map(cb => cb.value);
         }
 
+        function toggleSelectAllParts(checkbox) {
+            document.querySelectorAll('.part-checkbox').forEach(cb => cb.checked = checkbox.checked);
+            updateMassActionsVisibility();
+            updateAllCheckboxStates();
+        }
+
+        function selectFolderParts(checkbox) {
+            const folder = checkbox.closest('.parts-group');
+            if (!folder) return;
+            const checkboxes = folder.querySelectorAll('.part-checkbox');
+            checkboxes.forEach(cb => cb.checked = checkbox.checked);
+            updateMassActionsVisibility();
+            updateAllCheckboxStates();
+        }
+
+        function updateAllCheckboxStates() {
+            const selectAllCheckbox = document.getElementById('select-all-parts');
+            const allPartCheckboxes = document.querySelectorAll('.part-checkbox');
+            const checkedCount = document.querySelectorAll('.part-checkbox:checked').length;
+
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = checkedCount === allPartCheckboxes.length && allPartCheckboxes.length > 0;
+                selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < allPartCheckboxes.length;
+            }
+            updateFolderCheckboxes();
+        }
+
+        function updateFolderCheckboxes() {
+            document.querySelectorAll('.parts-group').forEach(folder => {
+                const folderCheckbox = folder.querySelector('.folder-checkbox');
+                if (!folderCheckbox) return;
+                const partCheckboxes = folder.querySelectorAll('.part-checkbox');
+                const checkedCount = folder.querySelectorAll('.part-checkbox:checked').length;
+                folderCheckbox.checked = checkedCount === partCheckboxes.length && partCheckboxes.length > 0;
+                folderCheckbox.indeterminate = checkedCount > 0 && checkedCount < partCheckboxes.length;
+            });
+        }
+
         partCheckboxes.forEach(cb => {
-            cb.addEventListener('change', updateMassActionsVisibility);
+            cb.addEventListener('change', function() {
+                updateMassActionsVisibility();
+                updateAllCheckboxStates();
+            });
         });
 
         if (massPrintType) {
@@ -1234,6 +1416,65 @@ require_once 'includes/header.php';
                 } catch (err) {
                     console.error('Mass delete error:', err);
                     alert('Failed to delete parts');
+                }
+            });
+        }
+
+        // Mass convert to 3MF
+        const massConvertBtn = document.getElementById('mass-convert-3mf');
+        if (massConvertBtn) {
+            massConvertBtn.addEventListener('click', async function() {
+                const ids = getSelectedPartIds();
+                if (ids.length === 0) return;
+
+                // Filter to only STL parts
+                const stlParts = ids.filter(id => {
+                    const partItem = document.querySelector(`.part-item[data-part-id="${id}"]`);
+                    return partItem && partItem.dataset.partType === 'stl';
+                });
+
+                if (stlParts.length === 0) {
+                    alert('No STL files selected. Only STL files can be converted to 3MF.');
+                    return;
+                }
+
+                if (!confirm(`Convert ${stlParts.length} STL file(s) to 3MF? This will replace the original files.`)) {
+                    return;
+                }
+
+                massConvertBtn.disabled = true;
+                massConvertBtn.textContent = 'Converting...';
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const partId of stlParts) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('action', 'convert');
+                        formData.append('part_id', partId);
+
+                        const response = await fetch('/actions/convert-part', { method: 'POST', body: formData });
+                        const result = await response.json();
+
+                        if (result.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    } catch (err) {
+                        errorCount++;
+                    }
+                }
+
+                massConvertBtn.disabled = false;
+                massConvertBtn.textContent = 'Convert to 3MF';
+
+                if (successCount > 0) {
+                    alert(`Converted ${successCount} file(s) to 3MF.${errorCount > 0 ? ` ${errorCount} failed.` : ''}`);
+                    location.reload();
+                } else {
+                    alert('Failed to convert files.');
                 }
             });
         }
@@ -1546,6 +1787,18 @@ require_once 'includes/header.php';
                 if (!wasOpen) {
                     dropdown.classList.add('open');
                     positionDropdownMenu(dropdown);
+
+                    // Restore calculated data for part dropdowns
+                    if (dropdown.classList.contains('part-actions-dropdown')) {
+                        const partItem = dropdown.closest('.part-item');
+                        if (partItem) {
+                            const partId = partItem.querySelector('.part-checkbox')?.value ||
+                                          partItem.dataset.partId;
+                            if (partId) {
+                                restorePartCalculatedData(partId, dropdown);
+                            }
+                        }
+                    }
                 }
             });
         });
@@ -1674,9 +1927,12 @@ require_once 'includes/header.php';
             }
         }
 
+        // Storage for calculated part data (persists during page session)
+        const partCalculatedData = {};
+
         // Per-part actions
         async function calculatePartDimensions(partId, linkEl) {
-            const originalText = linkEl.textContent;
+            const originalText = 'Calculate Dimensions';
             linkEl.textContent = 'Calculating...';
             try {
                 const formData = new FormData();
@@ -1684,15 +1940,9 @@ require_once 'includes/header.php';
                 const response = await fetch('/actions/calculate-dimensions', { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success && data.formatted) {
-                    const partItem = linkEl.closest('.part-item');
-                    // Add or update dimensions badge in part-info
-                    let dimsBadge = partItem.querySelector('.part-dimensions');
-                    if (!dimsBadge) {
-                        dimsBadge = document.createElement('span');
-                        dimsBadge.className = 'part-dimensions';
-                        partItem.querySelector('.part-info').appendChild(dimsBadge);
-                    }
-                    dimsBadge.textContent = data.formatted;
+                    // Store the calculated value
+                    if (!partCalculatedData[partId]) partCalculatedData[partId] = {};
+                    partCalculatedData[partId].dimensions = data.formatted;
                     linkEl.textContent = 'Dimensions: ' + data.formatted;
                 } else {
                     alert('Failed: ' + (data.error || 'Unknown error'));
@@ -1706,7 +1956,7 @@ require_once 'includes/header.php';
         }
 
         async function calculatePartVolume(partId, linkEl) {
-            const originalText = linkEl.textContent;
+            const originalText = 'Calculate Volume';
             linkEl.textContent = 'Calculating...';
             try {
                 const formData = new FormData();
@@ -1714,10 +1964,15 @@ require_once 'includes/header.php';
                 const response = await fetch('/actions/calculate-volume', { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success && data.volume_cm3) {
-                    linkEl.textContent = 'Volume: ' + data.volume_cm3.toFixed(1) + ' cm\u00B3';
+                    // Store the calculated value
+                    if (!partCalculatedData[partId]) partCalculatedData[partId] = {};
+                    partCalculatedData[partId].volume = data.volume_cm3;
+                    partCalculatedData[partId].costEstimate = data.cost_estimate;
+                    let volumeText = 'Volume: ' + data.volume_cm3.toFixed(1) + ' cm\u00B3';
                     if (data.cost_estimate) {
-                        linkEl.textContent += ' (~$' + data.cost_estimate.estimated_cost.toFixed(2) + ')';
+                        volumeText += ' (~$' + data.cost_estimate.estimated_cost.toFixed(2) + ')';
                     }
+                    linkEl.textContent = volumeText;
                 } else {
                     alert('Failed: ' + (data.error || 'Unknown error'));
                     linkEl.textContent = originalText;
@@ -1726,6 +1981,26 @@ require_once 'includes/header.php';
                 console.error('Part volume error:', err);
                 alert('Failed to calculate volume');
                 linkEl.textContent = originalText;
+            }
+        }
+
+        // Restore calculated data when dropdown opens
+        function restorePartCalculatedData(partId, dropdown) {
+            const data = partCalculatedData[partId];
+            if (!data) return;
+
+            const dimsLink = dropdown.querySelector('[onclick*="calculatePartDimensions"]');
+            const volLink = dropdown.querySelector('[onclick*="calculatePartVolume"]');
+
+            if (dimsLink && data.dimensions) {
+                dimsLink.textContent = 'Dimensions: ' + data.dimensions;
+            }
+            if (volLink && data.volume) {
+                let volumeText = 'Volume: ' + data.volume.toFixed(1) + ' cm\u00B3';
+                if (data.costEstimate) {
+                    volumeText += ' (~$' + data.costEstimate.estimated_cost.toFixed(2) + ')';
+                }
+                volLink.textContent = volumeText;
             }
         }
 
@@ -2146,6 +2421,236 @@ require_once 'includes/header.php';
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // Attachments - Lightbox
+        function openImageLightbox(src, caption) {
+            // Remove existing lightbox if any
+            const existing = document.getElementById('image-lightbox');
+            if (existing) existing.remove();
+
+            const lightbox = document.createElement('div');
+            lightbox.id = 'image-lightbox';
+            lightbox.className = 'lightbox-overlay';
+            lightbox.innerHTML = `
+                <div class="lightbox-content">
+                    <button type="button" class="lightbox-close" onclick="closeLightbox()">&times;</button>
+                    <img src="${escapeHtml(src)}" alt="${escapeHtml(caption)}">
+                    <div class="lightbox-caption">${escapeHtml(caption)}</div>
+                </div>
+            `;
+            document.body.appendChild(lightbox);
+            lightbox.style.display = 'flex';
+
+            // Close on background click
+            lightbox.addEventListener('click', function(e) {
+                if (e.target === this) closeLightbox();
+            });
+
+            // Close on Escape key
+            document.addEventListener('keydown', lightboxKeyHandler);
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('image-lightbox');
+            if (lightbox) lightbox.remove();
+            document.removeEventListener('keydown', lightboxKeyHandler);
+        }
+
+        function lightboxKeyHandler(e) {
+            if (e.key === 'Escape') closeLightbox();
+        }
+
+        <?php if (canEdit()): ?>
+        // Attachments - Upload
+        async function uploadAttachments(files) {
+            if (!files.length) return;
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+
+            for (const file of files) {
+                if (!allowedTypes.includes(file.type)) {
+                    alert(`Invalid file type: ${file.name}. Allowed: JPG, PNG, GIF, WebP, PDF`);
+                    continue;
+                }
+
+                const formData = new FormData();
+                formData.append('action', 'upload');
+                formData.append('model_id', <?= $modelId ?>);
+                formData.append('attachment', file);
+
+                try {
+                    const response = await fetch('/attachments', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Remove empty state if present
+                        const empty = document.getElementById('attachments-empty');
+                        if (empty) empty.remove();
+
+                        // Add new attachment to appropriate section
+                        if (result.file_type === 'image') {
+                            addImageAttachment(result);
+                        } else {
+                            addDocumentAttachment(result);
+                        }
+                    } else {
+                        alert(`Error uploading ${file.name}: ${result.error}`);
+                    }
+                } catch (err) {
+                    alert(`Error uploading ${file.name}: ${err.message}`);
+                }
+            }
+
+            // Clear the file input
+            document.getElementById('attachment-file-input').value = '';
+        }
+
+        function addImageAttachment(att) {
+            let grid = document.getElementById('attachment-images');
+
+            // Create images section if it doesn't exist
+            if (!grid) {
+                const section = document.createElement('div');
+                section.className = 'attachment-section';
+                section.innerHTML = '<h4>Images</h4><div class="attachment-grid" id="attachment-images"></div>';
+
+                const attachmentsDiv = document.querySelector('.model-attachments');
+                const uploadDiv = attachmentsDiv.querySelector('.attachment-upload');
+                attachmentsDiv.insertBefore(section, uploadDiv);
+                grid = document.getElementById('attachment-images');
+            }
+
+            const item = document.createElement('div');
+            item.className = 'attachment-image';
+            item.dataset.attachmentId = att.attachment_id;
+
+            const img = document.createElement('img');
+            img.src = '/storage/assets/' + att.file_path;
+            img.alt = att.original_filename;
+            img.loading = 'lazy';
+            img.onclick = function() {
+                openImageLightbox('/storage/assets/' + att.file_path, att.original_filename);
+            };
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'attachment-delete';
+            deleteBtn.title = 'Delete';
+            deleteBtn.textContent = '×';
+            deleteBtn.onclick = function() { deleteAttachment(att.attachment_id); };
+
+            item.appendChild(img);
+            item.appendChild(deleteBtn);
+            grid.appendChild(item);
+        }
+
+        function addDocumentAttachment(att) {
+            let list = document.getElementById('attachment-documents');
+
+            // Create documents section if it doesn't exist
+            if (!list) {
+                const section = document.createElement('div');
+                section.className = 'attachment-section';
+                section.innerHTML = '<h4>Documents</h4><div class="attachment-documents" id="attachment-documents"></div>';
+
+                const attachmentsDiv = document.querySelector('.model-attachments');
+                const uploadDiv = attachmentsDiv.querySelector('.attachment-upload');
+                attachmentsDiv.insertBefore(section, uploadDiv);
+                list = document.getElementById('attachment-documents');
+            }
+
+            const item = document.createElement('div');
+            item.className = 'attachment-document';
+            item.dataset.attachmentId = att.attachment_id;
+
+            const badge = document.createElement('span');
+            badge.className = 'file-type-badge';
+            badge.textContent = '.pdf';
+
+            const link = document.createElement('a');
+            link.href = '/storage/assets/' + att.file_path;
+            link.target = '_blank';
+            link.className = 'attachment-doc-name';
+            link.textContent = att.original_filename;
+
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'attachment-doc-size';
+            sizeSpan.textContent = formatFileSize(att.file_size);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'attachment-delete';
+            deleteBtn.title = 'Delete';
+            deleteBtn.textContent = '×';
+            deleteBtn.onclick = function() { deleteAttachment(att.attachment_id); };
+
+            item.appendChild(badge);
+            item.appendChild(link);
+            item.appendChild(sizeSpan);
+            item.appendChild(deleteBtn);
+            list.appendChild(item);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function deleteAttachment(attachmentId) {
+            if (!confirm('Delete this attachment?')) return;
+
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('attachment_id', attachmentId);
+
+            try {
+                const response = await fetch('/attachments', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const item = document.querySelector('[data-attachment-id="' + attachmentId + '"]');
+                    if (item) {
+                        const section = item.closest('.attachment-section');
+                        item.remove();
+
+                        // Remove section if empty
+                        const container = section ? section.querySelector('.attachment-grid, .attachment-documents') : null;
+                        if (container && container.children.length === 0) {
+                            section.remove();
+                        }
+
+                        // Show empty state if no attachments remain
+                        const imagesGrid = document.getElementById('attachment-images');
+                        const docsList = document.getElementById('attachment-documents');
+                        const hasImages = imagesGrid && imagesGrid.children.length > 0;
+                        const hasDocs = docsList && docsList.children.length > 0;
+
+                        if (!hasImages && !hasDocs) {
+                            const uploadDiv = document.querySelector('.attachment-upload');
+                            if (uploadDiv && !document.getElementById('attachments-empty')) {
+                                const empty = document.createElement('p');
+                                empty.className = 'attachments-empty';
+                                empty.id = 'attachments-empty';
+                                empty.textContent = 'No attachments yet.';
+                                uploadDiv.parentNode.insertBefore(empty, uploadDiv);
+                            }
+                        }
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+        <?php endif; ?>
 
         // Drag and drop reordering
         <?php if (canEdit()): ?>

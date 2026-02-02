@@ -38,12 +38,13 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.users') ?>" <?= ($adminPage ?? '') === 'users' ? 'class="active"' : '' ?>>Users</a>
                             <a href="<?= route('admin.groups') ?>" <?= ($adminPage ?? '') === 'groups' ? 'class="active"' : '' ?>>Groups</a>
                             <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active"' : '' ?>>Sessions</a>
-                            <a href="<?= route('admin.ldap') ?>" <?= ($adminPage ?? '') === 'ldap' ? 'class="active"' : '' ?>>LDAP/AD</a>
-                            <a href="<?= route('admin.scim') ?>" <?= ($adminPage ?? '') === 'scim' ? 'class="active"' : '' ?>>SCIM</a>
-                            <a href="<?= route('admin.oauth-clients') ?>" <?= ($adminPage ?? '') === 'oauth-clients' ? 'class="active"' : '' ?>>OAuth2 Clients</a>
+                            <?php if (isFeatureEnabled('sso')): ?>
+                            <a href="<?= route('admin.sso') ?>" <?= ($adminPage ?? '') === 'sso' ? 'class="active"' : '' ?>>Single Sign-On</a>
+                            <?php endif; ?>
                         </div>
                     </div>
 
+                    <?php if (isFeatureEnabled('categories') || isFeatureEnabled('collections') || isFeatureEnabled('tags')): ?>
                     <div class="nav-category" data-category="content">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Content</span>
@@ -52,10 +53,18 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
+                            <?php if (isFeatureEnabled('categories')): ?>
                             <a href="<?= route('admin.categories') ?>" <?= ($adminPage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
+                            <?php endif; ?>
+                            <?php if (isFeatureEnabled('collections')): ?>
                             <a href="<?= route('admin.collections') ?>" <?= ($adminPage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
+                            <?php endif; ?>
+                            <?php if (isFeatureEnabled('tags')): ?>
+                            <a href="<?= route('admin.tags') ?>" <?= ($adminPage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
+                            <?php endif; ?>
                         </div>
                     </div>
+                    <?php endif; ?>
 
                     <?php if (isFeatureEnabled('api_keys') || isFeatureEnabled('webhooks')): ?>
                     <div class="nav-category" data-category="integration">

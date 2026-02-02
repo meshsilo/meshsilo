@@ -198,6 +198,9 @@ $router->group(['prefix' => '/actions'], function($router) {
     $router->post('/thumbnail', ['file' => 'app/actions/thumbnail.php'], 'actions.thumbnail');
     $router->post('/webp-thumbnail', ['file' => 'app/actions/webp-thumbnail.php'], 'actions.thumbnail.webp');
 
+    // Attachments (images and PDFs)
+    $router->post('/attachments', ['file' => 'app/actions/attachments.php'], 'actions.attachments');
+
     // QR codes
     $router->get('/qrcode', ['file' => 'app/actions/qrcode.php'], 'actions.qrcode');
 
@@ -219,9 +222,6 @@ $router->group(['prefix' => '/actions'], function($router) {
     // Folders
     $router->post('/folder', ['file' => 'app/actions/folder.php'], 'actions.folder');
     $router->post('/part-folders', ['file' => 'app/actions/part-folders.php'], 'actions.part.folders');
-
-    // Smart collections
-    $router->post('/smart-collection', ['file' => 'app/actions/smart-collection.php'], 'actions.smart.collection');
 
     // File types
     $router->post('/file-types', ['file' => 'app/actions/file-types.php'], 'actions.file.types');
@@ -271,6 +271,9 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Real User Monitoring (RUM) data collection
     $router->post('/rum', ['file' => 'app/actions/rum.php'], 'actions.rum');
+
+    // Features toggle (admin only)
+    $router->post('/features', ['file' => 'app/actions/features.php'], 'actions.features');
 });
 
 // ============================================================================
@@ -302,17 +305,14 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     $router->get('/sessions', ['file' => 'app/admin/sessions.php'], 'admin.sessions');
     $router->post('/sessions', ['file' => 'app/admin/sessions.php'], 'admin.sessions.action');
 
-    // SCIM User Provisioning
-    $router->get('/scim', ['file' => 'app/admin/scim.php'], 'admin.scim');
-    $router->post('/scim', ['file' => 'app/admin/scim.php'], 'admin.scim.save');
+    // Single Sign-On (unified page for OIDC, SAML, LDAP, SCIM, OAuth)
+    $router->get('/sso', ['file' => 'app/admin/sso.php'], 'admin.sso');
+    $router->post('/sso', ['file' => 'app/admin/sso.php'], 'admin.sso.save');
 
-    // LDAP/Active Directory
-    $router->get('/ldap', ['file' => 'app/admin/ldap.php'], 'admin.ldap');
-    $router->post('/ldap', ['file' => 'app/admin/ldap.php'], 'admin.ldap.save');
-
-    // OAuth2 Clients
-    $router->get('/oauth-clients', ['file' => 'app/admin/oauth-clients.php'], 'admin.oauth-clients');
-    $router->post('/oauth-clients', ['file' => 'app/admin/oauth-clients.php'], 'admin.oauth-clients.save');
+    // Legacy routes redirect to unified SSO page
+    $router->get('/scim', ['file' => 'app/admin/sso.php', 'redirect_tab' => 'scim'], 'admin.scim');
+    $router->get('/ldap', ['file' => 'app/admin/sso.php', 'redirect_tab' => 'ldap'], 'admin.ldap');
+    $router->get('/oauth-clients', ['file' => 'app/admin/sso.php', 'redirect_tab' => 'oauth'], 'admin.oauth-clients');
 
     // Categories
     $router->get('/categories', ['file' => 'app/admin/categories.php'], 'admin.categories');
