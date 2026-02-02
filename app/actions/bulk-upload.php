@@ -21,6 +21,13 @@ if (!hasPermission(PERM_UPLOAD)) {
 $user = getCurrentUser();
 $action = $_POST['action'] ?? '';
 
+// CSRF validation
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
 switch ($action) {
     case 'upload':
         bulkUpload();
@@ -172,10 +179,11 @@ function bulkUpload() {
             // Clean up on failure
             unlink($destPath);
             rmdir($uploadDir);
+            logException($e, ['action' => 'bulk_upload', 'filename' => $filename]);
 
             $results['failed'][] = [
                 'filename' => $filename,
-                'error' => 'Database error: ' . $e->getMessage()
+                'error' => 'Failed to save. Please try again.'
             ];
         }
     }

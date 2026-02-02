@@ -15,6 +15,9 @@
     --color-border: #334155;
     --radius: 8px;
     --radius-lg: 12px;
+    --color-version-1: #3498db;
+    --color-version-2: #e74c3c;
+    --color-overlap: #9b59b6;
 }
 
 /* Light Theme */

@@ -369,10 +369,21 @@ require_once __DIR__ . '/../../includes/header.php';
 }
 
 #test-result.success {
-    border-left: 4px solid #10b981;
+    border-left: 4px solid var(--color-success, #10b981);
 }
 #test-result.error {
-    border-left: 4px solid #ef4444;
+    border-left: 4px solid var(--color-danger, #ef4444);
+}
+
+.route-test-warning {
+    color: var(--color-warning, #f59e0b);
+}
+.route-test-success {
+    color: var(--color-success, #10b981);
+    font-weight: 500;
+}
+.route-test-error {
+    color: var(--color-danger, #ef4444);
 }
 
 /* Named routes table compact */
@@ -391,7 +402,7 @@ document.getElementById('test-btn').addEventListener('click', function() {
     const resultDiv = document.getElementById('test-result');
 
     if (!url) {
-        resultDiv.innerHTML = '<p style="color: #f59e0b;">Please enter a URL to test.</p>';
+        resultDiv.innerHTML = '<p class="route-test-warning">Please enter a URL to test.</p>';
         resultDiv.style.display = 'block';
         resultDiv.className = 'error';
         return;
@@ -422,7 +433,7 @@ document.getElementById('test-btn').addEventListener('click', function() {
     }
 
     if (matched) {
-        let html = '<p style="color: #10b981; font-weight: 500;">&#10003; Route matched!</p>';
+        let html = '<p class="route-test-success">&#10003; Route matched!</p>';
         html += '<table style="width: 100%; margin-top: 0.5rem;">';
         html += '<tr><td style="width: 100px; color: var(--color-text-muted);">Pattern:</td><td><code>' + matched.pattern + '</code></td></tr>';
         html += '<tr><td style="color: var(--color-text-muted);">Name:</td><td><code>' + (matched.name || '-') + '</code></td></tr>';
@@ -444,7 +455,7 @@ document.getElementById('test-btn').addEventListener('click', function() {
         resultDiv.innerHTML = html;
         resultDiv.className = 'success';
     } else {
-        resultDiv.innerHTML = '<p style="color: #ef4444;">&#10007; No matching route found for <code>' + method + ' ' + url + '</code></p>';
+        resultDiv.innerHTML = '<p class="route-test-error">&#10007; No matching route found for <code>' + method + ' ' + url + '</code></p>';
         resultDiv.className = 'error';
     }
 

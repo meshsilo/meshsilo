@@ -257,10 +257,18 @@ class OAuth2Provider {
     public static function deleteClient($clientId) {
         self::init();
 
-        // Revoke all tokens
-        self::$db->exec("DELETE FROM oauth_access_tokens WHERE client_id = '$clientId'");
-        self::$db->exec("DELETE FROM oauth_refresh_tokens WHERE client_id = '$clientId'");
-        self::$db->exec("DELETE FROM oauth_authorization_codes WHERE client_id = '$clientId'");
+        // Revoke all tokens using parameterized queries to prevent SQL injection
+        $stmt = self::$db->prepare('DELETE FROM oauth_access_tokens WHERE client_id = :client_id');
+        $stmt->bindValue(':client_id', $clientId, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $stmt = self::$db->prepare('DELETE FROM oauth_refresh_tokens WHERE client_id = :client_id');
+        $stmt->bindValue(':client_id', $clientId, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $stmt = self::$db->prepare('DELETE FROM oauth_authorization_codes WHERE client_id = :client_id');
+        $stmt->bindValue(':client_id', $clientId, PDO::PARAM_STR);
+        $stmt->execute();
 
         $stmt = self::$db->prepare('DELETE FROM oauth_clients WHERE id = :id');
         $stmt->bindValue(':id', $clientId, PDO::PARAM_STR);

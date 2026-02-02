@@ -219,7 +219,6 @@ class AnnotationManager {
 
     onAddAnnotation(intersectData) {
         // Override this in implementation
-        console.log('Add annotation at:', intersectData);
     }
 
     async addAnnotation(content, position, normal, color = '#ff0000') {

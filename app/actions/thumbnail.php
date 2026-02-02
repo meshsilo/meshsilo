@@ -15,6 +15,15 @@ if (!isLoggedIn()) {
 $user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for state-changing actions
+if (in_array($action, ['upload', 'delete', 'generate'])) {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+}
+
 switch ($action) {
     case 'upload':
         uploadThumbnail();
@@ -36,6 +45,23 @@ function uploadThumbnail() {
 
     if (!$modelId) {
         echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        return;
+    }
+
+    // Verify model ownership
+    $db = getDB();
+    $stmt = $db->prepare('SELECT user_id, uploaded_by FROM models WHERE id = :id');
+    $stmt->execute([':id' => $modelId]);
+    $model = $stmt->fetch();
+
+    if (!$model) {
+        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        return;
+    }
+
+    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
+    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
+        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
         return;
     }
 
@@ -115,11 +141,23 @@ function deleteThumbnail() {
     }
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT thumbnail_path FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT thumbnail_path, user_id, uploaded_by FROM models WHERE id = :id');
     $stmt->execute([':id' => $modelId]);
     $model = $stmt->fetch();
 
-    if ($model && $model['thumbnail_path']) {
+    if (!$model) {
+        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        return;
+    }
+
+    // Verify model ownership
+    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
+    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
+        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
+        return;
+    }
+
+    if ($model['thumbnail_path']) {
         $oldPath = UPLOAD_PATH . $model['thumbnail_path'];
         if (file_exists($oldPath)) {
             unlink($oldPath);
@@ -151,6 +189,13 @@ function generateThumbnail() {
 
     if (!$model) {
         echo json_encode(['success' => false, 'error' => 'Model not found']);
+        return;
+    }
+
+    // Verify model ownership
+    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
+    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
+        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
         return;
     }
 

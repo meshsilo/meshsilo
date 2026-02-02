@@ -22,6 +22,16 @@ if (!$user['is_admin']) {
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for state-changing actions
+$stateChangingActions = ['create', 'delete', 'restore', 'save_schedule', 'cloud_upload', 'cloud_delete', 'cloud_test', 'save_cloud_settings'];
+if (in_array($action, $stateChangingActions)) {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+}
+
 switch ($action) {
     case 'create':
         createBackup();

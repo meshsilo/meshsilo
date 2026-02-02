@@ -50,9 +50,8 @@ self.addEventListener('install', event => {
         Promise.all([
             // Cache static assets
             caches.open(STATIC_CACHE).then(cache => {
-                console.log('[SW] Precaching static assets');
                 return cache.addAll(PRECACHE_ASSETS).catch(err => {
-                    console.log('[SW] Some static assets failed to cache:', err);
+                    // Static assets failed to cache - non-fatal
                 });
             }),
             // Cache CDN assets (best effort)
@@ -83,7 +82,6 @@ self.addEventListener('activate', event => {
                 return Promise.all(
                     keys.filter(key => !currentCaches.includes(key))
                         .map(key => {
-                            console.log('[SW] Removing old cache:', key);
                             return caches.delete(key);
                         })
                 );
@@ -343,7 +341,6 @@ async function limitCacheSize(cacheName) {
         for (let i = 0; i < deleteCount; i++) {
             await cache.delete(keys[i]);
         }
-        console.log(`[SW] Cleaned ${deleteCount} entries from ${cacheName}`);
     }
 }
 
@@ -390,7 +387,6 @@ self.addEventListener('sync', event => {
 });
 
 async function processUploadQueue() {
-    console.log('[SW] Processing upload queue');
     // Implementation for background sync uploads
 }
 

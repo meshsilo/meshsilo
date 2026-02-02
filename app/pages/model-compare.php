@@ -216,9 +216,9 @@ require_once 'includes/header.php';
     <!-- Overlay Viewer (hidden by default) -->
     <div id="overlay-container" class="overlay-container" style="display: none;">
         <div class="overlay-legend">
-            <span class="legend-item"><span class="legend-swatch" style="background: #3498db;"></span> v<?= $v1 ?> (Left)</span>
-            <span class="legend-item"><span class="legend-swatch" style="background: #e74c3c;"></span> v<?= $v2 ?> (Right)</span>
-            <span class="legend-item"><span class="legend-swatch" style="background: #9b59b6;"></span> Overlap</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-version-1);"></span> v<?= $v1 ?> (Left)</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-version-2);"></span> v<?= $v2 ?> (Right)</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-overlap);"></span> Overlap</span>
         </div>
         <div class="overlay-viewer" id="overlay-viewer">
             <div class="loading-spinner">Loading overlay...</div>

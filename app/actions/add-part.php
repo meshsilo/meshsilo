@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         // Clean up file on error
         @unlink($destPath);
         logException($e, ['action' => 'add_part', 'model_id' => $modelId]);
-        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => 'Failed to save. Please try again.']);
     }
     exit;
 }

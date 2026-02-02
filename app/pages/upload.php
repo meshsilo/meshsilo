@@ -437,8 +437,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         $error = 'Failed to save uploaded file.';
                         logError('Failed to save single model file', ['file' => $originalName, 'name' => $name]);
-                        // Clean up parent if part save failed
-                        $db->exec('DELETE FROM models WHERE id = ' . $parentId);
+                        // Clean up parent if part save failed using parameterized query
+                        $cleanupStmt = $db->prepare('DELETE FROM models WHERE id = :id');
+                        $cleanupStmt->bindValue(':id', $parentId, PDO::PARAM_INT);
+                        $cleanupStmt->execute();
                         if (is_dir(UPLOAD_PATH . $folderId)) {
                             rmdir(UPLOAD_PATH . $folderId);
                         }

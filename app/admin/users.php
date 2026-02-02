@@ -55,7 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 // Update is_admin based on Admin group membership
                 $adminGroupId = $db->querySingle("SELECT id FROM groups WHERE name = 'Admin'");
                 if ($adminGroupId && in_array($adminGroupId, $selectedGroups)) {
-                    $db->exec("UPDATE users SET is_admin = 1 WHERE id = $userId");
+                    $adminStmt = $db->prepare('UPDATE users SET is_admin = 1 WHERE id = :user_id');
+                    $adminStmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+                    $adminStmt->execute();
                 }
 
                 header('Location: ' . route('admin.users', [], ['success' => '1']));

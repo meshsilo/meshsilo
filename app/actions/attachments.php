@@ -25,6 +25,15 @@ if (!canEdit()) {
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for state-changing actions
+if (in_array($action, ['upload', 'delete'])) {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+}
+
 switch ($action) {
     case 'upload':
         uploadAttachment();

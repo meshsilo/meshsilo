@@ -572,7 +572,6 @@ class ModelViewer {
     async loadCAD(url, fileType) {
         // Lazy load OpenCascade.js only when needed
         if (!window.occtImportJS) {
-            console.log('Loading OpenCascade.js for CAD file preview...');
             try {
                 await this.loadOpenCascade();
             } catch (error) {

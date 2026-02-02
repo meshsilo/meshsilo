@@ -20,6 +20,15 @@ if (!$modelId) {
     exit;
 }
 
+// CSRF validation for state-changing actions
+if (in_array($action, ['create', 'update', 'delete'])) {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+}
+
 $db = getDB();
 
 switch ($action) {

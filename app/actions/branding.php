@@ -21,6 +21,15 @@ if (!$user['is_admin']) {
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for all POST actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+}
+
 switch ($action) {
     case 'get':
         getBranding();
@@ -128,9 +137,9 @@ function uploadLogo() {
     $file = $_FILES['logo'];
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-    $allowedTypes = ['png', 'jpg', 'jpeg', 'svg', 'webp'];
+    $allowedTypes = ['png', 'jpg', 'jpeg', 'webp'];
     if (!in_array($extension, $allowedTypes)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: png, jpg, svg, webp']);
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: png, jpg, webp']);
         return;
     }
 
@@ -178,9 +187,9 @@ function uploadFavicon() {
     $file = $_FILES['favicon'];
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-    $allowedTypes = ['ico', 'png', 'svg'];
+    $allowedTypes = ['ico', 'png'];
     if (!in_array($extension, $allowedTypes)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: ico, png, svg']);
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: ico, png']);
         return;
     }
 

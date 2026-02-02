@@ -2073,7 +2073,7 @@ require_once 'includes/header.php';
                     // Show option to create new tag
                     tagSuggestions.innerHTML = `
                         <div class="tag-suggestion" onclick="addTag('${value.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: #6366f1;"></span>
+                            <span class="tag-color-dot" style="background-color: var(--color-primary);"></span>
                             <span>Create "${value}"</span>
                         </div>
                     `;
