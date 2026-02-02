@@ -1,11 +1,9 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/features.php';
 
-// Check if collections are enabled
-if (getSetting('enable_collections', '1') !== '1') {
-    header('Location: index.php');
-    exit;
-}
+// Require feature to be enabled
+requireFeature('collections');
 
 $pageTitle = 'Collections';
 $activePage = 'collections';

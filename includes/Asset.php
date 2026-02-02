@@ -13,9 +13,11 @@ class Asset {
     private static ?self $instance = null;
     private string $basePath;
     private string $baseUrl;
+    private string $cdnUrl = '';
     private string $cachePath;
     private bool $minify = false;
     private bool $versioning = true;
+    private string $fingerprintMode = 'query'; // 'query' (?v=hash) or 'filename' (file.hash.ext)
     private array $registered = ['css' => [], 'js' => []];
     private array $inline = ['css' => [], 'js' => []];
     private string $manifestFile;
@@ -40,6 +42,18 @@ class Asset {
         $this->cachePath = dirname(__DIR__) . '/storage/cache/assets/';
         $this->manifestFile = $this->cachePath . 'manifest.json';
 
+        // Load CDN URL from environment or settings
+        $cdnUrl = getenv('CDN_URL') ?: (defined('CDN_URL') ? CDN_URL : '');
+        if (!empty($cdnUrl)) {
+            $this->cdnUrl = rtrim($cdnUrl, '/') . '/';
+        }
+
+        // Load fingerprint mode from environment
+        $fpMode = getenv('ASSET_FINGERPRINT_MODE') ?: (defined('ASSET_FINGERPRINT_MODE') ? ASSET_FINGERPRINT_MODE : 'query');
+        if (in_array($fpMode, ['query', 'filename'])) {
+            $this->fingerprintMode = $fpMode;
+        }
+
         // Create cache directory
         if (!is_dir($this->cachePath)) {
             mkdir($this->cachePath, 0755, true);
@@ -61,6 +75,9 @@ class Asset {
         if (isset($options['base_url'])) {
             $this->baseUrl = rtrim($options['base_url'], '/') . '/';
         }
+        if (isset($options['cdn_url'])) {
+            $this->cdnUrl = !empty($options['cdn_url']) ? rtrim($options['cdn_url'], '/') . '/' : '';
+        }
         if (isset($options['cache_path'])) {
             $this->cachePath = rtrim($options['cache_path'], '/') . '/';
         }
@@ -70,7 +87,32 @@ class Asset {
         if (isset($options['versioning'])) {
             $this->versioning = (bool)$options['versioning'];
         }
+        if (isset($options['fingerprint_mode']) && in_array($options['fingerprint_mode'], ['query', 'filename'])) {
+            $this->fingerprintMode = $options['fingerprint_mode'];
+        }
         return $this;
+    }
+
+    /**
+     * Set CDN URL
+     */
+    public function setCdnUrl(string $url): self {
+        $this->cdnUrl = !empty($url) ? rtrim($url, '/') . '/' : '';
+        return $this;
+    }
+
+    /**
+     * Get current CDN URL
+     */
+    public function getCdnUrl(): string {
+        return $this->cdnUrl;
+    }
+
+    /**
+     * Check if CDN is enabled
+     */
+    public function isCdnEnabled(): bool {
+        return !empty($this->cdnUrl);
     }
 
     /**
@@ -80,21 +122,49 @@ class Asset {
         // Remove leading slash
         $path = ltrim($path, '/');
 
+        // Determine base URL (CDN or local)
+        $baseUrl = $this->isCdnEnabled() ? $this->cdnUrl : $this->baseUrl;
+
         // Check manifest first
         if (isset($this->manifest[$path])) {
-            return $this->baseUrl . $this->manifest[$path];
+            return $baseUrl . $this->manifest[$path];
         }
 
+        $fullPath = $this->basePath . $path;
+
+        if (!$this->versioning || !file_exists($fullPath)) {
+            return $baseUrl . $path;
+        }
+
+        // Generate version hash
+        $hash = substr(md5_file($fullPath), 0, 8);
+
+        // Apply fingerprinting based on mode
+        if ($this->fingerprintMode === 'filename') {
+            // Insert hash before file extension: style.css -> style.abc123.css
+            $info = pathinfo($path);
+            $dir = $info['dirname'] !== '.' ? $info['dirname'] . '/' : '';
+            $versionedPath = $dir . $info['filename'] . '.' . $hash . '.' . $info['extension'];
+            return $baseUrl . $versionedPath;
+        }
+
+        // Query string mode (default): style.css?v=abc123
+        $separator = strpos($path, '?') !== false ? '&' : '?';
+        return $baseUrl . $path . $separator . 'v=' . $hash;
+    }
+
+    /**
+     * Get URL without CDN (for local references)
+     */
+    public function localUrl(string $path): string {
+        $path = ltrim($path, '/');
         $fullPath = $this->basePath . $path;
 
         if (!$this->versioning || !file_exists($fullPath)) {
             return $this->baseUrl . $path;
         }
 
-        // Generate version hash
         $hash = substr(md5_file($fullPath), 0, 8);
-
-        // Add hash as query parameter
         $separator = strpos($path, '?') !== false ? '&' : '?';
         return $this->baseUrl . $path . $separator . 'v=' . $hash;
     }
@@ -456,5 +526,41 @@ if (!function_exists('asset_js')) {
             }
         }
         return '<script src="' . htmlspecialchars($url) . '"' . $attrs . '></script>';
+    }
+}
+
+/**
+ * Get CDN URL for an asset (falls back to local if CDN not configured)
+ */
+if (!function_exists('cdn_asset')) {
+    function cdn_asset(string $path): string {
+        return Asset::getInstance()->url($path);
+    }
+}
+
+/**
+ * Get local URL for an asset (never uses CDN)
+ */
+if (!function_exists('local_asset')) {
+    function local_asset(string $path): string {
+        return Asset::getInstance()->localUrl($path);
+    }
+}
+
+/**
+ * Check if CDN is enabled
+ */
+if (!function_exists('is_cdn_enabled')) {
+    function is_cdn_enabled(): bool {
+        return Asset::getInstance()->isCdnEnabled();
+    }
+}
+
+/**
+ * Configure CDN URL
+ */
+if (!function_exists('set_cdn_url')) {
+    function set_cdn_url(string $url): void {
+        Asset::getInstance()->setCdnUrl($url);
     }
 }

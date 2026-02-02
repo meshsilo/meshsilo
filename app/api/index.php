@@ -35,9 +35,19 @@ require_once __DIR__ . '/../../includes/logger.php';
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/api-auth.php';
 require_once __DIR__ . '/../../includes/api-helpers.php';
+require_once __DIR__ . '/../../includes/ApiVersion.php';
 
 // Set up error handling
 setupErrorHandler();
+
+// Detect and validate API version
+$apiVersion = ApiVersion::fromRequest();
+try {
+    $apiVersion->validate();
+} catch (Exception $e) {
+    apiError($e->getMessage(), 400);
+}
+$apiVersion->addDeprecationHeaders();
 
 // Parse the request
 $method = $_SERVER['REQUEST_METHOD'];
@@ -46,6 +56,8 @@ $uri = $_SERVER['REQUEST_URI'];
 // Remove query string and base path
 $uri = parse_url($uri, PHP_URL_PATH);
 $uri = preg_replace('#^.*/api/#', '', $uri);
+// Strip version prefix if present (e.g., v1/)
+$uri = ApiVersion::stripVersionFromUri('/' . $uri);
 $uri = trim($uri, '/');
 
 // Parse route segments
@@ -68,7 +80,14 @@ try {
     switch ($resource) {
         case '':
         case 'health':
-            apiResponse(['status' => 'ok', 'version' => '1.0']);
+            apiResponse([
+                'status' => 'ok',
+                'api' => $apiVersion->getVersionInfo()
+            ]);
+            break;
+
+        case 'version':
+            apiResponse($apiVersion->getVersionInfo());
             break;
 
         case 'models':

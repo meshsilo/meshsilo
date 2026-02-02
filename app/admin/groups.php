@@ -20,7 +20,10 @@ $message = '';
 $error = '';
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create') {
@@ -195,6 +198,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                         <a href="?edit=<?= $group['id'] ?>" class="btn btn-small btn-secondary">Edit</a>
                                         <?php if (!$group['is_system']): ?>
                                         <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this group?');">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
                                             <button type="submit" class="btn btn-small btn-danger">Delete</button>
@@ -213,6 +217,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?php if ($editGroup): ?>
                     <h2>Edit Group: <?= htmlspecialchars($editGroup['name']) ?></h2>
                     <form method="POST" class="admin-form">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="update">
                         <input type="hidden" name="group_id" value="<?= $editGroup['id'] ?>">
 
@@ -255,6 +260,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <div class="member-item">
                             <span><?= htmlspecialchars($member['username']) ?></span>
                             <form method="POST" style="display: inline;">
+                                <?= csrf_field() ?>
                                 <input type="hidden" name="action" value="remove_member">
                                 <input type="hidden" name="group_id" value="<?= $editGroup['id'] ?>">
                                 <input type="hidden" name="user_id" value="<?= $member['id'] ?>">
@@ -269,6 +275,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
                     <!-- Add Member -->
                     <form method="POST" class="add-member-form">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="add_member">
                         <input type="hidden" name="group_id" value="<?= $editGroup['id'] ?>">
                         <div class="form-row">
@@ -292,6 +299,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?php else: ?>
                     <h2>Create New Group</h2>
                     <form method="POST" class="admin-form">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="create">
 
                         <div class="form-group">

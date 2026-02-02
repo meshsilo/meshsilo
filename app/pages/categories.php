@@ -1,11 +1,9 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/features.php';
 
-// Check if categories are enabled
-if (getSetting('enable_categories', '1') !== '1') {
-    header('Location: index.php');
-    exit;
-}
+// Require feature to be enabled
+requireFeature('categories');
 
 $pageTitle = 'Categories';
 $activePage = 'categories';

@@ -15,6 +15,8 @@ ENV MESHSILO_DOCKER=true
 # Install nginx, PHP, and required extensions
 RUN apt-get update && apt-get install -y software-properties-common && apt update && add-apt-repository ppa:ondrej/php && apt-get install -y \
     nginx \
+    nginx-module-brotli \
+    libbrotli1 \
     php8.1-fpm \
     php8.1-sqlite3 \
     php8.1-mysql \
@@ -22,6 +24,10 @@ RUN apt-get update && apt-get install -y software-properties-common && apt updat
     php8.1-mbstring \
     php8.1-curl \
     php8.1-xml \
+    php8.1-opcache \
+    php8.1-apcu \
+    php8.1-redis \
+    php8.1-gd \
     supervisor \
     curl \
     && apt-get clean \
@@ -67,6 +73,28 @@ RUN echo "upload_max_filesize = 100M" > /etc/php/8.1/fpm/conf.d/99-meshsilo.ini 
     && echo "post_max_size = 105M" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
     && echo "memory_limit = 2G" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
     && echo "max_execution_time = 300" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini
+
+# Configure OPcache for production performance with JIT and preloading
+RUN echo "opcache.enable=1" > /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.enable_cli=1" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.memory_consumption=256" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.interned_strings_buffer=32" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.max_accelerated_files=10000" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.validate_timestamps=0" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.save_comments=1" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.fast_shutdown=1" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.preload=/var/www/meshsilo/includes/preload.php" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.preload_user=www-data" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.jit=1255" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && echo "opcache.jit_buffer_size=128M" >> /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \
+    && cp /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini /etc/php/8.1/cli/conf.d/10-opcache-meshsilo.ini
+
+# Configure APCu for in-memory caching
+RUN echo "apc.enabled=1" > /etc/php/8.1/fpm/conf.d/20-apcu-meshsilo.ini \
+    && echo "apc.shm_size=128M" >> /etc/php/8.1/fpm/conf.d/20-apcu-meshsilo.ini \
+    && echo "apc.ttl=7200" >> /etc/php/8.1/fpm/conf.d/20-apcu-meshsilo.ini \
+    && echo "apc.enable_cli=1" >> /etc/php/8.1/fpm/conf.d/20-apcu-meshsilo.ini \
+    && cp /etc/php/8.1/fpm/conf.d/20-apcu-meshsilo.ini /etc/php/8.1/cli/conf.d/20-apcu-meshsilo.ini
 
 # Create PHP-FPM socket directory
 RUN mkdir -p /run/php && chown www-data:www-data /run/php

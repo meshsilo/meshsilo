@@ -41,20 +41,39 @@ class BackupManager {
                 copy($dbPath . '-shm', $backupPath . '-shm');
             }
         } else {
-            // For MySQL, use mysqldump
+            // For MySQL, use mysqldump with password via environment variable
+            // to avoid exposing password in process listings
             $config = getConfig();
             $cmd = sprintf(
-                'mysqldump -h %s -u %s -p%s %s > %s',
+                'mysqldump -h %s -u %s %s > %s',
                 escapeshellarg($config['db_host'] ?? 'localhost'),
                 escapeshellarg($config['db_user'] ?? 'root'),
-                escapeshellarg($config['db_password'] ?? ''),
                 escapeshellarg($config['db_name'] ?? 'silo'),
                 escapeshellarg($backupPath)
             );
-            exec($cmd, $output, $returnCode);
+
+            // Set MYSQL_PWD environment variable (secure way to pass password)
+            $env = array_merge($_ENV, ['MYSQL_PWD' => $config['db_password'] ?? '']);
+            $descriptorspec = [
+                0 => ['pipe', 'r'],
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w']
+            ];
+            $process = proc_open($cmd, $descriptorspec, $pipes, null, $env);
+
+            if (is_resource($process)) {
+                fclose($pipes[0]);
+                $output = stream_get_contents($pipes[1]);
+                $errors = stream_get_contents($pipes[2]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                $returnCode = proc_close($process);
+            } else {
+                $returnCode = 1;
+            }
 
             if ($returnCode !== 0) {
-                throw new Exception('mysqldump failed');
+                throw new Exception('mysqldump failed: ' . ($errors ?? 'Unknown error'));
             }
         }
 
@@ -165,22 +184,41 @@ class BackupManager {
                 if (file_exists($dbPath . '-wal')) unlink($dbPath . '-wal');
                 if (file_exists($dbPath . '-shm')) unlink($dbPath . '-shm');
             } else {
-                // For MySQL, source the SQL file
-                // This requires shell access
+                // For MySQL, source the SQL file with password via environment variable
+                // to avoid exposing password in process listings
                 $config = getConfig();
                 $cmd = sprintf(
-                    'mysql -h %s -u %s -p%s %s < %s',
+                    'mysql -h %s -u %s %s < %s',
                     escapeshellarg($config['db_host'] ?? 'localhost'),
                     escapeshellarg($config['db_user'] ?? 'root'),
-                    escapeshellarg($config['db_password'] ?? ''),
                     escapeshellarg($config['db_name'] ?? 'silo'),
                     escapeshellarg($tempPath)
                 );
-                exec($cmd, $output, $returnCode);
+
+                // Set MYSQL_PWD environment variable (secure way to pass password)
+                $env = array_merge($_ENV, ['MYSQL_PWD' => $config['db_password'] ?? '']);
+                $descriptorspec = [
+                    0 => ['pipe', 'r'],
+                    1 => ['pipe', 'w'],
+                    2 => ['pipe', 'w']
+                ];
+                $process = proc_open($cmd, $descriptorspec, $pipes, null, $env);
+
+                if (is_resource($process)) {
+                    fclose($pipes[0]);
+                    $output = stream_get_contents($pipes[1]);
+                    $errors = stream_get_contents($pipes[2]);
+                    fclose($pipes[1]);
+                    fclose($pipes[2]);
+                    $returnCode = proc_close($process);
+                } else {
+                    $returnCode = 1;
+                }
+
                 unlink($tempPath);
 
                 if ($returnCode !== 0) {
-                    throw new Exception('MySQL restore failed');
+                    throw new Exception('MySQL restore failed: ' . ($errors ?? 'Unknown error'));
                 }
             }
 

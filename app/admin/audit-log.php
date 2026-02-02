@@ -383,9 +383,9 @@ document.addEventListener('keydown', function(e) {
 }
 
 .stat-card {
-    background: var(--card-bg);
+    background: var(--color-surface);
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius);
     text-align: center;
 }
 
@@ -396,14 +396,14 @@ document.addEventListener('keydown', function(e) {
 }
 
 .stat-label {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
 }
 
 .filters-card {
-    background: var(--card-bg);
+    background: var(--color-surface);
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius);
     margin-bottom: 1.5rem;
 }
 
@@ -455,7 +455,7 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
 .empty-row {
     text-align: center;
     padding: 2rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .pagination {
@@ -467,7 +467,7 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
 }
 
 .page-info {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .modal-lg {
@@ -482,15 +482,15 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
 
 .detail-item {
     padding: 0.5rem;
-    background: var(--bg-color);
-    border-radius: 4px;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius);
     font-size: 0.9rem;
 }
 
 .json-display {
-    background: var(--bg-color);
+    background: var(--color-surface-hover);
     padding: 1rem;
-    border-radius: 4px;
+    border-radius: var(--radius);
     overflow-x: auto;
     font-size: 0.85rem;
     max-height: 200px;
@@ -505,9 +505,9 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
     display: none;
     position: absolute;
     right: 0;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
     min-width: 150px;
     z-index: 100;
 }
@@ -524,7 +524,7 @@ tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
 }
 
 .dropdown-item:hover {
-    background: var(--bg-color);
+    background: var(--color-surface-hover);
 }
 </style>
 

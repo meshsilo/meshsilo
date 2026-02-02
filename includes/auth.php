@@ -1,5 +1,27 @@
 <?php
+// Configure database sessions if enabled
+$useDbSessions = getenv('DB_SESSIONS') === 'true' ||
+    (defined('DB_SESSIONS') && DB_SESSIONS === true) ||
+    (function_exists('getSetting') && getSetting('db_sessions', '0') === '1');
+
+if ($useDbSessions && session_status() === PHP_SESSION_NONE) {
+    require_once __DIR__ . '/DatabaseSessionHandler.php';
+    $sessionLifetime = (int)(getenv('SESSION_LIFETIME') ?: 7200);
+    $handler = new DatabaseSessionHandler($sessionLifetime);
+    session_set_save_handler($handler, true);
+}
+
 if (session_status() === PHP_SESSION_NONE) {
+    // Configure session cookie security
+    $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
     session_start();
 }
 

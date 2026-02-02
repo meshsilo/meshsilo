@@ -21,7 +21,10 @@ $db = getDB();
 $message = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_user'])) {
         $username = trim($_POST['username'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -170,6 +173,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>Add User</h2>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <div class="form-row-grid">
                                 <div class="form-group">
                                     <label for="username">Username</label>
@@ -223,6 +227,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <td><?= htmlspecialchars($user['email']) ?></td>
                                     <td>
                                         <form method="post" class="inline-form">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
                                             <div class="group-checkboxes">
                                                 <?php foreach ($groups as $group): ?>
@@ -245,6 +250,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                         <a href="<?= route('admin.user', ['id' => $user['id']]) ?>" class="btn btn-small btn-secondary">Edit</a>
                                         <?php if ($user['id'] !== getCurrentUser()['id']): ?>
                                         <form method="post" style="display:inline;" onsubmit="return confirm('Delete this user? This cannot be undone.');">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
                                             <button type="submit" name="delete_user" class="btn btn-small btn-danger">Delete</button>
                                         </form>

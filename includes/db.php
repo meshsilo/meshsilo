@@ -187,9 +187,10 @@ class Database {
             // SQLite-specific optimizations
             $this->pdo->exec('PRAGMA journal_mode = WAL'); // Write-Ahead Logging
             $this->pdo->exec('PRAGMA synchronous = NORMAL'); // Faster writes
-            $this->pdo->exec('PRAGMA cache_size = -64000'); // 64MB cache
+            $this->pdo->exec('PRAGMA cache_size = -131072'); // 128MB cache
             $this->pdo->exec('PRAGMA temp_store = MEMORY'); // Temp tables in memory
-            $this->pdo->exec('PRAGMA mmap_size = 30000000000'); // Memory-mapped I/O
+            $this->pdo->exec('PRAGMA mmap_size = 268435456'); // 256MB memory-mapped I/O
+            $this->pdo->exec('PRAGMA foreign_keys = ON'); // Enable referential integrity
         }
     }
 
@@ -605,6 +606,21 @@ function tableExists($db, $table) {
     } else {
         $stmt = $db->prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = :table");
         $stmt->execute([':table' => $table]);
+        return $stmt->fetchColumn() > 0;
+    }
+}
+
+// Check if an index exists
+function indexExists($db, $table, $indexName) {
+    $type = $db->getType();
+
+    if ($type === 'mysql') {
+        $stmt = $db->prepare("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND INDEX_NAME = :index");
+        $stmt->execute([':table' => $table, ':index' => $indexName]);
+        return $stmt->fetchColumn() > 0;
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND tbl_name = :table AND name = :index");
+        $stmt->execute([':table' => $table, ':index' => $indexName]);
         return $stmt->fetchColumn() > 0;
     }
 }
@@ -1451,36 +1467,6 @@ function runMigrations($db) {
     }
 
     // =====================
-    // Smart Collections Migration
-    // =====================
-    if (!tableExists($db, 'smart_collections')) {
-        if ($type === 'mysql') {
-            $db->exec('CREATE TABLE smart_collections (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT,
-                name VARCHAR(255) NOT NULL,
-                description TEXT,
-                rules TEXT NOT NULL,
-                is_public TINYINT DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-        } else {
-            $db->exec('CREATE TABLE smart_collections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                name TEXT NOT NULL,
-                description TEXT,
-                rules TEXT NOT NULL,
-                is_public INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )');
-        }
-        logInfo('Migration: Created smart_collections table');
-    }
-
-    // =====================
     // Model Ratings Migration
     // =====================
     if (!tableExists($db, 'model_ratings')) {
@@ -2206,8 +2192,18 @@ function isModelExtension($extension) {
 // Tag Functions
 // =====================
 
-// Get all tags
-function getAllTags() {
+// Get all tags (cached for 5 minutes)
+function getAllTags($useCache = true) {
+    $cacheKey = 'all_tags';
+
+    // Try to get from cache first
+    if ($useCache) {
+        $cached = cache($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+    }
+
     try {
         $db = getDB();
         $result = $db->query('SELECT * FROM tags ORDER BY name');
@@ -2215,10 +2211,51 @@ function getAllTags() {
         while ($row = $result->fetch()) {
             $tags[] = $row;
         }
+
+        // Cache for 5 minutes
+        cache_set($cacheKey, $tags, 300);
         return $tags;
     } catch (Exception $e) {
         return [];
     }
+}
+
+// Get all categories with model counts (cached for 5 minutes)
+function getAllCategories($useCache = true) {
+    $cacheKey = 'all_categories';
+
+    // Try to get from cache first
+    if ($useCache) {
+        $cached = cache($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+    }
+
+    try {
+        $db = getDB();
+        $result = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
+        $categories = [];
+        while ($row = $result->fetch()) {
+            $categories[] = $row;
+        }
+
+        // Cache for 5 minutes
+        cache_set($cacheKey, $categories, 300);
+        return $categories;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Invalidate tags cache (call after adding/removing tags)
+function invalidateTagsCache() {
+    cache_forget('all_tags');
+}
+
+// Invalidate categories cache (call after modifying categories)
+function invalidateCategoriesCache() {
+    cache_forget('all_categories');
 }
 
 // Get tags for a model
@@ -2324,6 +2361,77 @@ function getFirstPartsForModels(array $modelIds) {
     }
 }
 
+// Get categories for a single model
+function getCategoriesForModel($modelId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            SELECT c.id, c.name
+            FROM categories c
+            JOIN model_categories mc ON c.id = mc.category_id
+            WHERE mc.model_id = :model_id
+            ORDER BY c.name
+        ');
+        $stmt->execute([':model_id' => $modelId]);
+        return $stmt->fetchAll();
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Get categories for multiple models in batch (reduces N+1 queries)
+function getCategoriesForModels(array $modelIds) {
+    if (empty($modelIds)) {
+        return [];
+    }
+
+    try {
+        $db = getDB();
+        $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
+        $query = "
+            SELECT mc.model_id, c.id, c.name
+            FROM model_categories mc
+            JOIN categories c ON mc.category_id = c.id
+            WHERE mc.model_id IN ($placeholders)
+            ORDER BY c.name
+        ";
+        $stmt = $db->prepare($query);
+
+        $index = 1;
+        foreach ($modelIds as $id) {
+            $stmt->bindValue($index++, $id, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        // Group categories by model_id
+        $categoriesByModel = [];
+        while ($row = $stmt->fetch()) {
+            $categoriesByModel[$row['model_id']][] = [
+                'id' => $row['id'],
+                'name' => $row['name']
+            ];
+        }
+
+        return $categoriesByModel;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Get absolute file path for a model/part
+function getModelFilePath($model) {
+    $basePath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../storage/assets/';
+    $filePath = $model['dedup_path'] ?? $model['file_path'] ?? '';
+    if (empty($filePath)) {
+        return null;
+    }
+    // Handle both relative and absolute paths
+    if (strpos($filePath, '/') === 0 || strpos($filePath, ':\\') !== false) {
+        return $filePath;
+    }
+    return rtrim($basePath, '/') . '/' . ltrim($filePath, '/');
+}
+
 // Add tag to model
 function addTagToModel($modelId, $tagId) {
     try {
@@ -2356,6 +2464,7 @@ function createTag($name, $color = '#6366f1') {
         $db = getDB();
         $stmt = $db->prepare('INSERT INTO tags (name, color) VALUES (:name, :color)');
         $stmt->execute([':name' => trim($name), ':color' => $color]);
+        invalidateTagsCache();
         return $db->lastInsertId();
     } catch (Exception $e) {
         return false;
@@ -2368,6 +2477,7 @@ function deleteTag($tagId) {
         $db = getDB();
         $stmt = $db->prepare('DELETE FROM tags WHERE id = :id');
         $stmt->execute([':id' => $tagId]);
+        invalidateTagsCache();
         return true;
     } catch (Exception $e) {
         return false;
@@ -3272,4 +3382,133 @@ function deliverWebhook($webhook, $event, $jsonPayload) {
     }
 
     return $success;
+}
+
+// =====================
+// Batch Operations
+// =====================
+
+/**
+ * Batch insert multiple rows into a table
+ * @param string $table Table name
+ * @param array $columns Column names
+ * @param array $rows Array of row data arrays
+ * @param int $chunkSize Number of rows per insert (default 100)
+ * @return int Number of rows inserted
+ */
+function batchInsert(string $table, array $columns, array $rows, int $chunkSize = 100): int {
+    if (empty($rows) || empty($columns)) {
+        return 0;
+    }
+
+    $db = getDB();
+    $type = $db->getType();
+    $inserted = 0;
+
+    // Build column list
+    $columnList = implode(', ', array_map(function($col) use ($type) {
+        return $type === 'mysql' ? "`$col`" : "\"$col\"";
+    }, $columns));
+
+    // Process in chunks to avoid memory issues
+    foreach (array_chunk($rows, $chunkSize) as $chunk) {
+        $placeholderRow = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        $placeholders = implode(', ', array_fill(0, count($chunk), $placeholderRow));
+
+        $sql = "INSERT INTO $table ($columnList) VALUES $placeholders";
+        $stmt = $db->prepare($sql);
+
+        // Flatten values array
+        $values = [];
+        foreach ($chunk as $row) {
+            foreach ($columns as $col) {
+                $values[] = $row[$col] ?? null;
+            }
+        }
+
+        $stmt->execute($values);
+        $inserted += count($chunk);
+    }
+
+    return $inserted;
+}
+
+/**
+ * Batch insert with IGNORE (skip duplicates)
+ */
+function batchInsertIgnore(string $table, array $columns, array $rows, int $chunkSize = 100): int {
+    if (empty($rows) || empty($columns)) {
+        return 0;
+    }
+
+    $db = getDB();
+    $type = $db->getType();
+    $inserted = 0;
+
+    $columnList = implode(', ', array_map(function($col) use ($type) {
+        return $type === 'mysql' ? "`$col`" : "\"$col\"";
+    }, $columns));
+
+    $insertKeyword = $type === 'mysql' ? 'INSERT IGNORE' : 'INSERT OR IGNORE';
+
+    foreach (array_chunk($rows, $chunkSize) as $chunk) {
+        $placeholderRow = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        $placeholders = implode(', ', array_fill(0, count($chunk), $placeholderRow));
+
+        $sql = "$insertKeyword INTO $table ($columnList) VALUES $placeholders";
+        $stmt = $db->prepare($sql);
+
+        $values = [];
+        foreach ($chunk as $row) {
+            foreach ($columns as $col) {
+                $values[] = $row[$col] ?? null;
+            }
+        }
+
+        $stmt->execute($values);
+        $inserted += $stmt->rowCount();
+    }
+
+    return $inserted;
+}
+
+/**
+ * Batch update using CASE statements (more efficient than individual updates)
+ * @param string $table Table name
+ * @param string $idColumn Primary key column
+ * @param string $updateColumn Column to update
+ * @param array $updates Array of [id => value] pairs
+ * @return int Number of rows affected
+ */
+function batchUpdate(string $table, string $idColumn, string $updateColumn, array $updates): int {
+    if (empty($updates)) {
+        return 0;
+    }
+
+    $db = getDB();
+    $type = $db->getType();
+
+    $ids = array_keys($updates);
+    $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+
+    // Build CASE statement
+    $caseStmt = "CASE $idColumn ";
+    $params = [];
+    foreach ($updates as $id => $value) {
+        $caseStmt .= "WHEN ? THEN ? ";
+        $params[] = $id;
+        $params[] = $value;
+    }
+    $caseStmt .= "END";
+
+    // Add IDs for WHERE clause
+    foreach ($ids as $id) {
+        $params[] = $id;
+    }
+
+    $sql = "UPDATE $table SET $updateColumn = $caseStmt WHERE $idColumn IN ($placeholders)";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    return $stmt->rowCount();
 }

@@ -19,7 +19,10 @@ $error = '';
 $success = '';
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create') {
@@ -99,8 +102,8 @@ $pageTitle = 'Webhooks - ' . $siteName;
             font-size: 0.75rem;
             margin-right: 0.25rem;
             margin-bottom: 0.25rem;
-            background: var(--bg-tertiary);
-            color: var(--text-secondary);
+            background: var(--color-surface-hover);
+            color: var(--color-text-muted);
         }
         .webhook-inactive {
             opacity: 0.5;
@@ -112,9 +115,9 @@ $pageTitle = 'Webhooks - ' . $siteName;
             border-radius: 50%;
             margin-right: 0.5rem;
         }
-        .status-indicator.success { background: var(--success); }
-        .status-indicator.error { background: var(--danger); }
-        .status-indicator.unknown { background: var(--text-muted); }
+        .status-indicator.success { background: #10b981; }
+        .status-indicator.error { background: #ef4444; }
+        .status-indicator.unknown { background: var(--color-text-muted); }
         .checkbox-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -153,6 +156,7 @@ $pageTitle = 'Webhooks - ' . $siteName;
                 </div>
                 <div class="card-body">
                     <form method="post" action="">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="create">
 
                         <div class="form-group">
@@ -247,11 +251,13 @@ $pageTitle = 'Webhooks - ' . $siteName;
                                         </td>
                                         <td>
                                             <form method="post" action="" style="display:inline">
+                                                <?= csrf_field() ?>
                                                 <input type="hidden" name="action" value="test">
                                                 <input type="hidden" name="webhook_id" value="<?= $webhook['id'] ?>">
                                                 <button type="submit" class="btn btn-secondary btn-sm">Test</button>
                                             </form>
                                             <form method="post" action="" style="display:inline">
+                                                <?= csrf_field() ?>
                                                 <input type="hidden" name="action" value="toggle">
                                                 <input type="hidden" name="webhook_id" value="<?= $webhook['id'] ?>">
                                                 <input type="hidden" name="is_active" value="<?= $webhook['is_active'] ?>">
@@ -261,6 +267,7 @@ $pageTitle = 'Webhooks - ' . $siteName;
                                             </form>
                                             <form method="post" action="" style="display:inline"
                                                   onsubmit="return confirm('Delete this webhook?')">
+                                                <?= csrf_field() ?>
                                                 <input type="hidden" name="action" value="delete">
                                                 <input type="hidden" name="webhook_id" value="<?= $webhook['id'] ?>">
                                                 <button type="submit" class="btn btn-danger btn-sm">Delete</button>

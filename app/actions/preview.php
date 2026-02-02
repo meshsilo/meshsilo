@@ -7,6 +7,12 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
+// Require authentication
+if (!isLoggedIn()) {
+    http_response_code(401);
+    die('Not authenticated');
+}
+
 $partId = (int)($_GET['id'] ?? 0);
 
 if (!$partId) {
@@ -33,8 +39,10 @@ if (!$filePath || !is_file($filePath)) {
     die('File not found on disk');
 }
 
-// Get the original filename
+// Get the original filename and sanitize for header use
 $filename = $part['filename'] ?? basename($part['file_path']);
+// Remove any characters that could cause header injection
+$filename = preg_replace('/[\r\n\t"\\\\]/', '', $filename);
 
 // Determine content type
 $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));

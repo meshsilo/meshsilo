@@ -12,6 +12,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// CSRF validation
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
 if (!canEdit()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Permission denied']);
@@ -37,6 +44,14 @@ $model = $result->fetchArray(PDO::FETCH_ASSOC);
 if (!$model) {
     http_response_code(404);
     echo json_encode(['success' => false, 'error' => 'Model not found']);
+    exit;
+}
+
+// Verify ownership - only owner or admin can edit
+$user = getCurrentUser();
+if ($model['user_id'] && $model['user_id'] != $user['id'] && !$user['is_admin']) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
     exit;
 }
 

@@ -52,7 +52,7 @@ if (session_status() === PHP_SESSION_NONE) {
 if (!isset($_SESSION['install'])) {
     $_SESSION['install'] = [
         'step' => 1,
-        'db_type' => 'sqlite',
+        'db_type' => 'mysql',
         'db_config' => [],
         'admin' => [],
         'site' => [],
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'configure_database':
-            $dbType = $_POST['db_type'] ?? 'sqlite';
+            $dbType = $_POST['db_type'] ?? 'mysql';
             $_SESSION['install']['db_type'] = $dbType;
 
             if ($dbType === 'mysql') {
@@ -137,12 +137,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'configure_site':
+            // Demo mode can only be enabled if .demo file exists in root
+            $canEnableDemo = file_exists(__DIR__ . '/.demo');
             $_SESSION['install']['site'] = [
                 'name' => trim($_POST['site_name'] ?? 'MeshSilo'),
                 'description' => trim($_POST['site_description'] ?? '3D Model Library'),
                 'url' => trim($_POST['site_url'] ?? ''),
                 'force_url' => isset($_POST['force_url']) ? '1' : '0',
-                'demo_mode' => isset($_POST['demo_mode']) ? '1' : '0'
+                'demo_mode' => ($canEnableDemo && isset($_POST['demo_mode'])) ? '1' : '0'
             ];
             $step = 5;
             $_SESSION['install']['step'] = $step;
@@ -319,9 +321,7 @@ function performInstallation($config) {
         try {
             require_once __DIR__ . '/includes/config.php';
             $db = getDB();
-            if (function_exists('runMigrations')) {
-                runMigrations($db);
-            }
+            runMigrations($db);
         } catch (Throwable $e) {
             // Log but don't fail - migrations can be run manually
             error_log('Post-install migrations warning: ' . $e->getMessage());
@@ -592,11 +592,13 @@ function initializeMySQLDatabase($config) {
 }
 
 /**
- * Get schema SQL for database type
+ * Get BASE schema SQL - minimal tables needed to bootstrap
+ * All other tables are created by running migrations
  */
-function getSchemaSQL($type) {
+function getBaseSchemaSQL($type) {
     if ($type === 'mysql') {
         return <<<'SQL'
+-- Minimal bootstrap schema - migrations add all other tables and columns
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
@@ -636,6 +638,7 @@ CREATE TABLE IF NOT EXISTS models (
     dim_y DECIMAL(10,3),
     dim_z DECIMAL(10,3),
     dim_unit VARCHAR(10) DEFAULT 'mm',
+    volume DECIMAL(15,2),
     sort_order INT DEFAULT 0,
     current_version INT DEFAULT 1,
     thumbnail_path VARCHAR(500),
@@ -643,6 +646,11 @@ CREATE TABLE IF NOT EXISTS models (
     approval_status VARCHAR(20) DEFAULT 'approved',
     approved_by INT,
     approved_at TIMESTAMP NULL,
+    integrity_hash VARCHAR(64),
+    integrity_checked_at TIMESTAMP NULL,
+    remix_of INT,
+    external_source_url VARCHAR(500),
+    external_source_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
@@ -699,39 +707,18 @@ CREATE TABLE IF NOT EXISTS settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO settings (`key`, `value`) VALUES
-    ('auto_convert_stl', '0'),
     ('site_name', 'MeshSilo'),
     ('site_description', 'Your 3D Model Library'),
     ('models_per_page', '20'),
     ('allow_registration', '1'),
-    ('require_approval', '0'),
-    ('enable_categories', '1'),
-    ('enable_collections', '1'),
-    ('enable_tags', '1'),
-    ('allowed_extensions', 'stl,3mf,gcode,zip'),
-    ('auto_deduplication', '0'),
     ('default_theme', 'dark'),
-    ('allow_user_theme', '1'),
     ('default_sort', 'newest'),
-    ('default_view', 'grid'),
-    ('enable_activity_log', '1'),
-    ('activity_log_retention_days', '90'),
-    ('maintenance_mode', '0'),
-    ('storage_type', 'local'),
-    ('rate_limiting', '1'),
-    ('mail_driver', 'mail'),
-    ('mail_from_address', 'noreply@example.com'),
-    ('webhooks_enabled', '1'),
-    ('oidc_enabled', '0'),
-    ('oidc_provider_url', ''),
-    ('oidc_client_id', ''),
-    ('oidc_client_secret', ''),
-    ('oidc_button_text', 'Sign in with SSO'),
-    ('ldap_enabled', '0'),
-    ('saml_enabled', '0');
+    ('default_view', 'grid');
 SQL;
     } else {
+        // SQLite schema
         return <<<'SQL'
+-- Minimal bootstrap schema - migrations add all other tables and columns
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
@@ -771,6 +758,7 @@ CREATE TABLE IF NOT EXISTS models (
     dim_y REAL,
     dim_z REAL,
     dim_unit TEXT DEFAULT 'mm',
+    volume REAL,
     sort_order INTEGER DEFAULT 0,
     current_version INTEGER DEFAULT 1,
     thumbnail_path TEXT,
@@ -778,6 +766,11 @@ CREATE TABLE IF NOT EXISTS models (
     approval_status TEXT DEFAULT 'approved',
     approved_by INTEGER,
     approved_at DATETIME,
+    integrity_hash TEXT,
+    integrity_checked_at DATETIME,
+    remix_of INTEGER,
+    external_source_url TEXT,
+    external_source_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
@@ -834,39 +827,27 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 INSERT OR IGNORE INTO settings (key, value) VALUES
-    ('auto_convert_stl', '0'),
     ('site_name', 'MeshSilo'),
     ('site_description', 'Your 3D Model Library'),
     ('models_per_page', '20'),
     ('allow_registration', '1'),
-    ('require_approval', '0'),
-    ('enable_categories', '1'),
-    ('enable_collections', '1'),
-    ('enable_tags', '1'),
-    ('allowed_extensions', 'stl,3mf,gcode,zip'),
-    ('auto_deduplication', '0'),
     ('default_theme', 'dark'),
-    ('allow_user_theme', '1'),
     ('default_sort', 'newest'),
-    ('default_view', 'grid'),
-    ('enable_activity_log', '1'),
-    ('activity_log_retention_days', '90'),
-    ('maintenance_mode', '0'),
-    ('storage_type', 'local'),
-    ('rate_limiting', '1'),
-    ('mail_driver', 'mail'),
-    ('mail_from_address', 'noreply@example.com'),
-    ('webhooks_enabled', '1'),
-    ('oidc_enabled', '0'),
-    ('oidc_provider_url', ''),
-    ('oidc_client_id', ''),
-    ('oidc_client_secret', ''),
-    ('oidc_button_text', 'Sign in with SSO'),
-    ('ldap_enabled', '0'),
-    ('saml_enabled', '0');
+    ('default_view', 'grid');
 SQL;
     }
 }
+
+/**
+ * LEGACY FUNCTION - kept for compatibility
+ * Now just delegates to getBaseSchemaSQL()
+ */
+function getSchemaSQL($type) {
+    return getBaseSchemaSQL($type);
+}
+
+// Schema functions end here - all additional tables are created by migrations
+// See includes/migrations.php for the complete list of tables
 
 /**
  * Detect web server type
@@ -884,6 +865,9 @@ function detectWebServer() {
 $requirements = checkRequirements();
 $allPassed = true;
 $criticalFailed = false;
+
+// Check if demo mode is available (requires .demo file in root)
+$demoModeAvailable = file_exists(__DIR__ . '/.demo');
 
 foreach ($requirements as $req) {
     if (!$req['passed'] && empty($req['optional'])) {
@@ -1151,16 +1135,16 @@ foreach ($requirements as $req) {
 
             <div class="radio-group">
                 <label class="radio-label">
-                    <input type="radio" name="db_type" value="sqlite" <?= ($_SESSION['install']['db_type'] ?? 'sqlite') === 'sqlite' ? 'checked' : '' ?> onchange="toggleMySQLFields()">
-                    <span>SQLite (Recommended)</span>
+                    <input type="radio" name="db_type" value="mysql" <?= ($_SESSION['install']['db_type'] ?? 'mysql') === 'mysql' ? 'checked' : '' ?> onchange="toggleMySQLFields()">
+                    <span>MySQL (Recommended)</span>
                 </label>
                 <label class="radio-label">
-                    <input type="radio" name="db_type" value="mysql" <?= ($_SESSION['install']['db_type'] ?? '') === 'mysql' ? 'checked' : '' ?> onchange="toggleMySQLFields()">
-                    <span>MySQL</span>
+                    <input type="radio" name="db_type" value="sqlite" <?= ($_SESSION['install']['db_type'] ?? 'mysql') === 'sqlite' ? 'checked' : '' ?> onchange="toggleMySQLFields()">
+                    <span>SQLite</span>
                 </label>
             </div>
 
-            <div id="mysql-fields" style="display: <?= ($_SESSION['install']['db_type'] ?? 'sqlite') === 'mysql' ? 'block' : 'none' ?>;">
+            <div id="mysql-fields" style="display: <?= ($_SESSION['install']['db_type'] ?? 'mysql') === 'mysql' ? 'block' : 'none' ?>;">
                 <div class="form-group">
                     <label for="db_host">Host</label>
                     <input type="text" id="db_host" name="db_host" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['host'] ?? 'localhost') ?>">
@@ -1184,7 +1168,7 @@ foreach ($requirements as $req) {
             </div>
 
             <div class="btn-group">
-                <button type="submit" name="action" value="go_back" class="btn btn-secondary">Back</button>
+                <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>
                 <button type="submit" class="btn btn-primary">Continue</button>
             </div>
         </form>
@@ -1226,7 +1210,7 @@ foreach ($requirements as $req) {
             </div>
 
             <div class="btn-group">
-                <button type="submit" name="action" value="go_back" class="btn btn-secondary">Back</button>
+                <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>
                 <button type="submit" class="btn btn-primary">Continue</button>
             </div>
         </form>
@@ -1264,6 +1248,7 @@ foreach ($requirements as $req) {
                 <p class="form-help">Reject requests that don't match the configured URL.</p>
             </div>
 
+            <?php if ($demoModeAvailable): ?>
             <div class="toggle-section">
                 <div class="form-group">
                     <label class="checkbox-label">
@@ -1273,9 +1258,10 @@ foreach ($requirements as $req) {
                     <p class="form-help">Sets up the instance as a demo with sample models and a demo user. A banner will be shown to visitors. The instance can be periodically reset via cron. <strong>This cannot be changed after installation.</strong></p>
                 </div>
             </div>
+            <?php endif; ?>
 
             <div class="btn-group">
-                <button type="submit" name="action" value="go_back" class="btn btn-secondary">Back</button>
+                <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>
                 <button type="submit" class="btn btn-primary">Continue</button>
             </div>
         </form>
@@ -1326,7 +1312,7 @@ foreach ($requirements as $req) {
             </div>
 
             <div class="btn-group">
-                <button type="submit" name="action" value="go_back" class="btn btn-secondary">Back</button>
+                <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>
                 <button type="submit" name="skip_oidc" value="1" class="btn btn-secondary">Skip</button>
                 <button type="submit" class="btn btn-primary">Continue</button>
             </div>
@@ -1353,7 +1339,7 @@ foreach ($requirements as $req) {
             <li><strong>Site URL:</strong> <?= htmlspecialchars($_SESSION['install']['site']['url']) ?></li>
             <?php endif; ?>
             <li><strong>OIDC:</strong> <?= !empty($_SESSION['install']['oidc']['enabled']) ? 'Enabled' : 'Disabled' ?></li>
-            <?php if (($_SESSION['install']['site']['demo_mode'] ?? '0') === '1'): ?>
+            <?php if ($demoModeAvailable && ($_SESSION['install']['site']['demo_mode'] ?? '0') === '1'): ?>
             <li><strong>Demo Mode:</strong> <span style="color: var(--color-warning);">Enabled</span></li>
             <?php endif; ?>
         </ul>
@@ -1361,7 +1347,7 @@ foreach ($requirements as $req) {
         <form method="post">
             <input type="hidden" name="action" value="install">
             <div class="btn-group">
-                <button type="submit" name="action" value="go_back" class="btn btn-secondary">Back</button>
+                <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>
                 <button type="submit" class="btn btn-primary">Install MeshSilo</button>
             </div>
         </form>
@@ -1407,5 +1393,16 @@ RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]</code>
         </p>
         <?php endif; ?>
     </div>
+    <script>
+    function goBack(btn) {
+        const form = btn.closest('form');
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'action';
+        input.value = 'go_back';
+        form.appendChild(input);
+        form.submit();
+    }
+    </script>
 </body>
 </html>

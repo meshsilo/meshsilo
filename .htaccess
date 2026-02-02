@@ -5,6 +5,7 @@
     RewriteEngine On
 
     # If you're running Silo in a subdirectory, uncomment and set the base path
+    # Example: RewriteBase /meshsilo/
     # RewriteBase /silo/
 
     # Block access to .git, .claude directories

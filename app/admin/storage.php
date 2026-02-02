@@ -35,13 +35,7 @@ function getDirectorySize($path) {
     return $size;
 }
 
-function formatBytes($bytes, $precision = 2) {
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $bytes = max($bytes, 0);
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    return round($bytes / pow(1024, $pow), $precision) . ' ' . $units[$pow];
-}
+// formatBytes is defined in includes/helpers.php
 
 function countFiles($path, $extensions = []) {
     $count = 0;
@@ -76,7 +70,10 @@ $dedupSavings = getDedupStorageSavings();
 $message = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['save_s3'])) {
         setSetting('storage_type', $_POST['storage_type'] ?? 'local');
         setSetting('s3_endpoint', $_POST['s3_endpoint'] ?? '');
@@ -321,6 +318,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>Storage Backend</h2>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <div class="form-group">
                                 <label for="storage_type">Storage Type</label>
                                 <select name="storage_type" id="storage_type" class="form-input" onchange="toggleS3Settings()">
@@ -395,6 +393,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <h4>Migrate to S3</h4>
                             <p class="form-hint">You have S3 configured but are using local storage. You can migrate existing files to S3.</p>
                             <form method="post" onsubmit="return confirm('This will copy all local files to S3. This may take a while. Continue?');">
+                                <?= csrf_field() ?>
                                 <button type="submit" name="migrate_to_s3" class="btn btn-secondary">Migrate Files to S3</button>
                             </form>
                         </div>
@@ -420,9 +419,11 @@ require_once __DIR__ . '/../../includes/header.php';
                         <h2>Maintenance</h2>
                         <div class="button-group">
                             <form method="post" style="display:inline;">
+                                <?= csrf_field() ?>
                                 <button type="submit" name="backup_db" class="btn btn-secondary">Backup Database</button>
                             </form>
                             <form method="post" style="display:inline;" onsubmit="return confirm('This will delete files not tracked in the database. Continue?');">
+                                <?= csrf_field() ?>
                                 <button type="submit" name="clear_orphans" class="btn btn-secondary">Clean Orphaned Files</button>
                             </form>
                         </div>

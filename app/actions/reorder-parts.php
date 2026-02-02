@@ -9,6 +9,13 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// CSRF validation
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
 $parentId = isset($_POST['parent_id']) ? (int)$_POST['parent_id'] : 0;
 $partIds = isset($_POST['part_ids']) ? array_map('intval', (array)$_POST['part_ids']) : [];
 

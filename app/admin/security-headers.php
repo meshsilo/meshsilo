@@ -13,8 +13,14 @@ if (!canManageSecurity()) {
 
 require_once __DIR__ . '/../../includes/SecurityHeaders.php';
 
+$success = '';
+$error = '';
+
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'save';
 
     if ($action === 'save') {
@@ -106,6 +112,9 @@ include __DIR__ . '/../../includes/header.php';
         <?php if (!empty($success)): ?>
             <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
 
         <!-- Security Score Card -->
         <div class="card mb-4">
@@ -138,6 +147,7 @@ include __DIR__ . '/../../includes/header.php';
         </div>
 
         <form method="post" class="security-headers-form">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="save">
 
             <!-- HSTS -->
@@ -494,9 +504,9 @@ include __DIR__ . '/../../includes/header.php';
 }
 
 .code-block {
-    background: var(--color-bg-secondary);
+    background: var(--color-surface-hover);
     padding: 1rem;
-    border-radius: 4px;
+    border-radius: var(--radius);
     overflow-x: auto;
     font-family: monospace;
     font-size: 0.85rem;

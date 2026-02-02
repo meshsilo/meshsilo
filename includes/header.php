@@ -27,7 +27,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
     <link rel="icon" type="image/png" sizes="16x16" href="<?= basePath('images/favicon-16.png') ?>">
     <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
-    <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=3">
+    <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=7">
 
     <!-- Three.js for 3D model rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -42,8 +42,8 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TDSLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/AMFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="<?= basePath('js/viewer.js') ?>?v=8" defer></script>
-    <script src="<?= basePath('js/main.js') ?>?v=3" defer></script>
+    <script src="<?= basePath('js/viewer.js') ?>?v=10" defer></script>
+    <script src="<?= basePath('js/main.js') ?>?v=5" defer></script>
     <script>
         // Theme toggle functionality
         function toggleTheme() {
@@ -95,6 +95,10 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             });
         }
     </script>
+    <?php if (isLoggedIn()): ?>
+    <?= Csrf::metaTag() ?>
+    <?= Csrf::ajaxSetupScript() ?>
+    <?php endif; ?>
 </head>
 <body>
     <header class="site-header">
@@ -108,13 +112,13 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             </button>
             <nav class="main-nav">
                 <a href="<?= route('browse') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
-                <?php if (getSetting('enable_categories', '1') === '1'): ?>
+                <?php if (isFeatureEnabled('categories')): ?>
                 <a href="<?= route('categories') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
                 <?php endif; ?>
-                <?php if (getSetting('enable_collections', '1') === '1'): ?>
+                <?php if (isFeatureEnabled('collections')): ?>
                 <a href="<?= route('collections') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
                 <?php endif; ?>
-                <?php if (getSetting('enable_tags', '1') === '1'): ?>
+                <?php if (isFeatureEnabled('tags')): ?>
                 <a href="<?= route('tags') ?>" <?= ($activePage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
                 <?php endif; ?>
                 <?php if (canUpload()): ?>
@@ -125,7 +129,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 <form action="<?= route('browse') ?>" method="get" style="display: contents;">
                     <input type="search" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
                 </form>
-                <?php if ($allowUserTheme): ?>
+                <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme): ?>
                 <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
                     <span id="theme-icon"><?= $currentTheme === 'light' ? '&#9790;' : '&#9728;' ?></span>
                 </button>

@@ -54,6 +54,21 @@ if (!$model) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
     header('Content-Type: application/json');
 
+    // CSRF validation
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+
+    // Verify ownership - only owner or admin can add parts
+    $user = getCurrentUser();
+    if ($model['user_id'] && $model['user_id'] != $user['id'] && !$user['is_admin']) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
+        exit;
+    }
+
     $file = $_FILES['part_file'];
 
     // Check for upload errors

@@ -6,9 +6,22 @@ require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
+if (!isFeatureEnabled('tags')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Tags feature is disabled']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    exit;
+}
+
+// CSRF validation
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
     exit;
 }
 
@@ -37,6 +50,18 @@ $model = $result->fetchArray(PDO::FETCH_ASSOC);
 if (!$model) {
     http_response_code(404);
     echo json_encode(['success' => false, 'error' => 'Model not found']);
+    exit;
+}
+
+// Verify ownership - only owner or admin can tag
+$user = getCurrentUser();
+$stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
+$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+$ownerResult = $stmt->execute();
+$ownerInfo = $ownerResult->fetchArray(PDO::FETCH_ASSOC);
+if ($ownerInfo && $ownerInfo['user_id'] && $ownerInfo['user_id'] != $user['id'] && !$user['is_admin']) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
     exit;
 }
 

@@ -58,15 +58,7 @@ if (isset($options['purge'])) {
     echo "\nTo use purged CSS, update header.php to load style.purged.css\n";
 }
 
-function formatBytes(int $bytes): string {
-    $units = ['B', 'KB', 'MB'];
-    $i = 0;
-    while ($bytes >= 1024 && $i < count($units) - 1) {
-        $bytes /= 1024;
-        $i++;
-    }
-    return round($bytes, 2) . ' ' . $units[$i];
-}
+// formatBytes is defined in includes/helpers.php
 
 function showHelp(): void {
     echo "MeshSilo CSS Purger\n\n";

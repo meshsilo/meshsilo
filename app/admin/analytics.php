@@ -52,7 +52,10 @@ if (!empty($_GET['ajax'])) {
 }
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     switch ($action) {
@@ -276,6 +279,7 @@ include __DIR__ . '/../../includes/header.php';
                 <p>Generate and download analytics reports in various formats.</p>
 
                 <form method="POST" class="report-form">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="download_report">
 
                     <div class="form-grid">
@@ -375,6 +379,7 @@ include __DIR__ . '/../../includes/header.php';
                                 <td>
                                     <div class="btn-group">
                                         <form method="POST" style="display: inline;">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="action" value="run_report">
                                             <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
                                             <button type="submit" class="btn btn-sm btn-secondary" title="Run Now">
@@ -386,6 +391,7 @@ include __DIR__ . '/../../includes/header.php';
                                             Edit
                                         </button>
                                         <form method="POST" style="display: inline;">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="action" value="delete_report">
                                             <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
                                             <button type="submit" class="btn btn-sm btn-danger"
@@ -447,6 +453,7 @@ include __DIR__ . '/../../includes/header.php';
             <button class="modal-close" onclick="closeReportModal()">&times;</button>
         </div>
         <form method="POST" id="report-form">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" id="report-form-action" value="create_report">
             <input type="hidden" name="report_id" id="report-form-id" value="">
 
@@ -537,7 +544,7 @@ include __DIR__ . '/../../includes/header.php';
     display: flex;
     gap: 0.5rem;
     margin-bottom: 1.5rem;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--color-border);
 }
 
 .tab-btn {
@@ -546,18 +553,18 @@ include __DIR__ . '/../../includes/header.php';
     background: none;
     cursor: pointer;
     font-size: 1rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
 }
 
 .tab-btn:hover {
-    color: var(--text-color);
+    color: var(--color-text);
 }
 
 .tab-btn.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
 }
 
 .stats-grid {
@@ -568,7 +575,7 @@ include __DIR__ . '/../../includes/header.php';
 }
 
 .stat-card {
-    background: var(--card-bg);
+    background: var(--color-surface);
     padding: 1.25rem;
     border-radius: var(--radius);
     text-align: center;
@@ -577,11 +584,11 @@ include __DIR__ . '/../../includes/header.php';
 .stat-value {
     font-size: 1.75rem;
     font-weight: bold;
-    color: var(--primary-color);
+    color: var(--color-primary);
 }
 
 .stat-label {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
     margin-top: 0.25rem;
 }
@@ -597,7 +604,7 @@ include __DIR__ . '/../../includes/header.php';
 
 .stat-sublabel {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .charts-grid {
@@ -608,7 +615,7 @@ include __DIR__ . '/../../includes/header.php';
 }
 
 .chart-card {
-    background: var(--card-bg);
+    background: var(--color-surface);
     padding: 1.25rem;
     border-radius: var(--radius);
 }
@@ -644,7 +651,7 @@ include __DIR__ . '/../../includes/header.php';
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .top-list-item:last-child {
@@ -654,7 +661,7 @@ include __DIR__ . '/../../includes/header.php';
 .top-list-rank {
     width: 30px;
     font-weight: bold;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .top-list-name {
@@ -666,7 +673,7 @@ include __DIR__ . '/../../includes/header.php';
 
 .top-list-value {
     font-weight: bold;
-    color: var(--primary-color);
+    color: var(--color-primary);
 }
 
 .section-header {
@@ -699,7 +706,7 @@ include __DIR__ . '/../../includes/header.php';
 
 .report-desc {
     padding: 1rem;
-    background: var(--bg-color);
+    background: var(--color-surface-hover);
     border-radius: var(--radius);
 }
 
@@ -711,13 +718,13 @@ include __DIR__ . '/../../includes/header.php';
 .report-desc p {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .loading {
     text-align: center;
     padding: 2rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .badge-success {

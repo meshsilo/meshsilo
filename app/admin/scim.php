@@ -7,6 +7,14 @@
  */
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/permissions.php';
+require_once __DIR__ . '/../../includes/features.php';
+
+// Require SSO feature to be enabled (SCIM is used with OIDC/SAML)
+if (!isFeatureEnabled('oidc_sso') && !isFeatureEnabled('saml_sso')) {
+    $_SESSION['error'] = 'SCIM requires OIDC or SAML SSO to be enabled.';
+    header('Location: ' . route('admin.features'));
+    exit;
+}
 
 // Require SCIM management permission
 if (!isLoggedIn() || !canManageScim()) {
@@ -24,7 +32,10 @@ $message = '';
 $error = '';
 
 // Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     switch ($action) {
@@ -185,6 +196,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="admin-section">
             <h2>Configuration</h2>
             <form method="POST" class="settings-form">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="save_settings">
 
                 <div class="form-group">
@@ -257,6 +269,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <label>Bearer Token</label>
                     <code><?= htmlspecialchars($tokenPreview) ?></code>
                     <form method="POST" style="display: inline; margin-left: 0.5rem;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="generate_token">
                         <button type="submit" class="btn btn-sm btn-secondary">Generate New</button>
                     </form>

@@ -9,6 +9,13 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// CSRF validation
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
 $user = getCurrentUser();
 $action = $_POST['action'] ?? '';
 $modelIds = isset($_POST['model_ids']) ? array_filter(array_map('intval', (array)$_POST['model_ids'])) : [];
@@ -19,6 +26,35 @@ if (empty($modelIds)) {
 }
 
 $db = getDB();
+
+// Filter model IDs to only include models the user owns (unless admin)
+// This prevents users from batch-modifying other users' models
+if (!$user['is_admin']) {
+    $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
+    $stmt = $db->prepare("SELECT id FROM models WHERE id IN ($placeholders) AND (user_id = ? OR user_id IS NULL)");
+    $params = array_merge($modelIds, [$user['id']]);
+    $stmt->execute($params);
+    $ownedModelIds = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $ownedModelIds[] = (int)$row['id'];
+    }
+
+    // Check if user is trying to modify models they don't own
+    $unauthorizedCount = count(array_diff($modelIds, $ownedModelIds));
+    if ($unauthorizedCount > 0 && empty($ownedModelIds)) {
+        echo json_encode(['success' => false, 'error' => 'Permission denied - you can only modify your own models']);
+        exit;
+    }
+
+    // Use only owned model IDs
+    $modelIds = $ownedModelIds;
+
+    if (empty($modelIds)) {
+        echo json_encode(['success' => false, 'error' => 'No authorized models to modify']);
+        exit;
+    }
+}
+
 $successCount = 0;
 $errorCount = 0;
 

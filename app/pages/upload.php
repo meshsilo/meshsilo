@@ -196,9 +196,35 @@ function updateParentModel($db, $parentId, $partCount, $totalSize) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if POST data was discarded due to size limits being exceeded
+    $contentLength = $_SERVER['CONTENT_LENGTH'] ?? 0;
+    $postMaxSize = ini_get('post_max_size');
+    $uploadMaxSize = ini_get('upload_max_filesize');
+    $postMaxBytes = convertToBytes($postMaxSize);
+    $uploadMaxBytes = convertToBytes($uploadMaxSize);
+    $effectiveLimit = min($postMaxBytes, $uploadMaxBytes);
+    $effectiveLimitDisplay = $postMaxBytes < $uploadMaxBytes ? $postMaxSize : $uploadMaxSize;
+
+    if ($contentLength > 0 && empty($_POST) && empty($_FILES)) {
+        // POST data was likely discarded - file too large
+        $error = sprintf(
+            'Upload failed: The file exceeds the server\'s maximum upload size (%s). Please upload a smaller file or contact an administrator to increase the limit.',
+            $effectiveLimitDisplay
+        );
+        logWarning('Upload exceeded size limit', [
+            'content_length' => $contentLength,
+            'post_max_size' => $postMaxSize,
+            'upload_max_filesize' => $uploadMaxSize,
+            'effective_limit' => $effectiveLimit
+        ]);
+    }
     // Validate CSRF token
-    if (!Csrf::validate()) {
+    elseif (!Csrf::validate()) {
         $error = 'Security validation failed. Please try again.';
+        // Log detailed CSRF diagnosis if debug mode is enabled
+        if (class_exists('Debug') && Debug::isEnabled()) {
+            Debug::diagnoseCsrf();
+        }
     } else {
     $name = trim($_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? '');

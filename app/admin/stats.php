@@ -22,7 +22,11 @@ $message = '';
 $messageType = 'success';
 
 // Handle file cleanup actions (requires admin permission)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $message = 'Invalid request. Please refresh the page and try again.';
+    $messageType = 'error';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'delete_missing') {
@@ -373,15 +377,7 @@ $dedupStats = getDeduplicationStats();
 $result = $db->query('SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = "") AND file_path IS NOT NULL');
 $filesWithoutHash = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
-// Helper function to format bytes
-function formatBytes($bytes, $precision = 2) {
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $bytes = max($bytes, 0);
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    $bytes /= pow(1024, $pow);
-    return round($bytes, $precision) . ' ' . $units[$pow];
-}
+// formatBytes is defined in includes/helpers.php
 
 require_once __DIR__ . '/../../includes/header.php';
 ?>
@@ -498,22 +494,26 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div class="dedup-actions">
                     <?php if ($filesWithoutHash > 0): ?>
                     <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="calculate_hashes">
                         <button type="submit" class="btn btn-secondary btn-small">Calculate Missing Hashes</button>
                     </form>
                     <?php endif; ?>
                     <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="recalculate_3mf_hashes">
                         <button type="submit" class="btn btn-secondary btn-small" title="Recalculate hashes for 3MF files using content-based hashing (ignores ZIP timestamps)">Recalculate 3MF Hashes</button>
                     </form>
                     <?php if ($dedupStats['potential_duplicates'] > 0): ?>
                     <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="run_dedup_scan">
                         <button type="submit" class="btn btn-primary btn-small" onclick="return confirm('This will deduplicate <?= $dedupStats['potential_duplicates'] ?> duplicate file sets, potentially saving <?= formatBytes($dedupStats['potential_savings']) ?>. Continue?');">Run Deduplication</button>
                     </form>
                     <?php endif; ?>
                     <?php if ($dedupStats['dedup_file_count'] > 0): ?>
                     <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="run_dedup_cleanup">
                         <button type="submit" class="btn btn-secondary btn-small" title="Move files back if only one part references them">Run Cleanup</button>
                     </form>
@@ -776,6 +776,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <p class="section-description">These models exist in the database but their files are missing from disk.</p>
                     <?php if (isAdmin()): ?>
                     <form method="POST" style="margin-bottom: 1rem;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="delete_all_missing">
                         <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Delete all <?= count($missingFiles) ?> missing file entries from the database?');">Remove All from Database</button>
                     </form>
@@ -799,6 +800,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <?php if (isAdmin()): ?>
                                     <td>
                                         <form method="POST" style="display: inline;">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="action" value="delete_missing">
                                             <input type="hidden" name="model_id" value="<?= $file['id'] ?>">
                                             <button type="submit" class="btn btn-danger btn-small">Remove</button>
@@ -819,6 +821,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <p class="section-description">These files exist on disk but have no database entry. They may be safe to delete.</p>
                     <?php if (isAdmin()): ?>
                     <form method="POST" style="margin-bottom: 1rem;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="delete_all_orphans">
                         <button type="submit" class="btn btn-warning btn-small" onclick="return confirm('Delete all <?= count($orphanedFiles) ?> orphaned files from disk? This cannot be undone.');">Delete All from Disk</button>
                     </form>
@@ -840,6 +843,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <?php if (isAdmin()): ?>
                                     <td>
                                         <form method="POST" style="display: inline;">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="action" value="delete_orphan">
                                             <input type="hidden" name="filename" value="<?= htmlspecialchars($file['filename']) ?>">
                                             <button type="submit" class="btn btn-warning btn-small">Delete</button>

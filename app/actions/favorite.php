@@ -26,6 +26,13 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// CSRF validation
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
 $modelId = (int)($_POST['model_id'] ?? 0);
 
 if (!$modelId) {

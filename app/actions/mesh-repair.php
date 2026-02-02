@@ -8,9 +8,16 @@
  */
 
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 require_once __DIR__ . '/../../includes/MeshAnalyzer.php';
 
 header('Content-Type: application/json');
+
+if (!isFeatureEnabled('mesh_analysis')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Mesh analysis feature is disabled']);
+    exit;
+}
 
 if (!isLoggedIn()) {
     http_response_code(401);

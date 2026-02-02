@@ -203,7 +203,7 @@ try {
             $modelIds[] = $row['id'];
         } else {
             // Use preview endpoint for single models
-            $row['preview_path'] = '/actions/preview?id=' . $row['id'];
+            $row['preview_path'] = '/preview?id=' . $row['id'];
             $row['preview_type'] = $row['file_type'];
             $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
         }
@@ -238,7 +238,7 @@ if (!empty($modelIds)) {
                 $firstPart = $firstParts[$model['id']] ?? null;
                 if ($firstPart) {
                     // Use preview endpoint for multi-part models
-                    $model['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
+                    $model['preview_path'] = '/preview?id=' . $firstPart['id'];
                     $model['preview_type'] = $firstPart['file_type'];
                 }
                 $model['print_types'] = $printTypesByParent[$model['id']] ?? [];
@@ -288,7 +288,10 @@ if (isset($_SESSION['success'])) {
 }
 
 // Get recently viewed models
-$recentlyViewed = getRecentlyViewed(6);
+$recentlyViewed = [];
+if (isFeatureEnabled('recently_viewed')) {
+    $recentlyViewed = getRecentlyViewed(6);
+}
 
 // Bulk load first parts for recently viewed multi-part models
 $rvMultiPartIds = array_column(array_filter($recentlyViewed, fn($m) => $m['part_count'] > 0), 'id');
@@ -299,11 +302,11 @@ foreach ($recentlyViewed as &$rv) {
     if ($rv['part_count'] > 0) {
         $firstPart = $rvParts[$rv['id']] ?? null;
         if ($firstPart) {
-            $rv['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
+            $rv['preview_path'] = '/preview?id=' . $firstPart['id'];
             $rv['preview_type'] = $firstPart['file_type'];
         }
     } else {
-        $rv['preview_path'] = '/actions/preview?id=' . $rv['id'];
+        $rv['preview_path'] = '/preview?id=' . $rv['id'];
         $rv['preview_type'] = $rv['file_type'];
     }
 }
@@ -311,7 +314,7 @@ unset($rv);
 
 // Get popular tags (cached for 5 minutes to reduce load)
 $popularTags = [];
-if (getSetting('enable_tags', '1') === '1') {
+if (isFeatureEnabled('tags')) {
     $cacheKey = 'popular_tags_10';
     $cacheFile = __DIR__ . '/cache/popular_tags.json';
     $cacheValid = false;
@@ -358,7 +361,7 @@ require_once 'includes/header.php';
             </div>
         </section>
 
-        <?php if (!empty($recentlyViewed)): ?>
+        <?php if (isFeatureEnabled('recently_viewed') && !empty($recentlyViewed)): ?>
         <section class="models-section recently-viewed-section">
             <div class="section-header">
                 <h2>Recently Viewed</h2>

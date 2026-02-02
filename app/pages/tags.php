@@ -1,13 +1,12 @@
 <?php
 require_once 'includes/config.php';
+require_once 'includes/features.php';
 
 $pageTitle = 'Tags';
 $activePage = 'tags';
 
-if (getSetting('enable_tags', '1') !== '1') {
-    header('Location: index.php');
-    exit;
-}
+// Require feature to be enabled
+requireFeature('tags');
 
 $db = getDB();
 

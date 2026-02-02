@@ -31,12 +31,14 @@ header('Cache-Control: no-cache, no-store, must-revalidate');
 // Check if authorized for detailed view
 $authorized = false;
 
-// Check API key
-$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
+// Check API key (use header only - query params are deprecated for security)
+$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
 if (!empty($apiKey)) {
     $db = getDB();
-    $stmt = $db->prepare('SELECT id FROM api_keys WHERE api_key = :key AND is_active = 1');
-    $stmt->bindValue(':key', $apiKey, PDO::PARAM_STR);
+    // Hash the key for lookup (keys are stored as SHA256 hashes)
+    $keyHash = hash('sha256', $apiKey);
+    $stmt = $db->prepare('SELECT id FROM api_keys WHERE key_hash = :key_hash AND is_active = 1');
+    $stmt->bindValue(':key_hash', $keyHash, PDO::PARAM_STR);
     $result = $stmt->execute();
     $authorized = $result->fetchArray() !== false;
 }

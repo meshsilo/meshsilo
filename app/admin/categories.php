@@ -1,8 +1,12 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 // Set baseDir based on how we're accessed (router vs direct)
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
+
+// Require feature to be enabled
+requireFeature('categories');
 
 // Require category management permission
 if (!isLoggedIn() || !canManageCategories()) {
@@ -27,7 +31,10 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
 $message = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_category'])) {
         $name = trim($_POST['category_name'] ?? '');
         if (!empty($name)) {
@@ -35,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
                 $stmt->bindValue(':name', $name, PDO::PARAM_STR);
                 $stmt->execute();
+                invalidateCategoriesCache();
                 $message = 'Category added successfully.';
                 header('Location: ' . route('admin.categories', [], ['success' => '1']));
                 exit;
@@ -49,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $db->prepare('DELETE FROM categories WHERE id = :id');
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
+        invalidateCategoriesCache();
         header('Location: ' . route('admin.categories', [], ['deleted' => '1']));
         exit;
     }
@@ -91,6 +100,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>Add Category</h2>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <div class="input-with-button">
                                 <input type="text" name="category_name" class="form-input" placeholder="New category name" required>
                                 <button type="submit" name="add_category" class="btn btn-primary">Add</button>
@@ -125,6 +135,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                         </td>
                                         <td>
                                             <form method="post" style="display:inline;" onsubmit="return confirm('Delete this category?');">
+                                                <?= csrf_field() ?>
                                                 <input type="hidden" name="category_id" value="<?= $category['id'] ?>">
                                                 <button type="submit" name="delete_category" class="btn btn-small btn-danger">Delete</button>
                                             </form>

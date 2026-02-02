@@ -26,7 +26,11 @@ function getRealFilePath($model) {
  */
 function getAbsoluteFilePath($model) {
     $relativePath = getRealFilePath($model);
-    // Paths in DB include 'assets/' prefix, construct absolute path
+    // Paths in DB include 'assets/' prefix, files are stored in storage/assets/
+    // Replace 'assets/' with 'storage/assets/' for correct path resolution
+    if (strpos($relativePath, 'assets/') === 0) {
+        $relativePath = 'storage/' . $relativePath;
+    }
     return __DIR__ . '/../' . $relativePath;
 }
 

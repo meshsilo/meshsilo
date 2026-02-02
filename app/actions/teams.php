@@ -20,6 +20,13 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// CSRF validation for POST requests (state-changing operations)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
 $user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 

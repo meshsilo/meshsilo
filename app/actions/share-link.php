@@ -22,10 +22,12 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 switch ($action) {
     case 'create':
         requireAuth();
+        requireCsrf();
         createShareLink();
         break;
     case 'delete':
         requireAuth();
+        requireCsrf();
         deleteShareLink();
         break;
     case 'list':
@@ -46,6 +48,14 @@ function requireAuth() {
     }
 }
 
+function requireCsrf() {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+        exit;
+    }
+}
+
 function createShareLink() {
     $user = getCurrentUser();
 
@@ -56,6 +66,23 @@ function createShareLink() {
 
     if (!$modelId) {
         echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        return;
+    }
+
+    // Verify model ownership (user must own the model or be admin)
+    $db = getDB();
+    $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id AND parent_id IS NULL');
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $model = $result->fetch(PDO::FETCH_ASSOC);
+
+    if (!$model) {
+        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        return;
+    }
+
+    if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
+        echo json_encode(['success' => false, 'error' => 'You do not own this model']);
         return;
     }
 

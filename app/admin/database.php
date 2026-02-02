@@ -46,7 +46,10 @@ $message = '';
 $error = '';
 $migrationsRun = [];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['run_migrations'])) {
         $applied = 0;
         $errors = 0;
@@ -277,6 +280,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <?php if ($pendingCount > 0): ?>
                 <form method="post" style="margin-top: 1rem;" onsubmit="return confirm('Run all pending migrations? This will modify your database schema.');">
+                    <?= csrf_field() ?>
                     <button type="submit" name="run_migrations" class="btn btn-primary">
                         Run <?= $pendingCount ?> Pending Migration(s)
                     </button>
@@ -289,12 +293,14 @@ require_once __DIR__ . '/../../includes/header.php';
             <div class="button-group">
                 <?php if ($dbType === 'sqlite'): ?>
                 <form method="post" style="display: inline;">
+                    <?= csrf_field() ?>
                     <button type="submit" name="backup_db" class="btn btn-secondary">
                         Create Backup
                     </button>
                 </form>
                 <?php endif; ?>
                 <form method="post" style="display: inline;" onsubmit="return confirm('Optimize database? This may take a moment.');">
+                    <?= csrf_field() ?>
                     <button type="submit" name="optimize_db" class="btn btn-secondary">
                         Optimize Database
                     </button>
@@ -469,11 +475,4 @@ php cli/migrate.php --dry-run
 <?php
 require_once __DIR__ . '/../../includes/footer.php';
 
-// Helper function for formatting bytes
-function formatBytes($bytes, $precision = 2) {
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $bytes = max($bytes, 0);
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    return round($bytes / pow(1024, $pow), $precision) . ' ' . $units[$pow];
-}
+// formatBytes is defined in includes/helpers.php

@@ -53,9 +53,9 @@ if ($partId) {
 
 // Handle deletion confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
-    // Verify CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
-        $_SESSION['error'] = 'Invalid request.';
+    // Verify CSRF token using timing-safe comparison
+    if (!Csrf::check()) {
+        $_SESSION['error'] = 'Invalid request. Please try again.';
         header('Location: ../model.php?id=' . $modelId);
         exit;
     }
@@ -139,6 +139,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                 }
             }
 
+            // Delete model attachments (images and PDFs)
+            try {
+                $stmt = $db->prepare('SELECT file_path FROM model_attachments WHERE model_id = :model_id');
+                $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+                $result = $stmt->execute();
+                while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                    if ($row['file_path']) {
+                        $attachPath = __DIR__ . '/../../storage/assets/' . $row['file_path'];
+                        if (file_exists($attachPath)) {
+                            unlink($attachPath);
+                        }
+                    }
+                }
+
+                $stmt = $db->prepare('DELETE FROM model_attachments WHERE model_id = :model_id');
+                $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+                $stmt->execute();
+            } catch (Throwable $e) {
+                // model_attachments table may not exist yet - continue with deletion
+            }
+
             // Delete category associations
             $stmt = $db->prepare('DELETE FROM model_categories WHERE model_id = :model_id');
             $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
@@ -198,10 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     }
 }
 
-// Generate CSRF token
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
+// CSRF token is now managed by the Csrf class
 
 $pageTitle = $part ? 'Delete Part' : 'Delete ' . $model['name'];
 $activePage = 'browse';
@@ -224,7 +242,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <form method="POST" class="delete-form">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="confirm_delete" value="1">
 
                     <div class="form-actions">
@@ -251,7 +269,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <form method="POST" class="delete-form">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="confirm_delete" value="1">
 
                     <div class="form-actions">

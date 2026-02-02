@@ -17,7 +17,10 @@ require_once __DIR__ . '/../../includes/Scheduler.php';
 $message = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $taskName = $_POST['task'] ?? '';
 
@@ -96,6 +99,7 @@ include __DIR__ . '/../../includes/header.php';
             </div>
             <div class="card-body">
                 <form method="post" style="display: inline;">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="run_all">
                     <button type="submit" class="btn btn-primary">Run All Due Tasks</button>
                 </form>
@@ -163,18 +167,21 @@ include __DIR__ . '/../../includes/header.php';
                                 </td>
                                 <td>
                                     <form method="post" style="display: inline;">
+                                        <?= csrf_field() ?>
                                         <input type="hidden" name="task" value="<?= htmlspecialchars($name) ?>">
                                         <input type="hidden" name="action" value="run">
                                         <button type="submit" class="btn btn-sm btn-primary">Run Now</button>
                                     </form>
                                     <?php if ($task['enabled']): ?>
                                         <form method="post" style="display: inline;">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="task" value="<?= htmlspecialchars($name) ?>">
                                             <input type="hidden" name="action" value="disable">
                                             <button type="submit" class="btn btn-sm btn-secondary">Disable</button>
                                         </form>
                                     <?php else: ?>
                                         <form method="post" style="display: inline;">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="task" value="<?= htmlspecialchars($name) ?>">
                                             <input type="hidden" name="action" value="enable">
                                             <button type="submit" class="btn btn-sm btn-success">Enable</button>
@@ -283,9 +290,9 @@ include __DIR__ . '/../../includes/header.php';
 
 <style>
 .code-block {
-    background: var(--color-bg-secondary);
+    background: var(--color-surface-hover);
     padding: 0.75rem 1rem;
-    border-radius: 4px;
+    border-radius: var(--radius);
     font-family: monospace;
     font-size: 0.85rem;
     overflow-x: auto;

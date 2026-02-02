@@ -17,7 +17,10 @@ $message = '';
 $error = '';
 
 // Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     try {
@@ -192,11 +195,13 @@ include __DIR__ . '/../../includes/header.php';
 
                 <div class="mt-4">
                     <form method="post" style="display: inline;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="create">
                         <input type="hidden" name="label" value="manual">
                         <button type="submit" class="btn btn-primary">Create Backup Now</button>
                     </form>
                     <form method="post" style="display: inline; margin-left: 0.5rem;">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="verify_all">
                         <button type="submit" class="btn btn-secondary">Verify All Backups</button>
                     </form>
@@ -239,6 +244,7 @@ include __DIR__ . '/../../includes/header.php';
                                     <td>
                                         <?php if ($backup['exists']): ?>
                                             <form method="post" style="display: inline;">
+                                                <?= csrf_field() ?>
                                                 <input type="hidden" name="action" value="verify">
                                                 <input type="hidden" name="backup_path" value="<?= htmlspecialchars($backup['path']) ?>">
                                                 <button type="submit" class="btn btn-sm">Verify</button>
@@ -249,6 +255,7 @@ include __DIR__ . '/../../includes/header.php';
                                             </button>
                                             <form method="post" style="display: inline;"
                                                   onsubmit="return confirm('Delete this backup?')">
+                                                <?= csrf_field() ?>
                                                 <input type="hidden" name="action" value="delete">
                                                 <input type="hidden" name="backup_path" value="<?= htmlspecialchars($backup['path']) ?>">
                                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
@@ -270,6 +277,7 @@ include __DIR__ . '/../../includes/header.php';
             </div>
             <div class="card-body">
                 <form method="post" class="form-inline">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="cleanup">
                     <div class="form-group">
                         <label>Keep at least</label>
@@ -295,6 +303,7 @@ include __DIR__ . '/../../includes/header.php';
                 <p class="text-muted">Configure secondary storage locations for automatic backup replication.</p>
 
                 <form method="post" id="replication-form">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="save_replication">
                     <input type="hidden" name="target_count" id="target-count" value="<?= count($replicationConfig['targets'] ?? []) ?>">
 
@@ -408,6 +417,7 @@ include __DIR__ . '/../../includes/header.php';
         </p>
         <p>A pre-restore backup will be created automatically.</p>
         <form method="post">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="restore">
             <input type="hidden" name="backup_path" id="restore-path">
             <div class="form-group">
@@ -423,70 +433,11 @@ include __DIR__ . '/../../includes/header.php';
 </div>
 
 <style>
-.status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.status-item {
-    background: var(--color-bg-secondary);
-    padding: 1rem;
-    border-radius: 8px;
-}
-
-.status-label {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-    margin-bottom: 0.25rem;
-}
-
-.status-value {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 500;
-}
-
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border-radius: 4px;
-}
-
-.badge-success { background: #10b981; color: white; }
-.badge-danger { background: #ef4444; color: white; }
-.badge-secondary { background: #6b7280; color: white; }
-
-.form-inline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.form-inline .form-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.form-row {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.form-row .form-group {
-    flex: 1;
-}
-
+/* Page-specific styles for replication targets */
 .replication-target {
-    background: var(--color-bg-secondary);
+    background: var(--color-surface-hover);
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius);
     margin-bottom: 1rem;
 }
 
@@ -495,34 +446,23 @@ include __DIR__ . '/../../includes/header.php';
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+    font-size: 1rem;
 }
 
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
+.replication-target hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 1rem 0 0 0;
 }
 
-.modal-content {
-    background: var(--color-bg);
-    padding: 2rem;
-    border-radius: 8px;
-    max-width: 500px;
-    width: 90%;
+.form-group {
+    margin-bottom: 1rem;
 }
 
-.modal-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-    justify-content: flex-end;
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
 }
 </style>
 

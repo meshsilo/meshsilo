@@ -8,6 +8,12 @@ require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
+if (!isLoggedIn()) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
+    exit;
+}
+
 if (!canEdit()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Permission denied']);
@@ -23,6 +29,33 @@ if (!$modelId && $action !== 'move') {
 }
 
 $db = getDB();
+$user = getCurrentUser();
+
+// CSRF protection
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
+// Verify model ownership (user must own the model or be admin)
+if ($modelId) {
+    $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id AND parent_id IS NULL');
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $model = $result->fetchArray(PDO::FETCH_ASSOC);
+
+    if (!$model) {
+        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        exit;
+    }
+
+    if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'You do not own this model']);
+        exit;
+    }
+}
 
 switch ($action) {
     case 'create':
@@ -30,15 +63,6 @@ switch ($action) {
         $folderName = trim($_POST['folder_name'] ?? '');
         if ($folderName === '' || $folderName === 'Root' || strpos($folderName, '/') !== false || strpos($folderName, '\\') !== false) {
             echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
-            exit;
-        }
-
-        // Check that the parent model exists
-        $stmt = $db->prepare('SELECT id FROM models WHERE id = :id AND parent_id IS NULL');
-        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
-        $result = $stmt->execute();
-        if (!$result->fetchArray()) {
-            echo json_encode(['success' => false, 'error' => 'Model not found']);
             exit;
         }
 
@@ -130,13 +154,23 @@ switch ($action) {
             $partId = (int)$partId;
             if (!$partId) continue;
 
-            // Get current original_path
-            $stmt = $db->prepare('SELECT id, original_path FROM models WHERE id = :id AND parent_id IS NOT NULL');
+            // Get current original_path and verify ownership via parent model
+            $stmt = $db->prepare('
+                SELECT p.id, p.original_path, p.parent_id, m.user_id
+                FROM models p
+                JOIN models m ON p.parent_id = m.id
+                WHERE p.id = :id AND p.parent_id IS NOT NULL
+            ');
             $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
             $result = $stmt->execute();
             $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
             if (!$part) continue;
+
+            // Verify ownership of the parent model
+            if ($part['user_id'] != $user['id'] && !$user['is_admin']) {
+                continue; // Skip parts the user doesn't own
+            }
 
             $basename = basename($part['original_path'] ?: $part['id'] . '.stl');
             $newPath = $isRoot ? $basename : $targetFolder . '/' . $basename;

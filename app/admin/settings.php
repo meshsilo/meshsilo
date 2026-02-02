@@ -20,6 +20,17 @@ $adminPage = 'settings';
 $message = '';
 $error = '';
 
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+        header('Content-Type: application/json');
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+        exit;
+    }
+    $error = 'Invalid request. Please refresh the page and try again.';
+}
+
 // Handle force update check
 if (isset($_GET['force_update_check'])) {
     UpdateChecker::clearCache();
@@ -142,8 +153,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
-    $enableCategories = isset($_POST['enable_categories']) ? '1' : '0';
-    $enableCollections = isset($_POST['enable_collections']) ? '1' : '0';
 
     // Handle file formats - ensure at least one is selected and always include zip
     $formats = isset($_POST['formats']) ? array_map('strtolower', $_POST['formats']) : ['stl', '3mf'];
@@ -187,8 +196,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     setSetting('auto_convert_stl', $autoConvert);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
-    setSetting('enable_categories', $enableCategories);
-    setSetting('enable_collections', $enableCollections);
     setSetting('allowed_extensions', $allowedExtensions);
     setSetting('auto_deduplication', $autoDeduplication);
     setSetting('oidc_enabled', $oidcEnabled);
@@ -243,8 +250,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'auto_convert_stl' => $autoConvert,
         'allow_registration' => $allowRegistration,
         'require_approval' => $requireApproval,
-        'enable_categories' => $enableCategories,
-        'enable_collections' => $enableCollections,
         'allowed_extensions' => $allowedExtensions,
         'auto_deduplication' => $autoDeduplication,
         'oidc_enabled' => $oidcEnabled
@@ -319,6 +324,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 </section>
 
                 <form class="settings-form" method="POST">
+                    <?= csrf_field() ?>
                     <section class="settings-section">
                         <h2>General</h2>
 
@@ -358,28 +364,6 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span>Only allow access via configured URL</span>
                             </label>
                             <p class="form-help">When enabled, requests from other URLs will be rejected.</p>
-                        </div>
-                    </section>
-
-                    <section class="settings-section">
-                        <h2>Navigation</h2>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="enable_categories" <?= ($settings['enable_categories'] ?? '1') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Enable Categories page</span>
-                            </label>
-                            <p class="form-help">Show the Categories link in the navigation and allow browsing by category.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="enable_collections" <?= ($settings['enable_collections'] ?? '1') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Enable Collections page</span>
-                            </label>
-                            <p class="form-help">Show the Collections link in the navigation and allow browsing by collection.</p>
                         </div>
                     </section>
 
@@ -790,6 +774,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 ?>
 
                 <form class="settings-form" method="POST" style="margin-top: 2rem;">
+                    <?= csrf_field() ?>
                     <section class="settings-section">
                         <h2>PHP Configuration</h2>
                         <p class="form-help" style="margin-bottom: 1rem;">
@@ -828,6 +813,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 </form>
                 <?php if (getSetting('demo_mode', '0') === '1'): ?>
                 <form class="settings-form" method="POST" style="margin-top: 2rem;" id="demo-reset-form">
+                    <?= csrf_field() ?>
                     <section class="settings-section">
                         <h2>Demo Mode</h2>
                         <p class="form-help" style="margin-bottom: 1rem;">
@@ -850,119 +836,146 @@ require_once __DIR__ . '/../../includes/header.php';
         </div>
 
 <script>
-document.getElementById('test-oidc').addEventListener('click', async function() {
-    const resultDiv = document.getElementById('oidc-test-result');
-    const btn = this;
+// Test OIDC button
+const testOidcBtn = document.getElementById('test-oidc');
+if (testOidcBtn) {
+    testOidcBtn.addEventListener('click', async function() {
+        const resultDiv = document.getElementById('oidc-test-result');
+        const btn = this;
 
-    btn.disabled = true;
-    btn.textContent = 'Testing...';
-    resultDiv.innerHTML = '';
+        btn.disabled = true;
+        btn.textContent = 'Testing...';
+        resultDiv.innerHTML = '';
 
-    try {
-        const formData = new FormData();
-        formData.append('test_oidc', '1');
+        try {
+            const formData = new FormData();
+            formData.append('test_oidc', '1');
 
-        const response = await fetch('settings.php', {
-            method: 'POST',
-            body: formData
-        });
+            const response = await fetch('settings.php', {
+                method: 'POST',
+                body: formData
+            });
 
-        const result = await response.json();
+            const result = await response.json();
 
-        if (result.success) {
-            let html = '<div class="alert alert-success" style="margin: 0;">' +
-                '<strong>Connection successful!</strong>' +
-                '<div style="margin-top: 0.5rem; font-size: 0.875rem;">' +
-                '<div><strong>Issuer:</strong> ' + result.issuer + '</div>' +
-                '<div><strong>PKCE Support:</strong> ' + (result.pkce_supported ? '✓ Yes' : '✗ No') + '</div>';
+            if (result.success) {
+                let html = '<div class="alert alert-success" style="margin: 0;">' +
+                    '<strong>Connection successful!</strong>' +
+                    '<div style="margin-top: 0.5rem; font-size: 0.875rem;">' +
+                    '<div><strong>Issuer:</strong> ' + result.issuer + '</div>' +
+                    '<div><strong>PKCE Support:</strong> ' + (result.pkce_supported ? '✓ Yes' : '✗ No') + '</div>';
 
-            if (result.endpoints) {
-                html += '<details style="margin-top: 0.5rem;"><summary style="cursor: pointer;">Endpoints</summary>' +
-                    '<ul style="margin: 0.25rem 0 0 1rem; padding: 0;">';
-                for (const [key, value] of Object.entries(result.endpoints)) {
-                    html += '<li><strong>' + key + ':</strong> <code style="font-size: 0.75rem; word-break: break-all;">' + value + '</code></li>';
+                if (result.endpoints) {
+                    html += '<details style="margin-top: 0.5rem;"><summary style="cursor: pointer;">Endpoints</summary>' +
+                        '<ul style="margin: 0.25rem 0 0 1rem; padding: 0;">';
+                    for (const [key, value] of Object.entries(result.endpoints)) {
+                        html += '<li><strong>' + key + ':</strong> <code style="font-size: 0.75rem; word-break: break-all;">' + value + '</code></li>';
+                    }
+                    html += '</ul></details>';
                 }
-                html += '</ul></details>';
-            }
 
-            if (result.scopes_supported && result.scopes_supported.length > 0) {
-                html += '<details style="margin-top: 0.5rem;"><summary style="cursor: pointer;">Supported Scopes</summary>' +
-                    '<code style="font-size: 0.75rem;">' + result.scopes_supported.join(', ') + '</code></details>';
-            }
+                if (result.scopes_supported && result.scopes_supported.length > 0) {
+                    html += '<details style="margin-top: 0.5rem;"><summary style="cursor: pointer;">Supported Scopes</summary>' +
+                        '<code style="font-size: 0.75rem;">' + result.scopes_supported.join(', ') + '</code></details>';
+                }
 
-            html += '</div></div>';
-            resultDiv.innerHTML = html;
-        } else {
+                html += '</div></div>';
+                resultDiv.innerHTML = html;
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
+                    '<strong>Connection failed:</strong> ' + result.message +
+                    '</div>';
+            }
+        } catch (error) {
             resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-                '<strong>Connection failed:</strong> ' + result.message +
+                '<strong>Error:</strong> ' + error.message +
                 '</div>';
         }
-    } catch (error) {
-        resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-            '<strong>Error:</strong> ' + error.message +
-            '</div>';
-    }
 
-    btn.disabled = false;
-    btn.textContent = 'Test Connection';
-});
+        btn.disabled = false;
+        btn.textContent = 'Test Connection';
+    });
+}
 
 // Email driver toggle - show/hide SMTP settings
-document.getElementById('mail_driver').addEventListener('change', function() {
-    const smtpSettings = document.getElementById('smtp-settings');
-    if (this.value === 'smtp') {
-        smtpSettings.style.display = '';
-    } else {
-        smtpSettings.style.display = 'none';
-    }
-});
+const mailDriverSelect = document.getElementById('mail_driver');
+if (mailDriverSelect) {
+    mailDriverSelect.addEventListener('change', function() {
+        const smtpSettings = document.getElementById('smtp-settings');
+        if (smtpSettings) {
+            if (this.value === 'smtp') {
+                smtpSettings.style.display = '';
+            } else {
+                smtpSettings.style.display = 'none';
+            }
+        }
+    });
+}
 
 // Test email button
-document.getElementById('test-email').addEventListener('click', async function() {
-    const resultDiv = document.getElementById('email-test-result');
-    const emailInput = document.getElementById('test_email_address');
-    const btn = this;
-    const email = emailInput.value.trim();
+const testEmailBtn = document.getElementById('test-email');
+if (testEmailBtn) {
+    testEmailBtn.addEventListener('click', async function() {
+        const resultDiv = document.getElementById('email-test-result');
+        const emailInput = document.getElementById('test_email_address');
+        const btn = this;
+        const email = emailInput.value.trim();
 
-    if (!email) {
-        resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">Please enter an email address.</div>';
-        emailInput.focus();
-        return;
-    }
+        if (!email) {
+            resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">Please enter an email address.</div>';
+            emailInput.focus();
+            return;
+        }
 
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
-    resultDiv.innerHTML = '';
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        resultDiv.innerHTML = '';
 
-    try {
-        const formData = new FormData();
-        formData.append('test_email', '1');
-        formData.append('test_email_address', email);
+        try {
+            const formData = new FormData();
+            formData.append('test_email', '1');
+            formData.append('test_email_address', email);
 
-        const response = await fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        });
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            });
 
-        const result = await response.json();
+            const result = await response.json();
 
-        if (result.success) {
-            resultDiv.innerHTML = '<div class="alert alert-success" style="margin: 0;">' +
-                '<strong>Success!</strong> ' + result.message +
-                '</div>';
-        } else {
+            if (result.success) {
+                resultDiv.innerHTML = '<div class="alert alert-success" style="margin: 0;">' +
+                    '<strong>Success!</strong> ' + result.message +
+                    '</div>';
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
+                    '<strong>Failed:</strong> ' + result.message +
+                    '</div>';
+            }
+        } catch (error) {
             resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-                '<strong>Failed:</strong> ' + result.message +
+                '<strong>Error:</strong> ' + error.message +
                 '</div>';
         }
-    } catch (error) {
-        resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-            '<strong>Error:</strong> ' + error.message +
-            '</div>';
-    }
 
-    btn.disabled = false;
-    btn.textContent = 'Send Test Email';
+        btn.disabled = false;
+        btn.textContent = 'Send Test Email';
+    });
+}
+
+// Collapsible settings sections - simplified version
+// CSS handles hiding via .collapsed h2 ~ * selector
+document.querySelectorAll('.settings-section').forEach(function(section) {
+    var h2 = section.querySelector('h2');
+    if (!h2) return;
+
+    // Start collapsed
+    section.classList.add('collapsed');
+
+    // Toggle on click
+    h2.onclick = function() {
+        section.classList.toggle('collapsed');
+    };
 });
 </script>
 

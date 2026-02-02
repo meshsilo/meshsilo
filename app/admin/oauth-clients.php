@@ -6,7 +6,11 @@
  */
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/permissions.php';
+require_once __DIR__ . '/../../includes/features.php';
 require_once __DIR__ . '/../../includes/OAuth2Provider.php';
+
+// Require OIDC feature to be enabled
+requireFeature('oidc_sso');
 
 // Require OAuth management permission
 if (!isLoggedIn() || !canManageOAuth()) {
@@ -24,7 +28,10 @@ $error = '';
 $newClientSecret = null;
 
 // Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     switch ($action) {
@@ -168,6 +175,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="admin-section">
             <h2>Register New Client</h2>
             <form method="POST" class="client-form">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="create">
 
                 <div class="form-row">
@@ -208,6 +216,7 @@ require_once __DIR__ . '/../../includes/header.php';
             <h2>Registered Clients</h2>
             <div class="header-actions" style="margin-bottom: 1rem;">
                 <form method="POST" style="display: inline;">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="cleanup">
                     <button type="submit" class="btn btn-secondary">Cleanup Expired Tokens</button>
                 </form>
@@ -257,6 +266,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <button type="button" class="btn btn-sm btn-secondary"
                                 onclick="editClient(<?= htmlspecialchars(json_encode($client)) ?>)">Edit</button>
                         <form method="POST" style="display: inline;">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="action" value="regenerate_secret">
                             <input type="hidden" name="client_id" value="<?= htmlspecialchars($client['id']) ?>">
                             <button type="submit" class="btn btn-sm btn-warning"
@@ -265,6 +275,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             </button>
                         </form>
                         <form method="POST" style="display: inline;">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="client_id" value="<?= htmlspecialchars($client['id']) ?>">
                             <button type="submit" class="btn btn-sm btn-danger"
@@ -311,6 +322,7 @@ require_once __DIR__ . '/../../includes/header.php';
             <button class="modal-close" onclick="closeEditModal()">&times;</button>
         </div>
         <form method="POST">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" value="update">
             <input type="hidden" name="client_id" id="edit-client-id">
 

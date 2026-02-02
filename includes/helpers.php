@@ -177,6 +177,56 @@ function back(string $fallback = '/', int $status = 302): never {
 }
 
 /**
+ * Convert PHP ini size notation to bytes
+ *
+ * @param string $size Size string (e.g., '128M', '2G', '1024K')
+ * @return int Size in bytes
+ *
+ * @example convertToBytes('128M')  // Returns 134217728
+ * @example convertToBytes('2G')    // Returns 2147483648
+ */
+function convertToBytes(string $size): int {
+    $size = trim($size);
+    if (empty($size)) {
+        return 0;
+    }
+
+    $unit = strtoupper(substr($size, -1));
+    $value = (int) $size;
+
+    switch ($unit) {
+        case 'G':
+            $value *= 1024;
+            // fallthrough
+        case 'M':
+            $value *= 1024;
+            // fallthrough
+        case 'K':
+            $value *= 1024;
+    }
+
+    return $value;
+}
+
+/**
+ * Format bytes into human-readable string
+ *
+ * @param int $bytes Number of bytes
+ * @param int $precision Decimal precision (default 2)
+ * @return string Human-readable size (e.g., "1.5 MB")
+ * @example formatBytes(1536)      // Returns "1.5 KB"
+ * @example formatBytes(1048576)   // Returns "1 MB"
+ */
+function formatBytes(int $bytes, int $precision = 2): string {
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= pow(1024, $pow);
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+/**
  * Generate a CSRF token field for forms
  *
  * @return string HTML input field with CSRF token

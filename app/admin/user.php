@@ -62,7 +62,10 @@ $message = '';
 $error = '';
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_profile'])) {
         $username = trim($_POST['username'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -194,6 +197,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>Profile Information</h2>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <div class="form-row-grid">
                                 <div class="form-group">
                                     <label for="username">Username</label>
@@ -224,6 +228,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>Change Password</h2>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <div class="form-row-grid">
                                 <div class="form-group">
                                     <label for="new_password">New Password</label>
@@ -244,6 +249,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>Group Memberships</h2>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <div class="form-group">
                                 <div class="checkbox-group">
                                     <?php foreach ($groups as $group): ?>
@@ -292,6 +298,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section danger-zone">
                         <h2>Danger Zone</h2>
                         <form method="post" onsubmit="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
+                            <?= csrf_field() ?>
                             <p>Permanently delete this user account. This cannot be undone.</p>
                             <button type="submit" name="delete_user" class="btn btn-danger">Delete User</button>
                         </form>
@@ -303,12 +310,12 @@ require_once __DIR__ . '/../../includes/header.php';
 
 <style>
 .back-link {
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     text-decoration: none;
     margin-right: 0.5rem;
 }
 .back-link:hover {
-    color: var(--text-primary);
+    color: var(--color-text);
 }
 .permission-list {
     display: grid;
@@ -320,21 +327,21 @@ require_once __DIR__ . '/../../includes/header.php';
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem;
-    background: var(--bg-tertiary);
-    border-radius: 4px;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius);
 }
 .permission-item.has-permission {
-    color: var(--success);
+    color: #10b981;
 }
 .permission-item.no-permission {
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     opacity: 0.6;
 }
 .permission-status {
     font-weight: bold;
 }
 .danger-zone {
-    border: 1px solid var(--danger);
+    border: 1px solid #ef4444;
     background: rgba(239, 68, 68, 0.05);
 }
 .danger-zone h2 {

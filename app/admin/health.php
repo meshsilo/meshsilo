@@ -422,29 +422,7 @@ function getServerUptime() {
     return 'N/A';
 }
 
-function convertToBytes($val) {
-    $val = trim($val);
-    if (!$val) return 0;
-
-    $last = strtolower($val[strlen($val)-1]);
-    $val = (int)$val;
-
-    switch($last) {
-        case 'g': $val *= 1024;
-        case 'm': $val *= 1024;
-        case 'k': $val *= 1024;
-    }
-    return $val;
-}
-
-function formatBytes($bytes, $precision = 2) {
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $bytes = max($bytes, 0);
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    $bytes /= pow(1024, $pow);
-    return round($bytes, $precision) . ' ' . $units[$pow];
-}
+// convertToBytes and formatBytes are defined in includes/helpers.php
 
 // Get initial data
 $metrics = getSystemMetrics();
@@ -767,7 +745,7 @@ function getStatusMessage($services) {
 }
 
 .last-updated {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
 }
 
@@ -787,10 +765,10 @@ function getStatusMessage($services) {
 }
 
 .metric-card {
-    background: var(--card-bg);
+    background: var(--color-surface);
     padding: 1.25rem;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
 }
 
 .metric-header {
@@ -806,7 +784,7 @@ function getStatusMessage($services) {
 
 .metric-title {
     font-size: 0.875rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .metric-value {

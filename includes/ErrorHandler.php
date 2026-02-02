@@ -413,6 +413,102 @@ function abort_unless(bool $condition, int $code, ?string $message = null): void
 }
 
 /**
+ * Return a JSON success response
+ */
+function json_success(array $data = [], string $message = 'Success', int $code = 200): void {
+    http_response_code($code);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'message' => $message,
+        'data' => $data
+    ]);
+    exit;
+}
+
+/**
+ * Return a JSON error response
+ */
+function json_error(string $message, int $code = 400, array $errors = []): void {
+    http_response_code($code);
+    header('Content-Type: application/json');
+    $response = [
+        'success' => false,
+        'error' => true,
+        'message' => $message,
+        'code' => $code
+    ];
+    if (!empty($errors)) {
+        $response['errors'] = $errors;
+    }
+    echo json_encode($response);
+    exit;
+}
+
+/**
+ * Return a JSON response for feature not enabled
+ */
+function json_feature_disabled(string $feature): void {
+    json_error("This feature ({$feature}) is not enabled.", 403);
+}
+
+/**
+ * Return a JSON response for unauthorized access
+ */
+function json_unauthorized(string $message = 'Unauthorized'): void {
+    json_error($message, 401);
+}
+
+/**
+ * Return a JSON response for forbidden access
+ */
+function json_forbidden(string $message = 'You do not have permission to perform this action.'): void {
+    json_error($message, 403);
+}
+
+/**
+ * Return a JSON response for not found
+ */
+function json_not_found(string $message = 'Resource not found.'): void {
+    json_error($message, 404);
+}
+
+/**
+ * Return a JSON response for validation errors
+ */
+function json_validation_error(array $errors, string $message = 'Validation failed.'): void {
+    json_error($message, 422, $errors);
+}
+
+/**
+ * Require feature or return JSON error
+ */
+function require_feature_json(string $feature): void {
+    if (function_exists('isFeatureEnabled') && !isFeatureEnabled($feature)) {
+        json_feature_disabled($feature);
+    }
+}
+
+/**
+ * Require authentication or return JSON error
+ */
+function require_auth_json(): void {
+    if (function_exists('isLoggedIn') && !isLoggedIn()) {
+        json_unauthorized('You must be logged in to perform this action.');
+    }
+}
+
+/**
+ * Require admin or return JSON error
+ */
+function require_admin_json(): void {
+    require_auth_json();
+    if (function_exists('isAdmin') && !isAdmin()) {
+        json_forbidden('Admin access required.');
+    }
+}
+
+/**
  * Setup error handler
  */
 function setupErrorHandler(bool $debug = false): void {

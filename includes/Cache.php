@@ -3,8 +3,9 @@
  * Caching System
  *
  * Provides a simple caching layer with multiple driver support:
+ * - Redis (if available, best for distributed/high-traffic)
+ * - APCu (if available, fastest for single-server)
  * - File-based caching (default, works everywhere)
- * - APCu (if available, much faster)
  * - Memory (request-scoped, for expensive repeated calls)
  */
 
@@ -15,6 +16,7 @@ class Cache {
     private string $prefix = 'silo_';
     private int $defaultTtl = 3600; // 1 hour
     private array $memory = [];
+    private ?\Redis $redis = null;
 
     /**
      * Get singleton instance
@@ -32,14 +34,52 @@ class Cache {
     private function __construct() {
         $this->path = dirname(__DIR__) . '/storage/cache/';
 
-        // Auto-detect best available driver
-        if (extension_loaded('apcu') && apcu_enabled()) {
+        // Auto-detect best available driver (priority: redis > apcu > file)
+        if ($this->connectRedis()) {
+            $this->driver = 'redis';
+        } elseif (extension_loaded('apcu') && apcu_enabled()) {
             $this->driver = 'apcu';
         } else {
             $this->driver = 'file';
             if (!is_dir($this->path)) {
                 mkdir($this->path, 0755, true);
             }
+        }
+    }
+
+    /**
+     * Try to connect to Redis
+     */
+    private function connectRedis(): bool {
+        if (!extension_loaded('redis')) {
+            return false;
+        }
+
+        // Check for Redis configuration in settings or environment
+        $redisHost = getenv('REDIS_HOST') ?: (defined('REDIS_HOST') ? REDIS_HOST : '');
+        if (empty($redisHost)) {
+            return false;
+        }
+
+        try {
+            $this->redis = new \Redis();
+            $redisPort = (int)(getenv('REDIS_PORT') ?: (defined('REDIS_PORT') ? REDIS_PORT : 6379));
+            $this->redis->connect($redisHost, $redisPort, 2.0); // 2 second timeout
+
+            $redisPassword = getenv('REDIS_PASSWORD') ?: (defined('REDIS_PASSWORD') ? REDIS_PASSWORD : '');
+            if (!empty($redisPassword)) {
+                $this->redis->auth($redisPassword);
+            }
+
+            $redisDb = (int)(getenv('REDIS_DB') ?: (defined('REDIS_DB') ? REDIS_DB : 0));
+            if ($redisDb > 0) {
+                $this->redis->select($redisDb);
+            }
+
+            return $this->redis->ping() === true || $this->redis->ping() === '+PONG';
+        } catch (\Exception $e) {
+            $this->redis = null;
+            return false;
         }
     }
 
@@ -78,6 +118,15 @@ class Cache {
         }
 
         switch ($this->driver) {
+            case 'redis':
+                if ($this->redis) {
+                    $value = $this->redis->get($prefixedKey);
+                    if ($value !== false) {
+                        return unserialize($value);
+                    }
+                }
+                return $default;
+
             case 'apcu':
                 $success = false;
                 $value = apcu_fetch($prefixedKey, $success);
@@ -109,6 +158,15 @@ class Cache {
         ];
 
         switch ($this->driver) {
+            case 'redis':
+                if ($this->redis) {
+                    if ($ttl > 0) {
+                        return $this->redis->setex($prefixedKey, $ttl, serialize($value));
+                    }
+                    return $this->redis->set($prefixedKey, serialize($value));
+                }
+                return false;
+
             case 'apcu':
                 return apcu_store($prefixedKey, $value, $ttl);
 
@@ -146,6 +204,12 @@ class Cache {
         unset($this->memory[$prefixedKey]);
 
         switch ($this->driver) {
+            case 'redis':
+                if ($this->redis) {
+                    return $this->redis->del($prefixedKey) >= 0;
+                }
+                return true;
+
             case 'apcu':
                 return apcu_delete($prefixedKey);
 
@@ -205,6 +269,16 @@ class Cache {
         $this->memory = [];
 
         switch ($this->driver) {
+            case 'redis':
+                if ($this->redis) {
+                    // Only flush keys with our prefix
+                    $keys = $this->redis->keys($this->prefix . '*');
+                    if (!empty($keys)) {
+                        $this->redis->del($keys);
+                    }
+                }
+                return true;
+
             case 'apcu':
                 return apcu_clear_cache();
 
@@ -313,6 +387,16 @@ class Cache {
         ];
 
         switch ($this->driver) {
+            case 'redis':
+                if ($this->redis) {
+                    $info = $this->redis->info();
+                    $stats['hits'] = $info['keyspace_hits'] ?? 0;
+                    $stats['misses'] = $info['keyspace_misses'] ?? 0;
+                    $stats['entries'] = $this->redis->dbSize();
+                    $stats['memory_size'] = $info['used_memory'] ?? 0;
+                }
+                break;
+
             case 'apcu':
                 $info = apcu_cache_info();
                 $stats['hits'] = $info['num_hits'] ?? 0;

@@ -8,7 +8,10 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/auth.php';
 
-requireAdmin();
+if (!isLoggedIn() || !isAdmin()) {
+    header('Location: ' . route('login'));
+    exit;
+}
 
 $pageTitle = 'Real User Monitoring';
 $activePage = 'admin';
@@ -19,8 +22,7 @@ $db = getDB();
 // Check if RUM tables exist
 $tablesExist = false;
 try {
-    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
-    if ($driver === 'sqlite') {
+    if (DB_TYPE === 'sqlite') {
         $result = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='rum_metrics'");
     } else {
         $result = $db->query("SHOW TABLES LIKE 'rum_metrics'");

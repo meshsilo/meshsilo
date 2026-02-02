@@ -41,6 +41,10 @@ class AuditLogger {
             return false;
         }
 
+        if (!self::tableExists()) {
+            return false;
+        }
+
         $db = getDB();
         $userId = null;
         $sessionId = null;
@@ -127,9 +131,36 @@ class AuditLogger {
     }
 
     /**
+     * Check if audit_log table exists
+     */
+    public static function tableExists() {
+        static $exists = null;
+        if ($exists !== null) {
+            return $exists;
+        }
+
+        try {
+            $db = getDB();
+            if ($db->getType() === 'mysql') {
+                $result = $db->querySingle("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'audit_log'");
+            } else {
+                $result = $db->querySingle("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='audit_log'");
+            }
+            $exists = (int)$result > 0;
+        } catch (Exception $e) {
+            $exists = false;
+        }
+        return $exists;
+    }
+
+    /**
      * Query audit logs with filters
      */
     public static function query($filters = [], $limit = 100, $offset = 0) {
+        if (!self::tableExists()) {
+            return ['data' => [], 'total' => 0, 'limit' => $limit, 'offset' => $offset];
+        }
+
         $db = getDB();
 
         $where = ['1=1'];
@@ -306,8 +337,6 @@ class AuditLogger {
      * Generate compliance report
      */
     public static function generateComplianceReport($startDate, $endDate, $format = 'summary') {
-        $db = getDB();
-
         $report = [
             'generated_at' => date('Y-m-d H:i:s'),
             'period' => [
@@ -317,6 +346,12 @@ class AuditLogger {
             'summary' => [],
             'details' => []
         ];
+
+        if (!self::tableExists()) {
+            return $report;
+        }
+
+        $db = getDB();
 
         // Total events by type
         $stmt = $db->prepare('
@@ -436,6 +471,10 @@ class AuditLogger {
      * Purge old audit logs
      */
     public static function purgeOldLogs($daysToKeep = 365) {
+        if (!self::tableExists()) {
+            return 0;
+        }
+
         $db = getDB();
         $cutoff = date('Y-m-d H:i:s', strtotime("-{$daysToKeep} days"));
 
@@ -450,14 +489,18 @@ class AuditLogger {
      * Get statistics
      */
     public static function getStats() {
-        $db = getDB();
-
         $stats = [
             'total' => 0,
             'today' => 0,
             'oldest' => null,
             'estimated_rows' => 0
         ];
+
+        if (!self::tableExists()) {
+            return $stats;
+        }
+
+        $db = getDB();
 
         try {
             // Total logs

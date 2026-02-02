@@ -65,8 +65,8 @@ class Markdown
             function ($matches) {
                 $lang = $matches[1];
                 $code = $matches[2];
-                // Code is already HTML-escaped
-                $langAttr = $lang ? ' class="language-' . $lang . '"' : '';
+                // Code is already HTML-escaped, escape lang attribute to prevent XSS
+                $langAttr = $lang ? ' class="language-' . htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') . '"' : '';
                 return '<pre><code' . $langAttr . '>' . rtrim($code) . '</code></pre>';
             },
             $text

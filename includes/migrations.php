@@ -1677,45 +1677,6 @@ function getMigrationList() {
             }
         ],
 
-        // Smart collections table (if not exists)
-        [
-            'name' => 'Smart collections table',
-            'description' => 'Auto-updating collections based on rules',
-            'check' => fn($db) => tableExists($db, 'smart_collections'),
-            'apply' => function($db) {
-                $type = $db->getType();
-                if ($type === 'mysql') {
-                    $db->exec('CREATE TABLE smart_collections (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        name VARCHAR(255) NOT NULL,
-                        description TEXT,
-                        rules TEXT NOT NULL,
-                        match_type VARCHAR(10) DEFAULT "all",
-                        is_public TINYINT DEFAULT 0,
-                        cache_model_ids TEXT,
-                        cache_updated_at DATETIME,
-                        created_by INT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-                } else {
-                    $db->exec('CREATE TABLE smart_collections (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        description TEXT,
-                        rules TEXT NOT NULL,
-                        match_type TEXT DEFAULT "all",
-                        is_public INTEGER DEFAULT 0,
-                        cache_model_ids TEXT,
-                        cache_updated_at DATETIME,
-                        created_by INTEGER,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-                    )');
-                }
-            }
-        ],
-
         // Print history table (if not exists)
         [
             'name' => 'Print history table',
@@ -1890,6 +1851,89 @@ function getMigrationList() {
                         expires_at INTEGER NOT NULL
                     )');
                     $db->exec('CREATE INDEX idx_rate_limits_expires ON rate_limits(expires_at)');
+                }
+            }
+        ],
+        // Performance indexes for common queries
+        [
+            'name' => 'Performance indexes',
+            'description' => 'Add indexes on frequently queried columns for faster lookups',
+            'check' => function($db) {
+                return indexExists($db, 'models', 'idx_models_parent_id');
+            },
+            'apply' => function($db) {
+                $type = $db->getType();
+
+                // Index on models.parent_id (used in multi-part queries)
+                if (!indexExists($db, 'models', 'idx_models_parent_id')) {
+                    $db->exec('CREATE INDEX idx_models_parent_id ON models(parent_id)');
+                }
+
+                // Index on models.created_at (used for sorting)
+                if (!indexExists($db, 'models', 'idx_models_created_at')) {
+                    $db->exec('CREATE INDEX idx_models_created_at ON models(created_at)');
+                }
+
+                // Index on model_tags.model_id (many-to-many queries)
+                if (!indexExists($db, 'model_tags', 'idx_model_tags_model_id')) {
+                    $db->exec('CREATE INDEX idx_model_tags_model_id ON model_tags(model_id)');
+                }
+
+                // Index on model_categories.model_id (category filtering)
+                if (!indexExists($db, 'model_categories', 'idx_model_categories_model_id')) {
+                    $db->exec('CREATE INDEX idx_model_categories_model_id ON model_categories(model_id)');
+                }
+
+                // Index on activity_log.created_at (retention/analytics)
+                if (tableExists($db, 'activity_log') && !indexExists($db, 'activity_log', 'idx_activity_log_created_at')) {
+                    $db->exec('CREATE INDEX idx_activity_log_created_at ON activity_log(created_at)');
+                }
+
+                // Index on favorites.user_id (user favorites lookup)
+                if (tableExists($db, 'favorites') && !indexExists($db, 'favorites', 'idx_favorites_user_id')) {
+                    $db->exec('CREATE INDEX idx_favorites_user_id ON favorites(user_id)');
+                }
+            }
+        ],
+        // Model attachments table for images and PDFs
+        [
+            'name' => 'Model attachments table',
+            'description' => 'Stores document and image attachments for models',
+            'check' => fn($db) => tableExists($db, 'model_attachments'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE model_attachments (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        model_id INT NOT NULL,
+                        filename VARCHAR(255) NOT NULL,
+                        file_path TEXT NOT NULL,
+                        file_type VARCHAR(20) NOT NULL,
+                        mime_type VARCHAR(100),
+                        file_size INT,
+                        original_filename VARCHAR(255),
+                        display_order INT DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        INDEX idx_model_attachments_model (model_id),
+                        INDEX idx_model_attachments_type (file_type)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE model_attachments (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        model_id INTEGER NOT NULL,
+                        filename TEXT NOT NULL,
+                        file_path TEXT NOT NULL,
+                        file_type TEXT NOT NULL,
+                        mime_type TEXT,
+                        file_size INTEGER,
+                        original_filename TEXT,
+                        display_order INTEGER DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+                    )');
+                    $db->exec('CREATE INDEX idx_model_attachments_model ON model_attachments(model_id)');
+                    $db->exec('CREATE INDEX idx_model_attachments_type ON model_attachments(file_type)');
                 }
             }
         ],

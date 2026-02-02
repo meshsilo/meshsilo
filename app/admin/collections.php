@@ -1,8 +1,12 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/features.php';
 // Set baseDir based on how we're accessed (router vs direct)
 // Router loads from root context, direct access needs ../
 $baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
+
+// Require feature to be enabled
+requireFeature('collections');
 
 // Require collection management permission
 if (!isLoggedIn() || !canManageCollections()) {
@@ -29,7 +33,10 @@ $db->exec('CREATE TABLE IF NOT EXISTS collections (
 $message = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// CSRF protection for all POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Invalid request. Please refresh the page and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_collection'])) {
         $name = trim($_POST['collection_name'] ?? '');
         $description = trim($_POST['collection_description'] ?? '');
@@ -94,6 +101,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>Add Collection</h2>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <div class="form-group">
                                 <label for="collection_name">Collection Name</label>
                                 <input type="text" id="collection_name" name="collection_name" class="form-input" placeholder="e.g., Gridfinity, Voron" required>
@@ -135,6 +143,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                         </td>
                                         <td>
                                             <form method="post" style="display:inline;" onsubmit="return confirm('Delete this collection?');">
+                                                <?= csrf_field() ?>
                                                 <input type="hidden" name="collection_id" value="<?= $collection['id'] ?>">
                                                 <button type="submit" name="delete_collection" class="btn btn-small btn-danger">Delete</button>
                                             </form>

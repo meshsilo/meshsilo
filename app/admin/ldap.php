@@ -6,6 +6,10 @@
  */
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/permissions.php';
+require_once __DIR__ . '/../../includes/features.php';
+
+// Require feature to be enabled
+requireFeature('ldap_auth');
 
 // Require LDAP management permission
 if (!isLoggedIn() || !canManageLdap()) {

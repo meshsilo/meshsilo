@@ -262,24 +262,4 @@ function getMaxUploadSize() {
     return min($maxUpload, $maxPost);
 }
 
-function convertToBytes($value) {
-    $value = trim($value);
-    $last = strtolower($value[strlen($value) - 1]);
-    $value = (int)$value;
-    switch ($last) {
-        case 'g': $value *= 1024;
-        case 'm': $value *= 1024;
-        case 'k': $value *= 1024;
-    }
-    return $value;
-}
-
-function formatBytes($bytes) {
-    $units = ['B', 'KB', 'MB', 'GB'];
-    $i = 0;
-    while ($bytes >= 1024 && $i < count($units) - 1) {
-        $bytes /= 1024;
-        $i++;
-    }
-    return round($bytes, 2) . ' ' . $units[$i];
-}
+// convertToBytes and formatBytes are defined in includes/helpers.php

@@ -37,46 +37,38 @@ function basePath($path = '') {
 
 // Include logging and database first
 require_once __DIR__ . '/logger.php';
+require_once __DIR__ . '/Debug.php';
+Debug::init();
 require_once __DIR__ . '/db.php';
 
-// Load site configuration from database
+// Load site configuration from database (batch load for performance)
 // All settings are stored in the database, not in config files
 // This ensures settings can be managed via admin panel and can't be overwritten by file changes
-if (!defined('SITE_NAME')) {
-    $dbSiteName = null;
+if (!defined('SITE_NAME') || !defined('SITE_DESCRIPTION') || !defined('SITE_URL') || !defined('FORCE_SITE_URL')) {
+    // Initialize settings cache and load all settings in one query
+    $GLOBALS['_settings_cache'] = [];
     try {
-        $dbSiteName = getSetting('site_name', 'MeshSilo');
+        $allSettings = getAllSettings();
+        $GLOBALS['_settings_cache'] = $allSettings;
     } catch (Exception $e) {
-        $dbSiteName = 'MeshSilo';
+        $allSettings = [];
     }
-    define('SITE_NAME', $dbSiteName);
-}
-if (!defined('SITE_DESCRIPTION')) {
-    $dbSiteDesc = null;
-    try {
-        $dbSiteDesc = getSetting('site_description', '3D Model Storage');
-    } catch (Exception $e) {
-        $dbSiteDesc = '3D Model Storage';
+
+    // Define constants from batch-loaded settings
+    if (!defined('SITE_NAME')) {
+        define('SITE_NAME', $allSettings['site_name'] ?? 'MeshSilo');
     }
-    define('SITE_DESCRIPTION', $dbSiteDesc);
-}
-if (!defined('SITE_URL')) {
-    $dbSiteUrl = null;
-    try {
-        $dbSiteUrl = getSetting('site_url', '/');
-    } catch (Exception $e) {
-        $dbSiteUrl = '/';
+    if (!defined('SITE_DESCRIPTION')) {
+        define('SITE_DESCRIPTION', $allSettings['site_description'] ?? '3D Model Storage');
     }
-    define('SITE_URL', $dbSiteUrl ?: '/');
-}
-if (!defined('FORCE_SITE_URL')) {
-    $dbForceUrl = null;
-    try {
-        $dbForceUrl = getSetting('force_site_url', '0');
-    } catch (Exception $e) {
-        $dbForceUrl = '0';
+    if (!defined('SITE_URL')) {
+        $siteUrl = $allSettings['site_url'] ?? '/';
+        define('SITE_URL', $siteUrl ?: '/');
     }
-    define('FORCE_SITE_URL', $dbForceUrl === '1' || $dbForceUrl === true);
+    if (!defined('FORCE_SITE_URL')) {
+        $forceUrl = $allSettings['force_site_url'] ?? '0';
+        define('FORCE_SITE_URL', $forceUrl === '1' || $forceUrl === true);
+    }
 }
 
 // Include authentication, permissions, OIDC, mail and licensing
@@ -92,6 +84,7 @@ if (!class_exists('Router')) {
     require_once __DIR__ . '/Router.php';
 }
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/features.php';
 
 // Load middleware interface before classes that implement it
 if (!interface_exists('MiddlewareInterface')) {

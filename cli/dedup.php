@@ -163,13 +163,7 @@ foreach ($duplicateSets as $set) {
     }
 }
 
-// Format size
-function formatBytes($bytes) {
-    $units = ['B', 'KB', 'MB', 'GB'];
-    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-    $pow = min($pow, count($units) - 1);
-    return round($bytes / pow(1024, $pow), 2) . ' ' . $units[$pow];
-}
+// formatBytes is defined in includes/helpers.php
 
 echo "[" . date('Y-m-d H:i:s') . "] Deduplication complete.\n";
 echo "[" . date('Y-m-d H:i:s') . "] Files " . ($dryRun ? "that would be" : "") . " deduplicated: {$filesDeduped}\n";
