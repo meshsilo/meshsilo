@@ -195,6 +195,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
     setSetting('allowed_extensions', $allowedExtensions);
+
+    // Max file size (convert MB to bytes)
+    $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
+    if ($maxFileSize < 1) $maxFileSize = 1;
+    if ($maxFileSize > 10240) $maxFileSize = 10240; // Cap at 10GB
+    setSetting('max_file_size', (string)($maxFileSize * 1024 * 1024));
+
     setSetting('oidc_enabled', $oidcEnabled);
     setSetting('oidc_provider_url', $oidcProviderUrl);
     setSetting('oidc_client_id', $oidcClientId);
