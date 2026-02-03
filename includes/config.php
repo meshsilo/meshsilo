@@ -18,9 +18,9 @@ if (file_exists(__DIR__ . '/../storage/db/config.local.php')) {
 if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
 if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../storage/db/meshsilo.db');
 
-// Upload Configuration (defaults, can be overridden in config.local.php)
+// Upload Configuration (defaults, can be overridden in config.local.php or database)
 if (!defined('UPLOAD_PATH')) define('UPLOAD_PATH', __DIR__ . '/../storage/assets/');
-if (!defined('MAX_FILE_SIZE')) define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB
+// MAX_FILE_SIZE is defined later after database settings are loaded
 if (!defined('MAX_UPLOAD_SIZE')) define('MAX_UPLOAD_SIZE', 100 * 1024 * 1024); // 100MB (alias)
 if (!defined('MODEL_EXTENSIONS')) define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d']);
 if (!defined('ALLOWED_EXTENSIONS')) define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip']);
@@ -68,6 +68,15 @@ if (!defined('SITE_NAME') || !defined('SITE_DESCRIPTION') || !defined('SITE_URL'
     if (!defined('FORCE_SITE_URL')) {
         $forceUrl = $allSettings['force_site_url'] ?? '0';
         define('FORCE_SITE_URL', $forceUrl === '1' || $forceUrl === true);
+    }
+    // Define MAX_FILE_SIZE from database or use default
+    if (!defined('MAX_FILE_SIZE')) {
+        $maxFileSize = isset($allSettings['max_file_size']) ? (int)$allSettings['max_file_size'] : 0;
+        if ($maxFileSize > 0) {
+            define('MAX_FILE_SIZE', $maxFileSize);
+        } else {
+            define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB default
+        }
     }
 }
 
