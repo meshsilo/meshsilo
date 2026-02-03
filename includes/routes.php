@@ -390,7 +390,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
 
 $router->group(['prefix' => '/api'], function($router) {
     // GraphQL endpoint
-    $router->any('/graphql', ['file' => 'api/graphql.php'], 'api.graphql');
+    $router->any('/graphql', ['file' => 'app/api/graphql.php'], 'api.graphql');
 
     // Redirect to API handler
     $router->any('/models', ['file' => 'app/api/index.php'], 'api.models');
