@@ -106,6 +106,7 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         if ($firstPart) {
             $row['preview_path'] = '/preview?id=' . $firstPart['id'];
             $row['preview_type'] = $firstPart['file_type'];
+            $row['preview_file_size'] = $firstPart['file_size'] ?? 0;
         }
     } else {
         $row['preview_path'] = '/preview?id=' . $row['id'];
@@ -313,7 +314,7 @@ require_once 'includes/header.php';
                         </label>
                         <?php endif; ?>
                         <div class="model-list-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['file_size'] ?? 0) < 5242880): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? $model['file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
@@ -357,7 +358,7 @@ require_once 'includes/header.php';
                     <?php foreach ($models as $model): ?>
                     <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)">
                         <div class="model-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['file_size'] ?? 0) < 5242880): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? $model['file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
