@@ -47,7 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         $deletedCount = 0;
 
         while (true) {
-            $result = $db->query("SELECT id, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT $batchSize OFFSET $offset");
+            // Use prepared statement with parameter binding for LIMIT/OFFSET to prevent SQL injection
+            $stmt = $db->prepare("SELECT id, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT :limit OFFSET :offset");
+            $stmt->bindValue(':limit', $batchSize, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $result = $stmt->execute();
             $hasRows = false;
             $idsToDelete = [];
 

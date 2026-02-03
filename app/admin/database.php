@@ -116,7 +116,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 // For MySQL, optimize all tables
                 $tables = $db->query("SHOW TABLES");
                 while ($row = $tables->fetch(PDO::FETCH_NUM)) {
-                    $db->exec("OPTIMIZE TABLE `{$row[0]}`");
+                    // SECURITY: Validate table name contains only safe characters (alphanumeric and underscores)
+                    // to prevent SQL injection. Table names from SHOW TABLES should be safe, but we validate
+                    // as defense-in-depth since the name is interpolated into the query.
+                    $tableName = $row[0];
+                    if (!preg_match('/^[a-zA-Z0-9_]+$/', $tableName)) {
+                        logWarning('Skipping table with invalid name during optimization', ['table' => $tableName]);
+                        continue;
+                    }
+                    $db->exec("OPTIMIZE TABLE `{$tableName}`");
                 }
                 $message = 'Database tables optimized successfully.';
             }

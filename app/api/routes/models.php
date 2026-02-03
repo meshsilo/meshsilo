@@ -108,9 +108,12 @@ function listModels($apiUser) {
         $params[':is_printed'] = $_GET['is_printed'] === 'true' ? 1 : 0;
     }
 
+    // Build WHERE clause from conditions array
+    // All conditions use parameter placeholders (:param) - no direct interpolation of user input
     $whereClause = implode(' AND ', $where);
 
-    // Sort
+    // Sort - SECURITY: $sort is safe because it's selected from a hardcoded whitelist.
+    // User input ($_GET['sort']) is used only as a lookup key, never interpolated directly.
     $sortOptions = [
         'newest' => 'm.created_at DESC',
         'oldest' => 'm.created_at ASC',
@@ -131,6 +134,9 @@ function listModels($apiUser) {
     $params[':limit'] = $pagination['limit'];
     $params[':offset'] = $pagination['offset'];
 
+    // SECURITY NOTE: $whereClause is built from $where array which only contains
+    // conditions with parameter placeholders (e.g., 'm.name LIKE :search').
+    // $sort is whitelist-validated above. Both are safe for interpolation.
     $stmt = $db->prepare("
         SELECT m.* FROM models m
         WHERE $whereClause
