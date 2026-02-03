@@ -88,5 +88,8 @@ header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastModified) . ' GMT');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, HEAD');
 
-readfile($filePath);
+// Only send body for GET requests (not HEAD)
+if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
+    readfile($filePath);
+}
 exit;
