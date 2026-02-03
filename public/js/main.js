@@ -73,13 +73,22 @@ class LazyModelLoader {
                 backgroundColor: bgColor
             });
 
-            // Load model
+            // Load model with timeout
+            const loadTimeout = setTimeout(() => {
+                console.warn('Thumbnail load timed out:', url);
+                thumbnail.classList.remove('loading', 'lazy-load-placeholder');
+                thumbnail.classList.add('load-error');
+                viewerContainer.remove();
+            }, 15000); // 15 second timeout
+
             viewer.loadModel(url, fileType)
                 .then(() => {
+                    clearTimeout(loadTimeout);
                     thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                     thumbnail.classList.add('has-viewer', 'loaded');
                 })
                 .catch(err => {
+                    clearTimeout(loadTimeout);
                     console.warn('Failed to load thumbnail model:', err);
                     thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                     thumbnail.classList.add('load-error');
