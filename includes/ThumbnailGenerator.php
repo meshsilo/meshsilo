@@ -40,9 +40,9 @@ class ThumbnailGenerator {
             }
         }
 
-        // Try OpenSCAD rendering for STL files
-        if ($fileType === 'stl' && self::isOpenSCADAvailable()) {
-            $thumbnail = self::renderWithOpenSCAD($filePath, $model['id'], $size);
+        // Try OpenSCAD rendering for STL and 3MF files (fallback for 3MF without embedded thumbnail)
+        if (in_array($fileType, ['stl', '3mf']) && self::isOpenSCADAvailable()) {
+            $thumbnail = self::renderWithOpenSCAD($filePath, $model['id'], $size, $fileType);
             if ($thumbnail) {
                 self::updateThumbnailPath($model['id'], $thumbnail);
                 return $thumbnail;
@@ -118,8 +118,9 @@ class ThumbnailGenerator {
      * Render thumbnail using OpenSCAD
      *
      * Requires OpenSCAD to be installed and available in PATH
+     * Supports STL and 3MF file formats
      */
-    public static function renderWithOpenSCAD($stlPath, $modelId, $size = self::SIZE_MEDIUM) {
+    public static function renderWithOpenSCAD($filePath, $modelId, $size = self::SIZE_MEDIUM, $fileType = 'stl') {
         if (!self::isOpenSCADAvailable()) {
             return null;
         }
@@ -128,10 +129,10 @@ class ThumbnailGenerator {
         $outputPath = $thumbnailDir . '/' . $modelId . '.png';
         $tempScad = sys_get_temp_dir() . '/silo_render_' . $modelId . '.scad';
 
-        // Create temporary OpenSCAD file to import and render the STL
+        // Create temporary OpenSCAD file to import and render the model
         $scadContent = sprintf(
             'import("%s");',
-            addslashes(realpath($stlPath))
+            addslashes(realpath($filePath))
         );
         file_put_contents($tempScad, $scadContent);
 
