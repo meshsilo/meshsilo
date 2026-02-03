@@ -124,6 +124,9 @@ $router->get('/download-all/{id:\d+}', ['file' => 'app/actions/download-all.php'
 // ACTION HANDLERS
 // ============================================================================
 
+// Short preview route (used by model cards)
+$router->get('/preview', ['file' => 'app/actions/preview.php'], 'preview');
+
 $router->group(['prefix' => '/actions'], function($router) {
     // File downloads and previews
     $router->get('/download', ['file' => 'app/actions/download.php'], 'actions.download');
