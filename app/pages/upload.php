@@ -3,6 +3,7 @@ require_once 'includes/config.php';
 require_once 'includes/converter.php';
 require_once 'includes/dedup.php';
 require_once 'includes/gcode.php';
+require_once 'includes/ThumbnailGenerator.php';
 
 // Check upload permission
 requirePermission(PERM_UPLOAD);
@@ -129,6 +130,15 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
                 $gcodeMetadata = processGCodeFile($modelId, $filePath);
                 if (!empty(array_filter($gcodeMetadata))) {
                     logInfo('Parsed GCODE metadata', ['model_id' => $modelId, 'metadata' => $gcodeMetadata]);
+                }
+            }
+
+            // Generate thumbnail for 3MF and STL files
+            if (in_array($extension, ['3mf', 'stl'])) {
+                $model = ['id' => $modelId, 'file_path' => 'assets/' . $folderId . '/' . $filename, 'file_type' => $extension];
+                $thumbnail = ThumbnailGenerator::generateThumbnail($model);
+                if ($thumbnail) {
+                    logInfo('Generated thumbnail', ['model_id' => $modelId, 'thumbnail' => $thumbnail]);
                 }
             }
 

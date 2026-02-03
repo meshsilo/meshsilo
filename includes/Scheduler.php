@@ -543,11 +543,11 @@ class Scheduler {
                 require_once __DIR__ . '/ThumbnailGenerator.php';
             }
 
-            $count = ThumbnailGenerator::processPending(10);
-            if ($count === 0) {
+            $results = ThumbnailGenerator::batchGenerate(10);
+            if ($results['success'] === 0 && $results['failed'] === 0) {
                 return 'No pending thumbnails';
             }
-            return "Generated {$count} thumbnails";
+            return "Generated {$results['success']} thumbnails, {$results['failed']} failed";
         }, ['description' => 'Generate thumbnails for new models']);
 
         // Deduplication scan - daily at 1am
