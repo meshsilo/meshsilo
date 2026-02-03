@@ -287,7 +287,7 @@ require_once 'includes/header.php';
                 <?php foreach ($recentlyViewed as $rv): ?>
                 <article class="model-card recently-viewed-card" onclick="window.location='<?= route('model.show', ['id' => $rv['id']]) ?>'">
                     <div class="model-thumbnail"
-                        <?php if (empty($rv['thumbnail_path']) && !empty($rv['preview_path'])): ?>
+                        <?php if (empty($rv['thumbnail_path']) && !empty($rv['preview_path']) && ($rv['file_size'] ?? 0) < 5242880): ?>
                         data-model-url="<?= htmlspecialchars($rv['preview_path']) ?>"
                         data-file-type="<?= htmlspecialchars($rv['preview_type']) ?>"
                         <?php endif; ?>>
@@ -316,7 +316,7 @@ require_once 'includes/header.php';
                     <?php foreach ($models as $model): ?>
                     <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'">
                         <div class="model-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>

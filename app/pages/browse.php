@@ -313,7 +313,7 @@ require_once 'includes/header.php';
                         </label>
                         <?php endif; ?>
                         <div class="model-list-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
@@ -357,7 +357,7 @@ require_once 'includes/header.php';
                     <?php foreach ($models as $model): ?>
                     <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)">
                         <div class="model-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
