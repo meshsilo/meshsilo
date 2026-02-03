@@ -27,7 +27,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
     <link rel="icon" type="image/png" sizes="16x16" href="<?= basePath('images/favicon-16.png') ?>">
     <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
-    <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=7">
+    <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=8">
 
     <!-- Three.js for 3D model rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -42,8 +42,8 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TDSLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/AMFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="<?= basePath('js/viewer.js') ?>?v=10" defer></script>
-    <script src="<?= basePath('js/main.js') ?>?v=6" defer></script>
+    <script src="<?= basePath('js/viewer.js') ?>?v=11" defer></script>
+    <script src="<?= basePath('js/main.js') ?>?v=7" defer></script>
     <script>
         // Theme toggle functionality
         function toggleTheme() {

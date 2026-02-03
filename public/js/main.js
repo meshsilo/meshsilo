@@ -66,12 +66,21 @@ class LazyModelLoader {
             const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
             const bgColor = isLightTheme ? 0xf8fafc : 0x1e293b;
 
-            // Initialize viewer
-            const viewer = new ModelViewer(viewerContainer, {
-                autoRotate: true,
-                interactive: false,
-                backgroundColor: bgColor
-            });
+            // Initialize viewer - wrap in try-catch for WebGL errors
+            let viewer;
+            try {
+                viewer = new ModelViewer(viewerContainer, {
+                    autoRotate: true,
+                    interactive: false,
+                    backgroundColor: bgColor
+                });
+            } catch (e) {
+                console.warn('WebGL not available for thumbnail:', e.message);
+                thumbnail.classList.remove('loading', 'lazy-load-placeholder');
+                thumbnail.classList.add('no-webgl');
+                viewerContainer.remove();
+                return;
+            }
 
             // Load model with timeout
             const loadTimeout = setTimeout(() => {

@@ -39,8 +39,16 @@ class ModelViewer {
         this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
         this.camera.position.set(0, 0, 100);
 
-        // Renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Renderer - wrap in try-catch for WebGL context errors
+        try {
+            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+            if (!this.renderer.getContext()) {
+                throw new Error('WebGL context not available');
+            }
+        } catch (e) {
+            this.initFailed = true;
+            throw new Error('WebGL not available: ' + e.message);
+        }
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);

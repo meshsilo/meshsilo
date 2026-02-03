@@ -3373,14 +3373,39 @@ input[type="checkbox"]:disabled {
     to { opacity: 1; }
 }
 
-.model-thumbnail.load-error::after {
-    content: '!';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 2rem;
+.model-thumbnail.load-error,
+.model-thumbnail.no-webgl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--color-surface);
+}
+
+.model-thumbnail.load-error::before,
+.model-thumbnail.no-webgl::before {
+    content: '⬡';
+    font-size: 2.5rem;
     color: var(--color-text-muted);
+    opacity: 0.6;
+}
+
+.model-thumbnail.load-error::after,
+.model-thumbnail.no-webgl::after {
+    content: 'Preview unavailable';
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: 0 0.5rem;
+}
+
+.model-thumbnail.load-error::before {
+    content: '⚠';
+}
+
+.model-thumbnail.load-error::after {
+    content: 'Failed to load';
 }
 
 /* Card hover glow effect */
