@@ -261,6 +261,9 @@ function importModel() {
     $importedFiles = [];
     $errors = [];
 
+    // Get allowed file extensions for validation
+    $allowedExtensions = function_exists('getAllowedExtensions') ? getAllowedExtensions() : ['stl', '3mf', 'obj', 'ply', 'gcode'];
+
     foreach ($files as $file) {
         if (empty($file['download_url'])) {
             $errors[] = "Cannot download {$file['name']} - no download URL";
@@ -268,14 +271,40 @@ function importModel() {
         }
 
         $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $file['name']);
+
+        // Validate file extension against allowed types
+        $fileExt = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        if (!in_array($fileExt, $allowedExtensions, true)) {
+            $errors[] = "File type not allowed: {$file['name']} (.{$fileExt})";
+            continue;
+        }
+
+        // Validate URL to prevent SSRF
+        $downloadUrl = $file['download_url'];
+        $parsedUrl = parse_url($downloadUrl);
+        if (!$parsedUrl || !isset($parsedUrl['scheme']) || !in_array(strtolower($parsedUrl['scheme']), ['http', 'https'], true)) {
+            $errors[] = "Invalid download URL for {$file['name']} - only HTTP/HTTPS allowed";
+            continue;
+        }
+        // Block internal/private network addresses
+        $host = $parsedUrl['host'] ?? '';
+        $hostIp = gethostbyname($host);
+        if ($hostIp && filter_var($hostIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            $errors[] = "Download URL for {$file['name']} resolves to a private/reserved address";
+            continue;
+        }
+
         $filePath = $uploadDir . '/' . $filename;
 
         // Download file
-        $ch = curl_init($file['download_url']);
+        $ch = curl_init($downloadUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
             CURLOPT_TIMEOUT => 300,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_HTTPHEADER => ['User-Agent: Silo/1.0']
         ]);
         $fileContent = curl_exec($ch);

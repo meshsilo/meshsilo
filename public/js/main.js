@@ -281,12 +281,19 @@ class ToastManager {
     show(message, type = 'info', duration = 4000) {
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <span class="toast-message">${message}</span>
-            <button class="toast-close">&times;</button>
-        `;
 
-        toast.querySelector('.toast-close').addEventListener('click', () => {
+        const messageSpan = document.createElement('span');
+        messageSpan.className = 'toast-message';
+        messageSpan.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close';
+        closeBtn.innerHTML = '&times;';
+
+        toast.appendChild(messageSpan);
+        toast.appendChild(closeBtn);
+
+        closeBtn.addEventListener('click', () => {
             this.dismiss(toast);
         });
 
@@ -371,9 +378,14 @@ class KeyboardShortcuts {
 
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
 
-        // Re-index cards on page updates
-        const observer = new MutationObserver(() => this.updateModelCards());
-        observer.observe(document.body, { childList: true, subtree: true });
+        // Re-index cards on page updates (debounced, scoped to main content)
+        let updateTimer = null;
+        const observer = new MutationObserver(() => {
+            clearTimeout(updateTimer);
+            updateTimer = setTimeout(() => this.updateModelCards(), 200);
+        });
+        const mainContent = document.querySelector('.main-content, .model-grid, main') || document.body;
+        observer.observe(mainContent, { childList: true, subtree: true });
 
         // Create help button
         this.createHelpButton();

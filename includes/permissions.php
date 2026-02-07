@@ -77,8 +77,15 @@ function hasPermission($permission) {
 
 /**
  * Get all permissions for a user (combining direct and group permissions)
+ * Results are cached per-request to avoid redundant DB queries.
  */
 function getUserPermissions($userId) {
+    // Per-request cache to avoid N+1 queries
+    static $cache = [];
+    if (isset($cache[$userId])) {
+        return $cache[$userId];
+    }
+
     $db = getDB();
 
     // Check if user is admin
@@ -127,10 +134,13 @@ function getUserPermissions($userId) {
 
     // If no permissions from groups or user, use defaults
     if (empty($permissions)) {
+        $cache[$userId] = DEFAULT_USER_PERMISSIONS;
         return DEFAULT_USER_PERMISSIONS;
     }
 
-    return array_unique($permissions);
+    $result = array_unique($permissions);
+    $cache[$userId] = $result;
+    return $result;
 }
 
 /**
@@ -388,42 +398,42 @@ function canConvert() {
  * Check if user can manage users
  */
 function canManageUsers() {
-    return hasPermission(PERM_MANAGE_USERS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_USERS);
 }
 
 /**
  * Check if user can manage groups
  */
 function canManageGroups() {
-    return hasPermission(PERM_MANAGE_GROUPS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_GROUPS);
 }
 
 /**
  * Check if user can manage categories
  */
 function canManageCategories() {
-    return hasPermission(PERM_MANAGE_CATEGORIES) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_CATEGORIES);
 }
 
 /**
  * Check if user can manage collections
  */
 function canManageCollections() {
-    return hasPermission(PERM_MANAGE_COLLECTIONS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_COLLECTIONS);
 }
 
 /**
  * Check if user can manage settings
  */
 function canManageSettings() {
-    return hasPermission(PERM_MANAGE_SETTINGS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_SETTINGS);
 }
 
 /**
  * Check if user can view logs
  */
 function canViewLogs() {
-    return hasPermission(PERM_VIEW_LOGS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_VIEW_LOGS);
 }
 
 /**
@@ -437,84 +447,84 @@ function canSaveSearches() {
  * Check if user can manage sessions
  */
 function canManageSessions() {
-    return hasPermission(PERM_MANAGE_SESSIONS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_SESSIONS);
 }
 
 /**
  * Check if user can manage security settings
  */
 function canManageSecurity() {
-    return hasPermission(PERM_MANAGE_SECURITY) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_SECURITY);
 }
 
 /**
  * Check if user can view audit log
  */
 function canViewAuditLog() {
-    return hasPermission(PERM_VIEW_AUDIT_LOG) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_VIEW_AUDIT_LOG);
 }
 
 /**
  * Check if user can manage data retention
  */
 function canManageRetention() {
-    return hasPermission(PERM_MANAGE_RETENTION) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_RETENTION);
 }
 
 /**
  * Check if user can manage API keys
  */
 function canManageApiKeys() {
-    return hasPermission(PERM_MANAGE_API_KEYS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_API_KEYS);
 }
 
 /**
  * Check if user can manage webhooks
  */
 function canManageWebhooks() {
-    return hasPermission(PERM_MANAGE_WEBHOOKS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_WEBHOOKS);
 }
 
 /**
  * Check if user can manage OAuth clients
  */
 function canManageOAuth() {
-    return hasPermission(PERM_MANAGE_OAUTH) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_OAUTH);
 }
 
 /**
  * Check if user can manage LDAP/AD
  */
 function canManageLdap() {
-    return hasPermission(PERM_MANAGE_LDAP) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_LDAP);
 }
 
 /**
  * Check if user can manage SCIM provisioning
  */
 function canManageScim() {
-    return hasPermission(PERM_MANAGE_SCIM) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_SCIM);
 }
 
 /**
  * Check if user can manage backups
  */
 function canManageBackups() {
-    return hasPermission(PERM_MANAGE_BACKUPS) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_BACKUPS);
 }
 
 /**
  * Check if user can manage scheduled tasks
  */
 function canManageScheduler() {
-    return hasPermission(PERM_MANAGE_SCHEDULER) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_SCHEDULER);
 }
 
 /**
  * Check if user can manage storage
  */
 function canManageStorage() {
-    return hasPermission(PERM_MANAGE_STORAGE) || hasPermission(PERM_ADMIN);
+    return hasPermission(PERM_MANAGE_STORAGE);
 }
 
 /**
