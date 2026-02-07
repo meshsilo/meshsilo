@@ -121,13 +121,13 @@ class Mail {
         if (is_array($address)) {
             foreach ($address as $email => $recipientName) {
                 if (is_numeric($email)) {
-                    $this->cc[] = ['email' => $recipientName, 'name' => ''];
+                    $this->cc[] = ['email' => $this->sanitizeEmail($recipientName), 'name' => ''];
                 } else {
-                    $this->cc[] = ['email' => $email, 'name' => $recipientName];
+                    $this->cc[] = ['email' => $this->sanitizeEmail($email), 'name' => $this->sanitizeHeaderValue($recipientName)];
                 }
             }
         } else {
-            $this->cc[] = ['email' => $address, 'name' => $name ?? ''];
+            $this->cc[] = ['email' => $this->sanitizeEmail($address), 'name' => $this->sanitizeHeaderValue($name ?? '')];
         }
         return $this;
     }
@@ -139,13 +139,13 @@ class Mail {
         if (is_array($address)) {
             foreach ($address as $email => $recipientName) {
                 if (is_numeric($email)) {
-                    $this->bcc[] = ['email' => $recipientName, 'name' => ''];
+                    $this->bcc[] = ['email' => $this->sanitizeEmail($recipientName), 'name' => ''];
                 } else {
-                    $this->bcc[] = ['email' => $email, 'name' => $recipientName];
+                    $this->bcc[] = ['email' => $this->sanitizeEmail($email), 'name' => $this->sanitizeHeaderValue($recipientName)];
                 }
             }
         } else {
-            $this->bcc[] = ['email' => $address, 'name' => $name ?? ''];
+            $this->bcc[] = ['email' => $this->sanitizeEmail($address), 'name' => $this->sanitizeHeaderValue($name ?? '')];
         }
         return $this;
     }
@@ -204,18 +204,27 @@ class Mail {
      * Use a template for the email
      */
     public function template(string $name, array $data = []): self {
-        $templatePath = dirname(__DIR__) . '/templates/email/' . $name . '.php';
+        $__templatePath = dirname(__DIR__) . '/templates/email/' . $name . '.php';
 
-        if (!file_exists($templatePath)) {
+        if (!file_exists($__templatePath)) {
             throw new \Exception("Email template not found: $name");
         }
 
-        // Extract data variables
-        extract($data);
+        // Filter out reserved variable names to prevent injection attacks
+        $__reservedVars = ['this', '__templatePath', '__reservedVars', '__safeData', '__key', '__value'];
+        $__safeData = [];
+        foreach ($data as $__key => $__value) {
+            if (!in_array($__key, $__reservedVars, true)) {
+                $__safeData[$__key] = $__value;
+            }
+        }
+
+        // Extract only safe data variables
+        extract($__safeData, EXTR_SKIP);
 
         // Capture template output
         ob_start();
-        include $templatePath;
+        include $__templatePath;
         $this->body = ob_get_clean();
 
         // Auto-generate plain text version
@@ -692,15 +701,17 @@ class Notification {
      * Send scheduled report
      */
     public static function scheduledReport(string $email, string $reportName, string $attachmentPath, string $name = ''): bool {
-        $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
+        $siteName = htmlspecialchars(defined('SITE_NAME') ? SITE_NAME : 'Silo', ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+        $safeReportName = htmlspecialchars($reportName, ENT_QUOTES, 'UTF-8');
 
         return Mail::create()
             ->to($email, $name)
-            ->subject("Scheduled Report: $reportName - $siteName")
+            ->subject("Scheduled Report: $reportName - " . (defined('SITE_NAME') ? SITE_NAME : 'Silo'))
             ->body("
                 <h2>Scheduled Report</h2>
-                <p>Hello" . ($name ? " $name" : "") . ",</p>
-                <p>Your scheduled report <strong>$reportName</strong> is attached to this email.</p>
+                <p>Hello" . ($safeName ? " $safeName" : "") . ",</p>
+                <p>Your scheduled report <strong>$safeReportName</strong> is attached to this email.</p>
                 <p>Thanks,<br>$siteName</p>
             ")
             ->attach($attachmentPath)

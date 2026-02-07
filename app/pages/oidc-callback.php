@@ -134,7 +134,7 @@ unset($_SESSION['oidc_return_url']);
 // If we have an error, redirect to login with error
 if ($error) {
     $_SESSION['oidc_error'] = $error;
-    header('Location: /login');
+    header('Location: ' . route('login'));
     exit;
 }
 

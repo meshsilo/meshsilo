@@ -2,7 +2,7 @@
 require_once 'includes/config.php';
 
 if (!canEdit()) {
-    header('Location: /login');
+    header('Location: ' . route('login'));
     exit;
 }
 
@@ -10,7 +10,7 @@ $db = getDB();
 $modelId = (int)($_GET['id'] ?? 0);
 
 if (!$modelId) {
-    header('Location: /');
+    header('Location: ' . route('home'));
     exit;
 }
 
@@ -21,7 +21,7 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
-    header('Location: /');
+    header('Location: ' . route('home'));
     exit;
 }
 

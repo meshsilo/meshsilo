@@ -251,7 +251,7 @@ function importModel() {
     }
 
     // Create folder for imported model
-    $folderId = uniqid('import_');
+    $folderId = 'import_' . bin2hex(random_bytes(8));
     $uploadDir = UPLOAD_PATH . $folderId;
     if (!mkdir($uploadDir, 0755, true)) {
         echo json_encode(['success' => false, 'error' => 'Could not create upload directory']);

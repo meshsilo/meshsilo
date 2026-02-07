@@ -84,7 +84,7 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
     if (str_starts_with($routePath, '/admin')) {
         header('Location: ' . route('admin.settings'));
     } else {
-        header('Location: /');
+        header('Location: ' . route('home'));
     }
     exit;
 }

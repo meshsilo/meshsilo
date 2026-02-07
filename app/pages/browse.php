@@ -104,28 +104,52 @@ $result = $stmt->execute();
 
 $models = [];
 $modelIds = [];
+$multiPartModelIds = [];
+
+// First pass: collect model data and identify multi-part models
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    // For multi-part models, get the first part for preview
+    $row['tags'] = [];
+    $row['preview_path'] = '/preview?id=' . $row['id'];
+    $row['preview_type'] = $row['file_type'];
+    $row['preview_file_size'] = $row['file_size'] ?? 0;
+
     if ($row['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT id, file_path, file_type, file_size, dedup_path FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $row['id'], PDO::PARAM_INT);
-        $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
-        if ($firstPart) {
-            $row['preview_path'] = '/preview?id=' . $firstPart['id'];
-            $row['preview_type'] = $firstPart['file_type'];
-            $row['preview_file_size'] = $firstPart['file_size'] ?? 0;
-        }
-    } else {
-        $row['preview_path'] = '/preview?id=' . $row['id'];
-        $row['preview_type'] = $row['file_type'];
+        $multiPartModelIds[] = $row['id'];
     }
 
-    // Initialize tags array (will be filled in bulk below)
-    $row['tags'] = [];
     $modelIds[] = $row['id'];
-    $models[] = $row;
+    $models[$row['id']] = $row;
 }
+
+// Batch load first parts for all multi-part models in a single query (fixes N+1)
+if (!empty($multiPartModelIds)) {
+    $placeholders = implode(',', array_fill(0, count($multiPartModelIds), '?'));
+    $firstPartsSql = "SELECT m.parent_id, m.id, m.file_path, m.file_type, m.file_size, m.dedup_path
+                      FROM models m
+                      INNER JOIN (
+                          SELECT parent_id, MIN(original_path) as min_path
+                          FROM models
+                          WHERE parent_id IN ($placeholders)
+                          GROUP BY parent_id
+                      ) first ON m.parent_id = first.parent_id AND m.original_path = first.min_path";
+    $firstPartsStmt = $db->prepare($firstPartsSql);
+    foreach ($multiPartModelIds as $index => $parentId) {
+        $firstPartsStmt->bindValue($index + 1, $parentId, PDO::PARAM_INT);
+    }
+    $firstPartsResult = $firstPartsStmt->execute();
+
+    while ($firstPart = $firstPartsResult->fetchArray(PDO::FETCH_ASSOC)) {
+        $parentId = $firstPart['parent_id'];
+        if (isset($models[$parentId])) {
+            $models[$parentId]['preview_path'] = '/preview?id=' . $firstPart['id'];
+            $models[$parentId]['preview_type'] = $firstPart['file_type'];
+            $models[$parentId]['preview_file_size'] = $firstPart['file_size'] ?? 0;
+        }
+    }
+}
+
+// Convert back to indexed array for iteration
+$models = array_values($models);
 
 // Fetch all tags for all models in one query (fixes N+1 problem)
 if (!empty($modelIds)) {
@@ -155,6 +179,7 @@ $activeCategory = null;
 if ($categoryId > 0) {
     $catStmt = $db->prepare('SELECT name FROM categories WHERE id = :id');
     $catStmt->bindValue(':id', $categoryId, PDO::PARAM_INT);
+    $catStmt->execute();
     $activeCategory = $catStmt->fetchColumn();
 }
 
@@ -162,6 +187,7 @@ $activeTag = null;
 if ($tagId > 0) {
     $tagStmt = $db->prepare('SELECT name, color FROM tags WHERE id = :id');
     $tagStmt->bindValue(':id', $tagId, PDO::PARAM_INT);
+    $tagStmt->execute();
     $activeTag = $tagStmt->fetch();
 }
 

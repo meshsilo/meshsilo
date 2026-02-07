@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../includes/config.php';
 
 // If already logged in, redirect to home
 if (isLoggedIn()) {
-    header('Location: /');
+    header('Location: ' . route('home'));
     exit;
 }
 

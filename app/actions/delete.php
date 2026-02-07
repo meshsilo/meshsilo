@@ -3,6 +3,80 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 $baseDir = '../';
 
+/**
+ * Delete a file from disk, handling both regular and deduplicated files.
+ * Cleans up empty parent directories.
+ *
+ * @param string|null $filePath Regular file path (relative to project root)
+ * @param string|null $dedupPath Deduplicated file path (relative to project root)
+ * @return void
+ */
+function deleteModelFile(?string $filePath, ?string $dedupPath): void {
+    $baseDir = __DIR__ . '/../../';
+
+    if (!empty($dedupPath)) {
+        // File is deduplicated - only delete if no other parts reference it
+        if (canDeleteDedupFile($dedupPath)) {
+            $fullPath = $baseDir . $dedupPath;
+            if (file_exists($fullPath)) {
+                unlink($fullPath);
+            }
+        }
+    } elseif (!empty($filePath)) {
+        // Non-deduplicated file
+        $fullPath = $baseDir . $filePath;
+        if (file_exists($fullPath)) {
+            unlink($fullPath);
+
+            // Check if folder is empty and clean up
+            $folder = dirname($fullPath);
+            if (is_dir($folder) && count(scandir($folder)) === 2) {
+                rmdir($folder);
+            }
+        }
+    }
+}
+
+/**
+ * Collect files for deletion and clean up empty folders.
+ *
+ * @param array $filesToDelete List of non-deduplicated file paths
+ * @param array $dedupFilesToCheck Map of dedup paths to check
+ * @return void
+ */
+function cleanupModelFiles(array $filesToDelete, array $dedupFilesToCheck): void {
+    $baseDir = __DIR__ . '/../../';
+    $foldersToCheck = [];
+
+    // Delete non-deduplicated files
+    foreach ($filesToDelete as $filePath) {
+        if (file_exists($filePath)) {
+            unlink($filePath);
+            $folder = dirname($filePath);
+            if (!in_array($folder, $foldersToCheck)) {
+                $foldersToCheck[] = $folder;
+            }
+        }
+    }
+
+    // Delete deduplicated files only if no other parts reference them
+    foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
+        if (canDeleteDedupFile($dedupPath)) {
+            $fullPath = $baseDir . $dedupPath;
+            if (file_exists($fullPath)) {
+                unlink($fullPath);
+            }
+        }
+    }
+
+    // Clean up empty folders
+    foreach ($foldersToCheck as $folder) {
+        if (is_dir($folder) && count(scandir($folder)) === 2) {
+            rmdir($folder);
+        }
+    }
+}
+
 // Require delete permission
 requirePermission(PERM_DELETE);
 
@@ -63,13 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     try {
         if ($part) {
             // Delete individual part
-            $filePath = __DIR__ . '/../../' . $part['file_path'];
-            $dedupPath = !empty($part['dedup_path']) ? __DIR__ . '/../../' . $part['dedup_path'] : null;
 
-            // Check if this part uses a deduplicated file
-            $canDeleteDedup = $dedupPath && canDeleteDedupFile($part['dedup_path']);
-
-            // Delete from database
+            // Delete from database first
             $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
             $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
             $stmt->execute();
@@ -79,22 +148,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
-            // Delete file from disk
-            if ($dedupPath) {
-                // File is deduplicated - only delete if no other parts reference it
-                if ($canDeleteDedup && file_exists($dedupPath)) {
-                    unlink($dedupPath);
-                }
-            } elseif (file_exists($filePath)) {
-                // Non-deduplicated file
-                unlink($filePath);
-
-                // Check if folder is empty and clean up
-                $folder = dirname($filePath);
-                if (is_dir($folder) && count(scandir($folder)) === 2) {
-                    rmdir($folder);
-                }
-            }
+            // Delete file from disk using helper function
+            deleteModelFile($part['file_path'], $part['dedup_path']);
 
             logInfo('Part deleted', [
                 'part_id' => $partId,
@@ -110,16 +165,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         } else {
             // Delete entire model
             $filesToDelete = [];
-            $dedupFilesToCheck = []; // Track dedup files that may need deletion
+            $dedupFilesToCheck = [];
 
-            // If multi-part model, get all parts first
+            // Collect files from parts (if multi-part model)
             if ($model['part_count'] > 0) {
                 $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = :parent_id');
                 $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
                 $result = $stmt->execute();
                 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                     if (!empty($row['dedup_path'])) {
-                        // Track dedup path for later check
                         $dedupFilesToCheck[$row['dedup_path']] = true;
                     } elseif ($row['file_path']) {
                         $filesToDelete[] = __DIR__ . '/../../' . $row['file_path'];
@@ -131,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                 $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
                 $stmt->execute();
             } else {
-                // Single model - add its file
+                // Single model - collect its file
                 if (!empty($model['dedup_path'])) {
                     $dedupFilesToCheck[$model['dedup_path']] = true;
                 } elseif ($model['file_path']) {
@@ -170,35 +224,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
-            // Delete non-deduplicated files from disk
-            $foldersToCheck = [];
-            foreach ($filesToDelete as $filePath) {
-                if (file_exists($filePath)) {
-                    unlink($filePath);
-                    // Track parent folder for cleanup
-                    $folder = dirname($filePath);
-                    if (!in_array($folder, $foldersToCheck)) {
-                        $foldersToCheck[] = $folder;
-                    }
-                }
-            }
-
-            // Delete deduplicated files only if no other parts reference them
-            foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
-                if (canDeleteDedupFile($dedupPath)) {
-                    $fullPath = __DIR__ . '/../../' . $dedupPath;
-                    if (file_exists($fullPath)) {
-                        unlink($fullPath);
-                    }
-                }
-            }
-
-            // Clean up empty folders
-            foreach ($foldersToCheck as $folder) {
-                if (is_dir($folder) && count(scandir($folder)) === 2) { // Only . and ..
-                    rmdir($folder);
-                }
-            }
+            // Clean up files using helper function
+            cleanupModelFiles($filesToDelete, $dedupFilesToCheck);
 
             logInfo('Model deleted', [
                 'model_id' => $modelId,

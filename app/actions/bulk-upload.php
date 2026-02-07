@@ -125,8 +125,10 @@ function bulkUpload() {
         $fileHash = hash_file('sha256', $destPath);
         $name = pathinfo($filename, PATHINFO_FILENAME);
 
-        // Insert into database
+        // Insert into database with transaction to prevent orphaned files
         try {
+            $db->beginTransaction();
+
             $stmt = $db->prepare('
                 INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash,
                                    original_size, collection, uploaded_by, created_at, updated_at)
@@ -163,6 +165,8 @@ function bulkUpload() {
                 }
             }
 
+            $db->commit();
+
             logActivity('upload', 'model', $modelId, $name, ['via' => 'bulk_upload']);
 
             // Trigger webhook
@@ -180,9 +184,19 @@ function bulkUpload() {
             ];
 
         } catch (Exception $e) {
-            // Clean up on failure
-            unlink($destPath);
-            rmdir($uploadDir);
+            // Rollback transaction on failure
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            // Clean up orphaned file
+            if (file_exists($destPath)) {
+                unlink($destPath);
+            }
+            if (is_dir($uploadDir) && count(scandir($uploadDir)) === 2) {
+                rmdir($uploadDir);
+            }
+
             logException($e, ['action' => 'bulk_upload', 'filename' => $filename]);
 
             $results['failed'][] = [

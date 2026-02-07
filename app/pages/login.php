@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 @unlink($attemptFile);
             }
 
-            header('Location: /');
+            header('Location: ' . route('home'));
             exit;
         } else {
             $error = 'Invalid username or password.';
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // If already logged in, redirect to home
 if (isLoggedIn()) {
-    header('Location: /');
+    header('Location: ' . route('home'));
     exit;
 }
 

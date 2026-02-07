@@ -59,7 +59,7 @@ $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
 $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $ownerResult = $stmt->execute();
 $ownerInfo = $ownerResult->fetchArray(PDO::FETCH_ASSOC);
-if ($ownerInfo && $ownerInfo['user_id'] && $ownerInfo['user_id'] != $user['id'] && !$user['is_admin']) {
+if ($ownerInfo && $ownerInfo['user_id'] && $ownerInfo['user_id'] !== $user['id'] && !$user['is_admin']) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
     exit;
@@ -108,6 +108,7 @@ switch ($action) {
         // Get tag name for logging
         $stmt = $db->prepare('SELECT name FROM tags WHERE id = :id');
         $stmt->bindValue(':id', $tagId, PDO::PARAM_INT);
+        $stmt->execute();
         $tagName = $stmt->fetchColumn();
 
         if (removeTagFromModel($modelId, $tagId)) {

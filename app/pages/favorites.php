@@ -12,7 +12,7 @@ $activePage = 'favorites';
 // Require login
 if (!isLoggedIn()) {
     $_SESSION['redirect_after_login'] = '/favorites';
-    header('Location: /login');
+    header('Location: ' . route('login'));
     exit;
 }
 

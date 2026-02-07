@@ -35,6 +35,28 @@ if (!$part) {
     downloadError(404, 'File not found');
 }
 
+// Check ownership - user must own the model or be admin
+// Models with NULL user_id are accessible to all authenticated users (backward compatibility)
+$user = getCurrentUser();
+$ownerId = $part['user_id'];
+
+// If this is a child part, check the parent model's ownership
+if ($part['parent_id']) {
+    $parentStmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
+    $parentStmt->bindValue(':id', $part['parent_id'], PDO::PARAM_INT);
+    $parentResult = $parentStmt->execute();
+    $parentModel = $parentResult->fetchArray(PDO::FETCH_ASSOC);
+    if ($parentModel) {
+        $ownerId = $parentModel['user_id'];
+    }
+}
+
+// Deny access if model has an owner and current user is not the owner or admin
+// Cast to int to handle PDO returning strings depending on configuration
+if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
+    downloadError(403, 'Access denied');
+}
+
 // Get the real file path (handles deduplicated files)
 $filePath = getAbsoluteFilePath($part);
 

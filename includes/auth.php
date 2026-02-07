@@ -53,7 +53,8 @@ if (php_sapi_name() !== 'cli' && isset($_SESSION['user_id'])) {
             session_start();
             $_SESSION['session_timeout_message'] = 'Your session has expired due to inactivity. Please log in again.';
 
-            header('Location: /login');
+            $loginUrl = function_exists('route') ? route('login') : '/login';
+            header('Location: ' . $loginUrl);
             exit;
         }
     }

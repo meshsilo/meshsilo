@@ -57,7 +57,9 @@ if (!$model) {
     exit;
 }
 
-if ($model['user_id'] != $user['id'] && !$user['is_admin'] && !canEdit()) {
+// NULL user_id = accessible to all authenticated users (backward compatibility)
+// Cast to int to handle PDO returning strings
+if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Permission denied']);
     exit;

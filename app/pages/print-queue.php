@@ -12,7 +12,7 @@ $activePage = 'print-queue';
 // Require login
 if (!isLoggedIn()) {
     $_SESSION['redirect_after_login'] = '/print-queue';
-    header('Location: /login');
+    header('Location: ' . route('login'));
     exit;
 }
 

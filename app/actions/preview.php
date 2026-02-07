@@ -31,6 +31,29 @@ if (!$part) {
     die('File not found');
 }
 
+// Check ownership - user must own the model or be admin
+// Models with NULL user_id are accessible to all authenticated users (backward compatibility)
+$user = getCurrentUser();
+$ownerId = $part['user_id'];
+
+// If this is a child part, check the parent model's ownership
+if ($part['parent_id']) {
+    $parentStmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
+    $parentStmt->bindValue(':id', $part['parent_id'], PDO::PARAM_INT);
+    $parentResult = $parentStmt->execute();
+    $parentModel = $parentResult->fetchArray(PDO::FETCH_ASSOC);
+    if ($parentModel) {
+        $ownerId = $parentModel['user_id'];
+    }
+}
+
+// Deny access if model has an owner and current user is not the owner or admin
+// Cast to int to handle PDO returning strings depending on configuration
+if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
+    http_response_code(403);
+    die('Access denied');
+}
+
 // Get the real file path (handles deduplicated files)
 $filePath = getAbsoluteFilePath($part);
 
@@ -84,9 +107,26 @@ header('Cache-Control: public, max-age=604800'); // 1 week cache
 header('ETag: ' . $etag);
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastModified) . ' GMT');
 
-// CORS headers for cross-origin requests
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, HEAD');
+// CORS headers for cross-origin requests (configurable via settings)
+$allowedOrigins = getSetting('cors_allowed_origins', '');
+if (!empty($allowedOrigins)) {
+    // Check if the request origin is in the allowed list
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowedList = array_map('trim', explode(',', $allowedOrigins));
+
+    if ($origin && in_array($origin, $allowedList, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Methods: GET, HEAD');
+        header('Vary: Origin');
+    } elseif (in_array('*', $allowedList, true)) {
+        // Explicit wildcard configuration
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, HEAD');
+    }
+    // If origin not in list and no wildcard, don't send CORS headers (same-origin only)
+} else {
+    // Default: same-origin only (no CORS headers sent)
+}
 
 // Only send body for GET requests (not HEAD)
 if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {

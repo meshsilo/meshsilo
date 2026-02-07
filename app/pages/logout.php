@@ -48,5 +48,5 @@ if ($wasOIDCUser && $oidcSingleLogout && isOIDCEnabled()) {
 }
 
 // Default: redirect to login page
-header('Location: /login');
+header('Location: ' . route('login'));
 exit;
