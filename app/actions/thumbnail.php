@@ -60,7 +60,7 @@ function uploadThumbnail() {
     }
 
     $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
-    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
+    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
         echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
         return;
     }
@@ -93,8 +93,9 @@ function uploadThumbnail() {
         mkdir($thumbDir, 0755, true);
     }
 
-    // Generate filename
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    // Generate filename - derive extension from MIME type, not client filename
+    $mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+    $ext = $mimeToExt[$mimeType] ?? 'jpg';
     $filename = 'thumb_' . $modelId . '_' . time() . '.' . $ext;
     $filePath = $thumbDir . '/' . $filename;
     $relativePath = 'thumbnails/' . $filename;
@@ -152,7 +153,7 @@ function deleteThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
-    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
+    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
         echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
         return;
     }
@@ -194,7 +195,7 @@ function generateThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
-    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
+    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
         echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
         return;
     }

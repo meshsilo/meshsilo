@@ -17,6 +17,26 @@ if (isset($_SESSION['session_timeout_message'])) {
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Rate limit login attempts (5 attempts per 15 minutes per IP)
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $cacheDir = __DIR__ . '/../../storage/cache/login_attempts';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0755, true);
+    }
+    $attemptFile = $cacheDir . '/' . md5($ip) . '.json';
+    $attempts = [];
+    if (file_exists($attemptFile)) {
+        $attempts = json_decode(file_get_contents($attemptFile), true) ?: [];
+        // Remove attempts older than 15 minutes
+        $cutoff = time() - 900;
+        $attempts = array_filter($attempts, fn($t) => $t > $cutoff);
+    }
+    if (count($attempts) >= 5) {
+        $error = 'Too many login attempts. Please try again in a few minutes.';
+        logAuthEvent('login', $_POST['username'] ?? '', false, ['reason' => 'rate_limited', 'ip' => $ip]);
+    }
+
+    if (!$error) {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
 
@@ -43,6 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'method' => 'password'
             ]);
 
+            // Clear login attempts on success
+            if (isset($attemptFile) && file_exists($attemptFile)) {
+                @unlink($attemptFile);
+            }
+
             header('Location: /');
             exit;
         } else {
@@ -51,8 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'reason' => $user ? 'invalid_password' : 'user_not_found',
                 'method' => 'password'
             ]);
+            // Record failed attempt for rate limiting
+            $attempts[] = time();
+            file_put_contents($attemptFile, json_encode(array_values($attempts)));
         }
     }
+    } // end if (!$error) rate limit check
 }
 
 // If already logged in, redirect to home
@@ -79,6 +108,7 @@ require_once 'includes/header.php';
                 <?php endif; ?>
 
                 <form class="auth-form" action="/login" method="post">
+                    <?= csrf_field() ?>
                     <div class="form-group">
                         <label for="username">Username or Email</label>
                         <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username or email" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">

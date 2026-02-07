@@ -118,10 +118,12 @@ class AnnotationManager {
         const label = document.createElement('div');
         label.className = 'annotation-label';
         label.dataset.index = index;
+        // Validate color to prevent CSS injection
+        const safeColor = /^#[0-9a-fA-F]{6}$/.test(annotation.color) ? annotation.color : '#ff0000';
         label.innerHTML = `
             <div class="annotation-label-header">
-                <span class="annotation-number" style="background: ${annotation.color}">${index + 1}</span>
-                <span class="annotation-author">${annotation.username}</span>
+                <span class="annotation-number" style="background: ${safeColor}">${index + 1}</span>
+                <span class="annotation-author">${this.escapeHtml(annotation.username)}</span>
             </div>
             <div class="annotation-content">${this.escapeHtml(annotation.content)}</div>
         `;
@@ -221,6 +223,14 @@ class AnnotationManager {
         // Override this in implementation
     }
 
+    getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        const input = document.querySelector('input[name="_token"]');
+        if (input) return input.value;
+        return '';
+    }
+
     async addAnnotation(content, position, normal, color = '#ff0000') {
         try {
             const formData = new FormData();
@@ -234,6 +244,7 @@ class AnnotationManager {
             formData.append('normal_z', normal.z);
             formData.append('content', content);
             formData.append('color', color);
+            formData.append('_token', this.getCsrfToken());
 
             const response = await fetch('actions/annotations.php', {
                 method: 'POST',
@@ -259,6 +270,7 @@ class AnnotationManager {
             const formData = new FormData();
             formData.append('action', 'delete');
             formData.append('id', annotationId);
+            formData.append('_token', this.getCsrfToken());
 
             const response = await fetch('actions/annotations.php', {
                 method: 'POST',

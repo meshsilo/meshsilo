@@ -28,6 +28,7 @@ class Mail {
     private string $altBody = '';
     private array $attachments = [];
     private array $headers = [];
+    private string $boundary = '';
     private static ?array $defaultConfig = null;
 
     /**
@@ -41,6 +42,7 @@ class Mail {
      * Constructor
      */
     public function __construct() {
+        $this->boundary = bin2hex(random_bytes(16));
         $this->loadConfig();
     }
 
@@ -77,19 +79,37 @@ class Mail {
     }
 
     /**
+     * Sanitize an email address to prevent header injection
+     */
+    private function sanitizeEmail(string $email): string {
+        $email = str_replace(["\r", "\n", "\0"], '', $email);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException("Invalid email address: $email");
+        }
+        return $email;
+    }
+
+    /**
+     * Sanitize a header value to prevent header injection
+     */
+    private function sanitizeHeaderValue(string $value): string {
+        return str_replace(["\r", "\n", "\0"], '', $value);
+    }
+
+    /**
      * Set the recipient(s)
      */
     public function to(string|array $address, ?string $name = null): self {
         if (is_array($address)) {
             foreach ($address as $email => $recipientName) {
                 if (is_numeric($email)) {
-                    $this->to[] = ['email' => $recipientName, 'name' => ''];
+                    $this->to[] = ['email' => $this->sanitizeEmail($recipientName), 'name' => ''];
                 } else {
-                    $this->to[] = ['email' => $email, 'name' => $recipientName];
+                    $this->to[] = ['email' => $this->sanitizeEmail($email), 'name' => $this->sanitizeHeaderValue($recipientName)];
                 }
             }
         } else {
-            $this->to[] = ['email' => $address, 'name' => $name ?? ''];
+            $this->to[] = ['email' => $this->sanitizeEmail($address), 'name' => $this->sanitizeHeaderValue($name ?? '')];
         }
         return $this;
     }
@@ -134,8 +154,8 @@ class Mail {
      * Set the sender
      */
     public function from(string $address, ?string $name = null): self {
-        $this->from = $address;
-        $this->fromName = $name ?? '';
+        $this->from = $this->sanitizeEmail($address);
+        $this->fromName = $this->sanitizeHeaderValue($name ?? '');
         return $this;
     }
 
@@ -143,7 +163,7 @@ class Mail {
      * Set reply-to address
      */
     public function replyTo(string $address): self {
-        $this->replyTo = $address;
+        $this->replyTo = $this->sanitizeEmail($address);
         return $this;
     }
 
@@ -208,11 +228,15 @@ class Mail {
      * Render inline template string
      */
     public function render(string $template, array $data = []): self {
-        // Simple placeholder replacement
+        // Simple placeholder replacement (HTML-escaped by default)
         foreach ($data as $key => $value) {
             if (is_string($value) || is_numeric($value)) {
-                $template = str_replace('{{' . $key . '}}', $value, $template);
-                $template = str_replace('{{ ' . $key . ' }}', $value, $template);
+                $escaped = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+                $template = str_replace('{{' . $key . '}}', $escaped, $template);
+                $template = str_replace('{{ ' . $key . ' }}', $escaped, $template);
+                // Use {!! key !!} for raw (unescaped) values
+                $template = str_replace('{!!' . $key . '!!}', $value, $template);
+                $template = str_replace('{!! ' . $key . ' !!}', $value, $template);
             }
         }
 
@@ -464,7 +488,7 @@ class Mail {
         }
 
         // Content type
-        $boundary = md5(time());
+        $boundary = $this->boundary;
         if (!empty($this->attachments)) {
             $headers[] = "MIME-Version: 1.0";
             $headers[] = "Content-Type: multipart/mixed; boundary=\"{$boundary}\"";
@@ -488,7 +512,7 @@ class Mail {
      * Build email body
      */
     private function buildBody(): string {
-        $boundary = md5(time());
+        $boundary = $this->boundary;
 
         if (!empty($this->attachments)) {
             // Multipart with attachments
@@ -586,14 +610,15 @@ class Notification {
      */
     public static function passwordReset(string $email, string $token, string $name = ''): bool {
         $resetUrl = url('/reset-password?token=' . urlencode($token));
-        $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
+        $siteName = htmlspecialchars(defined('SITE_NAME') ? SITE_NAME : 'Silo', ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
 
         return Mail::create()
             ->to($email, $name)
             ->subject("Reset Your Password - $siteName")
             ->body("
                 <h2>Password Reset Request</h2>
-                <p>Hello" . ($name ? " $name" : "") . ",</p>
+                <p>Hello" . ($safeName ? " $safeName" : "") . ",</p>
                 <p>We received a request to reset your password. Click the button below to create a new password:</p>
                 <p style='margin: 20px 0;'>
                     <a href='$resetUrl' style='background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;'>
@@ -611,15 +636,16 @@ class Notification {
      * Send welcome email
      */
     public static function welcome(string $email, string $name = ''): bool {
-        $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
-        $siteUrl = defined('SITE_URL') ? SITE_URL : '/';
+        $siteName = htmlspecialchars(defined('SITE_NAME') ? SITE_NAME : 'Silo', ENT_QUOTES, 'UTF-8');
+        $siteUrl = htmlspecialchars(defined('SITE_URL') ? SITE_URL : '/', ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
 
         return Mail::create()
             ->to($email, $name)
             ->subject("Welcome to $siteName!")
             ->body("
                 <h2>Welcome to $siteName!</h2>
-                <p>Hello" . ($name ? " $name" : "") . ",</p>
+                <p>Hello" . ($safeName ? " $safeName" : "") . ",</p>
                 <p>Your account has been created successfully. You can now:</p>
                 <ul>
                     <li>Browse and download 3D models</li>
@@ -640,16 +666,18 @@ class Notification {
      * Send upload notification
      */
     public static function uploadComplete(string $email, string $modelName, int $modelId, string $name = ''): bool {
-        $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
+        $siteName = htmlspecialchars(defined('SITE_NAME') ? SITE_NAME : 'Silo', ENT_QUOTES, 'UTF-8');
         $modelUrl = url("/model/$modelId");
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+        $safeModelName = htmlspecialchars($modelName, ENT_QUOTES, 'UTF-8');
 
         return Mail::create()
             ->to($email, $name)
             ->subject("Upload Complete: $modelName - $siteName")
             ->body("
                 <h2>Upload Complete</h2>
-                <p>Hello" . ($name ? " $name" : "") . ",</p>
-                <p>Your model <strong>$modelName</strong> has been uploaded successfully.</p>
+                <p>Hello" . ($safeName ? " $safeName" : "") . ",</p>
+                <p>Your model <strong>$safeModelName</strong> has been uploaded successfully.</p>
                 <p style='margin: 20px 0;'>
                     <a href='$modelUrl' style='background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;'>
                         View Model
@@ -688,14 +716,15 @@ class Notification {
             return false;
         }
 
-        $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
+        $siteName = htmlspecialchars(defined('SITE_NAME') ? SITE_NAME : 'Silo', ENT_QUOTES, 'UTF-8');
+        $safeMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
 
         return Mail::create()
             ->to($adminEmail)
             ->subject("[$siteName Admin] $subject")
             ->body("
                 <h2>Admin Alert</h2>
-                <p>$message</p>
+                <p>$safeMessage</p>
                 <p>---<br>$siteName Admin System</p>
             ")
             ->send();

@@ -9,6 +9,35 @@
  * DELETE /api/webhooks/{id}     - Delete webhook
  */
 
+/**
+ * Validate webhook URL is not targeting internal/private resources (SSRF prevention)
+ */
+function validateWebhookUrl(string $url): bool {
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        return false;
+    }
+    $parsed = parse_url($url);
+    $scheme = strtolower($parsed['scheme'] ?? '');
+    if (!in_array($scheme, ['http', 'https'])) {
+        return false;
+    }
+    $host = $parsed['host'] ?? '';
+    // Block localhost and common internal hostnames
+    $blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]', 'metadata.google.internal'];
+    if (in_array(strtolower($host), $blockedHosts)) {
+        return false;
+    }
+    // Resolve hostname and check for private IPs
+    $ip = gethostbyname($host);
+    if ($ip === $host && !filter_var($host, FILTER_VALIDATE_IP)) {
+        return false; // DNS resolution failed
+    }
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        return false;
+    }
+    return true;
+}
+
 function handleWebhooksRoute($method, $id, $apiUser) {
     switch ($method) {
         case 'GET':
@@ -74,9 +103,9 @@ function createWebhookApi($apiUser) {
     $data = getJsonBody();
     validateRequired($data, ['url', 'events']);
 
-    // Validate URL
-    if (!filter_var($data['url'], FILTER_VALIDATE_URL)) {
-        apiError('Invalid webhook URL', 400);
+    // Validate URL (with SSRF prevention)
+    if (!validateWebhookUrl($data['url'])) {
+        apiError('Invalid webhook URL: must be a public HTTP(S) URL', 400);
     }
 
     // Validate events
@@ -117,9 +146,9 @@ function updateWebhookApi($id, $apiUser) {
         apiError('Webhook not found', 404);
     }
 
-    // Validate URL if provided
-    if (isset($data['url']) && !filter_var($data['url'], FILTER_VALIDATE_URL)) {
-        apiError('Invalid webhook URL', 400);
+    // Validate URL if provided (with SSRF prevention)
+    if (isset($data['url']) && !validateWebhookUrl($data['url'])) {
+        apiError('Invalid webhook URL: must be a public HTTP(S) URL', 400);
     }
 
     // Validate events if provided

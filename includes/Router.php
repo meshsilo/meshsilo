@@ -342,12 +342,18 @@ class Router {
                 case 'permission':
                     $permission = $middlewareParams[0] ?? '';
                     $permConst = 'PERM_' . strtoupper($permission);
-                    if (defined($permConst) && function_exists('hasPermission')) {
-                        if (!hasPermission(constant($permConst))) {
-                            $_SESSION['error'] = 'You do not have permission to perform this action.';
-                            header('Location: ' . self::url('home'));
-                            exit;
-                        }
+                    if (!defined($permConst)) {
+                        // Fail-closed: deny access if permission constant is not defined
+                        error_log("Undefined permission constant: $permConst");
+                        http_response_code(403);
+                        $_SESSION['error'] = 'You do not have permission to perform this action.';
+                        header('Location: ' . self::url('home'));
+                        exit;
+                    }
+                    if (function_exists('hasPermission') && !hasPermission(constant($permConst))) {
+                        $_SESSION['error'] = 'You do not have permission to perform this action.';
+                        header('Location: ' . self::url('home'));
+                        exit;
                     }
                     return true;
 

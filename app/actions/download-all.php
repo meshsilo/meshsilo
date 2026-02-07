@@ -2,6 +2,13 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
+// Require authentication
+if (!isLoggedIn()) {
+    http_response_code(401);
+    echo 'Not authenticated';
+    exit;
+}
+
 $db = getDB();
 
 // Get model ID from URL

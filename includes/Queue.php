@@ -106,52 +106,55 @@ class Queue {
     /**
      * Get the next available job from a queue
      */
-    public static function pop(string $queue = self::DEFAULT_QUEUE): ?array {
+    public static function pop(string $queue = self::DEFAULT_QUEUE, int $maxRetries = 3): ?array {
         $db = self::db();
         if (!$db) return null;
 
-        $now = date('Y-m-d H:i:s');
+        for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
+            $now = date('Y-m-d H:i:s');
 
-        // Find and reserve a job atomically
-        $stmt = $db->prepare("
-            SELECT * FROM jobs
-            WHERE queue = :queue
-            AND status = :status
-            AND available_at <= :now
-            ORDER BY available_at ASC
-            LIMIT 1
-        ");
+            // Find and reserve a job atomically
+            $stmt = $db->prepare("
+                SELECT * FROM jobs
+                WHERE queue = :queue
+                AND status = :status
+                AND available_at <= :now
+                ORDER BY available_at ASC
+                LIMIT 1
+            ");
 
-        $stmt->bindValue(':queue', $queue, PDO::PARAM_STR);
-        $stmt->bindValue(':status', self::STATUS_PENDING, PDO::PARAM_STR);
-        $stmt->bindValue(':now', $now, PDO::PARAM_STR);
+            $stmt->bindValue(':queue', $queue, PDO::PARAM_STR);
+            $stmt->bindValue(':status', self::STATUS_PENDING, PDO::PARAM_STR);
+            $stmt->bindValue(':now', $now, PDO::PARAM_STR);
 
-        $result = $stmt->execute();
-        $job = $result->fetchArray(PDO::FETCH_ASSOC);
+            $result = $stmt->execute();
+            $job = $result->fetchArray(PDO::FETCH_ASSOC);
 
-        if (!$job) return null;
+            if (!$job) return null;
 
-        // Reserve the job
-        $stmt = $db->prepare("
-            UPDATE jobs
-            SET status = :status, reserved_at = :reserved_at, attempts = attempts + 1
-            WHERE id = :id AND status = :pending_status
-        ");
+            // Reserve the job
+            $stmt = $db->prepare("
+                UPDATE jobs
+                SET status = :status, reserved_at = :reserved_at, attempts = attempts + 1
+                WHERE id = :id AND status = :pending_status
+            ");
 
-        $stmt->bindValue(':status', self::STATUS_PROCESSING, PDO::PARAM_STR);
-        $stmt->bindValue(':reserved_at', $now, PDO::PARAM_STR);
-        $stmt->bindValue(':id', $job['id'], PDO::PARAM_INT);
-        $stmt->bindValue(':pending_status', self::STATUS_PENDING, PDO::PARAM_STR);
+            $stmt->bindValue(':status', self::STATUS_PROCESSING, PDO::PARAM_STR);
+            $stmt->bindValue(':reserved_at', $now, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $job['id'], PDO::PARAM_INT);
+            $stmt->bindValue(':pending_status', self::STATUS_PENDING, PDO::PARAM_STR);
 
-        $stmt->execute();
+            $stmt->execute();
 
-        // Check if we actually got it (in case of race condition)
-        if ($db->changes() === 0) {
-            return self::pop($queue); // Try again
+            // Check if we actually got it (in case of race condition)
+            if ($db->changes() > 0) {
+                $job['payload'] = json_decode($job['payload'], true);
+                return $job;
+            }
+            // Race condition - another worker got it, retry
         }
 
-        $job['payload'] = json_decode($job['payload'], true);
-        return $job;
+        return null;
     }
 
     /**

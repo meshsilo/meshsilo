@@ -17,9 +17,9 @@ class Logger {
     // Log levels (lower = more severe)
     const ERROR = 1;
     const WARNING = 2;
-    const INFO = 3;
-    const DEBUG = 4;
-    const NOTICE = 5;
+    const NOTICE = 3;
+    const INFO = 4;
+    const DEBUG = 5;
 
     // Default channels
     const CHANNEL_APP = 'app';

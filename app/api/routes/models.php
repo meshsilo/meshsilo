@@ -243,11 +243,14 @@ function downloadModel($id, $apiUser) {
     // Log activity
     logActivity('download', 'model', $id, $model['name'], ['via' => 'api']);
 
+    // Sanitize filename for Content-Disposition header
+    $safeFilename = basename($model['filename']);
+    $safeFilename = str_replace(["\r", "\n", "\t", '"', '\\'], '', $safeFilename);
+
     // Send file
     header('Content-Type: application/octet-stream');
-    header('Content-Disposition: attachment; filename="' . $model['filename'] . '"');
+    header('Content-Disposition: attachment; filename="' . $safeFilename . '"');
     header('Content-Length: ' . filesize($filePath));
-    header('Content-Type: application/json', true, 200); // Reset content type header
     readfile($filePath);
     exit;
 }

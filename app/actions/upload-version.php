@@ -44,7 +44,7 @@ if (!$model) {
 }
 
 // Check permission
-if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
+if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
     echo json_encode(['success' => false, 'error' => 'Permission denied']);
     exit;
 }
@@ -96,8 +96,10 @@ if ($nextVersion === 1 && $model['file_path']) {
     }
 }
 
-// Save new version file
-$versionFilename = 'v' . $nextVersion . '_' . $file['name'];
+// Save new version file - sanitize filename to prevent path traversal
+$safeFileName = basename($file['name']);
+$safeFileName = preg_replace('/[^\w\-. ]/', '_', $safeFileName);
+$versionFilename = 'v' . $nextVersion . '_' . $safeFileName;
 $versionPath = 'versions/' . $modelId . '/' . $versionFilename;
 $fullPath = $versionDir . '/' . $versionFilename;
 

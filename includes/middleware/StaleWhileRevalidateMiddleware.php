@@ -87,7 +87,7 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
             return null;
         }
 
-        $data = @unserialize(file_get_contents($file));
+        $data = @json_decode(file_get_contents($file), true);
         if (!$data || !isset($data['content'], $data['timestamp'], $data['headers'])) {
             return null;
         }
@@ -102,7 +102,7 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
             'timestamp' => time(),
             'headers' => $headers
         ];
-        file_put_contents($file, serialize($data));
+        file_put_contents($file, json_encode($data));
     }
 
     private function serveCached(array $cached, int $age, bool $stale = false): void {

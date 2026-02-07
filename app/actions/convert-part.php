@@ -15,6 +15,15 @@ if (!canEdit()) {
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// CSRF validation for state-changing actions
+if ($action === 'convert') {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+}
 $partId = (int)($_POST['part_id'] ?? $_GET['part_id'] ?? 0);
 
 if (!$partId) {

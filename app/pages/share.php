@@ -81,9 +81,13 @@ if ($model && !$requiresPassword && isset($_GET['download'])) {
         $stmt = $db->prepare('UPDATE share_links SET download_count = download_count + 1 WHERE token = :token');
         $stmt->execute([':token' => $token]);
 
+        // Sanitize filename for Content-Disposition header
+        $safeFilename = basename($model['filename']);
+        $safeFilename = str_replace(["\r", "\n", "\t", '"', '\\'], '', $safeFilename);
+
         // Send file
         header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . $model['filename'] . '"');
+        header('Content-Disposition: attachment; filename="' . $safeFilename . '"');
         header('Content-Length: ' . filesize($filePath));
         readfile($filePath);
         exit;

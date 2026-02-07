@@ -11,7 +11,7 @@
  */
 
 class CursorPagination {
-    private PDO $db;
+    private $db;
     private string $table;
     private string $orderColumn = 'id';
     private string $orderDirection = 'DESC';
@@ -20,18 +20,39 @@ class CursorPagination {
     private array $params = [];
     private array $selectColumns = ['*'];
 
+    // Allowed operators for WHERE conditions
+    private const ALLOWED_OPERATORS = ['=', '<', '>', '<=', '>=', '!=', '<>', 'IS', 'IS NOT', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN'];
+
     /**
      * Create a new cursor paginator
      */
-    public function __construct(string $table, ?PDO $db = null) {
+    public function __construct(string $table, $db = null) {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+            throw new \InvalidArgumentException("Invalid table name: $table");
+        }
         $this->table = $table;
         $this->db = $db ?? getDB();
+    }
+
+    /**
+     * Validate that a column name is safe for SQL interpolation
+     */
+    private static function validateColumnName(string $column): void {
+        // Allow qualified names like "table.column" and simple names
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $column)) {
+            throw new \InvalidArgumentException("Invalid column name: $column");
+        }
     }
 
     /**
      * Set columns to select
      */
     public function select(array $columns): self {
+        foreach ($columns as $col) {
+            if ($col !== '*') {
+                self::validateColumnName($col);
+            }
+        }
         $this->selectColumns = $columns;
         return $this;
     }
@@ -40,6 +61,7 @@ class CursorPagination {
      * Set ordering column and direction
      */
     public function orderBy(string $column, string $direction = 'DESC'): self {
+        self::validateColumnName($column);
         $this->orderColumn = $column;
         $this->orderDirection = strtoupper($direction) === 'ASC' ? 'ASC' : 'DESC';
         return $this;
@@ -57,8 +79,13 @@ class CursorPagination {
      * Add a WHERE condition
      */
     public function where(string $column, $value, string $operator = '='): self {
+        self::validateColumnName($column);
+        $operatorUpper = strtoupper(trim($operator));
+        if (!in_array($operatorUpper, self::ALLOWED_OPERATORS, true)) {
+            throw new \InvalidArgumentException("Invalid SQL operator: $operator");
+        }
         $placeholder = ':where_' . count($this->conditions);
-        $this->conditions[] = "$column $operator $placeholder";
+        $this->conditions[] = "$column $operatorUpper $placeholder";
         $this->params[$placeholder] = $value;
         return $this;
     }

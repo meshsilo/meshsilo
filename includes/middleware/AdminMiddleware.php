@@ -14,7 +14,11 @@ class AdminMiddleware implements MiddlewareInterface {
     public function handle(array $params): bool {
         // First check if logged in
         if (!function_exists('isLoggedIn') || !isLoggedIn()) {
-            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+            // Sanitize URI to prevent open redirect
+            $uri = $_SERVER['REQUEST_URI'] ?? '/';
+            if (str_starts_with($uri, '/') && !str_starts_with($uri, '//')) {
+                $_SESSION['redirect_after_login'] = $uri;
+            }
             header('Location: ' . Router::url('login'));
             exit;
         }

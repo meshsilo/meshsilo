@@ -49,7 +49,7 @@ if (!$model) {
 
 // Verify ownership - only owner or admin can edit
 $user = getCurrentUser();
-if ($model['user_id'] && $model['user_id'] != $user['id'] && !$user['is_admin']) {
+if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
     exit;

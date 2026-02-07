@@ -93,9 +93,14 @@ class CorsMiddleware implements MiddlewareInterface {
 
         $allowedOrigins = $this->options['allowed_origins'];
 
-        // Wildcard allows all
+        // Wildcard allows all -- but NOT when credentials are enabled
         if (in_array('*', $allowedOrigins)) {
-            return true;
+            if ($this->options['allow_credentials']) {
+                // With credentials, wildcard is not safe. Origin must be explicitly listed.
+                // Fall through to check if this specific origin is listed elsewhere.
+            } else {
+                return true;
+            }
         }
 
         // Exact match
@@ -105,8 +110,10 @@ class CorsMiddleware implements MiddlewareInterface {
 
         // Pattern matching (e.g., *.example.com)
         foreach ($allowedOrigins as $allowed) {
-            if (strpos($allowed, '*') !== false) {
-                $pattern = str_replace('*', '.*', preg_quote($allowed, '/'));
+            if ($allowed !== '*' && strpos($allowed, '*') !== false) {
+                // Split on *, quote each segment, then join with .*
+                $segments = explode('*', $allowed);
+                $pattern = implode('.*', array_map(function($s) { return preg_quote($s, '/'); }, $segments));
                 if (preg_match('/^' . $pattern . '$/', $origin)) {
                     return true;
                 }
@@ -210,9 +217,27 @@ class CorsMiddleware implements MiddlewareInterface {
 
     /**
      * Create CORS middleware for authenticated API routes
+     *
+     * Note: With credentials, wildcard origins are rejected. Configure
+     * cors_allowed_origins in settings to list specific trusted origins.
      */
     public static function authenticatedApi(): self {
+        // Do not use wildcard with credentials -- load from settings or deny cross-origin
+        $origins = [];
+        if (function_exists('getSetting')) {
+            $configured = getSetting('cors_allowed_origins', '');
+            if (!empty($configured)) {
+                $origins = array_map('trim', explode(',', $configured));
+            }
+        }
+        if (empty($origins) && defined('SITE_URL') && SITE_URL) {
+            $parsed = parse_url(SITE_URL);
+            if ($parsed && isset($parsed['scheme'], $parsed['host'])) {
+                $origins[] = $parsed['scheme'] . '://' . $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+            }
+        }
         return new self([
+            'allowed_origins' => $origins ?: [],
             'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
             'allow_credentials' => true,
         ]);

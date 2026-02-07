@@ -16,6 +16,15 @@ if (!isLoggedIn()) {
 $user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for state-changing actions
+if (in_array($action, ['import', 'export', 'export_selective'])) {
+    if (!Csrf::check()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+        exit;
+    }
+}
+
 switch ($action) {
     case 'export':
         exportLibrary();

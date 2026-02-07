@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
 
@@ -209,20 +210,71 @@ switch ($action) {
         }
 
         foreach ($modelIds as $modelId) {
-            // Get model info for logging
-            $stmt = $db->prepare('SELECT name FROM models WHERE id = :id');
+            // Get model info including file paths for cleanup
+            $stmt = $db->prepare('SELECT name, file_path, dedup_path FROM models WHERE id = :id');
             $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $result = $stmt->execute();
             $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
             if ($model) {
-                // Delete model (cascade will handle parts, tags, etc.)
+                $filesToDelete = [];
+                $dedupFilesToCheck = [];
+
+                // Collect child part files before deletion
+                $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = :id');
+                $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+                $partResult = $stmt->execute();
+                while ($part = $partResult->fetchArray(PDO::FETCH_ASSOC)) {
+                    if (!empty($part['dedup_path'])) {
+                        $dedupFilesToCheck[$part['dedup_path']] = true;
+                    } elseif ($part['file_path']) {
+                        $filesToDelete[] = __DIR__ . '/../../' . $part['file_path'];
+                    }
+                }
+
+                // Collect the model's own file
+                if (!empty($model['dedup_path'])) {
+                    $dedupFilesToCheck[$model['dedup_path']] = true;
+                } elseif ($model['file_path']) {
+                    $filesToDelete[] = __DIR__ . '/../../' . $model['file_path'];
+                }
+
+                // Delete from database first (cascade handles children)
                 $stmt = $db->prepare('DELETE FROM models WHERE id = :id1 OR parent_id = :id2');
                 $stmt->bindValue(':id1', $modelId, PDO::PARAM_INT);
                 $stmt->bindValue(':id2', $modelId, PDO::PARAM_INT);
                 if ($stmt->execute()) {
                     $successCount++;
                     logActivity($user['id'], 'delete', 'model', $modelId, $model['name']);
+
+                    // Delete regular files
+                    $foldersToCheck = [];
+                    foreach ($filesToDelete as $filePath) {
+                        if (file_exists($filePath)) {
+                            unlink($filePath);
+                            $folder = dirname($filePath);
+                            if (!in_array($folder, $foldersToCheck)) {
+                                $foldersToCheck[] = $folder;
+                            }
+                        }
+                    }
+
+                    // Delete dedup files only if no other models reference them
+                    foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
+                        if (canDeleteDedupFile($dedupPath)) {
+                            $fullPath = __DIR__ . '/../../' . $dedupPath;
+                            if (file_exists($fullPath)) {
+                                unlink($fullPath);
+                            }
+                        }
+                    }
+
+                    // Clean up empty directories
+                    foreach ($foldersToCheck as $folder) {
+                        if (is_dir($folder) && count(scandir($folder)) === 2) {
+                            @rmdir($folder);
+                        }
+                    }
                 } else {
                     $errorCount++;
                 }

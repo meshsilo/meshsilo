@@ -172,6 +172,18 @@ function redirect(string $url, int $status = 302): never {
  */
 function back(string $fallback = '/', int $status = 302): never {
     $url = $_SERVER['HTTP_REFERER'] ?? $fallback;
+    // Prevent open redirect: only allow local paths
+    $parsed = parse_url($url);
+    if (isset($parsed['host'])) {
+        $siteHost = parse_url(defined('SITE_URL') ? SITE_URL : '', PHP_URL_HOST);
+        if ($siteHost && $parsed['host'] !== $siteHost) {
+            $url = $fallback;
+        }
+    }
+    // Block protocol-relative URLs
+    if (str_starts_with($url, '//')) {
+        $url = $fallback;
+    }
     header('Location: ' . $url, true, $status);
     exit;
 }
@@ -598,26 +610,35 @@ if (!function_exists('request_ip')) {
      * Get the client IP address
      */
     function request_ip(): string {
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'REMOTE_ADDR'
-        ];
+        // Only trust proxy headers if TRUSTED_PROXIES is configured
+        $trustedProxies = defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : [];
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ip = $_SERVER[$header];
-                if (str_contains($ip, ',')) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
+        $isTrustedProxy = !empty($trustedProxies) && (
+            in_array($remoteAddr, $trustedProxies, true) || in_array('*', $trustedProxies, true)
+        );
+
+        if ($isTrustedProxy) {
+            $headers = [
+                'HTTP_CF_CONNECTING_IP',
+                'HTTP_X_FORWARDED_FOR',
+                'HTTP_X_REAL_IP',
+            ];
+
+            foreach ($headers as $header) {
+                if (!empty($_SERVER[$header])) {
+                    $ip = $_SERVER[$header];
+                    if (str_contains($ip, ',')) {
+                        $ip = trim(explode(',', $ip)[0]);
+                    }
+                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                        return $ip;
+                    }
                 }
             }
         }
 
-        return '127.0.0.1';
+        return filter_var($remoteAddr, FILTER_VALIDATE_IP) ?: '127.0.0.1';
     }
 }
 
@@ -654,9 +675,10 @@ if (!function_exists('csrf_token')) {
 if (!function_exists('csrf_field')) {
     /**
      * Generate a CSRF token hidden input field
+     * Uses "_token" field name to match the Router's CSRF middleware check
      */
     function csrf_field(): string {
-        return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
+        return '<input type="hidden" name="_token" value="' . e(csrf_token()) . '">';
     }
 }
 

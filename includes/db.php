@@ -1701,6 +1701,9 @@ function runMigrations($db) {
         'idx_model_tags_tag' => ['table' => 'model_tags', 'column' => 'tag_id', 'reason' => 'reverse tag lookups'],
         'idx_favorites_user' => ['table' => 'favorites', 'column' => 'user_id', 'reason' => 'user favorites'],
         'idx_favorites_model' => ['table' => 'favorites', 'column' => 'model_id', 'reason' => 'model favorite count'],
+        'idx_models_file_hash' => ['table' => 'models', 'column' => 'file_hash', 'reason' => 'deduplication lookups'],
+        'idx_models_dedup_path' => ['table' => 'models', 'column' => 'dedup_path', 'reason' => 'dedup file reference checks'],
+        'idx_models_collection' => ['table' => 'models', 'column' => 'collection', 'reason' => 'collection filtering'],
     ];
 
     // Composite indexes for common query patterns (only for MySQL, SQLite handles these well enough)
