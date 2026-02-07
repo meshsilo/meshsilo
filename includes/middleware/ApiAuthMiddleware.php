@@ -37,12 +37,19 @@ class ApiAuthMiddleware implements MiddlewareInterface {
             return true;
         }
 
-        // Validate API key
+        // Validate API key using timing-safe comparison
         $db = getDB();
-        $stmt = $db->prepare('SELECT * FROM api_keys WHERE api_key = :key AND is_active = 1');
-        $stmt->bindValue(':key', $apiKey, PDO::PARAM_STR);
+        $stmt = $db->prepare('SELECT * FROM api_keys WHERE is_active = 1');
         $result = $stmt->execute();
-        $keyData = $result->fetchArray(PDO::FETCH_ASSOC);
+
+        $keyData = null;
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            $storedKey = $row['api_key'] ?? '';
+            if (hash_equals($storedKey, $apiKey)) {
+                $keyData = $row;
+                break;
+            }
+        }
 
         if (!$keyData) {
             http_response_code(401);

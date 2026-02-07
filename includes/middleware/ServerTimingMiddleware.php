@@ -17,7 +17,10 @@ class ServerTimingMiddleware implements MiddlewareInterface {
     private static bool $enabled = true;
 
     public function __construct(array $options = []) {
-        self::$enabled = $options['enabled'] ?? true;
+        // Only enable Server-Timing headers in debug mode to avoid exposing internal data
+        $debugMode = $options['enabled'] ?? (getenv('APP_DEBUG') === 'true')
+            || (function_exists('getSetting') && getSetting('debug_mode', '0') === '1');
+        self::$enabled = $debugMode;
         self::$requestStart = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
     }
 

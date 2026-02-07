@@ -12,8 +12,9 @@ if ($useDbSessions && session_status() === PHP_SESSION_NONE) {
 }
 
 if (session_status() === PHP_SESSION_NONE) {
-    // Configure session cookie security
-    $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    // Configure session cookie security (also check X-Forwarded-Proto behind reverse proxy)
+    $secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',

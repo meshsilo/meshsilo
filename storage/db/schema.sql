@@ -115,3 +115,18 @@ INSERT OR IGNORE INTO settings (key, value) VALUES ('oidc_client_secret', '');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('oidc_button_text', 'Sign in with SSO');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('site_url', '');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('force_site_url', '0');
+
+-- Performance indexes for models table
+CREATE INDEX IF NOT EXISTS idx_models_parent_id ON models(parent_id);
+CREATE INDEX IF NOT EXISTS idx_models_file_hash ON models(file_hash);
+CREATE INDEX IF NOT EXISTS idx_models_dedup_path ON models(dedup_path);
+CREATE INDEX IF NOT EXISTS idx_models_created_at ON models(created_at);
+CREATE INDEX IF NOT EXISTS idx_models_collection ON models(collection);
+CREATE INDEX IF NOT EXISTS idx_models_creator ON models(creator);
+CREATE INDEX IF NOT EXISTS idx_models_file_type ON models(file_type);
+
+-- Index for model_tags lookups
+CREATE INDEX IF NOT EXISTS idx_model_tags_tag_id ON model_tags(tag_id);
+
+-- Index for annotations
+CREATE INDEX IF NOT EXISTS idx_annotations_model_id ON annotations(model_id);

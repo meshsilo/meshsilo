@@ -92,12 +92,15 @@ class RateLimitMiddleware implements MiddlewareInterface {
             return 'user:' . ($user['id'] ?? 'unknown');
         }
 
-        // Fall back to IP address
-        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-        // Handle comma-separated IPs (proxies)
-        if (strpos($ip, ',') !== false) {
-            $ip = trim(explode(',', $ip)[0]);
+        // Fall back to IP address - only trust proxy headers if TRUSTED_PROXIES is configured
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $trustedProxies = defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : (getenv('TRUSTED_PROXIES') ?: '');
+        if ($trustedProxies && in_array($ip, array_map('trim', explode(',', $trustedProxies)))) {
+            $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $ip;
+            if (strpos($forwarded, ',') !== false) {
+                $forwarded = trim(explode(',', $forwarded)[0]);
+            }
+            $ip = $forwarded;
         }
 
         return 'ip:' . $ip;

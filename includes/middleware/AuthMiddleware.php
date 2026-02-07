@@ -13,8 +13,11 @@ class AuthMiddleware implements MiddlewareInterface {
      */
     public function handle(array $params): bool {
         if (!function_exists('isLoggedIn') || !isLoggedIn()) {
-            // Store intended destination
-            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+            // Store intended destination (sanitize to prevent open redirect)
+            $uri = $_SERVER['REQUEST_URI'] ?? '/';
+            if (str_starts_with($uri, '/') && !str_starts_with($uri, '//')) {
+                $_SESSION['redirect_after_login'] = $uri;
+            }
 
             // Redirect to login
             header('Location: ' . Router::url('login'));

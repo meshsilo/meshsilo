@@ -26,29 +26,44 @@ class PermissionMiddleware implements MiddlewareInterface {
     public function handle(array $params): bool {
         // First check if logged in
         if (!function_exists('isLoggedIn') || !isLoggedIn()) {
-            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+            // Sanitize URI to prevent open redirect
+            $uri = $_SERVER['REQUEST_URI'] ?? '/';
+            if (str_starts_with($uri, '/') && !str_starts_with($uri, '//')) {
+                $_SESSION['redirect_after_login'] = $uri;
+            }
             header('Location: ' . Router::url('login'));
             exit;
         }
 
-        // Check the permission
+        // Check the permission - fail closed if constant is undefined
         $permConstant = 'PERM_' . strtoupper($this->permission);
 
-        if (defined($permConstant) && function_exists('hasPermission')) {
-            if (!hasPermission(constant($permConstant))) {
+        if (!defined($permConstant) || !function_exists('hasPermission')) {
+            error_log("PermissionMiddleware: undefined permission constant $permConstant - denying access");
+            http_response_code(403);
+            if ($this->isAjaxRequest()) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Permission denied']);
+            } else {
                 $_SESSION['error'] = 'You do not have permission to perform this action.';
-
-                // For AJAX requests, return JSON
-                if ($this->isAjaxRequest()) {
-                    http_response_code(403);
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-                    exit;
-                }
-
                 header('Location: ' . Router::url('home'));
+            }
+            exit;
+        }
+
+        if (!hasPermission(constant($permConstant))) {
+            $_SESSION['error'] = 'You do not have permission to perform this action.';
+
+            // For AJAX requests, return JSON
+            if ($this->isAjaxRequest()) {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Permission denied']);
                 exit;
             }
+
+            header('Location: ' . Router::url('home'));
+            exit;
         }
 
         return true;

@@ -7,6 +7,13 @@ require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
 
+// CSRF validation
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
+    exit;
+}
+
 // Require appropriate permissions
 if (!canEdit() && !canDelete()) {
     http_response_code(403);

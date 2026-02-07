@@ -21,7 +21,15 @@ $offset = ($page - 1) * $perPage;
 
 // Save view preference
 if (isset($_GET['view'])) {
-    setcookie('silo_view', $view, time() + 31536000, '/');
+    $secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    setcookie('silo_view', $view, [
+        'expires' => time() + 31536000,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => false,
+        'samesite' => 'Lax'
+    ]);
 }
 
 // Build query

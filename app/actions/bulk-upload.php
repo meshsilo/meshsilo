@@ -106,6 +106,10 @@ function bulkUpload() {
             continue;
         }
 
+        // Sanitize filename to prevent path traversal
+        $filename = basename($filename);
+        $filename = preg_replace('/[^\w\-. ]/', '_', $filename);
+
         // Move file
         $destPath = $uploadDir . '/' . $filename;
         if (!move_uploaded_file($tmpPath, $destPath)) {

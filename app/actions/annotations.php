@@ -226,7 +226,7 @@ function updateAnnotation($db) {
         return;
     }
 
-    if ($annotation['user_id'] != $user['id'] && !$user['is_admin']) {
+    if ((int)$annotation['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
         echo json_encode(['success' => false, 'error' => 'Permission denied']);
         return;
     }
@@ -275,7 +275,7 @@ function deleteAnnotation($db) {
         return;
     }
 
-    if ($annotation['user_id'] != $user['id'] && !$user['is_admin']) {
+    if ((int)$annotation['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
         echo json_encode(['success' => false, 'error' => 'Permission denied']);
         return;
     }
