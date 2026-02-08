@@ -7,12 +7,20 @@
                 <span class="logo-text"><?= SITE_NAME ?></span>
                 <p><?= SITE_DESCRIPTION ?></p>
             </div>
+            <?php
+            $footerAboutUrl = getSetting('footer_about_url', '');
+            $footerContactUrl = getSetting('footer_contact_url', '');
+            $footerPrivacyUrl = getSetting('footer_privacy_url', '');
+            $footerTermsUrl = getSetting('footer_terms_url', '');
+            if ($footerAboutUrl || $footerContactUrl || $footerPrivacyUrl || $footerTermsUrl):
+            ?>
             <nav class="footer-nav">
-                <a href="#">About</a>
-                <a href="#">Contact</a>
-                <a href="#">Privacy</a>
-                <a href="#">Terms</a>
+                <?php if ($footerAboutUrl): ?><a href="<?= htmlspecialchars($footerAboutUrl) ?>">About</a><?php endif; ?>
+                <?php if ($footerContactUrl): ?><a href="<?= htmlspecialchars($footerContactUrl) ?>">Contact</a><?php endif; ?>
+                <?php if ($footerPrivacyUrl): ?><a href="<?= htmlspecialchars($footerPrivacyUrl) ?>">Privacy</a><?php endif; ?>
+                <?php if ($footerTermsUrl): ?><a href="<?= htmlspecialchars($footerTermsUrl) ?>">Terms</a><?php endif; ?>
             </nav>
+            <?php endif; ?>
         </div>
         <?php if (getenv('MESHSILO_ENABLE_QUERY_STATS') === 'true'): ?>
         <div class="query-stats" style="padding: 10px; margin-top: 10px; background: var(--background-secondary); border-top: 1px solid var(--border-color); font-size: 0.85em; color: var(--text-secondary); text-align: center;">

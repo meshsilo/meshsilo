@@ -21,14 +21,6 @@ $adminPage = 'collections';
 
 $db = getDB();
 
-// Create collections table if it doesn't exist
-$db->exec('CREATE TABLE IF NOT EXISTS collections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)');
-
 // Handle form submissions
 $message = '';
 $error = '';

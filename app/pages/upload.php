@@ -21,12 +21,6 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
 }
 
 // Load collections from database for datalist
-$db->exec('CREATE TABLE IF NOT EXISTS collections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)');
 $result = $db->query('SELECT name FROM collections ORDER BY name');
 $collections = [];
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {

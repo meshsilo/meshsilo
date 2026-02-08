@@ -80,12 +80,9 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
         exit; // Route was handled
     }
 
-    // Route not found - redirect to appropriate root
-    if (str_starts_with($routePath, '/admin')) {
-        header('Location: ' . route('admin.settings'));
-    } else {
-        header('Location: ' . route('home'));
-    }
+    // Route not found - show 404 page
+    http_response_code(404);
+    require_once __DIR__ . '/app/pages/404.php';
     exit;
 }
 

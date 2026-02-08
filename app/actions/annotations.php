@@ -9,9 +9,6 @@ require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
-// Ensure annotations table exists
-ensureAnnotationsTable();
-
 $action = $_POST['action'] ?? $_GET['action'] ?? 'list';
 $modelId = (int)($_POST['model_id'] ?? $_GET['model_id'] ?? 0);
 
@@ -62,50 +59,6 @@ switch ($action) {
 
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
-}
-
-function ensureAnnotationsTable() {
-    $db = getDB();
-
-    try {
-        if ($db->getType() === 'mysql') {
-            $db->exec('CREATE TABLE IF NOT EXISTS annotations (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                model_id INT NOT NULL,
-                user_id INT NOT NULL,
-                position_x DOUBLE NOT NULL,
-                position_y DOUBLE NOT NULL,
-                position_z DOUBLE NOT NULL,
-                normal_x DOUBLE DEFAULT 0,
-                normal_y DOUBLE DEFAULT 0,
-                normal_z DOUBLE DEFAULT 1,
-                content TEXT NOT NULL,
-                color VARCHAR(7) DEFAULT "#ff0000",
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-        } else {
-            $db->exec('CREATE TABLE IF NOT EXISTS annotations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                model_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                position_x REAL NOT NULL,
-                position_y REAL NOT NULL,
-                position_z REAL NOT NULL,
-                normal_x REAL DEFAULT 0,
-                normal_y REAL DEFAULT 0,
-                normal_z REAL DEFAULT 1,
-                content TEXT NOT NULL,
-                color TEXT DEFAULT "#ff0000",
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )');
-        }
-    } catch (Exception $e) {
-        // Table probably already exists
-    }
 }
 
 function listAnnotations($db, $modelId) {

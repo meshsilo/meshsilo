@@ -1937,5 +1937,155 @@ function getMigrationList() {
                 }
             }
         ],
+        [
+            'name' => 'Collections table',
+            'description' => 'Stores named collections for organizing models',
+            'check' => fn($db) => tableExists($db, 'collections'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE collections (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL UNIQUE,
+                        description TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE collections (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(255) NOT NULL UNIQUE,
+                        description TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )');
+                }
+            }
+        ],
+        [
+            'name' => 'Annotations table',
+            'description' => 'Stores 3D model annotations with position and normal data',
+            'check' => fn($db) => tableExists($db, 'annotations'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE annotations (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        model_id INT NOT NULL,
+                        user_id INT NOT NULL,
+                        position_x DOUBLE NOT NULL,
+                        position_y DOUBLE NOT NULL,
+                        position_z DOUBLE NOT NULL,
+                        normal_x DOUBLE DEFAULT 0,
+                        normal_y DOUBLE DEFAULT 0,
+                        normal_z DOUBLE DEFAULT 1,
+                        content TEXT NOT NULL,
+                        color VARCHAR(7) DEFAULT "#ff0000",
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE annotations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        model_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        position_x REAL NOT NULL,
+                        position_y REAL NOT NULL,
+                        position_z REAL NOT NULL,
+                        normal_x REAL DEFAULT 0,
+                        normal_y REAL DEFAULT 0,
+                        normal_z REAL DEFAULT 1,
+                        content TEXT NOT NULL,
+                        color TEXT DEFAULT "#ff0000",
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )');
+                }
+            }
+        ],
+        [
+            'name' => 'RUM metrics table',
+            'description' => 'Stores Real User Monitoring performance metrics',
+            'check' => fn($db) => tableExists($db, 'rum_metrics'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE rum_metrics (
+                        id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+                        url VARCHAR(255),
+                        referrer VARCHAR(255),
+                        user_agent VARCHAR(255),
+                        connection_type VARCHAR(20),
+                        lcp INT,
+                        fid INT,
+                        cls DECIMAL(5,3),
+                        fcp INT,
+                        fp INT,
+                        ttfb INT,
+                        dom_content_loaded INT,
+                        page_load INT,
+                        dom_interactive INT,
+                        resource_count INT,
+                        js_errors INT,
+                        created_at DATETIME,
+                        INDEX idx_rum_url (url),
+                        INDEX idx_rum_created (created_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE rum_metrics (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        url TEXT,
+                        referrer TEXT,
+                        user_agent TEXT,
+                        connection_type TEXT,
+                        lcp INTEGER,
+                        fid INTEGER,
+                        cls REAL,
+                        fcp INTEGER,
+                        fp INTEGER,
+                        ttfb INTEGER,
+                        dom_content_loaded INTEGER,
+                        page_load INTEGER,
+                        dom_interactive INTEGER,
+                        resource_count INTEGER,
+                        js_errors INTEGER,
+                        created_at TEXT
+                    )');
+                    $db->exec('CREATE INDEX idx_rum_url ON rum_metrics(url)');
+                    $db->exec('CREATE INDEX idx_rum_created ON rum_metrics(created_at)');
+                }
+            }
+        ],
+        [
+            'name' => 'RUM errors table',
+            'description' => 'Stores Real User Monitoring JavaScript error data',
+            'check' => fn($db) => tableExists($db, 'rum_errors'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE rum_errors (
+                        id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+                        url VARCHAR(255),
+                        message VARCHAR(500),
+                        source VARCHAR(255),
+                        line_number INT,
+                        created_at DATETIME,
+                        INDEX idx_rum_errors_url (url),
+                        INDEX idx_rum_errors_created (created_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE rum_errors (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        url TEXT,
+                        message TEXT,
+                        source TEXT,
+                        line_number INTEGER,
+                        created_at TEXT
+                    )');
+                    $db->exec('CREATE INDEX idx_rum_errors_url ON rum_errors(url)');
+                    $db->exec('CREATE INDEX idx_rum_errors_created ON rum_errors(created_at)');
+                }
+            }
+        ],
     ];
 }

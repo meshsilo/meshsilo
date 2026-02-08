@@ -1,6 +1,7 @@
 {
     "name": "silo/silo",
     "description": "Digital Asset Manager for 3D Print Files",
+    "version": "1.0.0",
     "type": "project",
     "license": "MIT",
     "keywords": [
@@ -17,7 +18,7 @@
         }
     ],
     "require": {
-        "php": ">=8.0",
+        "php": ">=8.1",
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
@@ -37,9 +38,6 @@
         "ext-sqlite3": "For SQLite database support"
     },
     "autoload": {
-        "psr-4": {
-            "Silo\\": "src/"
-        },
         "classmap": [
             "includes/"
         ],
@@ -55,9 +53,9 @@
     "scripts": {
         "test": "phpunit",
         "test:coverage": "phpunit --coverage-html coverage",
-        "analyse": "phpstan analyse includes src --level=5",
-        "cs": "phpcs --standard=PSR12 includes src",
-        "cs:fix": "phpcbf --standard=PSR12 includes src",
+        "analyse": "phpstan analyse includes --level=5",
+        "cs": "phpcs --standard=PSR12 includes",
+        "cs:fix": "phpcbf --standard=PSR12 includes",
         "serve": "php -S localhost:8000 -t .",
         "worker": "php cli/queue-worker.php --verbose",
         "worker:thumbnails": "php cli/queue-worker.php --queue=thumbnails --verbose",
@@ -88,7 +86,7 @@
         "optimize-autoloader": true,
         "sort-packages": true,
         "platform": {
-            "php": "8.0"
+            "php": "8.1"
         }
     },
     "minimum-stability": "stable",

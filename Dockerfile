@@ -40,14 +40,14 @@ WORKDIR /var/www/meshsilo
 COPY --chown=www-data:www-data . /var/www/meshsilo/
 
 # Create required directories with correct permissions
-RUN mkdir -p /var/www/meshsilo/assets \
-    /var/www/meshsilo/logs \
-    /var/www/meshsilo/db \
+RUN mkdir -p /var/www/meshsilo/storage/assets \
+    /var/www/meshsilo/storage/logs \
+    /var/www/meshsilo/storage/db \
     && chown -R www-data:www-data /var/www/meshsilo \
     && chmod -R 755 /var/www/meshsilo \
-    && chmod -R 775 /var/www/meshsilo/assets \
-    /var/www/meshsilo/logs \
-    /var/www/meshsilo/db
+    && chmod -R 775 /var/www/meshsilo/storage/assets \
+    /var/www/meshsilo/storage/logs \
+    /var/www/meshsilo/storage/db
 
 # Copy nginx configuration
 COPY docker/nginx.conf /etc/nginx/sites-available/default
@@ -107,7 +107,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost/ || exit 1
 
 # Volume for persistent data
-VOLUME ["/var/www/meshsilo/assets", "/var/www/meshsilo/db", "/var/www/meshsilo/logs"]
+VOLUME ["/var/www/meshsilo/storage/assets", "/var/www/meshsilo/storage/db", "/var/www/meshsilo/storage/logs"]
 
 # Start supervisor (manages nginx and php-fpm)
 ENTRYPOINT ["/entrypoint.sh"]

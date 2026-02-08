@@ -12,9 +12,9 @@ services:
       - "8080:80"
     volumes:
       # Persistent data volumes
-      - meshsilo_assets:/var/www/meshsilo/assets
-      - meshsilo_db:/var/www/meshsilo/db
-      - meshsilo_logs:/var/www/meshsilo/logs
+      - meshsilo_assets:/var/www/meshsilo/storage/assets
+      - meshsilo_db:/var/www/meshsilo/storage/db
+      - meshsilo_logs:/var/www/meshsilo/storage/logs
       # Optional: Mount custom config file
       # - ./config.local.php:/var/www/meshsilo/config.local.php:ro
       # Optional: Mount seed models for demo mode (place .stl/.3mf files here)

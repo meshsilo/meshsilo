@@ -30,9 +30,6 @@ $slowResources = $data['slowResources'] ?? [];
 try {
     $db = getDB();
 
-    // Ensure table exists
-    ensureRumTable($db);
-
     // Insert metrics
     $stmt = $db->prepare('
         INSERT INTO rum_metrics (
@@ -93,84 +90,3 @@ try {
     http_response_code(500);
 }
 
-/**
- * Ensure RUM tables exist
- */
-function ensureRumTable(PDO $db): void {
-    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
-
-    if ($driver === 'sqlite') {
-        $db->exec('
-            CREATE TABLE IF NOT EXISTS rum_metrics (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT,
-                referrer TEXT,
-                user_agent TEXT,
-                connection_type TEXT,
-                lcp INTEGER,
-                fid INTEGER,
-                cls REAL,
-                fcp INTEGER,
-                fp INTEGER,
-                ttfb INTEGER,
-                dom_content_loaded INTEGER,
-                page_load INTEGER,
-                dom_interactive INTEGER,
-                resource_count INTEGER,
-                js_errors INTEGER,
-                created_at TEXT
-            )
-        ');
-
-        $db->exec('
-            CREATE TABLE IF NOT EXISTS rum_errors (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT,
-                message TEXT,
-                source TEXT,
-                line_number INTEGER,
-                created_at TEXT
-            )
-        ');
-
-        $db->exec('CREATE INDEX IF NOT EXISTS idx_rum_url ON rum_metrics(url)');
-        $db->exec('CREATE INDEX IF NOT EXISTS idx_rum_created ON rum_metrics(created_at)');
-    } else {
-        $db->exec('
-            CREATE TABLE IF NOT EXISTS rum_metrics (
-                id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-                url VARCHAR(255),
-                referrer VARCHAR(255),
-                user_agent VARCHAR(255),
-                connection_type VARCHAR(20),
-                lcp INT,
-                fid INT,
-                cls DECIMAL(5,3),
-                fcp INT,
-                fp INT,
-                ttfb INT,
-                dom_content_loaded INT,
-                page_load INT,
-                dom_interactive INT,
-                resource_count INT,
-                js_errors INT,
-                created_at DATETIME,
-                INDEX idx_url (url),
-                INDEX idx_created (created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ');
-
-        $db->exec('
-            CREATE TABLE IF NOT EXISTS rum_errors (
-                id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-                url VARCHAR(255),
-                message VARCHAR(500),
-                source VARCHAR(255),
-                line_number INT,
-                created_at DATETIME,
-                INDEX idx_url (url),
-                INDEX idx_created (created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ');
-    }
-}

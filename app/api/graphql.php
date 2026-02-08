@@ -14,16 +14,13 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/GraphQL.php';
 
-// CORS headers
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json');
 
-// Handle preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
+// Handle CORS using configurable settings
+require_once __DIR__ . '/../includes/middleware/CorsMiddleware.php';
+$cors = CorsMiddleware::api();
+if (!$cors->handle([])) {
+    exit; // Preflight request handled
 }
 
 // Get current user ID if authenticated
