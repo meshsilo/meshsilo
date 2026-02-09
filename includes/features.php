@@ -700,22 +700,6 @@ function getFeatureUsageStats(): array {
         $stats['external_links'] = 0;
     }
 
-    // SSO users count (OIDC, SAML, or LDAP)
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM users WHERE oidc_sub IS NOT NULL OR saml_name_id IS NOT NULL OR ldap_dn IS NOT NULL");
-        $stats['sso'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['sso'] = 0;
-    }
-
-    // Local accounts count (users without external auth)
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM users WHERE oidc_sub IS NULL AND saml_name_id IS NULL AND ldap_dn IS NULL");
-        $stats['local_accounts'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['local_accounts'] = 0;
-    }
-
     return $stats;
 }
 

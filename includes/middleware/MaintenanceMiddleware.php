@@ -24,7 +24,7 @@ class MaintenanceMiddleware implements MiddlewareInterface {
         }
 
         // Allow specific routes (login, logout, admin) to work during maintenance
-        $allowedRoutes = ['login', 'login.post', 'logout', 'oidc.callback'];
+        $allowedRoutes = ['login', 'login.post', 'logout'];
         $currentRoute = $_SERVER['ROUTE_NAME'] ?? '';
 
         if (in_array($currentRoute, $allowedRoutes)) {

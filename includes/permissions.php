@@ -27,9 +27,6 @@ define('PERM_MANAGE_RETENTION', 'manage_retention');     // Data retention polic
 // Permission constants - Integration
 define('PERM_MANAGE_API_KEYS', 'manage_api_keys');       // API key management
 define('PERM_MANAGE_WEBHOOKS', 'manage_webhooks');       // Webhook configuration
-define('PERM_MANAGE_OAUTH', 'manage_oauth');             // OAuth2 client management
-define('PERM_MANAGE_LDAP', 'manage_ldap');               // LDAP/AD configuration
-define('PERM_MANAGE_SCIM', 'manage_scim');               // SCIM provisioning
 
 // Permission constants - System Operations
 define('PERM_MANAGE_BACKUPS', 'manage_backups');         // Backup/restore operations
@@ -49,7 +46,7 @@ define('ADMIN_PERMISSIONS', [
     // Security & Compliance
     PERM_MANAGE_SESSIONS, PERM_MANAGE_SECURITY, PERM_VIEW_AUDIT_LOG, PERM_MANAGE_RETENTION,
     // Integration
-    PERM_MANAGE_API_KEYS, PERM_MANAGE_WEBHOOKS, PERM_MANAGE_OAUTH, PERM_MANAGE_LDAP, PERM_MANAGE_SCIM,
+    PERM_MANAGE_API_KEYS, PERM_MANAGE_WEBHOOKS,
     // System Operations
     PERM_MANAGE_BACKUPS, PERM_MANAGE_SCHEDULER, PERM_MANAGE_STORAGE,
     // Full admin
@@ -486,27 +483,6 @@ function canManageWebhooks() {
 }
 
 /**
- * Check if user can manage OAuth clients
- */
-function canManageOAuth() {
-    return hasPermission(PERM_MANAGE_OAUTH);
-}
-
-/**
- * Check if user can manage LDAP/AD
- */
-function canManageLdap() {
-    return hasPermission(PERM_MANAGE_LDAP);
-}
-
-/**
- * Check if user can manage SCIM provisioning
- */
-function canManageScim() {
-    return hasPermission(PERM_MANAGE_SCIM);
-}
-
-/**
  * Check if user can manage backups
  */
 function canManageBackups() {
@@ -554,9 +530,6 @@ function getAllPermissions() {
         // Integration
         PERM_MANAGE_API_KEYS => 'Manage API keys',
         PERM_MANAGE_WEBHOOKS => 'Manage webhooks',
-        PERM_MANAGE_OAUTH => 'Manage OAuth2 clients',
-        PERM_MANAGE_LDAP => 'Manage LDAP/AD integration',
-        PERM_MANAGE_SCIM => 'Manage SCIM provisioning',
         // System Operations
         PERM_MANAGE_BACKUPS => 'Manage backups & recovery',
         PERM_MANAGE_SCHEDULER => 'Manage scheduled tasks',
@@ -596,9 +569,6 @@ function getPermissionsByCategory() {
         'Integration' => [
             PERM_MANAGE_API_KEYS => 'Manage API keys',
             PERM_MANAGE_WEBHOOKS => 'Manage webhooks',
-            PERM_MANAGE_OAUTH => 'Manage OAuth2 clients',
-            PERM_MANAGE_LDAP => 'Manage LDAP/AD integration',
-            PERM_MANAGE_SCIM => 'Manage SCIM user provisioning',
         ],
         'System Operations' => [
             PERM_MANAGE_SETTINGS => 'Manage site settings',

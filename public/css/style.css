@@ -1306,7 +1306,7 @@ section.settings-section h2 {
     cursor: pointer;
 }
 
-/* OIDC/SSO Auth */
+/* Auth dividers (used by login page plugin buttons) */
 .auth-divider {
     display: flex;
     align-items: center;
@@ -1322,14 +1322,6 @@ section.settings-section h2 {
     flex: 1;
     height: 1px;
     background-color: var(--color-border);
-}
-
-.btn-oidc {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    text-decoration: none;
 }
 
 /* Alerts */

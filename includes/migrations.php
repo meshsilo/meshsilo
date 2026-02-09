@@ -1170,73 +1170,6 @@ function getMigrationList() {
         ],
 
         // =====================================================================
-        // ENTERPRISE AUTHENTICATION
-        // =====================================================================
-
-        // SAML SSO
-        [
-            'name' => 'Users: SAML SSO columns',
-            'description' => 'SAML identity provider integration',
-            'check' => fn($db) => columnExists($db, 'users', 'saml_id'),
-            'apply' => function($db) {
-                $type = $db->getType();
-                if ($type === 'mysql') {
-                    $db->exec('ALTER TABLE users ADD COLUMN saml_id VARCHAR(255)');
-                    $db->exec('ALTER TABLE users ADD COLUMN saml_idp VARCHAR(100)');
-                    $db->exec('ALTER TABLE users ADD COLUMN saml_attributes TEXT');
-                    $db->exec('CREATE INDEX idx_users_saml ON users(saml_id)');
-                } else {
-                    $db->exec('ALTER TABLE users ADD COLUMN saml_id TEXT');
-                    $db->exec('ALTER TABLE users ADD COLUMN saml_idp TEXT');
-                    $db->exec('ALTER TABLE users ADD COLUMN saml_attributes TEXT');
-                    $db->exec('CREATE INDEX idx_users_saml ON users(saml_id)');
-                }
-            }
-        ],
-
-        // LDAP/AD
-        [
-            'name' => 'Users: LDAP columns',
-            'description' => 'LDAP/Active Directory integration',
-            'check' => fn($db) => columnExists($db, 'users', 'ldap_dn'),
-            'apply' => function($db) {
-                $type = $db->getType();
-                if ($type === 'mysql') {
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_dn VARCHAR(500)');
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_guid VARCHAR(64)');
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_groups TEXT');
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_synced_at DATETIME');
-                    $db->exec('CREATE INDEX idx_users_ldap ON users(ldap_dn(191))');
-                } else {
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_dn TEXT');
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_guid TEXT');
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_groups TEXT');
-                    $db->exec('ALTER TABLE users ADD COLUMN ldap_synced_at DATETIME');
-                    $db->exec('CREATE INDEX idx_users_ldap ON users(ldap_dn)');
-                }
-            }
-        ],
-
-        // Auth method tracking
-        [
-            'name' => 'Users: auth method column',
-            'description' => 'Track authentication method per user',
-            'check' => fn($db) => columnExists($db, 'users', 'auth_method'),
-            'apply' => function($db) {
-                $type = $db->getType();
-                if ($type === 'mysql') {
-                    $db->exec("ALTER TABLE users ADD COLUMN auth_method VARCHAR(20) DEFAULT 'local'");
-                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_at DATETIME');
-                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_ip VARCHAR(45)');
-                } else {
-                    $db->exec("ALTER TABLE users ADD COLUMN auth_method TEXT DEFAULT 'local'");
-                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_at DATETIME');
-                    $db->exec('ALTER TABLE users ADD COLUMN last_auth_ip TEXT');
-                }
-            }
-        ],
-
-        // =====================================================================
         // ADVANCED AUDIT LOGGING
         // =====================================================================
 
@@ -2084,6 +2017,94 @@ function getMigrationList() {
                     )');
                     $db->exec('CREATE INDEX idx_rum_errors_url ON rum_errors(url)');
                     $db->exec('CREATE INDEX idx_rum_errors_created ON rum_errors(created_at)');
+                }
+            }
+        ],
+        // Fix sessions table missing expires_at column
+        [
+            'name' => 'Sessions table expires_at column',
+            'description' => 'Add expires_at column to sessions table if missing',
+            'check' => function($db) {
+                if (!tableExists($db, 'sessions')) {
+                    return true;
+                }
+                return columnExists($db, 'sessions', 'expires_at');
+            },
+            'apply' => function($db) {
+                if (!tableExists($db, 'sessions')) {
+                    return;
+                }
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('ALTER TABLE sessions ADD COLUMN expires_at INT NOT NULL DEFAULT 0');
+                } else {
+                    $db->exec('ALTER TABLE sessions ADD COLUMN expires_at INTEGER NOT NULL DEFAULT 0');
+                }
+                if (!indexExists($db, 'sessions', 'idx_sessions_expires')) {
+                    $db->exec('CREATE INDEX idx_sessions_expires ON sessions(expires_at)');
+                }
+            }
+        ],
+        // Plugin system
+        [
+            'name' => 'Plugins table',
+            'description' => 'Plugin system - installed plugins',
+            'check' => fn($db) => tableExists($db, 'plugins'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE plugins (
+                        id VARCHAR(100) PRIMARY KEY,
+                        name VARCHAR(200) NOT NULL,
+                        version VARCHAR(20) NOT NULL DEFAULT \'1.0.0\',
+                        description TEXT,
+                        author VARCHAR(200),
+                        is_active TINYINT(1) NOT NULL DEFAULT 0,
+                        settings TEXT,
+                        installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE plugins (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        version TEXT NOT NULL DEFAULT \'1.0.0\',
+                        description TEXT,
+                        author TEXT,
+                        is_active INTEGER NOT NULL DEFAULT 0,
+                        settings TEXT,
+                        installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )');
+                }
+            }
+        ],
+        [
+            'name' => 'Plugin repositories table',
+            'description' => 'Plugin system - repository sources',
+            'check' => fn($db) => tableExists($db, 'plugin_repositories'),
+            'apply' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $db->exec('CREATE TABLE plugin_repositories (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(200) NOT NULL,
+                        url VARCHAR(500) NOT NULL,
+                        is_official TINYINT(1) NOT NULL DEFAULT 0,
+                        last_fetched TIMESTAMP NULL,
+                        registry_cache TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+                } else {
+                    $db->exec('CREATE TABLE plugin_repositories (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        url TEXT NOT NULL,
+                        is_official INTEGER NOT NULL DEFAULT 0,
+                        last_fetched DATETIME,
+                        registry_cache TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )');
                 }
             }
         ],

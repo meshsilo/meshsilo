@@ -55,8 +55,7 @@ if (!isset($_SESSION['install'])) {
         'db_type' => 'mysql',
         'db_config' => [],
         'admin' => [],
-        'site' => [],
-        'oidc' => []
+        'site' => []
     ];
 }
 
@@ -150,26 +149,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['install']['step'] = $step;
             break;
 
-        case 'configure_oidc':
-            if (isset($_POST['skip_oidc'])) {
-                $_SESSION['install']['oidc'] = ['enabled' => false];
-            } else {
-                $_SESSION['install']['oidc'] = [
-                    'enabled' => isset($_POST['oidc_enabled']),
-                    'provider_url' => trim($_POST['oidc_provider_url'] ?? ''),
-                    'client_id' => trim($_POST['oidc_client_id'] ?? ''),
-                    'client_secret' => trim($_POST['oidc_client_secret'] ?? ''),
-                    'button_text' => trim($_POST['oidc_button_text'] ?? 'Sign in with SSO')
-                ];
-            }
-            $step = 6;
-            $_SESSION['install']['step'] = $step;
-            break;
-
         case 'install':
             $result = performInstallation($_SESSION['install']);
             if ($result === true) {
-                $step = 7;
+                $step = 6;
                 $_SESSION['install']['step'] = $step;
                 $success = 'Installation completed successfully!';
             } else {
@@ -408,24 +391,6 @@ function initializeSQLiteDatabase($config) {
         // Assign to Admin group
         $db->exec("INSERT INTO user_groups (user_id, group_id) SELECT $userId, id FROM groups WHERE name = 'Admin'");
 
-        // Save OIDC settings
-        if (!empty($config['oidc']['enabled'])) {
-            $oidc = $config['oidc'];
-            $db->exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_enabled', '1')");
-            $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_provider_url', :val)");
-            $stmt->bindValue(':val', $oidc['provider_url'], PDO::PARAM_STR);
-            $stmt->execute();
-            $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_client_id', :val)");
-            $stmt->bindValue(':val', $oidc['client_id'], PDO::PARAM_STR);
-            $stmt->execute();
-            $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_client_secret', :val)");
-            $stmt->bindValue(':val', $oidc['client_secret'], PDO::PARAM_STR);
-            $stmt->execute();
-            $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('oidc_button_text', :val)");
-            $stmt->bindValue(':val', $oidc['button_text'], PDO::PARAM_STR);
-            $stmt->execute();
-        }
-
         // Save site settings to database (all settings are stored in DB, not config file)
         $site = $config['site'];
         if (!empty($site['name'])) {
@@ -535,17 +500,6 @@ function initializeMySQLDatabase($config) {
         // Assign to Admin group
         $pdo->exec("INSERT INTO user_groups (user_id, group_id) SELECT $userId, id FROM `groups` WHERE name = 'Admin'");
 
-        // Save OIDC settings
-        if (!empty($config['oidc']['enabled'])) {
-            $oidc = $config['oidc'];
-            $stmt = $pdo->prepare("INSERT INTO settings (`key`, `value`) VALUES (:k, :v) ON DUPLICATE KEY UPDATE `value` = :v2");
-            $stmt->execute([':k' => 'oidc_enabled', ':v' => '1', ':v2' => '1']);
-            $stmt->execute([':k' => 'oidc_provider_url', ':v' => $oidc['provider_url'], ':v2' => $oidc['provider_url']]);
-            $stmt->execute([':k' => 'oidc_client_id', ':v' => $oidc['client_id'], ':v2' => $oidc['client_id']]);
-            $stmt->execute([':k' => 'oidc_client_secret', ':v' => $oidc['client_secret'], ':v2' => $oidc['client_secret']]);
-            $stmt->execute([':k' => 'oidc_button_text', ':v' => $oidc['button_text'], ':v2' => $oidc['button_text']]);
-        }
-
         // Save site settings to database (all settings are stored in DB, not config file)
         $site = $config['site'];
         $stmt = $pdo->prepare("INSERT INTO settings (`key`, `value`) VALUES (:k, :v) ON DUPLICATE KEY UPDATE `value` = :v2");
@@ -620,7 +574,6 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     is_admin TINYINT DEFAULT 0,
     permissions TEXT,
-    oidc_id VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -740,7 +693,6 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
     permissions TEXT,
-    oidc_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -1105,7 +1057,7 @@ foreach ($requirements as $req) {
         </div>
 
         <div class="steps">
-            <?php for ($i = 1; $i <= 7; $i++): ?>
+            <?php for ($i = 1; $i <= 6; $i++): ?>
             <div class="step-dot <?= $i < $step ? 'completed' : ($i === $step ? 'active' : '') ?>"></div>
             <?php endfor; ?>
         </div>
@@ -1281,66 +1233,7 @@ foreach ($requirements as $req) {
         </form>
 
         <?php elseif ($step === 5): ?>
-        <!-- Step 5: OIDC Configuration -->
-        <h2>Single Sign-On (Optional)</h2>
-        <form method="post">
-            <input type="hidden" name="action" value="configure_oidc">
-
-            <p class="form-help" style="margin-bottom: 1rem;">
-                Configure OpenID Connect to allow users to sign in with an external identity provider.
-                You can also configure this later in the admin settings.
-            </p>
-
-            <div class="form-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="oidc_enabled" id="oidc_enabled" onchange="toggleOIDCFields()"
-                        <?= ($_SESSION['install']['oidc']['enabled'] ?? false) ? 'checked' : '' ?>>
-                    <span>Enable OIDC Authentication</span>
-                </label>
-            </div>
-
-            <div id="oidc-fields" style="display: <?= ($_SESSION['install']['oidc']['enabled'] ?? false) ? 'block' : 'none' ?>;">
-                <div class="form-group">
-                    <label for="oidc_provider_url">Provider URL</label>
-                    <input type="url" id="oidc_provider_url" name="oidc_provider_url" class="form-input"
-                        placeholder="https://accounts.google.com"
-                        value="<?= htmlspecialchars($_SESSION['install']['oidc']['provider_url'] ?? '') ?>">
-                </div>
-
-                <div class="form-group">
-                    <label for="oidc_client_id">Client ID</label>
-                    <input type="text" id="oidc_client_id" name="oidc_client_id" class="form-input"
-                        value="<?= htmlspecialchars($_SESSION['install']['oidc']['client_id'] ?? '') ?>">
-                </div>
-
-                <div class="form-group">
-                    <label for="oidc_client_secret">Client Secret</label>
-                    <input type="password" id="oidc_client_secret" name="oidc_client_secret" class="form-input">
-                </div>
-
-                <div class="form-group">
-                    <label for="oidc_button_text">Button Text</label>
-                    <input type="text" id="oidc_button_text" name="oidc_button_text" class="form-input"
-                        value="<?= htmlspecialchars($_SESSION['install']['oidc']['button_text'] ?? 'Sign in with SSO') ?>">
-                </div>
-            </div>
-
-            <div class="btn-group">
-                <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>
-                <button type="submit" name="skip_oidc" value="1" class="btn btn-secondary">Skip</button>
-                <button type="submit" class="btn btn-primary">Continue</button>
-            </div>
-        </form>
-
-        <script>
-        function toggleOIDCFields() {
-            const enabled = document.getElementById('oidc_enabled').checked;
-            document.getElementById('oidc-fields').style.display = enabled ? 'block' : 'none';
-        }
-        </script>
-
-        <?php elseif ($step === 6): ?>
-        <!-- Step 6: Confirm Installation -->
+        <!-- Step 5: Confirm Installation -->
         <h2>Ready to Install</h2>
 
         <p style="margin-bottom: 1rem;">Please review your configuration:</p>
@@ -1352,7 +1245,6 @@ foreach ($requirements as $req) {
             <?php if (!empty($_SESSION['install']['site']['url'])): ?>
             <li><strong>Site URL:</strong> <?= htmlspecialchars($_SESSION['install']['site']['url']) ?></li>
             <?php endif; ?>
-            <li><strong>OIDC:</strong> <?= !empty($_SESSION['install']['oidc']['enabled']) ? 'Enabled' : 'Disabled' ?></li>
             <?php if ($demoModeAvailable && ($_SESSION['install']['site']['demo_mode'] ?? '0') === '1'): ?>
             <li><strong>Demo Mode:</strong> <span style="color: var(--color-warning);">Enabled</span></li>
             <?php endif; ?>
@@ -1366,8 +1258,8 @@ foreach ($requirements as $req) {
             </div>
         </form>
 
-        <?php elseif ($step === 7): ?>
-        <!-- Step 7: Complete -->
+        <?php elseif ($step === 6): ?>
+        <!-- Step 6: Complete -->
         <div class="success-icon">&#10003;</div>
         <h2 style="text-align: center;">Installation Complete!</h2>
 

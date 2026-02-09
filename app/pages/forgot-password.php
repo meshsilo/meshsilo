@@ -38,7 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'If an account exists with this email, you will receive a password reset link shortly.';
 
         if ($user) {
-            // Check if user is OIDC-only (no password set)
             $stmt = $db->prepare('SELECT password FROM users WHERE id = :id');
             $stmt->bindValue(':id', $user['id'], PDO::PARAM_INT);
             $result = $stmt->execute();

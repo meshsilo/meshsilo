@@ -29,8 +29,6 @@ if (!$user) {
     exit;
 }
 
-// Check if user is OIDC-only (no local password)
-$isOIDCOnly = !empty($user['oidc_id']) && empty($user['password']);
 
 $message = '';
 $error = '';
@@ -78,9 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newPassword = $_POST['new_password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
 
-        if ($isOIDCOnly) {
-            $error = 'Password cannot be changed for SSO-only accounts.';
-        } elseif (empty($currentPassword)) {
+        if (empty($currentPassword)) {
             $error = 'Current password is required.';
         } elseif (!verifyPassword($currentPassword, $user['password'])) {
             $error = 'Current password is incorrect.';
@@ -107,35 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             logAuthEvent('password_change', $user['username'], true, ['user_id' => $userId]);
             logActivity('password_change', 'user', $userId, $user['username']);
-        }
-    } elseif (isset($_POST['set_password'])) {
-        // For OIDC users who want to set a local password
-        $newPassword = $_POST['new_password'] ?? '';
-        $confirmPassword = $_POST['confirm_password'] ?? '';
-
-        if (!$isOIDCOnly) {
-            $error = 'You already have a password set.';
-        } elseif (empty($newPassword)) {
-            $error = 'Password cannot be empty.';
-        } elseif (strlen($newPassword) < 8) {
-            $error = 'Password must be at least 8 characters.';
-        } elseif ($newPassword !== $confirmPassword) {
-            $error = 'Passwords do not match.';
-        } else {
-            $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-            $stmt = $db->prepare('UPDATE users SET password = :password WHERE id = :id');
-            $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
-            $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
-            $stmt->execute();
-
-            // Update local state
-            $isOIDCOnly = false;
-            $user['password'] = $hash;
-
-            $message = 'Password set successfully. You can now log in with your username and password.';
-
-            logAuthEvent('password_set', $user['username'], true, ['user_id' => $userId, 'method' => 'oidc_to_local']);
-            logActivity('password_set', 'user', $userId, $user['username']);
         }
     }
 }
@@ -199,7 +166,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                             <div class="form-group">
                                 <label>Account Type</label>
-                                <input type="text" class="form-input" value="<?= $user['oidc_id'] ? 'SSO (Single Sign-On)' : 'Local Account' ?>" disabled>
+                                <input type="text" class="form-input" value="Local Account" disabled>
                             </div>
                         </div>
                         <button type="submit" name="update_profile" class="btn btn-primary">Update Email</button>
@@ -208,26 +175,8 @@ require_once __DIR__ . '/../../includes/header.php';
 
                 <!-- Password Section -->
                 <section class="settings-section">
-                    <h2><?= $isOIDCOnly ? 'Set Password' : 'Change Password' ?></h2>
+                    <h2>Change Password</h2>
 
-                    <?php if ($isOIDCOnly): ?>
-                    <p class="text-muted">Your account uses Single Sign-On (SSO). You can optionally set a local password to also log in with your username and password.</p>
-                    <form method="post">
-                        <div class="form-row-grid">
-                            <div class="form-group">
-                                <label for="new_password">New Password</label>
-                                <input type="password" id="new_password" name="new_password" class="form-input"
-                                       minlength="8" placeholder="Minimum 8 characters" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="confirm_password">Confirm Password</label>
-                                <input type="password" id="confirm_password" name="confirm_password" class="form-input"
-                                       placeholder="Re-enter password" required>
-                            </div>
-                        </div>
-                        <button type="submit" name="set_password" class="btn btn-primary">Set Password</button>
-                    </form>
-                    <?php else: ?>
                     <form method="post">
                         <div class="form-group">
                             <label for="current_password">Current Password</label>
@@ -248,7 +197,6 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                         <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
                     </form>
-                    <?php endif; ?>
                 </section>
 
                 <!-- Groups & Permissions Section -->

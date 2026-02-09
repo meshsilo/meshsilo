@@ -135,27 +135,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token if available
     if (function_exists('verifyCsrfToken') && !verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'Invalid security token. Please try again.';
-    } elseif (isset($_POST['repair_oauth_tables'])) {
-        // Repair OAuth tables for MySQL compatibility
-        try {
-            $db->exec('DROP TABLE IF EXISTS oauth_refresh_tokens');
-            $db->exec('DROP TABLE IF EXISTS oauth_access_tokens');
-            $db->exec('DROP TABLE IF EXISTS oauth_authorization_codes');
-            $db->exec('DROP TABLE IF EXISTS oauth_clients');
-
-            // Force recreation by loading OAuth2Provider
-            if (file_exists(__DIR__ . '/../../includes/OAuth2Provider.php')) {
-                require_once __DIR__ . '/../../includes/OAuth2Provider.php';
-                // Trigger table creation by calling a static method that initializes
-                if (class_exists('OAuth2Provider') && method_exists('OAuth2Provider', 'getClients')) {
-                    OAuth2Provider::getClients();
-                }
-            }
-
-            $message = 'OAuth tables have been recreated with correct schema.';
-        } catch (Exception $e) {
-            $error = 'Failed to repair OAuth tables: ' . $e->getMessage();
-        }
     } elseif (isset($_POST['repair_rate_limits'])) {
         // Repair rate_limits table schema
         try {

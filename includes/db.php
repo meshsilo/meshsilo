@@ -46,7 +46,8 @@ class DatabaseStatement {
                     // Positional placeholders - sort by key for proper ordering
                     ksort($execParams);
                 }
-                $this->bindTypedParams($execParams, $execTypes);
+                // Keys from bindValue() are already PDO-ready (1-based positional or named)
+                $this->bindTypedParams($execParams, $execTypes, false);
                 $this->stmt->execute();
             } else {
                 $this->stmt->execute();
@@ -63,10 +64,12 @@ class DatabaseStatement {
      * Detects PHP value types to use PDO::PARAM_INT for integers,
      * which is required for MySQL LIMIT/OFFSET clauses.
      */
-    private function bindTypedParams(array $params, array $types = []): void {
+    private function bindTypedParams(array $params, array $types = [], bool $adjustIndex = true): void {
         foreach ($params as $key => $value) {
             // PDO bindValue uses 1-based index for positional params
-            $bindKey = is_int($key) ? $key + 1 : $key;
+            // adjustIndex=true: external 0-based arrays need +1
+            // adjustIndex=false: pre-stored params from bindValue() are already PDO-ready
+            $bindKey = (is_int($key) && $adjustIndex) ? $key + 1 : $key;
 
             // Use explicitly provided type, or detect from PHP value type
             if (isset($types[$key])) {
@@ -388,7 +391,6 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
     permissions TEXT,
-    oidc_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -480,7 +482,6 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     is_admin TINYINT DEFAULT 0,
     permissions TEXT,
-    oidc_id VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -1006,15 +1007,6 @@ function runMigrations($db) {
         logInfo('Migration: Added permissions column to users table');
     }
 
-    // Migration: Add oidc_id column to users
-    if (!columnExists($db, 'users', 'oidc_id')) {
-        if ($type === 'mysql') {
-            $db->exec('ALTER TABLE users ADD COLUMN oidc_id VARCHAR(255)');
-        } else {
-            $db->exec('ALTER TABLE users ADD COLUMN oidc_id TEXT');
-        }
-        logInfo('Migration: Added oidc_id column to users table');
-    }
 
     // Migration: Add model columns
     $modelColumns = [
@@ -1139,11 +1131,6 @@ function runMigrations($db) {
         'allowed_extensions' => 'stl,3mf,gcode,zip',
         'auto_deduplication' => '0',
         'last_deduplication' => '',
-        'oidc_enabled' => '0',
-        'oidc_provider_url' => '',
-        'oidc_client_id' => '',
-        'oidc_client_secret' => '',
-        'oidc_button_text' => 'Sign in with SSO',
         'site_url' => '',
         'force_site_url' => '0',
         // Theme settings
@@ -1934,72 +1921,6 @@ function initializeDefaultSettings($db) {
         's3_region' => 'us-east-1',
         's3_path_style' => '0',
         's3_public_url' => '',
-
-        // OIDC
-        'oidc_enabled' => '0',
-        'oidc_provider_url' => '',
-        'oidc_client_id' => '',
-        'oidc_client_secret' => '',
-        'oidc_button_text' => 'Sign in with SSO',
-        'oidc_scopes' => '',
-        'oidc_username_claim' => 'preferred_username',
-        'oidc_pkce_enabled' => '1',
-        'oidc_auto_register' => '1',
-        'oidc_prompt' => '',
-        'oidc_acr_values' => '',
-        'oidc_redirect_uri' => '',
-        'oidc_groups_claim' => 'groups',
-        'oidc_group_mapping' => '',
-        'oidc_manage_groups' => '0',
-        'oidc_link_existing' => '1',
-        'oidc_default_group' => 'Users',
-        'oidc_single_logout' => '1',
-        'oidc_post_logout_uri' => '',
-
-        // SAML
-        'saml_enabled' => '0',
-        'saml_idp_entity_id' => '',
-        'saml_idp_sso_url' => '',
-        'saml_idp_slo_url' => '',
-        'saml_idp_certificate' => '',
-        'saml_idp_metadata_url' => '',
-        'saml_sp_entity_id' => '',
-        'saml_sp_certificate' => '',
-        'saml_sp_private_key' => '',
-        'saml_acs_url' => '',
-        'saml_username_attribute' => 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
-        'saml_email_attribute' => 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
-        'saml_groups_attribute' => 'http://schemas.microsoft.com/ws/2008/06/identity/claims/groups',
-        'saml_auto_register' => '1',
-        'saml_name_id_format' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-        'saml_sign_requests' => '0',
-        'saml_require_signature' => '0',
-        'saml_sync_groups' => '0',
-        'saml_group_mapping' => '{}',
-        'saml_remove_unmapped_groups' => '0',
-
-        // LDAP
-        'ldap_enabled' => '0',
-        'ldap_host' => '',
-        'ldap_port' => '389',
-        'ldap_use_ssl' => '0',
-        'ldap_use_tls' => '0',
-        'ldap_base_dn' => '',
-        'ldap_bind_dn' => '',
-        'ldap_bind_password' => '',
-        'ldap_user_filter' => '(sAMAccountName=%s)',
-        'ldap_username_attribute' => 'sAMAccountName',
-        'ldap_email_attribute' => 'mail',
-        'ldap_display_name_attribute' => 'displayName',
-        'ldap_groups_attribute' => 'memberOf',
-        'ldap_search_scope' => 'subtree',
-        'ldap_follow_referrals' => '0',
-        'ldap_timeout' => '10',
-        'ldap_sync_groups' => '0',
-        'ldap_auto_register' => '1',
-        'ldap_group_mapping' => '{}',
-        'ldap_remove_unmapped_groups' => '0',
-        'ldap_disable_missing_users' => '0',
 
         // Rate limiting
         'rate_limiting' => '1',

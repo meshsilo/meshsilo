@@ -252,7 +252,7 @@ function checkStorageHealth() {
 }
 
 function checkCacheHealth() {
-    $cachePath = defined('CACHE_PATH') ? CACHE_PATH : __DIR__ . '/../../cache';
+    $cachePath = defined('CACHE_PATH') ? CACHE_PATH : __DIR__ . '/../../storage/cache';
 
     if (!is_dir($cachePath)) {
         return [
@@ -313,19 +313,6 @@ function checkSearchHealth() {
 
 function checkExternalServices() {
     $services = [];
-
-    // Check OIDC if configured
-    $oidcEnabled = getSetting('oidc_enabled', '0') === '1';
-    if ($oidcEnabled) {
-        $oidcEndpoint = getSetting('oidc_discovery_url', '');
-        if ($oidcEndpoint) {
-            $services['oidc'] = [
-                'name' => 'OIDC Provider',
-                'status' => 'configured',
-                'message' => 'OIDC authentication enabled'
-            ];
-        }
-    }
 
     // Check S3 if configured
     $s3Enabled = getSetting('storage_type', 'local') === 's3' || getSetting('backup_s3_enabled', '0') === '1';

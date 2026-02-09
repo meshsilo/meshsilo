@@ -49,15 +49,6 @@ $settingsMap = [
     'MESHSILO_SITE_DESCRIPTION' => 'site_description',
     'MESHSILO_SITE_URL' => 'site_url',
 
-    // OIDC settings
-    'MESHSILO_OIDC_ENABLED' => 'oidc_enabled',
-    'MESHSILO_OIDC_PROVIDER_URL' => 'oidc_provider_url',
-    'MESHSILO_OIDC_CLIENT_ID' => 'oidc_client_id',
-    'MESHSILO_OIDC_CLIENT_SECRET' => 'oidc_client_secret',
-    'MESHSILO_OIDC_REDIRECT_URI' => 'oidc_redirect_uri',
-    'MESHSILO_OIDC_SCOPES' => 'oidc_scopes',
-    'MESHSILO_OIDC_BUTTON_TEXT' => 'oidc_button_text',
-
     // Application settings
     'MESHSILO_ALLOWED_EXTENSIONS' => 'allowed_extensions',
     'MESHSILO_MODELS_PER_PAGE' => 'models_per_page',

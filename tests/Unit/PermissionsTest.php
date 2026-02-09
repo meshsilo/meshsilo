@@ -64,9 +64,6 @@ class PermissionsTest extends SiloTestCase {
     public function testAdminPermissionsContainsIntegrationPermissions(): void {
         $this->assertContains(PERM_MANAGE_API_KEYS, ADMIN_PERMISSIONS);
         $this->assertContains(PERM_MANAGE_WEBHOOKS, ADMIN_PERMISSIONS);
-        $this->assertContains(PERM_MANAGE_OAUTH, ADMIN_PERMISSIONS);
-        $this->assertContains(PERM_MANAGE_LDAP, ADMIN_PERMISSIONS);
-        $this->assertContains(PERM_MANAGE_SCIM, ADMIN_PERMISSIONS);
     }
 
     public function testGetAllPermissionsReturnsArray(): void {

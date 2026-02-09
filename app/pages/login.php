@@ -3,12 +3,6 @@ require_once 'includes/config.php';
 
 $error = '';
 
-// Check for OIDC error from callback
-if (isset($_SESSION['oidc_error'])) {
-    $error = $_SESSION['oidc_error'];
-    unset($_SESSION['oidc_error']);
-}
-
 // Check for session timeout message
 if (isset($_SESSION['session_timeout_message'])) {
     $error = $_SESSION['session_timeout_message'];

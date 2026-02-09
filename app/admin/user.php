@@ -215,10 +215,6 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <label>Account Created</label>
                                     <input type="text" class="form-input" value="<?= date('F j, Y g:i A', strtotime($user['created_at'])) ?>" disabled>
                                 </div>
-                                <div class="form-group">
-                                    <label>OIDC Linked</label>
-                                    <input type="text" class="form-input" value="<?= $user['oidc_id'] ? 'Yes (' . htmlspecialchars(substr($user['oidc_id'], 0, 20)) . '...)' : 'No' ?>" disabled>
-                                </div>
                             </div>
                             <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
                         </form>

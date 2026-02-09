@@ -38,14 +38,6 @@ if (isset($_GET['force_update_check'])) {
     exit;
 }
 
-// Handle OIDC test connection AJAX request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_oidc'])) {
-    header('Content-Type: application/json');
-    $result = testOIDCConnection();
-    echo json_encode($result);
-    exit;
-}
-
 // Handle demo reset request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['demo_reset'])) {
     if (getSetting('demo_mode', '0') === '1') {
@@ -165,24 +157,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $allowedExtensions = implode(',', $formats);
 
-    // OIDC settings
-    $oidcEnabled = isset($_POST['oidc_enabled']) ? '1' : '0';
-    $oidcProviderUrl = trim($_POST['oidc_provider_url'] ?? '');
-    $oidcClientId = trim($_POST['oidc_client_id'] ?? '');
-    $oidcClientSecret = trim($_POST['oidc_client_secret'] ?? '');
-    $oidcButtonText = trim($_POST['oidc_button_text'] ?? 'Sign in with SSO');
-    $oidcScopes = trim($_POST['oidc_scopes'] ?? '');
-    $oidcUsernameClaim = trim($_POST['oidc_username_claim'] ?? 'preferred_username');
-    $oidcAutoRegister = isset($_POST['oidc_auto_register']) ? '1' : '0';
-    $oidcLinkExisting = isset($_POST['oidc_link_existing']) ? '1' : '0';
-    $oidcPkceEnabled = isset($_POST['oidc_pkce_enabled']) ? '1' : '0';
-    $oidcSingleLogout = isset($_POST['oidc_single_logout']) ? '1' : '0';
-    $oidcDefaultGroup = trim($_POST['oidc_default_group'] ?? 'Users');
-    $oidcGroupsClaim = trim($_POST['oidc_groups_claim'] ?? 'groups');
-    $oidcGroupMapping = trim($_POST['oidc_group_mapping'] ?? '');
-    $oidcManageGroups = isset($_POST['oidc_manage_groups']) ? '1' : '0';
-    $oidcRedirectUri = trim($_POST['oidc_redirect_uri'] ?? '');
-
     // Site settings (stored in database, not config file)
     $siteName = trim($_POST['site_name'] ?? 'MeshSilo');
     $siteDescription = trim($_POST['site_description'] ?? '3D Model Storage');
@@ -202,26 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($maxFileSize > 10240) $maxFileSize = 10240; // Cap at 10GB
     setSetting('max_file_size', (string)($maxFileSize * 1024 * 1024));
 
-    setSetting('oidc_enabled', $oidcEnabled);
-    setSetting('oidc_provider_url', $oidcProviderUrl);
-    setSetting('oidc_client_id', $oidcClientId);
-    if (!empty($oidcClientSecret)) {
-        setSetting('oidc_client_secret', $oidcClientSecret);
-    }
-    setSetting('oidc_button_text', $oidcButtonText);
-    setSetting('oidc_scopes', $oidcScopes);
-    setSetting('oidc_username_claim', $oidcUsernameClaim);
-    setSetting('oidc_auto_register', $oidcAutoRegister);
-    setSetting('oidc_link_existing', $oidcLinkExisting);
-    setSetting('oidc_pkce_enabled', $oidcPkceEnabled);
-    setSetting('oidc_single_logout', $oidcSingleLogout);
-    setSetting('oidc_default_group', $oidcDefaultGroup);
-    setSetting('oidc_groups_claim', $oidcGroupsClaim);
-    setSetting('oidc_group_mapping', $oidcGroupMapping);
-    setSetting('oidc_manage_groups', $oidcManageGroups);
-    setSetting('oidc_redirect_uri', $oidcRedirectUri);
-    // Clear OIDC config cache when settings change
-    clearOIDCConfigCache();
     setSetting('site_url', $siteUrl);
     setSetting('force_site_url', $forceSiteUrl);
 
@@ -254,8 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'auto_convert_stl' => $autoConvert,
         'allow_registration' => $allowRegistration,
         'require_approval' => $requireApproval,
-        'allowed_extensions' => $allowedExtensions,
-        'oidc_enabled' => $oidcEnabled
+        'allowed_extensions' => $allowedExtensions
     ]);
 
     $message = 'Settings saved successfully.';
@@ -470,180 +423,6 @@ require_once __DIR__ . '/../../includes/header.php';
                     </details>
 
                     <details class="settings-section">
-                        <summary><h2>Single Sign-On (OIDC)</h2></summary>
-                        <p class="form-help" style="margin-bottom: 1rem;">Configure OpenID Connect to allow users to sign in with an external identity provider (Google, Azure AD, Keycloak, Authentik, etc.)</p>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="oidc_enabled" <?= ($settings['oidc_enabled'] ?? '0') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Enable OIDC Authentication</span>
-                            </label>
-                        </div>
-
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">Provider Configuration</h3>
-
-                        <div class="form-group">
-                            <label for="oidc_provider_url">Provider URL</label>
-                            <input type="url" id="oidc_provider_url" name="oidc_provider_url" class="form-input"
-                                value="<?= htmlspecialchars($settings['oidc_provider_url'] ?? '') ?>"
-                                placeholder="https://accounts.google.com">
-                            <p class="form-help">The base URL of your OIDC provider. The discovery endpoint (/.well-known/openid-configuration) will be appended automatically.</p>
-                            <details class="provider-presets" style="margin-top: 0.5rem;">
-                                <summary style="cursor: pointer; color: var(--primary-color);">Common provider URLs</summary>
-                                <ul style="margin: 0.5rem 0 0 1rem; font-size: 0.875rem;">
-                                    <li><strong>Google:</strong> <code>https://accounts.google.com</code></li>
-                                    <li><strong>Microsoft:</strong> <code>https://login.microsoftonline.com/{tenant}/v2.0</code></li>
-                                    <li><strong>Okta:</strong> <code>https://{domain}.okta.com</code></li>
-                                    <li><strong>Auth0:</strong> <code>https://{domain}.auth0.com</code></li>
-                                    <li><strong>Keycloak:</strong> <code>https://{host}/realms/{realm}</code></li>
-                                    <li><strong>Authentik:</strong> <code>https://{host}/application/o/{slug}</code></li>
-                                </ul>
-                            </details>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="oidc_client_id">Client ID</label>
-                            <input type="text" id="oidc_client_id" name="oidc_client_id" class="form-input"
-                                value="<?= htmlspecialchars($settings['oidc_client_id'] ?? '') ?>"
-                                placeholder="your-client-id">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="oidc_client_secret">Client Secret</label>
-                            <input type="password" id="oidc_client_secret" name="oidc_client_secret" class="form-input"
-                                placeholder="<?= !empty($settings['oidc_client_secret']) ? '••••••••' : 'your-client-secret' ?>">
-                            <p class="form-help">Leave blank to keep existing secret.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="oidc_scopes">Scopes</label>
-                            <input type="text" id="oidc_scopes" name="oidc_scopes" class="form-input"
-                                value="<?= htmlspecialchars($settings['oidc_scopes'] ?? '') ?>"
-                                placeholder="openid email profile">
-                            <p class="form-help">Space-separated list of scopes. Default: <code>openid email profile</code>. Add <code>groups</code> for group mapping.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Redirect URI</label>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <code class="code-block" style="flex: 1; word-break: break-all;"><?= htmlspecialchars(getOIDCRedirectUri()) ?></code>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('<?= htmlspecialchars(getOIDCRedirectUri()) ?>')">Copy</button>
-                            </div>
-                            <p class="form-help">Add this URL to your OIDC provider's allowed redirect URIs.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="oidc_redirect_uri">Custom Redirect URI (Optional)</label>
-                            <input type="url" id="oidc_redirect_uri" name="oidc_redirect_uri" class="form-input"
-                                value="<?= htmlspecialchars($settings['oidc_redirect_uri'] ?? '') ?>"
-                                placeholder="Leave blank to auto-detect">
-                            <p class="form-help">Override the auto-detected redirect URI. Useful when behind a reverse proxy.</p>
-                        </div>
-
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">User Settings</h3>
-
-                        <div class="form-group">
-                            <label for="oidc_username_claim">Username Claim</label>
-                            <select id="oidc_username_claim" name="oidc_username_claim" class="form-input">
-                                <?php
-                                $claims = ['preferred_username', 'name', 'email', 'sub', 'nickname', 'given_name'];
-                                $currentClaim = $settings['oidc_username_claim'] ?? 'preferred_username';
-                                foreach ($claims as $claim): ?>
-                                <option value="<?= $claim ?>" <?= $currentClaim === $claim ? 'selected' : '' ?>><?= $claim ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="form-help">Which OIDC claim to use for the username. Falls back to email or sub if not available.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="oidc_default_group">Default Group for New Users</label>
-                            <input type="text" id="oidc_default_group" name="oidc_default_group" class="form-input"
-                                value="<?= htmlspecialchars($settings['oidc_default_group'] ?? 'Users') ?>"
-                                placeholder="Users">
-                            <p class="form-help">New OIDC users will be added to this group. Leave blank to not assign a default group.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="oidc_auto_register" <?= ($settings['oidc_auto_register'] ?? '1') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Auto-register new users</span>
-                            </label>
-                            <p class="form-help">Automatically create accounts for new OIDC users. If disabled, accounts must be pre-created.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="oidc_link_existing" <?= ($settings['oidc_link_existing'] ?? '1') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Link existing accounts by email</span>
-                            </label>
-                            <p class="form-help">If an OIDC user's email matches an existing local account, link them together.</p>
-                        </div>
-
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">Security</h3>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="oidc_pkce_enabled" <?= ($settings['oidc_pkce_enabled'] ?? '1') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Enable PKCE (Recommended)</span>
-                            </label>
-                            <p class="form-help">Proof Key for Code Exchange adds additional security. Most modern providers support this.</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="oidc_single_logout" <?= ($settings['oidc_single_logout'] ?? '1') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Single Logout (SLO)</span>
-                            </label>
-                            <p class="form-help">When users log out, also log them out of the identity provider (if supported).</p>
-                        </div>
-
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">Group Mapping</h3>
-
-                        <div class="form-group">
-                            <label for="oidc_groups_claim">Groups Claim Name</label>
-                            <input type="text" id="oidc_groups_claim" name="oidc_groups_claim" class="form-input"
-                                value="<?= htmlspecialchars($settings['oidc_groups_claim'] ?? 'groups') ?>"
-                                placeholder="groups">
-                            <p class="form-help">The claim in the OIDC response that contains user groups/roles. Common values: <code>groups</code>, <code>roles</code>, <code>cognito:groups</code></p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="oidc_group_mapping">Group Mapping (JSON)</label>
-                            <textarea id="oidc_group_mapping" name="oidc_group_mapping" class="form-input" rows="4"
-                                placeholder='{"oidc-admins": "Administrators", "oidc-users": "Users"}'><?= htmlspecialchars($settings['oidc_group_mapping'] ?? '') ?></textarea>
-                            <p class="form-help">Map OIDC groups to Silo groups. Format: <code>{"oidc_group": "silo_group"}</code></p>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" name="oidc_manage_groups" <?= ($settings['oidc_manage_groups'] ?? '0') === '1' ? 'checked' : '' ?>>
-                                <span class="toggle-switch"></span>
-                                <span>Fully manage groups from OIDC</span>
-                            </label>
-                            <p class="form-help">If enabled, users will be removed from Silo groups they're no longer members of in OIDC. If disabled, groups are only added, never removed.</p>
-                        </div>
-
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">Appearance</h3>
-
-                        <div class="form-group">
-                            <label for="oidc_button_text">Login Button Text</label>
-                            <input type="text" id="oidc_button_text" name="oidc_button_text" class="form-input"
-                                value="<?= htmlspecialchars($settings['oidc_button_text'] ?? 'Sign in with SSO') ?>">
-                            <p class="form-help">The text displayed on the SSO login button.</p>
-                        </div>
-
-                        <div class="form-group" style="margin-top: 1.5rem;">
-                            <button type="button" id="test-oidc" class="btn btn-secondary">Test Connection</button>
-                            <div id="oidc-test-result" style="margin-top: 0.5rem;"></div>
-                        </div>
-                    </details>
-
-                    <details class="settings-section">
                         <summary><h2>Email / SMTP Settings</h2></summary>
                         <p class="form-help" style="margin-bottom: 1rem;">Configure email settings for password reset links, notifications, and other system emails.</p>
 
@@ -818,67 +597,6 @@ require_once __DIR__ . '/../../includes/header.php';
         </div>
 
 <script>
-// Test OIDC button
-const testOidcBtn = document.getElementById('test-oidc');
-if (testOidcBtn) {
-    testOidcBtn.addEventListener('click', async function() {
-        const resultDiv = document.getElementById('oidc-test-result');
-        const btn = this;
-
-        btn.disabled = true;
-        btn.textContent = 'Testing...';
-        resultDiv.innerHTML = '';
-
-        try {
-            const formData = new FormData();
-            formData.append('test_oidc', '1');
-
-            const response = await fetch('settings.php', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                let html = '<div class="alert alert-success" style="margin: 0;">' +
-                    '<strong>Connection successful!</strong>' +
-                    '<div style="margin-top: 0.5rem; font-size: 0.875rem;">' +
-                    '<div><strong>Issuer:</strong> ' + result.issuer + '</div>' +
-                    '<div><strong>PKCE Support:</strong> ' + (result.pkce_supported ? '✓ Yes' : '✗ No') + '</div>';
-
-                if (result.endpoints) {
-                    html += '<details style="margin-top: 0.5rem;"><summary style="cursor: pointer;">Endpoints</summary>' +
-                        '<ul style="margin: 0.25rem 0 0 1rem; padding: 0;">';
-                    for (const [key, value] of Object.entries(result.endpoints)) {
-                        html += '<li><strong>' + key + ':</strong> <code style="font-size: 0.75rem; word-break: break-all;">' + value + '</code></li>';
-                    }
-                    html += '</ul></details>';
-                }
-
-                if (result.scopes_supported && result.scopes_supported.length > 0) {
-                    html += '<details style="margin-top: 0.5rem;"><summary style="cursor: pointer;">Supported Scopes</summary>' +
-                        '<code style="font-size: 0.75rem;">' + result.scopes_supported.join(', ') + '</code></details>';
-                }
-
-                html += '</div></div>';
-                resultDiv.innerHTML = html;
-            } else {
-                resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-                    '<strong>Connection failed:</strong> ' + result.message +
-                    '</div>';
-            }
-        } catch (error) {
-            resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-                '<strong>Error:</strong> ' + error.message +
-                '</div>';
-        }
-
-        btn.disabled = false;
-        btn.textContent = 'Test Connection';
-    });
-}
-
 // Email driver toggle - show/hide SMTP settings
 const mailDriverSelect = document.getElementById('mail_driver');
 if (mailDriverSelect) {
