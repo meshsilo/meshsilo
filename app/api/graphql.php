@@ -69,6 +69,50 @@ $query = $input['query'];
 $variables = $input['variables'] ?? null;
 $operationName = $input['operationName'] ?? null;
 
+// Query length limit (prevent DoS via extremely large queries)
+$maxQueryLength = 10000;
+if (strlen($query) > $maxQueryLength) {
+    http_response_code(400);
+    echo json_encode([
+        'errors' => [['message' => "Query too large. Maximum length is $maxQueryLength characters."]]
+    ]);
+    exit;
+}
+
+// Query depth limit (prevent DoS via deeply nested queries)
+$maxDepth = 10;
+$depth = 0;
+$maxFound = 0;
+for ($i = 0; $i < strlen($query); $i++) {
+    if ($query[$i] === '{') {
+        $depth++;
+        if ($depth > $maxFound) {
+            $maxFound = $depth;
+        }
+    } elseif ($query[$i] === '}') {
+        $depth--;
+    }
+}
+if ($maxFound > $maxDepth) {
+    http_response_code(400);
+    echo json_encode([
+        'errors' => [['message' => "Query depth exceeds maximum of $maxDepth levels."]]
+    ]);
+    exit;
+}
+
+// Block introspection queries in production
+$isDebug = defined('APP_DEBUG') && APP_DEBUG === true;
+if (!$isDebug) {
+    if (preg_match('/\b__schema\b|\b__type\b/i', $query)) {
+        http_response_code(400);
+        echo json_encode([
+            'errors' => [['message' => 'Introspection queries are disabled in production.']]
+        ]);
+        exit;
+    }
+}
+
 // Execute GraphQL query
 $result = GraphQL::execute($query, $variables, $userId);
 

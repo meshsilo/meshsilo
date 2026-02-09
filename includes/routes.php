@@ -72,7 +72,8 @@ $router->get('/reset-password', ['file' => 'app/pages/reset-password.php'], 'pas
 $router->post('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset.post');
 
 // SAML SSO
-$router->post('/saml-acs', ['file' => 'app/pages/saml-acs.php'], 'saml.acs');
+$router->post('/saml-acs', ['file' => 'app/pages/saml-acs.php'], 'saml.acs')
+    ->middleware('ratelimit:5,60,saml_acs'); // 5 attempts per minute
 $router->get('/saml-metadata', ['file' => 'app/pages/saml-metadata.php'], 'saml.metadata');
 
 $router->get('/install', ['file' => 'install.php'], 'install');
