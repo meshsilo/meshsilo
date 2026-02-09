@@ -212,6 +212,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 
     $message = 'Settings saved successfully.';
+
+    // Plugin hook: admin_settings_saved - plugins save their own settings from the same form
+    if (class_exists('PluginManager')) {
+        PluginManager::applyFilter('admin_settings_saved', null, $_POST);
+    }
 }
 
 // Get current settings
@@ -521,6 +526,10 @@ require_once __DIR__ . '/../../includes/header.php';
                             <p class="form-help">Save settings first, then send a test email to verify your configuration.</p>
                         </div>
                     </details>
+
+                    <?php if (class_exists('PluginManager')): ?>
+                    <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
+                    <?php endif; ?>
 
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary">Reset to Defaults</button>

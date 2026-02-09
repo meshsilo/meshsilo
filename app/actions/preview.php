@@ -57,6 +57,11 @@ if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
 // Get the real file path (handles deduplicated files)
 $filePath = getAbsoluteFilePath($part);
 
+// Plugin hook: preview_file_path - S3/remote storage for 3D viewer file serving
+if (class_exists('PluginManager')) {
+    $filePath = PluginManager::applyFilter('preview_file_path', $filePath, $part);
+}
+
 if (!$filePath || !is_file($filePath)) {
     http_response_code(404);
     die('File not found on disk');

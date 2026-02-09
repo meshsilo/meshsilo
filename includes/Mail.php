@@ -296,6 +296,17 @@ class Mail {
             throw new \Exception("No body specified");
         }
 
+        if (class_exists('PluginManager')) {
+            $mailData = PluginManager::applyFilter('mail_before_send', [
+                'to' => $this->to,
+                'subject' => $this->subject,
+                'body' => $this->body,
+            ]);
+            $this->to = $mailData['to'] ?? $this->to;
+            $this->subject = $mailData['subject'] ?? $this->subject;
+            $this->body = $mailData['body'] ?? $this->body;
+        }
+
         switch ($this->driver) {
             case 'smtp':
                 return $this->sendSmtp();

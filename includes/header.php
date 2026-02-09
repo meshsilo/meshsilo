@@ -99,6 +99,12 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <?= Csrf::metaTag() ?>
     <?= Csrf::ajaxSetupScript() ?>
     <?php endif; ?>
+<?php if (class_exists('PluginManager')): ?>
+<?= PluginManager::getInstance()->renderStyles() ?>
+<?php endif; ?>
+<?php if (class_exists('PluginManager')): ?>
+<?= PluginManager::applyFilter('head_tags', '') ?>
+<?php endif; ?>
 </head>
 <body>
     <header class="site-header">
@@ -124,6 +130,14 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 <?php if (canUpload()): ?>
                 <a href="<?= route('upload') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
                 <?php endif; ?>
+<?php if (class_exists('PluginManager')):
+    $pluginNavItems = PluginManager::applyFilter('nav_items', []);
+    foreach ($pluginNavItems as $navItem): ?>
+    <a href="<?= htmlspecialchars($navItem['url'] ?? '#') ?>" <?= !empty($navItem['active']) ? 'class="active"' : '' ?>>
+        <?php if (!empty($navItem['icon'])): ?><i data-feather="<?= htmlspecialchars($navItem['icon']) ?>"></i> <?php endif; ?>
+        <?= htmlspecialchars($navItem['label'] ?? '') ?>
+    </a>
+<?php endforeach; endif; ?>
             </nav>
             <div class="header-actions">
                 <form action="<?= route('browse') ?>" method="get" style="display: contents;">

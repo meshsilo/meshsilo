@@ -65,6 +65,10 @@ if (!$showArchived) {
 
 $whereClause = implode(' AND ', $where);
 
+if (class_exists('PluginManager')) {
+    $whereClause = PluginManager::applyFilter('browse_query_where', $whereClause, $params);
+}
+
 // Sort options
 $orderBy = match($sort) {
     'oldest' => 'm.created_at ASC',
@@ -284,6 +288,11 @@ require_once 'includes/header.php';
                         <option value="<?= buildUrl(['sort' => 'size', 'page' => 1]) ?>" <?= $sort === 'size' ? 'selected' : '' ?>>Largest First</option>
                         <option value="<?= buildUrl(['sort' => 'parts', 'page' => 1]) ?>" <?= $sort === 'parts' ? 'selected' : '' ?>>Most Parts</option>
                         <option value="<?= buildUrl(['sort' => 'downloads', 'page' => 1]) ?>" <?= $sort === 'downloads' ? 'selected' : '' ?>>Most Downloads</option>
+                        <?php if (class_exists('PluginManager')):
+                            $pluginSortOptions = PluginManager::applyFilter('browse_sort_options', []);
+                            foreach ($pluginSortOptions as $val => $label): ?>
+                            <option value="<?= htmlspecialchars($val) ?>" <?= ($sort ?? '') === $val ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+                        <?php endforeach; endif; ?>
                     </select>
 
                     <?php if (isFeatureEnabled('categories') && !empty($categories)): ?>
@@ -302,6 +311,10 @@ require_once 'includes/header.php';
                         <option value="<?= buildUrl(['tag' => $tag['id'], 'page' => 1]) ?>" <?= $tagId == $tag['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tag['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <?php endif; ?>
+
+                    <?php if (class_exists('PluginManager')): ?>
+                    <?= PluginManager::applyFilter('browse_filters', '') ?>
                     <?php endif; ?>
 
                     <?php if ($search || $categoryId || $tagId): ?>

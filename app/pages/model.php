@@ -600,6 +600,10 @@ require_once 'includes/header.php';
                         </div>
                         <?php endif; ?>
 
+                        <?php if (class_exists('PluginManager')): ?>
+                        <?= PluginManager::applyFilter('model_detail_sidebar', '', $model) ?>
+                        <?php endif; ?>
+
                         <div class="model-actions" style="margin-top: 1rem;">
                             <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>
@@ -635,6 +639,19 @@ require_once 'includes/header.php';
                     <div class="markdown-content"><?= Markdown::render($model['description']) ?></div>
                 </div>
                 <?php endif; ?>
+
+                <?php if (class_exists('PluginManager')):
+                    $pluginTabs = PluginManager::applyFilter('model_detail_tabs', [], $model);
+                    if (!empty($pluginTabs)): ?>
+                    <div class="plugin-tabs">
+                    <?php foreach ($pluginTabs as $tab): ?>
+                        <div class="model-section">
+                            <h2><?= htmlspecialchars($tab['label'] ?? '') ?></h2>
+                            <?= $tab['content'] ?? '' ?>
+                        </div>
+                    <?php endforeach; ?>
+                    </div>
+                <?php endif; endif; ?>
 
                 <?php if (isFeatureEnabled('version_history') && $versionCount > 0): ?>
                 <div class="model-version-history" id="upload-version">
@@ -801,6 +818,9 @@ require_once 'includes/header.php';
                                             <?php endif; ?>
                                         </div>
                                     </div>
+                                    <?php if (class_exists('PluginManager')): ?>
+                                    <?= PluginManager::applyFilter('part_row_actions', '', $part) ?>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>

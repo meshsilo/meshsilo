@@ -168,6 +168,11 @@ function checkServices() {
     // External services
     $services['external'] = checkExternalServices();
 
+    // Plugin hook: health_checks - custom service health checks (S3, Redis, external APIs)
+    if (class_exists('PluginManager')) {
+        $services = PluginManager::applyFilter('health_checks', $services);
+    }
+
     return $services;
 }
 

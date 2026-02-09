@@ -57,8 +57,23 @@ if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
     downloadError(403, 'Access denied');
 }
 
+// Plugin hook: before_download - access control, quota checks, download analytics
+if (class_exists('PluginManager')) {
+    $allowed = PluginManager::applyFilter('before_download', true, $part, getCurrentUser());
+    if ($allowed !== true) {
+        http_response_code(403);
+        echo is_string($allowed) ? $allowed : 'Download blocked';
+        exit;
+    }
+}
+
 // Get the real file path (handles deduplicated files)
 $filePath = getAbsoluteFilePath($part);
+
+// Plugin hook: download_file_path - S3/remote storage, CDN integration
+if (class_exists('PluginManager')) {
+    $filePath = PluginManager::applyFilter('download_file_path', $filePath, $part);
+}
 
 if (!$filePath || !is_file($filePath)) {
     logError('Download failed: file not found on disk', [

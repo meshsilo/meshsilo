@@ -134,6 +134,14 @@ try {
             break;
 
         default:
+            // Plugin hook: api_routes - custom API endpoints for integrations, external services
+            if (class_exists('PluginManager')) {
+                $pluginApiRoutes = PluginManager::applyFilter('api_routes', []);
+                if (isset($pluginApiRoutes[$resource]) && is_callable($pluginApiRoutes[$resource])) {
+                    call_user_func($pluginApiRoutes[$resource], $method, $id, $subResource, $apiUser);
+                    exit;
+                }
+            }
             apiError('Not found', 404);
     }
 } catch (Exception $e) {

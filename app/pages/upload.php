@@ -389,6 +389,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             logInfo('ZIP extraction complete', ['file' => $originalName, 'parent_id' => $parentId, 'parts' => $uploadedCount, 'folder' => $folderId]);
+
+                            if (class_exists('PluginManager')) {
+                                PluginManager::applyFilter('after_upload', null, $parentId, [
+                                    'name' => $name,
+                                    'file_type' => $extension,
+                                    'user_id' => isLoggedIn() ? (getCurrentUser()['id'] ?? null) : null
+                                ]);
+                            }
                         } else {
                             $error = 'Failed to create model entry.';
                             // Clean up empty folder if parent creation failed
@@ -438,6 +446,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Update parent with part count
                         updateParentModel($db, $parentId, 1, $fileSize);
                         logInfo('Single file upload complete', ['file' => $originalName, 'parent_id' => $parentId, 'folder' => $folderId]);
+
+                        if (class_exists('PluginManager')) {
+                            PluginManager::applyFilter('after_upload', null, $parentId, [
+                                'name' => $name,
+                                'file_type' => $extension,
+                                'user_id' => isLoggedIn() ? (getCurrentUser()['id'] ?? null) : null
+                            ]);
+                        }
                     } else {
                         $error = 'Failed to save uploaded file.';
                         logError('Failed to save single model file', ['file' => $originalName, 'name' => $name]);
@@ -572,6 +588,10 @@ require_once 'includes/header.php';
                         </div>
                     </div>
                 </details>
+
+                <?php if (class_exists('PluginManager')): ?>
+                <?= PluginManager::applyFilter('upload_form_fields', '') ?>
+                <?php endif; ?>
 
                 <div class="form-actions">
                     <a href="<?= route('home') ?>" class="btn btn-secondary">Cancel</a>

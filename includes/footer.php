@@ -32,6 +32,14 @@
         <?php endif; ?>
     </footer>
 
+<?php if (class_exists('PluginManager')): ?>
+<?= PluginManager::applyFilter('footer_content', '') ?>
+<?php endif; ?>
+
+    <?php if (class_exists('PluginManager')): ?>
+    <?= PluginManager::getInstance()->renderScripts() ?>
+    <?php endif; ?>
+
     <script>
     // Collapsible sections
     document.addEventListener('DOMContentLoaded', function() {
