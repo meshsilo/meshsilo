@@ -1,6 +1,6 @@
 <?php
 /**
- * Logout handler with OIDC single logout support
+ * Logout handler with plugin-extensible redirect
  */
 
 // Start session if not already started
@@ -8,45 +8,34 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Include full config for settings and OIDC functions
+// Include full config
 require_once 'includes/config.php';
 
 // Get user info before destroying session
 $userId = $_SESSION['user_id'] ?? null;
 $username = $_SESSION['user']['username'] ?? 'unknown';
-$idToken = $_SESSION['oidc_id_token'] ?? null;
-$wasOIDCUser = !empty($_SESSION['user']['oidc_id']) || !empty($idToken);
+
+// Capture session data plugins may need for logout (e.g., OIDC tokens)
+$preLogoutData = $_SESSION;
 
 // Log the logout
 if ($userId) {
     logAuthEvent('logout', $username, true, [
-        'user_id' => $userId,
-        'method' => $wasOIDCUser ? 'oidc' : 'password'
+        'user_id' => $userId
     ]);
 
-    // Log activity if enabled
     if (function_exists('logActivity')) {
-        logActivity('logout', 'user', $userId, $username, ['method' => $wasOIDCUser ? 'oidc' : 'password']);
+        logActivity('logout', 'user', $userId, $username);
     }
 }
 
 // Destroy the local session
 session_destroy();
 
-// Check if we should do OIDC single logout
-$oidcSingleLogout = getSetting('oidc_single_logout', '1') === '1';
+// Let plugins determine where to redirect (e.g., OIDC provider logout)
+$redirectUrl = class_exists('PluginManager')
+    ? PluginManager::applyFilter('logout_redirect', route('login'), $userId, $preLogoutData)
+    : route('login');
 
-if ($wasOIDCUser && $oidcSingleLogout && isOIDCEnabled()) {
-    // Get OIDC logout URL
-    $logoutUrl = getOIDCLogoutUrl($idToken);
-
-    if ($logoutUrl) {
-        // Redirect to OIDC provider's logout endpoint
-        header('Location: ' . $logoutUrl);
-        exit;
-    }
-}
-
-// Default: redirect to login page
-header('Location: ' . route('login'));
+header('Location: ' . $redirectUrl);
 exit;

@@ -96,18 +96,6 @@ if ($forceSiteUrl && !empty($siteUrl) && php_sapi_name() !== 'cli') {
     }
 }
 
-// Pages that don't require authentication (old direct-access pattern)
-$publicPages = ['login.php', 'oidc-callback.php', 'install.php', 'forgot-password.php', 'reset-password.php'];
-
-// Routes that don't require authentication (router pattern)
-$publicRoutes = ['/login', '/logout', '/oidc-callback', '/install', '/forgot-password', '/reset-password'];
-
-// Get current page filename (for direct access)
-$currentPage = basename($_SERVER['PHP_SELF']);
-
-// Get current route (for router access)
-$currentRoute = '/' . trim($_GET['route'] ?? '', '/');
-
 // Check if user is logged in
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
@@ -118,20 +106,44 @@ function getCurrentUser() {
     return $_SESSION['user'] ?? null;
 }
 
-// Determine if current request is to a public page/route
-$isPublicPage = in_array($currentPage, $publicPages);
-$isPublicRoute = in_array($currentRoute, $publicRoutes);
+/**
+ * Enforce authentication for non-public pages/routes.
+ *
+ * This is wrapped in a function so it can be called from config.php AFTER
+ * plugins have loaded, allowing plugins to register additional public routes
+ * via the 'public_routes' filter.
+ */
+function enforceAuthentication(): void {
+    // Pages that don't require authentication (old direct-access pattern)
+    $publicPages = ['login.php', 'install.php', 'forgot-password.php', 'reset-password.php'];
 
-// Redirect to login if not authenticated (unless on public page/route or CLI)
-if (php_sapi_name() !== 'cli' && !isLoggedIn() && !$isPublicPage && !$isPublicRoute) {
-    logWarning('Unauthorized access attempt', [
-        'page' => $currentPage,
-        'route' => $currentRoute,
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
-    ]);
-    // Use route helper if available, otherwise fall back to /login
-    $loginUrl = function_exists('route') ? route('login') : '/login';
-    header('Location: ' . $loginUrl);
-    exit;
+    // Routes that don't require authentication (router pattern)
+    $publicRoutes = ['/login', '/logout', '/install', '/forgot-password', '/reset-password'];
+    if (class_exists('PluginManager')) {
+        $publicRoutes = PluginManager::applyFilter('public_routes', $publicRoutes);
+    }
+
+    // Get current page filename (for direct access)
+    $currentPage = basename($_SERVER['PHP_SELF']);
+
+    // Get current route (for router access)
+    $currentRoute = '/' . trim($_GET['route'] ?? '', '/');
+
+    // Determine if current request is to a public page/route
+    $isPublicPage = in_array($currentPage, $publicPages);
+    $isPublicRoute = in_array($currentRoute, $publicRoutes);
+
+    // Redirect to login if not authenticated (unless on public page/route)
+    if (!isLoggedIn() && !$isPublicPage && !$isPublicRoute) {
+        logWarning('Unauthorized access attempt', [
+            'page' => $currentPage,
+            'route' => $currentRoute,
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+        ]);
+        // Use route helper if available, otherwise fall back to /login
+        $loginUrl = function_exists('route') ? route('login') : '/login';
+        header('Location: ' . $loginUrl);
+        exit;
+    }
 }

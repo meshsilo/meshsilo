@@ -80,12 +80,9 @@ if (!defined('SITE_NAME') || !defined('SITE_DESCRIPTION') || !defined('SITE_URL'
     }
 }
 
-// Include authentication, permissions, OIDC, mail and licensing
+// Include authentication, permissions, mail and licensing
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/permissions.php';
-require_once __DIR__ . '/oidc.php';
-require_once __DIR__ . '/saml.php';
-require_once __DIR__ . '/ldap.php';
 require_once __DIR__ . '/Queue.php';
 require_once __DIR__ . '/Mail.php';
 // Include router and helpers (if not already loaded by front controller)
@@ -118,6 +115,19 @@ require_once __DIR__ . '/Search.php';
 require_once __DIR__ . '/Asset.php';
 require_once __DIR__ . '/HttpCache.php';
 require_once __DIR__ . '/ErrorHandler.php';
+
+// Load plugin system
+require_once __DIR__ . '/PluginManager.php';
+if (is_dir(dirname(__DIR__) . '/plugins')) {
+    $pluginManager = PluginManager::getInstance();
+    $pluginManager->discoverPlugins();
+    $pluginManager->loadActivePlugins();
+}
+
+// Enforce authentication (after plugins load so they can register public routes)
+if (php_sapi_name() !== 'cli') {
+    enforceAuthentication();
+}
 
 // Load route definitions (for URL generation)
 // Only load if routes haven't been loaded yet

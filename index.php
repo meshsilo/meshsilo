@@ -46,7 +46,11 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
     if (function_exists('getSetting') && getSetting('maintenance_mode', '0') === '1') {
         if (!function_exists('isAdmin') || !isAdmin()) {
             // Allow login route during maintenance
-            if (!in_array($routePath, ['/login', '/logout', '/oidc-callback'])) {
+            $bypassRoutes = ['/login', '/logout'];
+            if (class_exists('PluginManager')) {
+                $bypassRoutes = PluginManager::applyFilter('maintenance_bypass_routes', $bypassRoutes);
+            }
+            if (!in_array($routePath, $bypassRoutes)) {
                 require_once __DIR__ . '/includes/middleware/MaintenanceMiddleware.php';
                 $maintenance = new MaintenanceMiddleware();
                 $maintenance->handle([]);

@@ -24,6 +24,7 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.scheduler') ?>" <?= ($adminPage ?? '') === 'scheduler' ? 'class="active"' : '' ?>>Scheduled Tasks</a>
                             <a href="<?= route('admin.stats') ?>" <?= ($adminPage ?? '') === 'stats' ? 'class="active"' : '' ?>>Statistics</a>
                             <a href="<?= route('admin.rum') ?>" <?= ($adminPage ?? '') === 'rum' ? 'class="active"' : '' ?>>Real User Monitoring</a>
+                            <a href="<?= route('admin.plugins') ?>" <?= ($adminPage ?? '') === 'plugins' ? 'class="active"' : '' ?>>Plugins</a>
                         </div>
                     </div>
 
@@ -38,9 +39,6 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.users') ?>" <?= ($adminPage ?? '') === 'users' ? 'class="active"' : '' ?>>Users</a>
                             <a href="<?= route('admin.groups') ?>" <?= ($adminPage ?? '') === 'groups' ? 'class="active"' : '' ?>>Groups</a>
                             <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active"' : '' ?>>Sessions</a>
-                            <?php if (isFeatureEnabled('sso')): ?>
-                            <a href="<?= route('admin.sso') ?>" <?= ($adminPage ?? '') === 'sso' ? 'class="active"' : '' ?>>Single Sign-On</a>
-                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -115,6 +113,28 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active"' : '' ?>>CLI Tools</a>
                         </div>
                     </div>
+<?php
+if (class_exists('PluginManager')) {
+    $pluginMenuGroups = PluginManager::getInstance()->getAdminMenuItems();
+    foreach ($pluginMenuGroups as $category => $items):
+?>
+                    <div class="nav-category" data-category="plugin-<?= htmlspecialchars(strtolower(str_replace(' ', '-', $category))) ?>">
+                        <button class="nav-section" type="button" aria-expanded="true">
+                            <span><?= htmlspecialchars($category) ?></span>
+                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 4.5L6 7.5L9 4.5"/>
+                            </svg>
+                        </button>
+                        <div class="nav-links">
+                            <?php foreach ($items as $item): ?>
+                            <a href="<?= route($item['route'] ?? 'admin.plugins') ?>" <?= ($adminPage ?? '') === $item['slug'] ? 'class="active"' : '' ?>><?= htmlspecialchars($item['label']) ?></a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+<?php
+    endforeach;
+}
+?>
                 </nav>
             </aside>
 

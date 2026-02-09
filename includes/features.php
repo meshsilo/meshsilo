@@ -82,7 +82,7 @@ function getMissingDependencies(string $feature): array {
 
 // Define available features with metadata
 function getAvailableFeatures(): array {
-    return [
+    $features = [
         'teams' => [
             'name' => 'Teams',
             'description' => 'Team workspaces for sharing models with groups of users',
@@ -279,13 +279,6 @@ function getAvailableFeatures(): array {
             'category' => 'Integration',
             'default' => true,
         ],
-        'sso' => [
-            'name' => 'Single Sign-On',
-            'description' => 'External authentication via OIDC, SAML, LDAP/AD, and SCIM user provisioning',
-            'icon' => 'unlock',
-            'category' => 'Authentication',
-            'default' => true,
-        ],
         'local_accounts' => [
             'name' => 'Local Accounts',
             'description' => 'Allow users to register and login with local username/password',
@@ -294,6 +287,11 @@ function getAvailableFeatures(): array {
             'default' => true,
         ],
     ];
+
+    if (class_exists('PluginManager')) {
+        $features = PluginManager::applyFilter('available_features', $features);
+    }
+    return $features;
 }
 
 /**
@@ -461,7 +459,6 @@ function getFeaturePresets(): array {
                 'dark_theme' => true,
                 'model_notes' => false,
                 'slicer_integration' => false,
-                'sso' => false,
                 'local_accounts' => true,
             ],
         ],
@@ -497,7 +494,6 @@ function getFeaturePresets(): array {
                 'dark_theme' => true,
                 'model_notes' => true,
                 'slicer_integration' => true,
-                'sso' => true,
                 'local_accounts' => true,
             ],
         ],
@@ -533,7 +529,6 @@ function getFeaturePresets(): array {
                 'dark_theme' => true,
                 'model_notes' => true,
                 'slicer_integration' => true,
-                'sso' => true,
                 'local_accounts' => true,
             ],
         ],

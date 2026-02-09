@@ -130,13 +130,17 @@ require_once 'includes/header.php';
                     <button type="submit" class="btn btn-primary btn-full">Log In</button>
                 </form>
 
-                <?php if (isOIDCEnabled()): ?>
+                <?php
+                $loginButtons = class_exists('PluginManager') ? PluginManager::applyFilter('login_buttons', []) : [];
+                if (!empty($loginButtons)): ?>
                 <div class="auth-divider">
                     <span>or</span>
                 </div>
-                <a href="<?= htmlspecialchars(getOIDCAuthUrl()) ?>" class="btn btn-secondary btn-full btn-oidc">
-                    <?= htmlspecialchars(getSetting('oidc_button_text', 'Sign in with SSO')) ?>
+                <?php foreach ($loginButtons as $button): ?>
+                <a href="<?= htmlspecialchars($button['url']) ?>" class="btn btn-secondary btn-full <?= htmlspecialchars($button['class'] ?? '') ?>">
+                    <?= htmlspecialchars($button['text']) ?>
                 </a>
+                <?php endforeach; ?>
                 <?php endif; ?>
             </div>
         </div>

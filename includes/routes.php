@@ -62,7 +62,6 @@ $router->get('/login', ['file' => 'app/pages/login.php'], 'login');
 $router->post('/login', ['file' => 'app/pages/login.php'], 'login.post')
     ->middleware('ratelimit:5,60,auth'); // 5 attempts per minute
 $router->get('/logout', ['file' => 'app/pages/logout.php'], 'logout');
-$router->get('/oidc-callback', ['file' => 'app/pages/oidc-callback.php'], 'oidc.callback');
 
 // Password Reset
 $router->get('/forgot-password', ['file' => 'app/pages/forgot-password.php'], 'password.forgot');
@@ -70,11 +69,6 @@ $router->post('/forgot-password', ['file' => 'app/pages/forgot-password.php'], '
     ->middleware('ratelimit:3,60,password_reset'); // 3 attempts per minute
 $router->get('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset');
 $router->post('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset.post');
-
-// SAML SSO
-$router->post('/saml-acs', ['file' => 'app/pages/saml-acs.php'], 'saml.acs')
-    ->middleware('ratelimit:5,60,saml_acs'); // 5 attempts per minute
-$router->get('/saml-metadata', ['file' => 'app/pages/saml-metadata.php'], 'saml.metadata');
 
 $router->get('/install', ['file' => 'install.php'], 'install');
 $router->post('/install', ['file' => 'install.php'], 'install.post');
@@ -278,6 +272,9 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Features toggle (admin only)
     $router->post('/features', ['file' => 'app/actions/features.php'], 'actions.features');
+
+    // Plugins
+    $router->any('/plugins', ['file' => 'app/actions/plugins.php'], 'action.plugins');
 });
 
 // ============================================================================
@@ -308,15 +305,6 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     // Sessions
     $router->get('/sessions', ['file' => 'app/admin/sessions.php'], 'admin.sessions');
     $router->post('/sessions', ['file' => 'app/admin/sessions.php'], 'admin.sessions.action');
-
-    // Single Sign-On (unified page for OIDC, SAML, LDAP, SCIM, OAuth)
-    $router->get('/sso', ['file' => 'app/admin/sso.php'], 'admin.sso');
-    $router->post('/sso', ['file' => 'app/admin/sso.php'], 'admin.sso.save');
-
-    // Legacy routes redirect to unified SSO page
-    $router->get('/scim', ['file' => 'app/admin/sso.php', 'redirect_tab' => 'scim'], 'admin.scim');
-    $router->get('/ldap', ['file' => 'app/admin/sso.php', 'redirect_tab' => 'ldap'], 'admin.ldap');
-    $router->get('/oauth-clients', ['file' => 'app/admin/sso.php', 'redirect_tab' => 'oauth'], 'admin.oauth-clients');
 
     // Categories
     $router->get('/categories', ['file' => 'app/admin/categories.php'], 'admin.categories');
@@ -384,7 +372,58 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
 
     // Routes (debugging)
     $router->get('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes');
+
+    // Plugins
+    $router->get('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins');
+    $router->post('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins.action');
 });
+
+// Plugin assets (path:.+ allows subdirectories like css/style.css)
+$router->get('/plugin-assets/{pluginId}/{path:.+}', function($params) {
+    $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($params['pluginId'] ?? ''));
+    $path = $params['path'] ?? '';
+
+    if ($pluginId === '' || $path === '') {
+        http_response_code(400);
+        exit;
+    }
+
+    $assetsBase = dirname(__DIR__) . '/plugins/' . $pluginId . '/assets';
+    $file = $assetsBase . '/' . $path;
+
+    // Security: use realpath to prevent path traversal
+    $realBase = realpath($assetsBase);
+    if ($realBase === false) {
+        http_response_code(404);
+        exit;
+    }
+    $realFile = realpath($file);
+    if ($realFile === false || !str_starts_with($realFile, $realBase . DIRECTORY_SEPARATOR)) {
+        http_response_code(404);
+        exit;
+    }
+    if (!is_file($realFile)) {
+        http_response_code(404);
+        exit;
+    }
+
+    $ext = strtolower(pathinfo($realFile, PATHINFO_EXTENSION));
+    $mimeTypes = [
+        'css' => 'text/css',
+        'js' => 'application/javascript',
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'svg' => 'image/svg+xml',
+        'woff' => 'font/woff',
+        'woff2' => 'font/woff2',
+    ];
+    header('Content-Type: ' . ($mimeTypes[$ext] ?? 'application/octet-stream'));
+    header('Cache-Control: public, max-age=86400');
+    readfile($realFile);
+    exit;
+}, 'plugin.assets');
 
 // ============================================================================
 // API ROUTES
@@ -416,5 +455,10 @@ $router->group(['prefix' => '/api'], function($router) {
 //     $router->post('/migrate', ['file' => 'cli/migrate.php'], 'cli.migrate');
 //     $router->post('/dedup', ['file' => 'cli/dedup.php'], 'cli.dedup');
 // });
+
+// Register plugin routes
+if (class_exists('PluginManager')) {
+    PluginManager::getInstance()->registerRoutes($router);
+}
 
 return $router;
