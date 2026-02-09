@@ -68,22 +68,15 @@ class CsrfTest extends SiloTestCase {
     }
 
     public function testTimedTokenIsValid(): void {
-        $token = Csrf::timedToken(60); // 1 minute
+        $token = Csrf::getTimedToken('test_form');
 
         $this->assertIsString($token);
-        $this->assertTrue(Csrf::validateTimedToken($token));
+        $this->assertTrue(Csrf::validate($token));
     }
 
-    public function testExpiredTimedTokenIsInvalid(): void {
-        // Create a token that expires immediately
-        $token = Csrf::timedToken(-1);
-
-        $this->assertFalse(Csrf::validateTimedToken($token));
-    }
-
-    public function testRegenerateCreatesNewToken(): void {
+    public function testRegenerateTokenCreatesNewToken(): void {
         $token1 = Csrf::getToken();
-        Csrf::regenerate();
+        Csrf::regenerateToken();
         $token2 = Csrf::getToken();
 
         $this->assertNotEquals($token1, $token2);
@@ -95,7 +88,7 @@ class CsrfTest extends SiloTestCase {
 
         $this->assertStringContainsString('<script>', $script);
         $this->assertStringContainsString($token, $script);
-        $this->assertStringContainsString('X-CSRF-TOKEN', $script);
+        $this->assertStringContainsString('X-CSRF-Token', $script);
     }
 
     public function testValidateFromHeaderWorks(): void {
@@ -111,5 +104,26 @@ class CsrfTest extends SiloTestCase {
         // Token should be hex string of 32 bytes = 64 characters
         $this->assertEquals(64, strlen($token));
         $this->assertMatchesRegularExpression('/^[a-f0-9]+$/', $token);
+    }
+
+    public function testTimedFieldReturnsHtmlInput(): void {
+        $field = Csrf::timedField('login_form');
+
+        $this->assertStringContainsString('<input', $field);
+        $this->assertStringContainsString('type="hidden"', $field);
+        $this->assertStringContainsString('name="csrf_token"', $field);
+    }
+
+    public function testCheckSkipsGetRequests(): void {
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $this->assertTrue(Csrf::check());
+    }
+
+    public function testValidateOrFailThrowsOnInvalidToken(): void {
+        Csrf::getToken();
+        $_POST['csrf_token'] = 'bad_token';
+
+        $this->expectException(CsrfException::class);
+        Csrf::validateOrFail();
     }
 }

@@ -315,7 +315,7 @@ class JobQueue {
 // Base Job Class
 // ========================================
 
-abstract class Job {
+abstract class BaseJob {
     protected array $data = [];
 
     public function __construct(array $data = []) {
@@ -342,7 +342,7 @@ abstract class Job {
 // Example Jobs
 // ========================================
 
-class GenerateThumbnailJob extends Job {
+class GenerateThumbnailJob extends BaseJob {
     public function handle(): void {
         $modelId = $this->data['model_id'] ?? null;
         if (!$modelId) return;
@@ -355,7 +355,7 @@ class GenerateThumbnailJob extends Job {
     }
 }
 
-class AnalyzeMeshJob extends Job {
+class AnalyzeMeshJob extends BaseJob {
     public function handle(): void {
         $modelId = $this->data['model_id'] ?? null;
         if (!$modelId) return;
@@ -368,7 +368,7 @@ class AnalyzeMeshJob extends Job {
     }
 }
 
-class OptimizeImageJob extends Job {
+class OptimizeImageJob extends BaseJob {
     public function handle(): void {
         $path = $this->data['path'] ?? null;
         if (!$path) return;
@@ -387,13 +387,17 @@ class OptimizeImageJob extends Job {
 /**
  * Dispatch a job to the queue
  */
-function dispatch(string $jobClass, array $data = [], string $queue = 'default'): int {
-    return JobQueue::getInstance()->push($jobClass, $data, $queue);
+if (!function_exists('dispatch')) {
+    function dispatch(string $jobClass, array $data = [], string $queue = 'default'): int {
+        return JobQueue::getInstance()->push($jobClass, $data, $queue);
+    }
 }
 
 /**
  * Dispatch a job to run later
  */
-function dispatch_later(int $delay, string $jobClass, array $data = [], string $queue = 'default'): int {
-    return JobQueue::getInstance()->later($delay, $jobClass, $data, $queue);
+if (!function_exists('dispatch_later')) {
+    function dispatch_later(int $delay, string $jobClass, array $data = [], string $queue = 'default'): int {
+        return JobQueue::getInstance()->later($delay, $jobClass, $data, $queue);
+    }
 }

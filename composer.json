@@ -46,9 +46,9 @@
         ]
     },
     "autoload-dev": {
-        "psr-4": {
-            "Silo\\Tests\\": "tests/"
-        }
+        "classmap": [
+            "tests/"
+        ]
     },
     "scripts": {
         "test": "phpunit",

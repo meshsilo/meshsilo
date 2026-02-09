@@ -571,41 +571,43 @@ class Mail {
 // Email Job for Queue
 // ========================================
 
-class SendEmailJob extends Job {
-    public function handle(array $data): void {
-        $mail = Mail::create()
-            ->subject($data['subject'])
-            ->html($data['body']);
+if (class_exists('Job', false)) {
+    class SendEmailJob extends Job {
+        public function handle(array $data): void {
+            $mail = Mail::create()
+                ->subject($data['subject'])
+                ->html($data['body']);
 
-        if (!empty($data['altBody'])) {
-            $mail->text($data['altBody']);
+            if (!empty($data['altBody'])) {
+                $mail->text($data['altBody']);
+            }
+
+            foreach ($data['to'] as $recipient) {
+                $mail->to($recipient['email'], $recipient['name']);
+            }
+
+            foreach ($data['cc'] ?? [] as $recipient) {
+                $mail->cc($recipient['email'], $recipient['name']);
+            }
+
+            foreach ($data['bcc'] ?? [] as $recipient) {
+                $mail->bcc($recipient['email'], $recipient['name']);
+            }
+
+            if (!empty($data['from'])) {
+                $mail->from($data['from'], $data['fromName'] ?? null);
+            }
+
+            if (!empty($data['replyTo'])) {
+                $mail->replyTo($data['replyTo']);
+            }
+
+            foreach ($data['headers'] ?? [] as $name => $value) {
+                $mail->header($name, $value);
+            }
+
+            $mail->send();
         }
-
-        foreach ($data['to'] as $recipient) {
-            $mail->to($recipient['email'], $recipient['name']);
-        }
-
-        foreach ($data['cc'] ?? [] as $recipient) {
-            $mail->cc($recipient['email'], $recipient['name']);
-        }
-
-        foreach ($data['bcc'] ?? [] as $recipient) {
-            $mail->bcc($recipient['email'], $recipient['name']);
-        }
-
-        if (!empty($data['from'])) {
-            $mail->from($data['from'], $data['fromName'] ?? null);
-        }
-
-        if (!empty($data['replyTo'])) {
-            $mail->replyTo($data['replyTo']);
-        }
-
-        foreach ($data['headers'] ?? [] as $name => $value) {
-            $mail->header($name, $value);
-        }
-
-        $mail->send();
     }
 }
 

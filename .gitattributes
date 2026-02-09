@@ -1,0 +1,55 @@
+# Auto detect text files and normalize line endings
+* text=auto
+
+# PHP files
+*.php text eol=lf
+
+# Web files
+*.css text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Config files
+*.md text eol=lf
+*.txt text eol=lf
+*.env text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.htaccess text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.stl binary
+*.3mf binary
+*.obj binary
+*.ply binary
+*.glb binary
+*.fbx binary
+*.step binary
+*.stp binary
+*.iges binary
+*.igs binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

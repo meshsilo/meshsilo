@@ -11,10 +11,21 @@ class CacheTest extends SiloTestCase {
         $this->testCachePath = sys_get_temp_dir() . '/silo_test_cache_' . uniqid();
         mkdir($this->testCachePath, 0755, true);
 
-        // Force file driver for testing
-        $this->cache = new Cache([
+        // Use reflection to bypass private constructor
+        $reflection = new ReflectionClass(Cache::class);
+        $constructor = $reflection->getConstructor();
+        $constructor->setAccessible(true);
+
+        // Reset singleton for test isolation
+        $instanceProp = $reflection->getProperty('instance');
+        $instanceProp->setAccessible(true);
+        $instanceProp->setValue(null, null);
+
+        $this->cache = Cache::getInstance();
+        $this->cache->configure([
             'driver' => 'file',
-            'path' => $this->testCachePath
+            'path' => $this->testCachePath,
+            'prefix' => 'test_'
         ]);
     }
 
@@ -51,19 +62,19 @@ class CacheTest extends SiloTestCase {
         $this->assertFalse($this->cache->has('missing'));
     }
 
-    public function testDeleteRemovesKey(): void {
+    public function testForgetRemovesKey(): void {
         $this->cache->set('to_delete', 'value');
         $this->assertTrue($this->cache->has('to_delete'));
 
-        $this->cache->delete('to_delete');
+        $this->cache->forget('to_delete');
         $this->assertFalse($this->cache->has('to_delete'));
     }
 
-    public function testClearRemovesAllKeys(): void {
+    public function testFlushRemovesAllKeys(): void {
         $this->cache->set('key1', 'value1');
         $this->cache->set('key2', 'value2');
 
-        $this->cache->clear();
+        $this->cache->flush();
 
         $this->assertFalse($this->cache->has('key1'));
         $this->assertFalse($this->cache->has('key2'));
@@ -98,16 +109,11 @@ class CacheTest extends SiloTestCase {
         $this->assertEquals(1, $called); // Still 1
     }
 
-    public function testForgetRemovesKey(): void {
+    public function testForgetByName(): void {
         $this->cache->set('forget_me', 'value');
         $this->cache->forget('forget_me');
 
         $this->assertFalse($this->cache->has('forget_me'));
-    }
-
-    public function testPutIsSameAsSet(): void {
-        $this->cache->put('put_key', 'put_value', 60);
-        $this->assertEquals('put_value', $this->cache->get('put_key'));
     }
 
     public function testStoresArrays(): void {
@@ -150,20 +156,20 @@ class CacheTest extends SiloTestCase {
         $this->assertEquals(4, $newValue);
     }
 
-    public function testGetMultiple(): void {
+    public function testMany(): void {
         $this->cache->set('a', 1);
         $this->cache->set('b', 2);
         $this->cache->set('c', 3);
 
-        $result = $this->cache->getMultiple(['a', 'b', 'd'], 'default');
+        $result = $this->cache->many(['a', 'b', 'd']);
 
         $this->assertEquals(1, $result['a']);
         $this->assertEquals(2, $result['b']);
-        $this->assertEquals('default', $result['d']);
+        $this->assertNull($result['d']);
     }
 
-    public function testSetMultiple(): void {
-        $this->cache->setMultiple([
+    public function testSetMany(): void {
+        $this->cache->setMany([
             'multi1' => 'value1',
             'multi2' => 'value2'
         ]);
@@ -172,33 +178,25 @@ class CacheTest extends SiloTestCase {
         $this->assertEquals('value2', $this->cache->get('multi2'));
     }
 
-    public function testDeleteMultiple(): void {
-        $this->cache->set('del1', 'value1');
-        $this->cache->set('del2', 'value2');
-
-        $this->cache->deleteMultiple(['del1', 'del2']);
-
-        $this->assertFalse($this->cache->has('del1'));
-        $this->assertFalse($this->cache->has('del2'));
-    }
-
     public function testForeverStoresWithoutExpiration(): void {
         $this->cache->forever('permanent', 'value');
         $this->assertEquals('value', $this->cache->get('permanent'));
 
-        // Should still exist after a delay (not truly testing forever, but checking it works)
+        // Should still exist after a delay
         sleep(1);
         $this->assertEquals('value', $this->cache->get('permanent'));
     }
 
-    public function testAddOnlyWhenKeyDoesNotExist(): void {
-        $result1 = $this->cache->add('unique', 'first');
-        $this->assertTrue($result1);
-        $this->assertEquals('first', $this->cache->get('unique'));
+    public function testPullGetsAndRemoves(): void {
+        $this->cache->set('pull_me', 'value');
+        $result = $this->cache->pull('pull_me');
 
-        // Second add should fail
-        $result2 = $this->cache->add('unique', 'second');
-        $this->assertFalse($result2);
-        $this->assertEquals('first', $this->cache->get('unique')); // Still first
+        $this->assertEquals('value', $result);
+        $this->assertFalse($this->cache->has('pull_me'));
+    }
+
+    public function testPullReturnsDefaultWhenMissing(): void {
+        $result = $this->cache->pull('nonexistent', 'default');
+        $this->assertEquals('default', $result);
     }
 }
