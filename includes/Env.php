@@ -24,6 +24,10 @@ class Env {
             return;
         }
 
+        // Mark as loaded early to prevent infinite recursion from variable interpolation
+        // (processValue -> get -> load cycle when ${VAR} references exist)
+        self::$loaded = true;
+
         self::$path = $path ?? dirname(__DIR__) . '/.env';
 
         if (!file_exists(self::$path)) {
@@ -75,7 +79,6 @@ class Env {
             }
         }
 
-        self::$loaded = true;
     }
 
     /**
