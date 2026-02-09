@@ -3,7 +3,7 @@
  * Event System for Silo
  *
  * A simple publish/subscribe event system for application-wide events.
- * Supports listeners, webhooks, and logging.
+ * Supports listeners, logging, and plugin-extensible event handling.
  *
  * Usage:
  *   Events::on('model.uploaded', function($data) { ... });
@@ -13,7 +13,6 @@
 class Events {
     private static array $listeners = [];
     private static bool $initialized = false;
-    private static bool $webhooksEnabled = true;
     private static bool $loggingEnabled = true;
 
     /**
@@ -69,7 +68,6 @@ class Events {
 
         // Load settings if available
         if (function_exists('getSetting')) {
-            self::$webhooksEnabled = getSetting('webhooks_enabled', '1') === '1';
             self::$loggingEnabled = getSetting('event_logging', '1') === '1';
         }
 
@@ -191,9 +189,9 @@ class Events {
             }
         }
 
-        // Trigger webhooks if enabled
-        if (self::$webhooksEnabled) {
-            self::triggerWebhooks($event, $data, $async);
+        // Allow plugins to handle event dispatching (e.g., webhooks)
+        if (class_exists('PluginManager')) {
+            PluginManager::applyFilter('event_dispatched', null, $event, $data);
         }
 
         return $results;
@@ -255,160 +253,6 @@ class Events {
             $stmt->execute();
         } catch (Exception $e) {
             // Silently fail to avoid disrupting the application
-        }
-    }
-
-    /**
-     * Trigger webhooks for an event
-     */
-    private static function triggerWebhooks(string $event, array $data, bool $async): void {
-        try {
-            if (!function_exists('getDB')) {
-                return;
-            }
-
-            $db = getDB();
-
-            // Check if webhooks table exists
-            $tableCheck = $db->querySingle("SELECT name FROM sqlite_master WHERE type='table' AND name='webhooks'");
-            if (!$tableCheck) {
-                return;
-            }
-
-            // Get webhooks that match this event
-            $stmt = $db->prepare('
-                SELECT * FROM webhooks
-                WHERE is_active = 1
-                AND (events LIKE :event_pattern OR events LIKE :wildcard_pattern OR events = "*")
-            ');
-            $stmt->bindValue(':event_pattern', '%"' . $event . '"%', PDO::PARAM_STR);
-
-            // Also check for wildcard patterns (e.g., "model.*")
-            $eventParts = explode('.', $event);
-            $wildcardEvent = $eventParts[0] . '.*';
-            $stmt->bindValue(':wildcard_pattern', '%"' . $wildcardEvent . '"%', PDO::PARAM_STR);
-
-            $result = $stmt->execute();
-
-            while ($webhook = $result->fetchArray(PDO::FETCH_ASSOC)) {
-                $payload = [
-                    'event' => $event,
-                    'timestamp' => $data['_timestamp'],
-                    'data' => array_diff_key($data, array_flip(['_event', '_timestamp', '_user_id']))
-                ];
-
-                if ($async) {
-                    self::sendWebhookAsync($webhook, $payload);
-                } else {
-                    self::sendWebhook($webhook, $payload);
-                }
-            }
-        } catch (Exception $e) {
-            if (function_exists('logError')) {
-                logError('Webhook trigger error: ' . $e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Send a webhook request
-     */
-    private static function sendWebhook(array $webhook, array $payload): bool {
-        $url = $webhook['url'];
-        $secret = $webhook['secret'] ?? '';
-
-        $jsonPayload = json_encode($payload);
-        $signature = hash_hmac('sha256', $jsonPayload, $secret);
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $jsonPayload,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'X-Silo-Signature: sha256=' . $signature,
-                'X-Silo-Event: ' . $payload['event'],
-                'User-Agent: Silo-Webhook/1.0'
-            ]
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        // Log webhook delivery
-        self::logWebhookDelivery($webhook['id'], $payload['event'], $httpCode, $error);
-
-        return $httpCode >= 200 && $httpCode < 300;
-    }
-
-    /**
-     * Send webhook asynchronously (non-blocking)
-     */
-    private static function sendWebhookAsync(array $webhook, array $payload): void {
-        // For true async, we'd use a job queue
-        // For now, use a very short timeout
-        $url = $webhook['url'];
-        $secret = $webhook['secret'] ?? '';
-
-        $jsonPayload = json_encode($payload);
-        $signature = hash_hmac('sha256', $jsonPayload, $secret);
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $jsonPayload,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT_MS => 500, // Very short timeout
-            CURLOPT_NOSIGNAL => true,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'X-Silo-Signature: sha256=' . $signature,
-                'X-Silo-Event: ' . $payload['event'],
-                'User-Agent: Silo-Webhook/1.0'
-            ]
-        ]);
-
-        curl_exec($ch);
-        curl_close($ch);
-    }
-
-    /**
-     * Log webhook delivery attempt
-     */
-    private static function logWebhookDelivery(int $webhookId, string $event, int $httpCode, string $error): void {
-        try {
-            if (!function_exists('getDB')) {
-                return;
-            }
-
-            $db = getDB();
-
-            // Check if webhook_logs table exists
-            $tableCheck = $db->querySingle("SELECT name FROM sqlite_master WHERE type='table' AND name='webhook_logs'");
-            if (!$tableCheck) {
-                return;
-            }
-
-            $stmt = $db->prepare('
-                INSERT INTO webhook_logs (webhook_id, event, http_code, error, created_at)
-                VALUES (:webhook_id, :event, :http_code, :error, CURRENT_TIMESTAMP)
-            ');
-            $stmt->bindValue(':webhook_id', $webhookId, PDO::PARAM_INT);
-            $stmt->bindValue(':event', $event, PDO::PARAM_STR);
-            $stmt->bindValue(':http_code', $httpCode, PDO::PARAM_INT);
-            $stmt->bindValue(':error', $error ?: null, PDO::PARAM_STR);
-            $stmt->execute();
-
-            // Update webhook last_triggered
-            $updateStmt = $db->prepare('UPDATE webhooks SET last_triggered = CURRENT_TIMESTAMP WHERE id = :id');
-            $updateStmt->bindValue(':id', $webhookId, PDO::PARAM_INT);
-            $updateStmt->execute();
-        } catch (Exception $e) {
-            // Silently fail
         }
     }
 

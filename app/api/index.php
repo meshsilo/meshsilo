@@ -133,11 +133,6 @@ try {
             handleStatsRoute($method, $apiUser);
             break;
 
-        case 'webhooks':
-            require_once __DIR__ . '/routes/webhooks.php';
-            handleWebhooksRoute($method, $id, $apiUser);
-            break;
-
         default:
             apiError('Not found', 404);
     }

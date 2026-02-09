@@ -15,10 +15,6 @@ function getFeatureDependencies(): array {
     return [
         // Print history requires print queue functionality
         'print_history' => ['print_queue'],
-        // Scheduled reports requires activity log for data
-        'scheduled_reports' => ['activity_log'],
-        // Webhooks often used with API keys
-        'webhooks' => [],
         // Model analysis benefits from print history data
         'model_analysis' => [],
     ];
@@ -83,40 +79,12 @@ function getMissingDependencies(string $feature): array {
 // Define available features with metadata
 function getAvailableFeatures(): array {
     $features = [
-        'teams' => [
-            'name' => 'Teams',
-            'description' => 'Team workspaces for sharing models with groups of users',
-            'icon' => 'users',
-            'category' => 'Collaboration',
-            'default' => true,
-        ],
         'api_keys' => [
             'name' => 'API Keys',
             'description' => 'Programmatic access via REST API with key authentication',
             'icon' => 'key',
             'category' => 'Integration',
             'default' => true,
-        ],
-        'webhooks' => [
-            'name' => 'Webhooks',
-            'description' => 'Send HTTP notifications when events occur',
-            'icon' => 'webhook',
-            'category' => 'Integration',
-            'default' => true,
-        ],
-        'retention_policies' => [
-            'name' => 'Retention Policies',
-            'description' => 'Automated data retention, archiving, and legal holds',
-            'icon' => 'archive',
-            'category' => 'Compliance',
-            'default' => false,
-        ],
-        'scheduled_reports' => [
-            'name' => 'Scheduled Reports',
-            'description' => 'Automated report generation and email delivery',
-            'icon' => 'file-text',
-            'category' => 'Analytics',
-            'default' => false,
         ],
         'print_queue' => [
             'name' => 'Print Queue',
@@ -431,11 +399,7 @@ function getFeaturePresets(): array {
             'name' => 'Minimal',
             'description' => 'Core features only - uploading, browsing, and basic organization',
             'features' => [
-                'teams' => false,
                 'api_keys' => false,
-                'webhooks' => false,
-                'retention_policies' => false,
-                'scheduled_reports' => false,
                 'print_queue' => false,
                 'printers' => false,
                 'print_history' => false,
@@ -466,11 +430,7 @@ function getFeaturePresets(): array {
             'name' => 'Standard',
             'description' => 'Recommended for most users - includes collaboration and printing features',
             'features' => [
-                'teams' => true,
                 'api_keys' => false,
-                'webhooks' => false,
-                'retention_policies' => false,
-                'scheduled_reports' => false,
                 'print_queue' => true,
                 'printers' => true,
                 'print_history' => true,
@@ -501,11 +461,7 @@ function getFeaturePresets(): array {
             'name' => 'Enterprise',
             'description' => 'All features enabled - full integration, compliance, and analytics',
             'features' => [
-                'teams' => true,
                 'api_keys' => true,
-                'webhooks' => true,
-                'retention_policies' => true,
-                'scheduled_reports' => true,
                 'print_queue' => true,
                 'printers' => true,
                 'print_history' => true,
@@ -570,22 +526,6 @@ function getFeatureUsageStats(): array {
         $stats['api_keys'] = (int)$result;
     } catch (Exception $e) {
         $stats['api_keys'] = 0;
-    }
-
-    // Webhooks count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM webhooks");
-        $stats['webhooks'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['webhooks'] = 0;
-    }
-
-    // Teams count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM teams");
-        $stats['teams'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['teams'] = 0;
     }
 
     // Favorites count

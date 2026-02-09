@@ -22,14 +22,10 @@ define('PERM_ADMIN', 'admin');              // Full admin (all permissions)
 define('PERM_MANAGE_SESSIONS', 'manage_sessions');       // View/revoke user sessions
 define('PERM_MANAGE_SECURITY', 'manage_security');       // Security headers, encryption
 define('PERM_VIEW_AUDIT_LOG', 'view_audit_log');         // View audit trail
-define('PERM_MANAGE_RETENTION', 'manage_retention');     // Data retention policies
-
 // Permission constants - Integration
 define('PERM_MANAGE_API_KEYS', 'manage_api_keys');       // API key management
-define('PERM_MANAGE_WEBHOOKS', 'manage_webhooks');       // Webhook configuration
 
 // Permission constants - System Operations
-define('PERM_MANAGE_BACKUPS', 'manage_backups');         // Backup/restore operations
 define('PERM_MANAGE_SCHEDULER', 'manage_scheduler');     // Scheduled task management
 define('PERM_MANAGE_STORAGE', 'manage_storage');         // Storage configuration
 
@@ -44,11 +40,11 @@ define('ADMIN_PERMISSIONS', [
     PERM_MANAGE_USERS, PERM_MANAGE_GROUPS, PERM_MANAGE_CATEGORIES,
     PERM_MANAGE_COLLECTIONS, PERM_MANAGE_SETTINGS, PERM_VIEW_LOGS,
     // Security & Compliance
-    PERM_MANAGE_SESSIONS, PERM_MANAGE_SECURITY, PERM_VIEW_AUDIT_LOG, PERM_MANAGE_RETENTION,
+    PERM_MANAGE_SESSIONS, PERM_MANAGE_SECURITY, PERM_VIEW_AUDIT_LOG,
     // Integration
-    PERM_MANAGE_API_KEYS, PERM_MANAGE_WEBHOOKS,
+    PERM_MANAGE_API_KEYS,
     // System Operations
-    PERM_MANAGE_BACKUPS, PERM_MANAGE_SCHEDULER, PERM_MANAGE_STORAGE,
+    PERM_MANAGE_SCHEDULER, PERM_MANAGE_STORAGE,
     // Full admin
     PERM_ADMIN
 ]);
@@ -462,31 +458,10 @@ function canViewAuditLog() {
 }
 
 /**
- * Check if user can manage data retention
- */
-function canManageRetention() {
-    return hasPermission(PERM_MANAGE_RETENTION);
-}
-
-/**
  * Check if user can manage API keys
  */
 function canManageApiKeys() {
     return hasPermission(PERM_MANAGE_API_KEYS);
-}
-
-/**
- * Check if user can manage webhooks
- */
-function canManageWebhooks() {
-    return hasPermission(PERM_MANAGE_WEBHOOKS);
-}
-
-/**
- * Check if user can manage backups
- */
-function canManageBackups() {
-    return hasPermission(PERM_MANAGE_BACKUPS);
 }
 
 /**
@@ -507,7 +482,7 @@ function canManageStorage() {
  * Get list of all available permissions with descriptions
  */
 function getAllPermissions() {
-    return [
+    $permissions = [
         // Basic permissions
         PERM_UPLOAD => 'Upload new models',
         PERM_DELETE => 'Delete models',
@@ -526,24 +501,26 @@ function getAllPermissions() {
         PERM_MANAGE_SESSIONS => 'Manage user sessions',
         PERM_MANAGE_SECURITY => 'Manage security settings',
         PERM_VIEW_AUDIT_LOG => 'View audit log',
-        PERM_MANAGE_RETENTION => 'Manage data retention',
         // Integration
         PERM_MANAGE_API_KEYS => 'Manage API keys',
-        PERM_MANAGE_WEBHOOKS => 'Manage webhooks',
         // System Operations
-        PERM_MANAGE_BACKUPS => 'Manage backups & recovery',
         PERM_MANAGE_SCHEDULER => 'Manage scheduled tasks',
         PERM_MANAGE_STORAGE => 'Manage storage settings',
         // Full admin
         PERM_ADMIN => 'Full admin access (all permissions)'
     ];
+
+    if (class_exists('PluginManager')) {
+        $permissions = PluginManager::applyFilter('all_permissions', $permissions);
+    }
+    return $permissions;
 }
 
 /**
  * Get permissions grouped by category
  */
 function getPermissionsByCategory() {
-    return [
+    $categories = [
         'Basic' => [
             PERM_UPLOAD => 'Upload new models',
             PERM_DELETE => 'Delete models',
@@ -564,16 +541,13 @@ function getPermissionsByCategory() {
         'Security & Compliance' => [
             PERM_MANAGE_SECURITY => 'Manage security settings (headers, encryption)',
             PERM_VIEW_AUDIT_LOG => 'View audit log',
-            PERM_MANAGE_RETENTION => 'Manage data retention policies',
         ],
         'Integration' => [
             PERM_MANAGE_API_KEYS => 'Manage API keys',
-            PERM_MANAGE_WEBHOOKS => 'Manage webhooks',
         ],
         'System Operations' => [
             PERM_MANAGE_SETTINGS => 'Manage site settings',
             PERM_VIEW_LOGS => 'View system logs',
-            PERM_MANAGE_BACKUPS => 'Manage backups & recovery',
             PERM_MANAGE_SCHEDULER => 'Manage scheduled tasks',
             PERM_MANAGE_STORAGE => 'Manage storage settings',
         ],
@@ -581,4 +555,9 @@ function getPermissionsByCategory() {
             PERM_ADMIN => 'Full admin access (all permissions)'
         ]
     ];
+
+    if (class_exists('PluginManager')) {
+        $categories = PluginManager::applyFilter('permissions_by_category', $categories);
+    }
+    return $categories;
 }

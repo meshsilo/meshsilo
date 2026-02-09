@@ -20,10 +20,7 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.features') ?>" <?= ($adminPage ?? '') === 'features' ? 'class="active"' : '' ?>>Features</a>
                             <a href="<?= route('admin.storage') ?>" <?= ($adminPage ?? '') === 'storage' ? 'class="active"' : '' ?>>Storage</a>
                             <a href="<?= route('admin.database') ?>" <?= ($adminPage ?? '') === 'database' ? 'class="active"' : '' ?>>Database</a>
-                            <a href="<?= route('admin.backups') ?>" <?= ($adminPage ?? '') === 'backups' ? 'class="active"' : '' ?>>Backups</a>
                             <a href="<?= route('admin.scheduler') ?>" <?= ($adminPage ?? '') === 'scheduler' ? 'class="active"' : '' ?>>Scheduled Tasks</a>
-                            <a href="<?= route('admin.stats') ?>" <?= ($adminPage ?? '') === 'stats' ? 'class="active"' : '' ?>>Statistics</a>
-                            <a href="<?= route('admin.rum') ?>" <?= ($adminPage ?? '') === 'rum' ? 'class="active"' : '' ?>>Real User Monitoring</a>
                             <a href="<?= route('admin.plugins') ?>" <?= ($adminPage ?? '') === 'plugins' ? 'class="active"' : '' ?>>Plugins</a>
                         </div>
                     </div>
@@ -64,7 +61,7 @@ if (!function_exists('isFeatureEnabled')) {
                     </div>
                     <?php endif; ?>
 
-                    <?php if (isFeatureEnabled('api_keys') || isFeatureEnabled('webhooks')): ?>
+                    <?php if (isFeatureEnabled('api_keys')): ?>
                     <div class="nav-category" data-category="integration">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Integration</span>
@@ -73,12 +70,7 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
-                            <?php if (isFeatureEnabled('api_keys')): ?>
                             <a href="<?= route('admin.api-keys') ?>" <?= ($adminPage ?? '') === 'api-keys' ? 'class="active"' : '' ?>>API Keys</a>
-                            <?php endif; ?>
-                            <?php if (isFeatureEnabled('webhooks')): ?>
-                            <a href="<?= route('admin.webhooks') ?>" <?= ($adminPage ?? '') === 'webhooks' ? 'class="active"' : '' ?>>Webhooks</a>
-                            <?php endif; ?>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -94,9 +86,6 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active"' : '' ?>>Security Headers</a>
                             <?php if (isFeatureEnabled('activity_log')): ?>
                             <a href="<?= route('admin.audit-log') ?>" <?= ($adminPage ?? '') === 'audit-log' ? 'class="active"' : '' ?>>Audit Log</a>
-                            <?php endif; ?>
-                            <?php if (isFeatureEnabled('retention_policies')): ?>
-                            <a href="<?= route('admin.retention') ?>" <?= ($adminPage ?? '') === 'retention' ? 'class="active"' : '' ?>>Data Retention</a>
                             <?php endif; ?>
                         </div>
                     </div>

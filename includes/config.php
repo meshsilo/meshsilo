@@ -102,9 +102,6 @@ require_once __DIR__ . '/TwoFactor.php';
 require_once __DIR__ . '/Integrity.php';
 require_once __DIR__ . '/Scheduler.php';
 require_once __DIR__ . '/AuditLogger.php';
-require_once __DIR__ . '/RetentionManager.php';
-require_once __DIR__ . '/Analytics.php';
-require_once __DIR__ . '/DemoMode.php';
 
 // Load infrastructure components
 require_once __DIR__ . '/Csrf.php';

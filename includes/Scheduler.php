@@ -22,15 +22,9 @@ class Scheduler {
     public const TASK_CLEANUP_CACHE = 'cleanup:cache';
     public const TASK_CLEANUP_TEMP = 'cleanup:temp';
     public const TASK_CLEANUP_RATE_LIMITS = 'cleanup:rate_limits';
-    public const TASK_BACKUP_DATABASE = 'backup:database';
-    public const TASK_BACKUP_FULL = 'backup:full';
     public const TASK_INTEGRITY_CHECK = 'integrity:check';
     public const TASK_DEDUP_SCAN = 'dedup:scan';
-    public const TASK_STATS_CALCULATE = 'stats:calculate';
-    public const TASK_WEBHOOKS_RETRY = 'webhooks:retry';
-    public const TASK_DEMO_RESET = 'demo:reset';
     public const TASK_QUEUE_PROCESS = 'queue:process';
-    public const TASK_RETENTION_APPLY = 'retention:apply';
     public const TASK_THUMBNAILS_GENERATE = 'thumbnails:generate';
     public const TASK_MESH_ANALYZE = 'mesh:analyze';
 
@@ -459,31 +453,6 @@ class Scheduler {
             return 'Skipped';
         }, ['description' => 'Clean up old activity log entries']);
 
-        // Demo mode reset - every hour (only runs if demo mode is enabled)
-        self::register(self::TASK_DEMO_RESET, '0 * * * *', function() {
-            if (!function_exists('getSetting') || getSetting('demo_mode', '0') !== '1') {
-                return 'Demo mode not enabled, skipped';
-            }
-
-            if (!class_exists('DemoMode')) {
-                require_once __DIR__ . '/DemoMode.php';
-            }
-
-            $demo = new DemoMode();
-            $result = $demo->resetToDemo();
-
-            if ($result['success']) {
-                $msgs = implode('; ', $result['messages'] ?? []);
-                return "Demo reset completed: $msgs";
-            } else {
-                $errs = implode('; ', $result['errors'] ?? []);
-                throw new Exception("Demo reset failed: $errs");
-            }
-        }, [
-            'description' => 'Reset demo instance to sample data (hourly)',
-            'timeout' => 600,
-        ]);
-
         // Database optimization - weekly on Sunday at 5am
         self::register('maintenance:optimize', '0 5 * * 0', function() {
             if (function_exists('getDB')) {
@@ -526,17 +495,6 @@ class Scheduler {
             return "Processed {$processed} jobs, {$failed} failed";
         }, ['description' => 'Process background job queue']);
 
-        // Retention policy application - daily at 2am
-        self::register(self::TASK_RETENTION_APPLY, '0 2 * * *', function() {
-            if (!class_exists('RetentionManager')) {
-                require_once __DIR__ . '/RetentionManager.php';
-            }
-
-            $result = RetentionManager::applyAll();
-            $affected = $result['affected'] ?? 0;
-            return "Retention policies applied, {$affected} items affected";
-        }, ['description' => 'Apply data retention policies']);
-
         // Thumbnail generation - every 5 minutes
         self::register(self::TASK_THUMBNAILS_GENERATE, '*/5 * * * *', function() {
             if (!class_exists('ThumbnailGenerator')) {
@@ -574,6 +532,11 @@ class Scheduler {
             }
             return "Analyzed {$count} meshes";
         }, ['description' => 'Analyze mesh files for metadata']);
+
+        // Allow plugins to register scheduled tasks
+        if (class_exists('PluginManager')) {
+            self::$tasks = PluginManager::applyFilter('scheduled_tasks', self::$tasks);
+        }
     }
 
     /**

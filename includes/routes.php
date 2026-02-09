@@ -90,9 +90,8 @@ $router->group(['middleware' => ['auth']], function($router) {
     // Favorites
     $router->get('/favorites', ['file' => 'app/pages/favorites.php'], 'favorites');
 
-    // Print Queue & Analytics
+    // Print Queue
     $router->get('/print-queue', ['file' => 'app/pages/print-queue.php'], 'print-queue');
-    $router->get('/print-analytics', ['file' => 'app/pages/print-analytics.php'], 'print-analytics');
     $router->get('/printers', ['file' => 'app/pages/printers.php'], 'printers');
 
     // Upload (requires upload permission)
@@ -182,10 +181,6 @@ $router->group(['prefix' => '/actions'], function($router) {
     // Printer management
     $router->post('/printer', ['file' => 'app/actions/printer.php'], 'actions.printer');
 
-    // Print history
-    $router->get('/print-history', ['file' => 'app/actions/print-history.php'], 'actions.print.history');
-    $router->post('/print-history', ['file' => 'app/actions/print-history.php'], 'actions.print.history.post');
-
     // Print photos
     $router->post('/print-photo', ['file' => 'app/actions/print-photo.php'], 'actions.print.photo');
 
@@ -228,9 +223,6 @@ $router->group(['prefix' => '/actions'], function($router) {
     $router->post('/upload-version', ['file' => 'app/actions/upload-version.php'], 'actions.upload.version');
     $router->post('/revert-version', ['file' => 'app/actions/revert-version.php'], 'actions.revert.version');
 
-    // Teams
-    $router->post('/teams', ['file' => 'app/actions/teams.php'], 'actions.teams');
-
     // Approval workflow
     $router->post('/approval', ['file' => 'app/actions/approval.php'], 'actions.approval');
 
@@ -244,9 +236,6 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Bulk upload
     $router->post('/bulk-upload', ['file' => 'app/actions/bulk-upload.php'], 'actions.bulk.upload');
-
-    // Backup
-    $router->post('/backup', ['file' => 'app/actions/backup.php'], 'actions.backup');
 
     // Usage dashboard
     $router->get('/usage-dashboard', ['file' => 'app/actions/usage-dashboard.php'], 'actions.usage');
@@ -266,9 +255,6 @@ $router->group(['prefix' => '/actions'], function($router) {
 
     // Volume calculation
     $router->post('/calculate-volume', ['file' => 'app/actions/calculate-volume.php'], 'actions.volume');
-
-    // Real User Monitoring (RUM) data collection
-    $router->post('/rum', ['file' => 'app/actions/rum.php'], 'actions.rum');
 
     // Features toggle (admin only)
     $router->post('/features', ['file' => 'app/actions/features.php'], 'actions.features');
@@ -321,9 +307,6 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     // Statistics
     $router->get('/stats', ['file' => 'app/admin/stats.php'], 'admin.stats');
 
-    // Real User Monitoring
-    $router->get('/rum', ['file' => 'app/admin/rum.php'], 'admin.rum');
-
     // CLI Tools
     $router->get('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools');
     $router->post('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools.run');
@@ -343,20 +326,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     $router->get('/api-keys', ['file' => 'app/admin/api-keys.php'], 'admin.api-keys');
     $router->post('/api-keys', ['file' => 'app/admin/api-keys.php'], 'admin.api-keys.save');
 
-    // Webhooks
-    $router->get('/webhooks', ['file' => 'app/admin/webhooks.php'], 'admin.webhooks');
-    $router->post('/webhooks', ['file' => 'app/admin/webhooks.php'], 'admin.webhooks.save');
-
     // Audit Log
     $router->get('/audit-log', ['file' => 'app/admin/audit-log.php'], 'admin.audit-log');
-
-    // Data Retention
-    $router->get('/retention', ['file' => 'app/admin/retention-policies.php'], 'admin.retention');
-    $router->post('/retention', ['file' => 'app/admin/retention-policies.php'], 'admin.retention.save');
-
-    // Analytics
-    $router->get('/analytics', ['file' => 'app/admin/analytics.php'], 'admin.analytics');
-    $router->post('/analytics', ['file' => 'app/admin/analytics.php'], 'admin.analytics.action');
 
     // Security Headers
     $router->get('/security-headers', ['file' => 'app/admin/security-headers.php'], 'admin.security-headers');
@@ -365,10 +336,6 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
     // Scheduled Tasks
     $router->get('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler');
     $router->post('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler.action');
-
-    // Backup & Recovery
-    $router->get('/backups', ['file' => 'app/admin/backups.php'], 'admin.backups');
-    $router->post('/backups', ['file' => 'app/admin/backups.php'], 'admin.backups.action');
 
     // Routes (debugging)
     $router->get('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes');
@@ -443,7 +410,6 @@ $router->group(['prefix' => '/api'], function($router) {
     $router->any('/tags', ['file' => 'app/api/index.php'], 'api.tags');
     $router->any('/collections', ['file' => 'app/api/index.php'], 'api.collections');
     $router->any('/stats', ['file' => 'app/api/index.php'], 'api.stats');
-    $router->any('/webhooks', ['file' => 'app/api/index.php'], 'api.webhooks');
 });
 
 // ============================================================================
