@@ -169,6 +169,9 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <input type="text" class="form-input" value="Local Account" disabled>
                             </div>
                         </div>
+                        <?php if (class_exists('PluginManager')): ?>
+                        <?= PluginManager::applyFilter('user_profile_fields', '', $user) ?>
+                        <?php endif; ?>
                         <button type="submit" name="update_profile" class="btn btn-primary">Update Email</button>
                     </form>
                 </section>

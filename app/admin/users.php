@@ -60,6 +60,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                     $adminStmt->execute();
                 }
 
+                if (class_exists('PluginManager')) {
+                    PluginManager::applyFilter('user_registered', null, $userId, [
+                        'username' => $username,
+                        'email' => $email,
+                        'method' => 'admin'
+                    ]);
+                }
+
                 header('Location: ' . route('admin.users', [], ['success' => '1']));
                 exit;
             } catch (Exception $e) {

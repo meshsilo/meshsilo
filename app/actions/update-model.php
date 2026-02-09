@@ -138,6 +138,11 @@ if ($stmt->execute()) {
     $action = isset($_POST['is_archived']) ? ($params[':is_archived'] ? 'archive' : 'unarchive') : 'edit';
     logActivity($action, 'model', $modelId, $model['name'], $logDetails);
 
+    // Plugin hook: notify plugins after successful model metadata update
+    if (class_exists('PluginManager')) {
+        PluginManager::applyFilter('after_model_update', null, $modelId, $logDetails);
+    }
+
     echo json_encode(['success' => true]);
 } else {
     echo json_encode(['success' => false, 'error' => 'Database update failed']);

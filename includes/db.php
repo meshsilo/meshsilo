@@ -2093,7 +2093,13 @@ function getAllSettings() {
 // Get allowed file extensions (configurable via settings)
 function getAllowedExtensions() {
     $setting = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
-    return array_map('trim', explode(',', $setting));
+    $allowedExtensions = array_map('trim', explode(',', $setting));
+
+    if (class_exists('PluginManager')) {
+        $allowedExtensions = PluginManager::applyFilter('supported_file_types', $allowedExtensions);
+    }
+
+    return $allowedExtensions;
 }
 
 // Get model extensions (non-zip file types that can be 3D rendered)

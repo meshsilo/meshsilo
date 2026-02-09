@@ -382,4 +382,19 @@ require_once 'includes/header.php';
             </div>
         </section>
 
+<?php if (class_exists('PluginManager')):
+    $pluginWidgets = PluginManager::applyFilter('dashboard_widgets', []);
+    if (!empty($pluginWidgets)): ?>
+    <div class="plugin-widgets">
+    <?php foreach ($pluginWidgets as $widget): ?>
+        <div class="dashboard-widget">
+            <?php if (!empty($widget['title'])): ?>
+            <h2><?= htmlspecialchars($widget['title']) ?></h2>
+            <?php endif; ?>
+            <?= $widget['content'] ?? '' ?>
+        </div>
+    <?php endforeach; ?>
+    </div>
+<?php endif; endif; ?>
+
 <?php require_once 'includes/footer.php'; ?>

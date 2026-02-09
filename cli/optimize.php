@@ -32,7 +32,18 @@ switch ($command) {
         break;
 
     case 'help':
+        showHelp();
+        break;
+
     default:
+        // Allow plugins to register custom CLI commands
+        if (class_exists('PluginManager')) {
+            $pluginCommands = PluginManager::applyFilter('cli_commands', []);
+            if (isset($pluginCommands[$command]) && is_callable($pluginCommands[$command])) {
+                call_user_func($pluginCommands[$command], array_slice($argv, 2));
+                exit;
+            }
+        }
         showHelp();
         break;
 }

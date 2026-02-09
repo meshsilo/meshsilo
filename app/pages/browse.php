@@ -397,6 +397,9 @@ require_once 'includes/header.php';
                             <span class="archived-badge">Archived</span>
                             <?php endif; ?>
                         </div>
+                        <?php if (class_exists('PluginManager')): ?>
+                        <?= PluginManager::applyFilter('model_card_extra', '', $model) ?>
+                        <?php endif; ?>
                     </article>
                     <?php endforeach; ?>
                 </div>
@@ -431,6 +434,9 @@ require_once 'includes/header.php';
                             <p class="download-count" style="margin-top: 0.25rem;"><?= number_format($model['download_count']) ?> downloads</p>
                             <?php endif; ?>
                         </div>
+                        <?php if (class_exists('PluginManager')): ?>
+                        <?= PluginManager::applyFilter('model_card_extra', '', $model) ?>
+                        <?php endif; ?>
                     </article>
                     <?php endforeach; ?>
                 </div>

@@ -258,6 +258,16 @@ function validateShareLink() {
         }
     }
 
+    // Allow plugins to control share link access (IP restrictions, rate limiting, etc.)
+    if (class_exists('PluginManager')) {
+        $allowed = PluginManager::applyFilter('share_link_access', true, $link, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        if ($allowed !== true) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => is_string($allowed) ? $allowed : 'Access denied']);
+            return;
+        }
+    }
+
     echo json_encode([
         'success' => true,
         'model_id' => $link['model_id'],
