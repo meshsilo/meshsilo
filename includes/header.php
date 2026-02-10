@@ -110,7 +110,9 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <header class="site-header">
         <div class="header-content">
             <a href="<?= route('home') ?>" class="logo">
-                <span class="logo-icon">&#9653;</span>
+                <?php $logoPath = getSetting('logo_path', ''); if ($logoPath): ?>
+                <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($logoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="logo-img">
+                <?php endif; ?>
                 <span class="logo-text"><?= SITE_NAME ?></span>
             </a>
             <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false">

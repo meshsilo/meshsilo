@@ -92,7 +92,9 @@ require_once 'includes/header.php';
         <div class="auth-container">
             <div class="auth-card">
                 <div class="auth-header">
-                    <span class="logo-icon">&#9653;</span>
+                    <?php $logoPath = getSetting('logo_path', ''); if ($logoPath): ?>
+                    <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($logoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="auth-logo-img">
+                    <?php endif; ?>
                     <h1>Welcome back</h1>
                     <p>Log in to your <?= SITE_NAME ?> account</p>
                 </div>

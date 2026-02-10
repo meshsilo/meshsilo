@@ -118,7 +118,9 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="auth-container">
             <div class="auth-card">
                 <div class="auth-header">
-                    <span class="logo-icon">&#9653;</span>
+                    <?php $logoPath = getSetting('logo_path', ''); if ($logoPath): ?>
+                    <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($logoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="auth-logo-img">
+                    <?php endif; ?>
                     <h1>Forgot Password</h1>
                     <p>Enter your email to receive a password reset link</p>
                 </div>

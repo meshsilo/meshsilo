@@ -113,9 +113,10 @@ a {
     font-size: 1.25rem;
 }
 
-.logo-icon {
-    font-size: 1.5rem;
-    color: var(--color-primary);
+.logo-img {
+    height: 2rem;
+    width: auto;
+    object-fit: contain;
 }
 
 .main-nav {
@@ -1226,10 +1227,12 @@ section.settings-section h2 {
     margin-bottom: 2rem;
 }
 
-.auth-header .logo-icon {
-    font-size: 2.5rem;
+.auth-logo-img {
+    height: 3rem;
+    width: auto;
+    object-fit: contain;
     display: block;
-    margin-bottom: 1rem;
+    margin: 0 auto 1rem;
 }
 
 .auth-header h1 {

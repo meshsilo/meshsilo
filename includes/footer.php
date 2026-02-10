@@ -3,7 +3,9 @@
     <footer class="site-footer">
         <div class="footer-content">
             <div class="footer-brand">
-                <span class="logo-icon">&#9653;</span>
+                <?php $footerLogoPath = getSetting('logo_path', ''); if ($footerLogoPath): ?>
+                <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($footerLogoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="logo-img">
+                <?php endif; ?>
                 <span class="logo-text"><?= SITE_NAME ?></span>
                 <p><?= SITE_DESCRIPTION ?></p>
             </div>
