@@ -5,9 +5,6 @@ require_once 'includes/features.php';
 try {
 
 require_once 'includes/dedup.php';
-require_once 'includes/slicers.php';
-require_once 'includes/gcode.php';
-require_once 'includes/VolumeCalculator.php';
 require_once 'includes/Markdown.php';
 
 $db = getDB();
@@ -50,13 +47,6 @@ $modelTags = getModelTags($modelId);
 $isFavorited = isModelFavorited($modelId);
 $favoriteCount = getModelFavoriteCount($modelId);
 
-// Check if in print queue
-$inPrintQueue = false;
-if (isLoggedIn()) {
-    $user = getCurrentUser();
-    $inPrintQueue = isInPrintQueue($user['id'], $modelId);
-}
-
 // Get categories for this model
 $categories = [];
 try {
@@ -77,29 +67,6 @@ try {
 
 // Get related models
 $relatedModels = getRelatedModels($modelId);
-
-// Get volume and cost estimate
-$modelVolume = null;
-$costEstimate = null;
-if (!in_array($model['file_type'] ?? '', ['gcode'])) {
-    $modelVolume = VolumeCalculator::getModelVolume($model);
-    if ($modelVolume) {
-        $costEstimate = VolumeCalculator::estimateCost($modelVolume);
-    }
-}
-
-// Get GCODE metadata if this is a GCODE file
-$gcodeMetadata = null;
-if (($model['file_type'] ?? '') === 'gcode') {
-    $gcodeMetadata = getGCodeMetadata($modelId);
-    // If no metadata stored yet, try to parse it now
-    if (!$gcodeMetadata && $model['file_path']) {
-        $filePath = getAbsoluteFilePath($model);
-        if ($filePath && file_exists($filePath)) {
-            $gcodeMetadata = processGCodeFile($modelId, $filePath);
-        }
-    }
-}
 
 // Get parts if this is a multi-part model
 $parts = [];
@@ -335,10 +302,8 @@ require_once 'includes/header.php';
                             <h1><?= htmlspecialchars($model['name']) ?></h1>
                             <?php if (isLoggedIn()): ?>
                             <div style="display: flex; gap: 0.5rem;">
-                                <?php if (isFeatureEnabled('print_queue')): ?>
-                                <button type="button" class="queue-btn <?= $inPrintQueue ? 'in-queue' : '' ?>" onclick="togglePrintQueue(<?= $model['id'] ?>, this)" title="<?= $inPrintQueue ? 'Remove from print queue' : 'Add to print queue' ?>">
-                                    &#128424;
-                                </button>
+                                <?php if (class_exists('PluginManager')): ?>
+                                <?= PluginManager::applyFilter('model_header_actions', '', $model) ?>
                                 <?php endif; ?>
                                 <?php if (isFeatureEnabled('favorites')): ?>
                                 <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" onclick="toggleFavorite(<?= $model['id'] ?>, this)" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
@@ -379,89 +344,6 @@ require_once 'includes/header.php';
                         <?php if (!empty($model['license'])): ?>
                         <div style="margin-top: 0.5rem;">
                             <span class="license-badge"><?= htmlspecialchars(getLicenseName($model['license'])) ?></span>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if ($gcodeMetadata && !empty(array_filter($gcodeMetadata))): ?>
-                        <div class="gcode-metadata">
-                            <h4>Print Information</h4>
-                            <div class="gcode-stats">
-                                <?php if ($gcodeMetadata['print_time_formatted']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Print Time</span>
-                                    <span class="gcode-stat-value"><?= htmlspecialchars($gcodeMetadata['print_time_formatted']) ?></span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if ($gcodeMetadata['filament_used_m'] || $gcodeMetadata['filament_used_g']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Filament</span>
-                                    <span class="gcode-stat-value">
-                                        <?php if ($gcodeMetadata['filament_used_m']): ?>
-                                            <?= number_format($gcodeMetadata['filament_used_m'], 2) ?>m
-                                        <?php endif; ?>
-                                        <?php if ($gcodeMetadata['filament_used_g']): ?>
-                                            (<?= number_format($gcodeMetadata['filament_used_g'], 1) ?>g)
-                                        <?php endif; ?>
-                                    </span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if ($gcodeMetadata['layer_height']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Layer Height</span>
-                                    <span class="gcode-stat-value"><?= $gcodeMetadata['layer_height'] ?>mm</span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if ($gcodeMetadata['layer_count']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Layers</span>
-                                    <span class="gcode-stat-value"><?= number_format($gcodeMetadata['layer_count']) ?></span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if ($gcodeMetadata['hotend_temp']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Nozzle Temp</span>
-                                    <span class="gcode-stat-value"><?= $gcodeMetadata['hotend_temp'] ?>°C</span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if ($gcodeMetadata['bed_temp']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Bed Temp</span>
-                                    <span class="gcode-stat-value"><?= $gcodeMetadata['bed_temp'] ?>°C</span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if ($gcodeMetadata['infill']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Infill</span>
-                                    <span class="gcode-stat-value"><?= htmlspecialchars($gcodeMetadata['infill']) ?></span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if ($gcodeMetadata['slicer']): ?>
-                                <div class="gcode-stat">
-                                    <span class="gcode-stat-label">Slicer</span>
-                                    <span class="gcode-stat-value"><?= htmlspecialchars($gcodeMetadata['slicer']) ?><?php if ($gcodeMetadata['slicer_version']): ?> <?= htmlspecialchars($gcodeMetadata['slicer_version']) ?><?php endif; ?></span>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if ($costEstimate): ?>
-                        <div class="cost-estimate-card">
-                            <h4>Estimated Print Cost</h4>
-                            <div class="cost-estimate-grid">
-                                <div class="cost-item">
-                                    <span class="cost-label">Volume</span>
-                                    <span class="cost-value"><?= number_format($costEstimate['volume_cm3'], 1) ?> cm&sup3;</span>
-                                </div>
-                                <div class="cost-item">
-                                    <span class="cost-label">Weight</span>
-                                    <span class="cost-value"><?= number_format($costEstimate['weight_grams'], 0) ?>g (<?= strtoupper($costEstimate['material']) ?>)</span>
-                                </div>
-                                <div class="cost-item cost-item-main">
-                                    <span class="cost-label">Est. Cost (<?= $costEstimate['infill_factor'] ?>% infill)</span>
-                                    <span class="cost-value cost-value-main"><?= $costEstimate['currency'] === 'USD' ? '$' : '' ?><?= number_format($costEstimate['estimated_cost'], 2) ?><?= $costEstimate['currency'] !== 'USD' ? ' ' . $costEstimate['currency'] : '' ?></span>
-                                </div>
-                            </div>
                         </div>
                         <?php endif; ?>
 
@@ -608,9 +490,6 @@ require_once 'includes/header.php';
                             <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>
                             <?php endif; ?>
-                            <?php if (!$costEstimate && canEdit() && in_array($model['file_type'] ?? '', ['gcode'])): ?>
-                            <button type="button" class="btn btn-secondary btn-small" onclick="calculateCost(<?= $model['id'] ?>)" id="calc-cost-btn">Calculate Print Cost</button>
-                            <?php endif; ?>
                             <?php if (isFeatureEnabled('version_history')): ?>
                             <a href="<?= route('model.versions', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">Version History<?php if ($versionCount > 0): ?> (<?= $versionCount ?>)<?php endif; ?></a>
                             <?php if ($canManageVersions): ?>
@@ -703,12 +582,6 @@ require_once 'includes/header.php';
                             <button type="button" class="btn btn-secondary btn-small" onclick="showMoveFolderModal(getSelectedPartIds())">Move to Folder</button>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showBatchRenameModal(getSelectedPartIds())">Rename</button>
                             <button type="button" class="btn btn-secondary btn-small" id="mass-convert-3mf">Convert to 3MF</button>
-                            <select id="mass-print-type" class="btn btn-secondary btn-small mass-action-select">
-                                <option value="">Print Type</option>
-                                <option value="fdm">FDM</option>
-                                <option value="sla">SLA</option>
-                                <option value="">Clear</option>
-                            </select>
                             <?php endif; ?>
                             <?php if (canDelete()): ?>
                             <button type="button" class="btn btn-danger btn-small" id="mass-delete-parts">Delete Selected</button>
@@ -747,12 +620,6 @@ require_once 'includes/header.php';
                                 <?php endif; ?>
                                 <div class="part-info part-preview-trigger">
                                     <span class="part-name" title="Click to preview"><?= htmlspecialchars($part['name']) ?><?= !empty($part['file_type']) ? '.' . htmlspecialchars($part['file_type']) : '' ?></span>
-                                    <?php if (!empty($part['print_type'])): ?>
-                                    <span class="print-type-badge print-type-<?= htmlspecialchars($part['print_type']) ?>"><?= strtoupper($part['print_type']) ?></span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($part['is_printed'])): ?>
-                                    <span class="printed-badge">Printed</span>
-                                    <?php endif; ?>
                                     <?php if (isFeatureEnabled('model_notes') && !empty($part['notes'])): ?>
                                     <span class="part-notes"><?= htmlspecialchars($part['notes']) ?></span>
                                     <?php endif; ?>
@@ -761,39 +628,6 @@ require_once 'includes/header.php';
                                     <span class="part-size"<?php if (($part['file_type'] ?? '') === 'stl'): ?> title="STL file — converting to 3MF could save ~<?= formatBytes(($part['file_size'] ?? 0) * 0.65) ?>"<?php endif; ?>><?= formatBytes($part['file_size'] ?? 0) ?></span>
                                     <?php if (!empty($part['original_size']) && $part['file_type'] === '3mf'): ?>
                                     <span class="conversion-savings" title="Saved by converting to 3MF">-<?= round((1 - $part['file_size'] / $part['original_size']) * 100) ?>%</span>
-                                    <?php endif; ?>
-                                    <?php if (canEdit()): ?>
-                                    <label class="printed-checkbox" title="Mark as printed">
-                                        <input type="checkbox" class="printed-toggle" data-part-id="<?= $part['id'] ?>" <?= !empty($part['is_printed']) ? 'checked' : '' ?>>
-                                        <span>Printed</span>
-                                    </label>
-                                    <select class="print-type-select" data-part-id="<?= $part['id'] ?>" title="Print type">
-                                        <option value="" <?= empty($part['print_type']) ? 'selected' : '' ?>>--</option>
-                                        <option value="fdm" <?= ($part['print_type'] ?? '') === 'fdm' ? 'selected' : '' ?>>FDM</option>
-                                        <option value="sla" <?= ($part['print_type'] ?? '') === 'sla' ? 'selected' : '' ?>>SLA</option>
-                                    </select>
-                                    <?php endif; ?>
-                                    <?php if (isFeatureEnabled('slicer_integration')):
-                                    $partSlicers = getSlicersForFormat($part['file_type']);
-                                    if (!empty($partSlicers)):
-                                    ?>
-                                    <div class="dropdown slicer-dropdown">
-                                        <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="Open in slicer">
-                                            Open in <span class="dropdown-arrow">&#9662;</span>
-                                        </button>
-                                        <div class="dropdown-menu dropdown-menu-right">
-                                            <?php foreach ($partSlicers as $slicerKey => $slicer): ?>
-                                            <a href="#" class="dropdown-item slicer-link"
-                                               data-slicer="<?= htmlspecialchars($slicerKey) ?>"
-                                               data-part-id="<?= $part['id'] ?>"
-                                               data-has-protocol="<?= !empty($slicer['protocol']) ? '1' : '0' ?>"
-                                               title="<?= htmlspecialchars($slicer['description']) ?>">
-                                                <?= htmlspecialchars($slicer['name']) ?>
-                                            </a>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                    <?php endif; ?>
                                     <?php endif; ?>
                                     <a href="<?= route('actions.download', [], ['id' => $part['id']]) ?>" class="btn btn-small btn-primary">Download</a>
                                     <?php if (canDelete()): ?>
@@ -838,62 +672,12 @@ require_once 'includes/header.php';
                 </div>
                 <?php elseif (canUpload()): ?>
                 <div class="model-download">
-                    <?php if (isFeatureEnabled('slicer_integration')):
-                    $modelSlicers = getSlicersForFormat($model['file_type'] ?? 'stl');
-                    if (!empty($modelSlicers)):
-                    ?>
-                    <div class="dropdown open-in-dropdown open-in-dropdown-large">
-                        <button type="button" class="btn btn-secondary btn-large dropdown-toggle" title="Open in slicer software">
-                            Open in <span class="dropdown-arrow">&#9662;</span>
-                        </button>
-                        <div class="dropdown-menu">
-                            <?php foreach ($modelSlicers as $slicerKey => $slicer): ?>
-                            <a href="#" class="dropdown-item slicer-link"
-                               data-slicer="<?= htmlspecialchars($slicerKey) ?>"
-                               data-part-id="<?= $model['id'] ?>"
-                               data-has-protocol="<?= !empty($slicer['protocol']) ? '1' : '0' ?>"
-                               title="<?= htmlspecialchars($slicer['description']) ?>">
-                                <?= htmlspecialchars($slicer['name']) ?>
-                                <?php if (empty($slicer['protocol'])): ?>
-                                <span class="slicer-download-hint">(download)</span>
-                                <?php endif; ?>
-                            </a>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                    <?php endif; ?>
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
                     <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
-                    <?php if (isFeatureEnabled('slicer_integration')):
-                    $modelSlicers = getSlicersForFormat($model['file_type'] ?? 'stl');
-                    if (!empty($modelSlicers)):
-                    ?>
-                    <div class="dropdown open-in-dropdown open-in-dropdown-large">
-                        <button type="button" class="btn btn-secondary btn-large dropdown-toggle" title="Open in slicer software">
-                            Open in <span class="dropdown-arrow">&#9662;</span>
-                        </button>
-                        <div class="dropdown-menu">
-                            <?php foreach ($modelSlicers as $slicerKey => $slicer): ?>
-                            <a href="#" class="dropdown-item slicer-link"
-                               data-slicer="<?= htmlspecialchars($slicerKey) ?>"
-                               data-part-id="<?= $model['id'] ?>"
-                               data-has-protocol="<?= !empty($slicer['protocol']) ? '1' : '0' ?>"
-                               title="<?= htmlspecialchars($slicer['description']) ?>">
-                                <?= htmlspecialchars($slicer['name']) ?>
-                                <?php if (empty($slicer['protocol'])): ?>
-                                <span class="slicer-download-hint">(download)</span>
-                                <?php endif; ?>
-                            </a>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                    <?php endif; ?>
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                 </div>
                 <?php endif; ?>
@@ -1221,102 +1005,10 @@ require_once 'includes/header.php';
             });
         });
 
-        // Handle print type selection changes
-        document.querySelectorAll('.print-type-select').forEach(select => {
-            select.addEventListener('change', function() {
-                const partId = this.dataset.partId;
-                const printType = this.value;
-                const partItem = this.closest('.part-item');
-
-                // Create form data
-                const formData = new FormData();
-                formData.append('part_id', partId);
-                formData.append('print_type', printType);
-
-                // Send AJAX request
-                fetch('/actions/update-part', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update the badge
-                        let badge = partItem.querySelector('.print-type-badge');
-                        if (printType) {
-                            if (!badge) {
-                                badge = document.createElement('span');
-                                badge.className = 'print-type-badge';
-                                partItem.querySelector('.part-name').after(badge);
-                            }
-                            badge.className = 'print-type-badge print-type-' + printType;
-                            badge.textContent = printType.toUpperCase();
-                        } else if (badge) {
-                            badge.remove();
-                        }
-                    } else {
-                        alert('Failed to update: ' + (data.error || 'Unknown error'));
-                        // Reset select to previous value
-                        location.reload();
-                    }
-                })
-                .catch(err => {
-                    console.error('Error updating print type:', err);
-                    alert('Failed to update print type');
-                });
-            });
-        });
-
-        // Handle printed status toggle
-        document.querySelectorAll('.printed-toggle').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const partId = this.dataset.partId;
-                const isPrinted = this.checked ? '1' : '0';
-                const partItem = this.closest('.part-item');
-
-                fetch('/actions/update-part', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'part_id=' + partId + '&is_printed=' + isPrinted
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update the badge
-                        let badge = partItem.querySelector('.printed-badge');
-                        if (this.checked) {
-                            if (!badge) {
-                                badge = document.createElement('span');
-                                badge.className = 'printed-badge';
-                                badge.textContent = 'Printed';
-                                const printTypeBadge = partItem.querySelector('.print-type-badge');
-                                if (printTypeBadge) {
-                                    printTypeBadge.after(badge);
-                                } else {
-                                    partItem.querySelector('.part-name').after(badge);
-                                }
-                            }
-                        } else if (badge) {
-                            badge.remove();
-                        }
-                    } else {
-                        alert('Failed to update: ' + (data.error || 'Unknown error'));
-                        this.checked = !this.checked;
-                    }
-                })
-                .catch(err => {
-                    console.error('Error updating printed status:', err);
-                    alert('Failed to update printed status');
-                    this.checked = !this.checked;
-                });
-            });
-        });
-
         // Mass action handling
         const partCheckboxes = document.querySelectorAll('.part-checkbox');
         const massActionsBar = document.getElementById('parts-mass-actions');
         const selectedCountEl = document.getElementById('selected-count');
-        const massPrintType = document.getElementById('mass-print-type');
         const massDeleteBtn = document.getElementById('mass-delete-parts');
 
         function updateMassActionsVisibility() {
@@ -1379,37 +1071,6 @@ require_once 'includes/header.php';
                 updateAllCheckboxStates();
             });
         });
-
-        if (massPrintType) {
-            massPrintType.addEventListener('change', async function() {
-                const printType = this.value;
-                if (printType === '') return;
-
-                const ids = getSelectedPartIds();
-                if (ids.length === 0) return;
-
-                const formData = new FormData();
-                formData.append('action', 'set_print_type');
-                formData.append('print_type', printType === 'Clear' ? '' : printType);
-                ids.forEach(id => formData.append('ids[]', id));
-
-                try {
-                    const response = await fetch('/actions/mass-action', { method: 'POST', body: formData });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        location.reload();
-                    } else {
-                        alert('Failed: ' + (result.error || 'Unknown error'));
-                    }
-                } catch (err) {
-                    console.error('Mass action error:', err);
-                    alert('Failed to perform mass action');
-                }
-
-                this.value = '';
-            });
-        }
 
         if (massDeleteBtn) {
             massDeleteBtn.addEventListener('click', async function() {
@@ -1761,15 +1422,6 @@ require_once 'includes/header.php';
             }
         }
 
-        // Slicer protocol definitions (must match includes/slicers.php)
-        const slicerProtocols = {
-            'bambustudio': 'bambustudio://open?file={url}',
-            'orcaslicer': 'orcaslicer://open?file={url}',
-            'prusaslicer': 'prusaslicer://open?file={url}',
-            'cura': 'cura://open?file={url}',
-            'superslicer': 'superslicer://open?file={url}'
-        };
-
         // Position fixed dropdown menu relative to toggle button
         function positionDropdownMenu(dropdown) {
             const menu = dropdown.querySelector('.dropdown-menu');
@@ -1779,8 +1431,7 @@ require_once 'includes/header.php';
             const btnRect = btn.getBoundingClientRect();
 
             // Check if dropdown is inside part-actions (needs fixed positioning)
-            const isPartDropdown = dropdown.classList.contains('part-actions-dropdown') ||
-                                   dropdown.classList.contains('slicer-dropdown');
+            const isPartDropdown = dropdown.classList.contains('part-actions-dropdown');
 
             if (isPartDropdown) {
                 // Position below the button, aligned to the right
@@ -1839,38 +1490,10 @@ require_once 'includes/header.php';
 
         // Close fixed-position dropdowns on scroll (since they won't move with the page)
         window.addEventListener('scroll', function() {
-            document.querySelectorAll('.part-actions-dropdown.open, .slicer-dropdown.open').forEach(d => {
+            document.querySelectorAll('.part-actions-dropdown.open').forEach(d => {
                 d.classList.remove('open');
             });
         }, { passive: true });
-
-        // Handle slicer link clicks
-        document.querySelectorAll('.slicer-link').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                const slicer = this.dataset.slicer;
-                const partId = this.dataset.partId;
-                const hasProtocol = this.dataset.hasProtocol === '1';
-
-                // Build the download URL
-                const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-                const downloadUrl = `${baseUrl}/actions/download.php?id=${partId}`;
-
-                if (hasProtocol && slicerProtocols[slicer]) {
-                    // Open using slicer's URL protocol
-                    const slicerUrl = slicerProtocols[slicer].replace('{url}', encodeURIComponent(downloadUrl));
-                    window.location.href = slicerUrl;
-                } else {
-                    // No protocol support - just download the file
-                    // User will need to open it manually in their slicer
-                    window.location.href = downloadUrl;
-                }
-
-                // Close the dropdown
-                this.closest('.dropdown').classList.remove('open');
-            });
-        });
 
         // Favorite toggle
         async function toggleFavorite(modelId, btn) {
@@ -1888,62 +1511,6 @@ require_once 'includes/header.php';
                 }
             } catch (err) {
                 console.error('Failed to toggle favorite:', err);
-            }
-        }
-
-        // Print queue toggle
-        async function togglePrintQueue(modelId, btn) {
-            try {
-                const response = await fetch('/actions/print-queue', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=toggle&model_id=' + modelId
-                });
-                const data = await response.json();
-                if (data.success) {
-                    btn.classList.toggle('in-queue', data.in_queue);
-                    btn.title = data.in_queue ? 'Remove from print queue' : 'Add to print queue';
-                }
-            } catch (err) {
-                console.error('Failed to toggle print queue:', err);
-            }
-        }
-
-        // Calculate cost
-        async function calculateCost(modelId) {
-            const btn = document.getElementById('calc-cost-btn');
-            if (btn) {
-                btn.textContent = 'Calculating...';
-                btn.disabled = true;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('model_id', modelId);
-
-                const response = await fetch('/actions/calculate-volume', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-
-                if (data.success && data.cost_estimate) {
-                    // Reload the page to show the cost estimate
-                    location.reload();
-                } else {
-                    alert('Could not calculate cost: ' + (data.error || 'Unknown error'));
-                    if (btn) {
-                        btn.textContent = 'Calculate Print Cost';
-                        btn.disabled = false;
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to calculate cost:', err);
-                alert('Failed to calculate cost');
-                if (btn) {
-                    btn.textContent = 'Calculate Print Cost';
-                    btn.disabled = false;
-                }
             }
         }
 

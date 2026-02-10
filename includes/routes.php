@@ -90,10 +90,6 @@ $router->group(['middleware' => ['auth']], function($router) {
     // Favorites
     $router->get('/favorites', ['file' => 'app/pages/favorites.php'], 'favorites');
 
-    // Print Queue
-    $router->get('/print-queue', ['file' => 'app/pages/print-queue.php'], 'print-queue');
-    $router->get('/printers', ['file' => 'app/pages/printers.php'], 'printers');
-
     // Upload (requires upload permission)
     $router->get('/upload', ['file' => 'app/pages/upload.php'], 'upload')
         ->middleware('permission:upload');
@@ -175,15 +171,6 @@ $router->group(['prefix' => '/actions'], function($router) {
     // Scaling
     $router->post('/scaling', ['file' => 'app/actions/scaling.php'], 'actions.scaling');
 
-    // Print queue
-    $router->post('/print-queue', ['file' => 'app/actions/print-queue.php'], 'actions.print.queue');
-
-    // Printer management
-    $router->post('/printer', ['file' => 'app/actions/printer.php'], 'actions.printer');
-
-    // Print photos
-    $router->post('/print-photo', ['file' => 'app/actions/print-photo.php'], 'actions.print.photo');
-
     // Rating
     $router->post('/rating', ['file' => 'app/actions/rating.php'], 'actions.rating');
 
@@ -204,9 +191,6 @@ $router->group(['prefix' => '/actions'], function($router) {
     // Notifications
     $router->get('/notification', ['file' => 'app/actions/notification.php'], 'actions.notification');
     $router->post('/notification', ['file' => 'app/actions/notification.php'], 'actions.notification.post');
-
-    // Cost calculator
-    $router->post('/cost-calculator', ['file' => 'app/actions/cost-calculator.php'], 'actions.cost');
 
     // Batch operations
     $router->post('/batch-apply', ['file' => 'app/actions/batch-apply.php'], 'actions.batch.apply');

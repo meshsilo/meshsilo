@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/slicers.php';
 require_once __DIR__ . '/../../includes/UpdateChecker.php';
 // Set baseDir based on how we're accessed (router vs direct)
 // Router loads from root context, direct access needs ../
@@ -153,10 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     setSetting('site_url', $siteUrl);
     setSetting('force_site_url', $forceSiteUrl);
-
-    // Slicer settings
-    $enabledSlicers = isset($_POST['enabled_slicers']) ? $_POST['enabled_slicers'] : [];
-    setSetting('enabled_slicers', implode(',', $enabledSlicers));
 
     // Email/SMTP settings
     $mailDriver = trim($_POST['mail_driver'] ?? 'mail');
@@ -367,38 +362,6 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span class="toggle-switch"></span>
                                 <span>Require admin approval for new accounts</span>
                             </label>
-                        </div>
-                    </details>
-
-                    <details class="settings-section">
-                        <summary><h2>Slicer Integration</h2></summary>
-                        <p class="form-help" style="margin-bottom: 1rem;">Select which slicer software options appear in the "Open in" menu on model pages. Slicers with URL protocol support can open files directly.</p>
-
-                        <?php
-                        $allSlicers = getDefaultSlicers();
-                        $enabledSlicersSetting = $settings['enabled_slicers'] ?? null;
-                        if ($enabledSlicersSetting) {
-                            $enabledList = array_map('trim', explode(',', $enabledSlicersSetting));
-                        } else {
-                            // Default enabled slicers
-                            $enabledList = array_keys(array_filter($allSlicers, fn($s) => $s['enabled']));
-                        }
-                        ?>
-                        <div class="form-group">
-                            <label>Enabled Slicers</label>
-                            <div class="slicer-grid">
-                                <?php foreach ($allSlicers as $key => $slicer): ?>
-                                <label class="checkbox-small slicer-option" title="<?= htmlspecialchars($slicer['description']) ?>">
-                                    <input type="checkbox" name="enabled_slicers[]" value="<?= htmlspecialchars($key) ?>"
-                                        <?= in_array($key, $enabledList) ? 'checked' : '' ?>>
-                                    <span><?= htmlspecialchars($slicer['name']) ?></span>
-                                    <?php if (!empty($slicer['protocol'])): ?>
-                                    <span class="slicer-protocol-badge" title="Supports direct opening via URL protocol">URL</span>
-                                    <?php endif; ?>
-                                </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <p class="form-help">Slicers marked with "URL" can open files directly from your browser if the software is installed. Others will download the file for manual opening.</p>
                         </div>
                     </details>
 

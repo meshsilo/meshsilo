@@ -359,14 +359,12 @@ class KeyboardShortcuts {
             'o': { description: 'Open selected', action: () => this.openSelected() },
             'Enter': { description: 'Open selected', action: () => this.openSelected() },
             'f': { description: 'Toggle favorite', action: () => this.toggleFavorite() },
-            'q': { description: 'Add to print queue', action: () => this.addToQueue() },
             '/': { description: 'Focus search', action: (e) => { e.preventDefault(); this.focusSearch(); } },
             'Escape': { description: 'Clear focus', action: () => this.clearFocus() },
             '?': { description: 'Show shortcuts', action: () => this.showHelp() },
             'g h': { description: 'Go home', action: () => window.location.href = 'index.php' },
             'g b': { description: 'Go browse', action: () => window.location.href = 'browse.php' },
             'g f': { description: 'Go favorites', action: () => window.location.href = 'favorites.php' },
-            'g q': { description: 'Go print queue', action: () => window.location.href = 'print-queue.php' },
         };
         this.pendingKey = null;
         this.helpModal = null;
@@ -392,7 +390,7 @@ class KeyboardShortcuts {
     }
 
     updateModelCards() {
-        this.modelCards = Array.from(document.querySelectorAll('.model-card, .model-list-item, .queue-item'));
+        this.modelCards = Array.from(document.querySelectorAll('.model-card, .model-list-item'));
     }
 
     handleKeydown(e) {
@@ -478,18 +476,6 @@ class KeyboardShortcuts {
         }
     }
 
-    addToQueue() {
-        if (this.currentIndex >= 0 && this.modelCards[this.currentIndex]) {
-            const card = this.modelCards[this.currentIndex];
-            const queueBtn = card.querySelector('.queue-btn');
-            if (queueBtn) queueBtn.click();
-        } else {
-            // Model page shortcut
-            const queueBtn = document.querySelector('.queue-btn');
-            if (queueBtn) queueBtn.click();
-        }
-    }
-
     focusSearch() {
         const searchBar = document.querySelector('.search-bar');
         if (searchBar) {
@@ -530,13 +516,11 @@ class KeyboardShortcuts {
                 <div class="shortcut-item"><span>Navigation</span><span class="shortcut-key">j</span> / <span class="shortcut-key">k</span></div>
                 <div class="shortcut-item"><span>Open model</span><span class="shortcut-key">o</span> or <span class="shortcut-key">Enter</span></div>
                 <div class="shortcut-item"><span>Toggle favorite</span><span class="shortcut-key">f</span></div>
-                <div class="shortcut-item"><span>Add to print queue</span><span class="shortcut-key">q</span></div>
                 <div class="shortcut-item"><span>Focus search</span><span class="shortcut-key">/</span></div>
                 <div class="shortcut-item"><span>Clear selection</span><span class="shortcut-key">Esc</span></div>
                 <div class="shortcut-item"><span>Go to Home</span><span class="shortcut-key">g h</span></div>
                 <div class="shortcut-item"><span>Go to Browse</span><span class="shortcut-key">g b</span></div>
                 <div class="shortcut-item"><span>Go to Favorites</span><span class="shortcut-key">g f</span></div>
-                <div class="shortcut-item"><span>Go to Print Queue</span><span class="shortcut-key">g q</span></div>
                 <div class="shortcut-item"><span>Show this help</span><span class="shortcut-key">?</span></div>
             </div>
         `;

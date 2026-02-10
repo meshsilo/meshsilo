@@ -12,12 +12,7 @@
  * If a dependency is disabled, the feature cannot function properly.
  */
 function getFeatureDependencies(): array {
-    return [
-        // Print history requires print queue functionality
-        'print_history' => ['print_queue'],
-        // Model analysis benefits from print history data
-        'model_analysis' => [],
-    ];
+    return [];
 }
 
 /**
@@ -85,34 +80,6 @@ function getAvailableFeatures(): array {
             'icon' => 'key',
             'category' => 'Integration',
             'default' => true,
-        ],
-        'print_queue' => [
-            'name' => 'Print Queue',
-            'description' => 'Queue models for printing with priority management',
-            'icon' => 'printer',
-            'category' => 'Printing',
-            'default' => true,
-        ],
-        'printers' => [
-            'name' => 'Printer Profiles',
-            'description' => 'Manage printer specifications and bed sizes',
-            'icon' => 'settings',
-            'category' => 'Printing',
-            'default' => true,
-        ],
-        'print_history' => [
-            'name' => 'Print History',
-            'description' => 'Track print jobs with filament usage and ratings',
-            'icon' => 'history',
-            'category' => 'Printing',
-            'default' => true,
-        ],
-        'model_analysis' => [
-            'name' => 'Model Analysis',
-            'description' => 'Automated printability analysis and warnings',
-            'icon' => 'activity',
-            'category' => 'Analysis',
-            'default' => false,
         ],
         'import_jobs' => [
             'name' => 'Bulk Import',
@@ -219,13 +186,6 @@ function getAvailableFeatures(): array {
             'category' => 'Storage',
             'default' => true,
         ],
-        'mesh_analysis' => [
-            'name' => 'Mesh Analysis',
-            'description' => 'Analyze STL files for printability issues and repair',
-            'icon' => 'cube',
-            'category' => 'Analysis',
-            'default' => true,
-        ],
         'dark_theme' => [
             'name' => 'Dark Theme',
             'description' => 'Allow users to switch between light and dark themes',
@@ -238,13 +198,6 @@ function getAvailableFeatures(): array {
             'description' => 'Add notes to individual model parts',
             'icon' => 'edit',
             'category' => 'Content',
-            'default' => true,
-        ],
-        'slicer_integration' => [
-            'name' => 'Slicer Integration',
-            'description' => 'Open models directly in configured slicer applications',
-            'icon' => 'sliders',
-            'category' => 'Integration',
             'default' => true,
         ],
         'local_accounts' => [
@@ -400,10 +353,6 @@ function getFeaturePresets(): array {
             'description' => 'Core features only - uploading, browsing, and basic organization',
             'features' => [
                 'api_keys' => false,
-                'print_queue' => false,
-                'printers' => false,
-                'print_history' => false,
-                'model_analysis' => false,
                 'import_jobs' => false,
                 'two_factor_auth' => false,
                 'share_links' => true,
@@ -419,10 +368,8 @@ function getFeaturePresets(): array {
                 'download_tracking' => false,
                 'recently_viewed' => false,
                 'duplicate_detection' => false,
-                'mesh_analysis' => false,
                 'dark_theme' => true,
                 'model_notes' => false,
-                'slicer_integration' => false,
                 'local_accounts' => true,
             ],
         ],
@@ -431,10 +378,6 @@ function getFeaturePresets(): array {
             'description' => 'Recommended for most users - includes collaboration and printing features',
             'features' => [
                 'api_keys' => false,
-                'print_queue' => true,
-                'printers' => true,
-                'print_history' => true,
-                'model_analysis' => false,
                 'import_jobs' => false,
                 'two_factor_auth' => true,
                 'share_links' => true,
@@ -450,10 +393,8 @@ function getFeaturePresets(): array {
                 'download_tracking' => true,
                 'recently_viewed' => true,
                 'duplicate_detection' => true,
-                'mesh_analysis' => true,
                 'dark_theme' => true,
                 'model_notes' => true,
-                'slicer_integration' => true,
                 'local_accounts' => true,
             ],
         ],
@@ -462,10 +403,6 @@ function getFeaturePresets(): array {
             'description' => 'All features enabled - full integration, compliance, and analytics',
             'features' => [
                 'api_keys' => true,
-                'print_queue' => true,
-                'printers' => true,
-                'print_history' => true,
-                'model_analysis' => true,
                 'import_jobs' => true,
                 'two_factor_auth' => true,
                 'share_links' => true,
@@ -481,10 +418,8 @@ function getFeaturePresets(): array {
                 'download_tracking' => true,
                 'recently_viewed' => true,
                 'duplicate_detection' => true,
-                'mesh_analysis' => true,
                 'dark_theme' => true,
                 'model_notes' => true,
-                'slicer_integration' => true,
                 'local_accounts' => true,
             ],
         ],
@@ -550,30 +485,6 @@ function getFeatureUsageStats(): array {
         $stats['share_links'] = (int)$result;
     } catch (Exception $e) {
         $stats['share_links'] = 0;
-    }
-
-    // Print queue count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM print_queue");
-        $stats['print_queue'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['print_queue'] = 0;
-    }
-
-    // Print history count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM print_history");
-        $stats['print_history'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['print_history'] = 0;
-    }
-
-    // Printers count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM printers");
-        $stats['printers'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['printers'] = 0;
     }
 
     // Activity log count
