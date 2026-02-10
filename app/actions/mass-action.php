@@ -44,28 +44,6 @@ $db = getDB();
 
 try {
     switch ($action) {
-        case 'set_print_type':
-            if (!canEdit()) {
-                throw new Exception('Permission denied');
-            }
-            $printType = $_POST['print_type'] ?? '';
-            if (!in_array($printType, ['fdm', 'sla', ''])) {
-                throw new Exception('Invalid print type');
-            }
-
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $stmt = $db->prepare("UPDATE models SET print_type = ? WHERE id IN ($placeholders)");
-            $stmt->bindValue(1, $printType ?: null, $printType ? PDO::PARAM_STR : PDO::PARAM_NULL);
-            foreach ($ids as $i => $id) {
-                $stmt->bindValue($i + 2, $id, PDO::PARAM_INT);
-            }
-            $stmt->execute();
-
-            $affected = $db->changes();
-            logInfo('Mass set print type', ['count' => $affected, 'print_type' => $printType]);
-            echo json_encode(['success' => true, 'affected' => $affected, 'message' => "Updated $affected parts"]);
-            break;
-
         case 'delete_parts':
             if (!canDelete()) {
                 throw new Exception('Permission denied');

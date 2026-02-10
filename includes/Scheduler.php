@@ -25,7 +25,6 @@ class Scheduler {
     public const TASK_DEDUP_SCAN = 'dedup:scan';
     public const TASK_QUEUE_PROCESS = 'queue:process';
     public const TASK_THUMBNAILS_GENERATE = 'thumbnails:generate';
-    public const TASK_MESH_ANALYZE = 'mesh:analyze';
 
     /**
      * Initialize scheduler with default tasks
@@ -518,19 +517,6 @@ class Scheduler {
             }
             return 'Deduplication function not available';
         }, ['description' => 'Scan for duplicate files']);
-
-        // Mesh analysis - every 10 minutes
-        self::register(self::TASK_MESH_ANALYZE, '*/10 * * * *', function() {
-            if (!class_exists('MeshAnalyzer')) {
-                require_once __DIR__ . '/MeshAnalyzer.php';
-            }
-
-            $count = MeshAnalyzer::processPending(5);
-            if ($count === 0) {
-                return 'No pending mesh analysis';
-            }
-            return "Analyzed {$count} meshes";
-        }, ['description' => 'Analyze mesh files for metadata']);
 
         // Allow plugins to register scheduled tasks
         if (class_exists('PluginManager')) {

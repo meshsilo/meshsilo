@@ -240,9 +240,6 @@ require_once 'includes/header.php';
                     <button type="button" class="btn btn-small btn-ghost" onclick="clearSelection()" title="Clear selection (Esc)">Clear</button>
                 </div>
                 <div class="batch-actions-right">
-                    <?php if (isFeatureEnabled('print_queue')): ?>
-                    <button type="button" class="btn btn-small" onclick="batchAddToQueue()" title="Add selected to print queue">Add to Queue</button>
-                    <?php endif; ?>
                     <button type="button" class="btn btn-small" onclick="batchDownload()" title="Download selected as ZIP">Download</button>
                     <select id="batch-tag-select" class="batch-select" onchange="batchApplyTag(this.value)">
                         <option value="">+ Tag</option>
@@ -256,12 +253,6 @@ require_once 'includes/header.php';
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
-                    </select>
-                    <select id="batch-print-type-select" class="batch-select" onchange="batchSetPrintType(this.value)">
-                        <option value="">Print Type</option>
-                        <option value="fdm">FDM</option>
-                        <option value="sla">SLA</option>
-                        <option value="__clear__">Clear</option>
                     </select>
                     <button type="button" class="btn btn-small" onclick="batchSetCreator()" title="Set creator for selected">Set Creator</button>
                     <button type="button" class="btn btn-small" onclick="batchSetCollection()" title="Set collection for selected">Set Collection</button>
@@ -591,31 +582,6 @@ require_once 'includes/header.php';
             }
         });
 
-        async function batchAddToQueue() {
-            const ids = getSelectedModelIds();
-            if (ids.length === 0) {
-                alert('Please select models first');
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'add_to_queue');
-                ids.forEach(id => formData.append('model_ids[]', id));
-
-                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    alert(`Added ${result.updated} model(s) to print queue`);
-                } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
-                }
-            } catch (err) {
-                console.error('Batch add to queue error:', err);
-                alert('Failed to add to queue');
-            }
-        }
 
         function batchDownload() {
             const ids = getSelectedModelIds();
@@ -733,46 +699,6 @@ require_once 'includes/header.php';
             } catch (err) {
                 console.error('Batch category error:', err);
                 alert('Failed to apply category');
-            }
-
-            select.value = '';
-        }
-
-        async function batchSetPrintType(printType) {
-            const select = document.getElementById('batch-print-type-select');
-            if (!printType) {
-                select.value = '';
-                return;
-            }
-
-            const ids = getSelectedModelIds();
-            if (ids.length === 0) {
-                alert('Please select models first');
-                select.value = '';
-                return;
-            }
-
-            // Handle clear option
-            const actualType = printType === '__clear__' ? '' : printType;
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'set_print_type');
-                formData.append('print_type', actualType);
-                ids.forEach(id => formData.append('model_ids[]', id));
-
-                const response = await fetch('actions/mass-action.php', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    const message = actualType ? `Set print type to ${actualType.toUpperCase()} for ${result.affected} model(s)` : `Cleared print type for ${result.affected} model(s)`;
-                    alert(message);
-                } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
-                }
-            } catch (err) {
-                console.error('Batch print type error:', err);
-                alert('Failed to set print type');
             }
 
             select.value = '';

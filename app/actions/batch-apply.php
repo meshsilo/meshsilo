@@ -284,19 +284,6 @@ switch ($action) {
         echo json_encode(['success' => true, 'deleted' => $successCount, 'failed' => $errorCount]);
         break;
 
-    case 'add_to_queue':
-        foreach ($modelIds as $modelId) {
-            if (addToPrintQueue($user['id'], $modelId)) {
-                $successCount++;
-            } else {
-                $errorCount++;
-            }
-        }
-
-        logActivity($user['id'], 'batch_add_to_queue', 'models', 0, "Added $successCount models to print queue");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
-        break;
-
     case 'set_collection':
         $collection = trim($_POST['collection'] ?? '');
 

@@ -150,9 +150,6 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 <?php endif; ?>
                 <?php if (isLoggedIn()): ?>
                     <?php $user = getCurrentUser(); ?>
-                    <?php if (isFeatureEnabled('print_queue')): ?>
-                    <a href="<?= route('print-queue') ?>" class="btn btn-secondary" title="Print Queue">&#128424;</a>
-                    <?php endif; ?>
                     <?php if (isFeatureEnabled('favorites')): ?>
                     <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
                     <?php endif; ?>
@@ -168,9 +165,6 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                             <a href="<?= route('settings') ?>">&#9881; Settings</a>
                             <?php if (isFeatureEnabled('favorites')): ?>
                             <a href="<?= route('favorites') ?>">&#9829; Favorites</a>
-                            <?php endif; ?>
-                            <?php if (isFeatureEnabled('print_queue')): ?>
-                            <a href="<?= route('print-queue') ?>">&#128424; Print Queue</a>
                             <?php endif; ?>
                             <div class="dropdown-divider"></div>
                             <a href="<?= route('logout') ?>">&#10140; Log Out</a>

@@ -8,7 +8,7 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/auth.php';
 
-requireAdmin();
+requirePermission(PERM_ADMIN);
 
 $pageTitle = 'CLI Tools';
 $activePage = 'admin';
@@ -82,20 +82,6 @@ $tools = [
             'model' => ['label' => 'Model ID', 'description' => 'Generate for specific model only', 'type' => 'number', 'placeholder' => 'Optional'],
         ],
         'icon' => '&#128444;',
-    ],
-    'analyze-meshes' => [
-        'name' => 'Mesh Analyzer',
-        'description' => 'Analyze 3D mesh files for dimensions, volume, and issues',
-        'script' => 'cli/analyze-meshes.php',
-        'options' => [
-            'dry-run' => ['label' => 'Dry Run', 'description' => 'Preview without saving', 'type' => 'flag'],
-            'force' => ['label' => 'Force', 'description' => 'Re-analyze already processed files', 'type' => 'flag'],
-            'verbose' => ['label' => 'Verbose', 'description' => 'Show detailed output', 'type' => 'flag'],
-        ],
-        'params' => [
-            'limit' => ['label' => 'Limit', 'description' => 'Maximum files to process', 'type' => 'number', 'default' => 50],
-        ],
-        'icon' => '&#128190;',
     ],
     'migrate' => [
         'name' => 'Database Migrations',

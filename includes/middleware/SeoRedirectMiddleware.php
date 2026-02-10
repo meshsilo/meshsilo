@@ -26,8 +26,6 @@ class SeoRedirectMiddleware implements MiddlewareInterface {
         'upload.php' => ['upload', []],
         'login.php' => ['login', []],
         'logout.php' => ['logout', []],
-        'print-queue.php' => ['print-queue', []],
-        'printers.php' => ['printers', []],
         'edit-model.php' => ['model.edit', ['id' => 'id']],
 
         // Admin pages

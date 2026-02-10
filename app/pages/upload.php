@@ -2,7 +2,6 @@
 require_once 'includes/config.php';
 require_once 'includes/converter.php';
 require_once 'includes/dedup.php';
-require_once 'includes/gcode.php';
 require_once 'includes/ThumbnailGenerator.php';
 
 // Check upload permission
@@ -116,14 +115,6 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
                         'new_size' => $convertResult['new_size'],
                         'savings' => $convertResult['savings']
                     ]);
-                }
-            }
-
-            // Parse GCODE metadata if uploaded file is GCODE
-            if ($extension === 'gcode') {
-                $gcodeMetadata = processGCodeFile($modelId, $filePath);
-                if (!empty(array_filter($gcodeMetadata))) {
-                    logInfo('Parsed GCODE metadata', ['model_id' => $modelId, 'metadata' => $gcodeMetadata]);
                 }
             }
 

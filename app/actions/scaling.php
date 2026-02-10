@@ -84,13 +84,18 @@ function getScalingPreview() {
         ];
     }
 
-    // Get user's printers for fit check
+    // Get user's printers for fit check (printers table may not exist if printing plugin is not installed)
     global $user;
-    $stmt = $db->prepare('SELECT id, name, bed_x, bed_y, bed_z FROM printers WHERE user_id = :user_id OR user_id IS NULL ORDER BY is_default DESC');
-    $stmt->execute([':user_id' => $user['id']]);
     $printers = [];
-    while ($row = $stmt->fetch()) {
-        $printers[] = $row;
+    try {
+        $stmt = $db->prepare('SELECT id, name, bed_x, bed_y, bed_z FROM printers WHERE user_id = :user_id OR user_id IS NULL ORDER BY is_default DESC');
+        $stmt->execute([':user_id' => $user['id']]);
+        while ($row = $stmt->fetch()) {
+            $printers[] = $row;
+        }
+    } catch (Exception $e) {
+        // Printers table not available (printing plugin not installed)
+        $printers = [];
     }
 
     // Check fit for each scale against each printer
@@ -149,16 +154,21 @@ function checkFitAtScale() {
         return;
     }
 
-    // Get printer
-    if ($printerId) {
-        $stmt = $db->prepare('SELECT * FROM printers WHERE id = :id');
-        $stmt->execute([':id' => $printerId]);
-    } else {
-        global $user;
-        $stmt = $db->prepare('SELECT * FROM printers WHERE user_id = :user_id AND is_default = 1');
-        $stmt->execute([':user_id' => $user['id']]);
+    // Get printer (printers table may not exist if printing plugin is not installed)
+    $printer = null;
+    try {
+        if ($printerId) {
+            $stmt = $db->prepare('SELECT * FROM printers WHERE id = :id');
+            $stmt->execute([':id' => $printerId]);
+        } else {
+            global $user;
+            $stmt = $db->prepare('SELECT * FROM printers WHERE user_id = :user_id AND is_default = 1');
+            $stmt->execute([':user_id' => $user['id']]);
+        }
+        $printer = $stmt->fetch();
+    } catch (Exception $e) {
+        // Printers table not available (printing plugin not installed)
     }
-    $printer = $stmt->fetch();
 
     if (!$printer || !$printer['bed_x']) {
         echo json_encode(['success' => false, 'error' => 'Printer not found or bed dimensions not set']);

@@ -25,7 +25,7 @@ if (empty($token)) {
     // Get share link
     $stmt = $db->prepare('
         SELECT sl.*, m.id as model_id, m.name, m.filename, m.file_path, m.file_type,
-               m.file_size, m.description, m.creator, m.print_type,
+               m.file_size, m.description, m.creator,
                m.dim_x, m.dim_y, m.dim_z, m.dim_unit
         FROM share_links sl
         JOIN models m ON sl.model_id = m.id
@@ -217,12 +217,6 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
                         <div class="detail-label">File Size</div>
                         <div class="detail-value"><?= formatFileSize($model['file_size']) ?></div>
                     </div>
-                    <?php if ($model['print_type']): ?>
-                    <div class="detail-item">
-                        <div class="detail-label">Print Type</div>
-                        <div class="detail-value"><?= strtoupper($model['print_type']) ?></div>
-                    </div>
-                    <?php endif; ?>
                     <?php if ($model['dim_x']): ?>
                     <div class="detail-item">
                         <div class="detail-label">Dimensions</div>

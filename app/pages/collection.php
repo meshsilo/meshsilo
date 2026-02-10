@@ -49,19 +49,9 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             $row['preview_type'] = $firstPart['file_type'];
         }
 
-        // Get distinct print types for this model's parts
-        $printStmt = $db->prepare('SELECT DISTINCT print_type FROM models WHERE parent_id = :parent_id AND print_type IS NOT NULL');
-        $printStmt->bindValue(':parent_id', $row['id'], PDO::PARAM_INT);
-        $printResult = $printStmt->execute();
-        $printTypes = [];
-        while ($printRow = $printResult->fetchArray(PDO::FETCH_ASSOC)) {
-            $printTypes[] = $printRow['print_type'];
-        }
-        $row['print_types'] = $printTypes;
     } else {
         $row['preview_path'] = '/actions/preview?id=' . $row['id'];
         $row['preview_type'] = $row['file_type'];
-        $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
     }
     $models[] = $row;
 }
@@ -97,16 +87,6 @@ require_once 'includes/header.php';
                         <?php endif; ?>>
                         <?php if ($model['part_count'] > 0): ?>
                         <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
-                        <?php endif; ?>
-                        <?php if (!empty($model['print_types'])): ?>
-                        <div class="print-type-indicators">
-                            <?php if (in_array('fdm', $model['print_types'])): ?>
-                            <span class="print-type-badge print-type-fdm">FDM</span>
-                            <?php endif; ?>
-                            <?php if (in_array('sla', $model['print_types'])): ?>
-                            <span class="print-type-badge print-type-sla">SLA</span>
-                            <?php endif; ?>
-                        </div>
                         <?php endif; ?>
                     </div>
                     <div class="model-info">

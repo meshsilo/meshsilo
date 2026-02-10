@@ -227,15 +227,9 @@ $router->group(['prefix' => '/actions'], function($router) {
     // Branding
     $router->post('/branding', ['file' => 'app/actions/branding.php'], 'actions.branding');
 
-    // Mesh repair/analysis
-    $router->post('/mesh-repair', ['file' => 'app/actions/mesh-repair.php'], 'actions.mesh.repair');
-
     // Annotations
     $router->get('/annotations', ['file' => 'app/actions/annotations.php'], 'actions.annotations.get');
     $router->post('/annotations', ['file' => 'app/actions/annotations.php'], 'actions.annotations');
-
-    // Volume calculation
-    $router->post('/calculate-volume', ['file' => 'app/actions/calculate-volume.php'], 'actions.volume');
 
     // Features toggle (admin only)
     $router->post('/features', ['file' => 'app/actions/features.php'], 'actions.features');

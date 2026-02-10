@@ -3,7 +3,7 @@
  * Provides offline support and intelligent caching for PWA
  */
 
-const CACHE_VERSION = 'silo-v2';
+const CACHE_VERSION = 'silo-v3';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const DYNAMIC_CACHE = CACHE_VERSION + '-dynamic';
 const MODEL_CACHE = CACHE_VERSION + '-models';

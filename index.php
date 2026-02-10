@@ -113,7 +113,7 @@ $db = getDB();
 // Get recent models (only parent/standalone models, not parts)
 // Wrapped in try/catch to gracefully handle MySQL query differences
 try {
-    $result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, print_type, creator, created_at, is_archived, thumbnail_path FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
+    $result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, creator, created_at, is_archived, thumbnail_path FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
     $models = [];
     $modelIds = [];
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
@@ -123,7 +123,6 @@ try {
             // Use preview endpoint for single models
             $row['preview_path'] = '/preview?id=' . $row['id'];
             $row['preview_type'] = $row['file_type'];
-            $row['print_types'] = $row['print_type'] ? [$row['print_type']] : [];
         }
         $models[] = $row;
     }
@@ -138,18 +137,6 @@ if (!empty($modelIds)) {
     try {
         $firstParts = getFirstPartsForModels($modelIds);
 
-        // Get distinct print types for multi-part models in one query
-        $placeholders = implode(',', array_fill(0, count($modelIds), '?'));
-        $printStmt = $db->prepare("SELECT parent_id, GROUP_CONCAT(DISTINCT print_type) as print_types FROM models WHERE parent_id IN ($placeholders) AND print_type IS NOT NULL GROUP BY parent_id");
-        foreach ($modelIds as $index => $id) {
-            $printStmt->bindValue($index + 1, $id, PDO::PARAM_INT);
-        }
-        $printResult = $printStmt->execute();
-        $printTypesByParent = [];
-        while ($row = $printResult->fetchArray(PDO::FETCH_ASSOC)) {
-            $printTypesByParent[$row['parent_id']] = explode(',', $row['print_types']);
-        }
-
         // Assign to models
         foreach ($models as &$model) {
             if ($model['part_count'] > 0) {
@@ -160,7 +147,6 @@ if (!empty($modelIds)) {
                     $model['preview_type'] = $firstPart['file_type'];
                     $model['preview_file_size'] = $firstPart['file_size'] ?? 0;
                 }
-                $model['print_types'] = $printTypesByParent[$model['id']] ?? [];
             }
         }
         unset($model);
@@ -328,16 +314,6 @@ require_once 'includes/header.php';
                             <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
-                            <?php endif; ?>
-                            <?php if (!empty($model['print_types'])): ?>
-                            <div class="print-type-indicators">
-                                <?php if (in_array('fdm', $model['print_types'])): ?>
-                                <span class="print-type-badge print-type-fdm">FDM</span>
-                                <?php endif; ?>
-                                <?php if (in_array('sla', $model['print_types'])): ?>
-                                <span class="print-type-badge print-type-sla">SLA</span>
-                                <?php endif; ?>
-                            </div>
                             <?php endif; ?>
                         </div>
                         <div class="model-info">
