@@ -31,10 +31,15 @@ cache/*
 Thumbs.db
 
 # PHP
+vendor/
+.phpunit.cache/
 *.log
 
 # Plugins (user-installed, not part of core)
 plugins/
+
+# Documentation (hosted on main website)
+docs/
 
 # Development files
 .claude/
