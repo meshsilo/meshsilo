@@ -1,8 +1,5 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
-// Set baseDir based on how we're accessed (router vs direct)
-// Router loads from root context, direct access needs ../
-$baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
 // Require group management permission
 if (!isLoggedIn() || !canManageGroups()) {

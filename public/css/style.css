@@ -13,6 +13,9 @@
     --color-text: #f1f5f9;
     --color-text-muted: #94a3b8;
     --color-border: #334155;
+    --color-success: #22c55e;
+    --color-warning: #eab308;
+    --color-danger: #ef4444;
     --radius: 8px;
     --radius-lg: 12px;
     --color-version-1: #3498db;
@@ -30,6 +33,9 @@
     --color-text: #0f172a;
     --color-text-muted: #64748b;
     --color-border: #e2e8f0;
+    --color-success: #16a34a;
+    --color-warning: #ca8a04;
+    --color-danger: #dc2626;
 }
 
 /* Ensure proper contrast for specific elements in light mode */

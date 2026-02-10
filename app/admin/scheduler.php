@@ -448,10 +448,10 @@ include __DIR__ . '/../../includes/header.php';
     border-radius: 4px;
 }
 
-.badge-success { background: #10b981; color: white; }
-.badge-danger { background: #ef4444; color: white; }
-.badge-warning { background: #f59e0b; color: white; }
-.badge-secondary { background: #6b7280; color: white; }
+.badge-success { background: var(--color-success); color: white; }
+.badge-danger { background: var(--color-danger); color: white; }
+.badge-warning { background: var(--color-warning); color: white; }
+.badge-secondary { background: var(--color-text-muted); color: white; }
 
 .ml-2 { margin-left: 0.5rem; }
 .mt-2 { margin-top: 0.5rem; }

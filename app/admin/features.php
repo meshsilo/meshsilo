@@ -266,7 +266,7 @@ require_once __DIR__ . '/../../includes/header.php';
         }
 
         .feature-item.enabled {
-            border-color: #22c55e;
+            border-color: var(--color-success);
             background: rgba(34, 197, 94, 0.1);
         }
 
@@ -286,7 +286,7 @@ require_once __DIR__ . '/../../includes/header.php';
             display: block;
             width: 44px;
             height: 24px;
-            background: #64748b;
+            background: var(--color-text-muted);
             border-radius: 12px;
             transition: background 0.2s ease;
             position: relative;
@@ -306,7 +306,7 @@ require_once __DIR__ . '/../../includes/header.php';
         }
 
         .feature-toggle input:checked + .toggle-slider {
-            background: #22c55e;
+            background: var(--color-success);
         }
 
         .feature-toggle input:checked + .toggle-slider::before {
@@ -364,7 +364,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         .feature-warning {
             font-size: 0.75rem;
-            color: #f59e0b;
+            color: var(--color-warning);
             margin: 0.25rem 0 0;
             padding: 0.25rem 0.5rem;
             background: rgba(245, 158, 11, 0.1);
@@ -373,7 +373,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         .feature-dependents {
             font-size: 0.75rem;
-            color: #3b82f6;
+            color: var(--color-primary);
             margin: 0.25rem 0 0;
             padding: 0.25rem 0.5rem;
             background: rgba(59, 130, 246, 0.1);
@@ -381,7 +381,7 @@ require_once __DIR__ . '/../../includes/header.php';
         }
 
         .feature-item.has-warning {
-            border-color: #f59e0b;
+            border-color: var(--color-warning);
         }
 
         .sticky-actions {

@@ -476,7 +476,7 @@ php cli/worker.php --stats</pre>
 }
 
 .option-item.warning {
-    border-left: 3px solid #f59e0b;
+    border-left: 3px solid var(--color-warning);
 }
 
 .option-item input {
@@ -494,7 +494,7 @@ php cli/worker.php --stats</pre>
 }
 
 .warning-badge {
-    color: #f59e0b;
+    color: var(--color-warning);
     font-size: 0.875rem;
 }
 
@@ -561,11 +561,11 @@ php cli/worker.php --stats</pre>
 }
 
 .cli-output-panel.success {
-    border-color: #4ade80;
+    border-color: var(--color-success);
 }
 
 .cli-output-panel.error {
-    border-color: #f87171;
+    border-color: var(--color-danger);
 }
 
 .output-header {
@@ -583,11 +583,11 @@ php cli/worker.php --stats</pre>
 }
 
 .cli-output-panel.success .output-icon {
-    color: #4ade80;
+    color: var(--color-success);
 }
 
 .cli-output-panel.error .output-icon {
-    color: #f87171;
+    color: var(--color-danger);
 }
 
 .output-title {

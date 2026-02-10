@@ -11,6 +11,7 @@ if (!isLoggedIn() || !isAdmin()) {
 
 $pageTitle = 'Model Management';
 $activePage = 'admin';
+$adminPage = 'models';
 
 $db = getDB();
 $user = getCurrentUser();
@@ -95,7 +96,10 @@ $tags = getAllTags();
 require_once __DIR__ . '/../../includes/header.php';
 ?>
 
-        <div class="page-container-wide">
+        <div class="admin-layout">
+<?php require_once __DIR__ . '/../../includes/admin-sidebar.php'; ?>
+
+            <div class="admin-content">
             <div class="page-header">
                 <h1>Model Management</h1>
                 <p><?= number_format($totalModels) ?> model<?= $totalModels !== 1 ? 's' : '' ?></p>
@@ -250,7 +254,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
             </nav>
             <?php endif; ?>
-        </div>
+            </div><!-- /.admin-content -->
+        </div><!-- /.admin-layout -->
 
         <script>
         function toggleSelectAll(checkbox) {

@@ -432,9 +432,9 @@ document.addEventListener('keydown', function(e) {
     font-weight: 500;
 }
 
-.badge-info { background: var(--info-color, #3498db); color: white; }
-.badge-warning { background: var(--warning-color, #f39c12); color: black; }
-.badge-error { background: var(--error-color, #e74c3c); color: white; }
+.badge-info { background: var(--color-primary); color: white; }
+.badge-warning { background: var(--color-warning); color: black; }
+.badge-error { background: var(--color-danger); color: white; }
 .badge-critical { background: #8e44ad; color: white; }
 
 .badge-type-auth { background: #9b59b6; color: white; }

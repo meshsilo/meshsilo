@@ -470,17 +470,17 @@ include __DIR__ . '/../../includes/header.php';
 
 .finding-high {
     background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
+    border-color: var(--color-danger);
 }
 
 .finding-medium {
     background: rgba(245, 158, 11, 0.1);
-    border-color: #f59e0b;
+    border-color: var(--color-warning);
 }
 
 .finding-low {
     background: rgba(59, 130, 246, 0.1);
-    border-color: #3b82f6;
+    border-color: var(--color-primary);
 }
 
 .tabs {

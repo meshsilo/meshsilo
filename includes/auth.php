@@ -117,6 +117,11 @@ function enforceAuthentication(): void {
     // Pages that don't require authentication (old direct-access pattern)
     $publicPages = ['login.php', 'install.php', 'forgot-password.php', 'reset-password.php'];
 
+    // Skip for API requests (API uses its own key-based auth in api/index.php)
+    if (defined('API_REQUEST') && API_REQUEST === true) {
+        return;
+    }
+
     // Routes that don't require authentication (router pattern)
     $publicRoutes = ['/login', '/logout', '/install', '/forgot-password', '/reset-password'];
     if (class_exists('PluginManager')) {
@@ -133,8 +138,14 @@ function enforceAuthentication(): void {
     $isPublicPage = in_array($currentPage, $publicPages);
     $isPublicRoute = in_array($currentRoute, $publicRoutes);
 
-    // Redirect to login if not authenticated (unless on public page/route)
-    if (!isLoggedIn() && !$isPublicPage && !$isPublicRoute) {
+    // Skip for API routes - they handle their own key-based auth in api/index.php
+    // Note: API_REQUEST constant isn't defined yet at this point because the API
+    // route handler (app/api/index.php) loads after enforceAuthentication() runs.
+    // So we also check the route path directly.
+    $isApiRoute = str_starts_with($currentRoute, '/api/') || $currentRoute === '/api';
+
+    // Redirect to login if not authenticated (unless on public page/route or API)
+    if (!isLoggedIn() && !$isPublicPage && !$isPublicRoute && !$isApiRoute) {
         logWarning('Unauthorized access attempt', [
             'page' => $currentPage,
             'route' => $currentRoute,

@@ -100,7 +100,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div class="stat-label">Cache Exists</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value" style="color: <?= $cacheStats['valid'] ? '#10b981' : '#f59e0b' ?>">
+                <div class="stat-value" style="color: <?= $cacheStats['valid'] ? 'var(--color-success)' : 'var(--color-warning)' ?>">
                     <?= $cacheStats['valid'] ? 'Valid' : 'Stale' ?>
                 </div>
                 <div class="stat-label">Cache Status</div>
@@ -341,10 +341,10 @@ require_once __DIR__ . '/../../includes/header.php';
     text-transform: uppercase;
     letter-spacing: 0.02em;
 }
-.method-get { background: #10b981; color: white; }
-.method-post { background: #3b82f6; color: white; }
-.method-put { background: #f59e0b; color: white; }
-.method-delete { background: #ef4444; color: white; }
+.method-get { background: var(--color-success); color: white; }
+.method-post { background: var(--color-primary); color: white; }
+.method-put { background: var(--color-warning); color: white; }
+.method-delete { background: var(--color-danger); color: white; }
 .method-patch { background: #8b5cf6; color: white; }
 
 .middleware-badge {

@@ -1,8 +1,5 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
-// Set baseDir based on how we're accessed (router vs direct)
-// Router loads from root context, direct access needs ../
-$baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
 // Require user management permission
 if (!isLoggedIn() || !canManageUsers()) {
@@ -327,7 +324,7 @@ require_once __DIR__ . '/../../includes/header.php';
     border-radius: var(--radius);
 }
 .permission-item.has-permission {
-    color: #10b981;
+    color: var(--color-success);
 }
 .permission-item.no-permission {
     color: var(--color-text-muted);
@@ -337,11 +334,11 @@ require_once __DIR__ . '/../../includes/header.php';
     font-weight: bold;
 }
 .danger-zone {
-    border: 1px solid #ef4444;
+    border: 1px solid var(--color-danger);
     background: rgba(239, 68, 68, 0.05);
 }
 .danger-zone h2 {
-    color: var(--danger);
+    color: var(--color-danger);
 }
 </style>
 

@@ -1,7 +1,4 @@
 <?php
-// Set baseDir based on how we're accessed (router vs direct)
-// Router loads from root context, direct access needs ../
-$baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/api-auth.php';
 require_once __DIR__ . '/../../includes/features.php';
@@ -434,10 +431,10 @@ include __DIR__ . '/../../includes/header.php';
     font-weight: 500;
 }
 
-.perm-read { background: #3b82f6; color: white; }
-.perm-write { background: #10b981; color: white; }
-.perm-delete { background: #f59e0b; color: black; }
-.perm-admin { background: #ef4444; color: white; }
+.perm-read { background: var(--color-primary); color: white; }
+.perm-write { background: var(--color-success); color: white; }
+.perm-delete { background: var(--color-warning); color: black; }
+.perm-admin { background: var(--color-danger); color: white; }
 
 /* Status badges */
 .badge {
@@ -448,8 +445,8 @@ include __DIR__ . '/../../includes/header.php';
     font-weight: 500;
 }
 
-.badge-active { background: #10b981; color: white; }
-.badge-expired { background: #ef4444; color: white; }
+.badge-active { background: var(--color-success); color: white; }
+.badge-expired { background: var(--color-danger); color: white; }
 
 /* Form */
 .checkbox-group {

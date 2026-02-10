@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
-$baseDir = '../';
 
 /**
  * Delete a file from disk, handling both regular and deduplicated files.

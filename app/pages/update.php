@@ -636,21 +636,6 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
                 </form>
             </div>
 
-            <?php if ($dbType === 'mysql'): ?>
-            <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                <h3 style="font-size: 0.875rem; margin-bottom: 0.5rem;">OAuth Tables (MySQL)</h3>
-                <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;">
-                    If you encounter "BLOB/TEXT column used in key specification" errors, use this repair option
-                    to recreate the OAuth tables with the correct MySQL-compatible schema.
-                </p>
-                <form method="post" style="display: inline;" onsubmit="return confirm('This will drop and recreate the OAuth tables. Any existing OAuth clients and tokens will be deleted. Continue?');">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                    <button type="submit" name="repair_oauth_tables" class="btn btn-secondary">
-                        Repair OAuth Tables
-                    </button>
-                </form>
-            </div>
-            <?php endif; ?>
         </div>
 
         <div class="footer">

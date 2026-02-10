@@ -242,7 +242,7 @@ function getMigrationList() {
             'dim_z DECIMAL(10,2)',
             'volume DECIMAL(15,2)',
         ]),
-        // API & Webhooks
+        // API
         createTableMigration('API keys table', 'Store API keys for programmatic access', 'api_keys', [
             'id INT AUTO_INCREMENT PRIMARY KEY',
             'user_id INT NOT NULL',
@@ -271,34 +271,7 @@ function getMigrationList() {
         ], [
             'idx_api_log_created' => 'created_at',
         ]),
-        createTableMigration('Webhooks table', 'Store webhook endpoints and configuration', 'webhooks', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'name VARCHAR(255)',
-            'url VARCHAR(500) NOT NULL',
-            'secret VARCHAR(255)',
-            'events TEXT NOT NULL',
-            'is_active TINYINT DEFAULT 1',
-            'last_triggered_at TIMESTAMP NULL',
-            'last_status_code INT',
-            'failure_count INT DEFAULT 0',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ]),
-        createTableMigration('Webhook deliveries table', 'Log webhook delivery attempts', 'webhook_deliveries', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'webhook_id INT NOT NULL',
-            'event VARCHAR(100) NOT NULL',
-            'payload TEXT NOT NULL',
-            'response_code INT',
-            'response_body TEXT',
-            'success TINYINT DEFAULT 0',
-            'duration_ms INT',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE',
-        ], [
-            'idx_webhook_del_created' => 'created_at',
-        ]),
-        // Enterprise features
+        // Core features
         createTableMigration('Print photos table', 'Store photos of printed models', 'print_photos', [
             'id INT AUTO_INCREMENT PRIMARY KEY',
             'model_id INT NOT NULL',
@@ -371,51 +344,6 @@ function getMigrationList() {
                 $db->exec('ALTER TABLE users ADD COLUMN model_limit INTEGER DEFAULT 0');
             }
         ],
-        // Teams
-        createTableMigration('Teams table', 'Team/workspace definitions', 'teams', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'name VARCHAR(255) NOT NULL',
-            'description TEXT',
-            'owner_id INT NOT NULL',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE',
-        ]),
-        createTableMigration('Team members table', 'Team membership with roles', 'team_members', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'team_id INT NOT NULL',
-            'user_id INT NOT NULL',
-            'role VARCHAR(50) DEFAULT "member"',
-            'joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE',
-            'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
-        ], [], ['uniqueKeys' => ['unique_membership' => 'team_id, user_id']]),
-        createTableMigration('Team models table', 'Models shared with teams', 'team_models', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'team_id INT NOT NULL',
-            'model_id INT NOT NULL',
-            'shared_by INT NOT NULL',
-            'permissions VARCHAR(50) DEFAULT "read"',
-            'shared_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE',
-            'FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE',
-            'FOREIGN KEY (shared_by) REFERENCES users(id) ON DELETE CASCADE',
-        ], [], ['uniqueKeys' => ['unique_share' => 'team_id, model_id']]),
-        createTableMigration('Team invites table', 'Pending team invitations', 'team_invites', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'team_id INT NOT NULL',
-            'email VARCHAR(255) NOT NULL',
-            'role VARCHAR(50) DEFAULT "member"',
-            'token VARCHAR(64) NOT NULL UNIQUE',
-            'invited_by INT NOT NULL',
-            'status VARCHAR(20) DEFAULT "pending"',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE',
-            'FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE',
-        ]),
         // Two-Factor Authentication
         addColumnsMigration('Users: two-factor authentication columns', 'TOTP-based 2FA with backup codes', 'users', 'two_factor_enabled', [
             'two_factor_secret VARCHAR(64)',
@@ -609,142 +537,6 @@ function getMigrationList() {
             'idx_audit_resource' => 'resource_type, resource_id',
             'idx_audit_created' => 'created_at',
             'idx_audit_severity' => 'severity',
-        ]),
-        // Data Retention & Compliance
-        createTableMigration('Retention policies table', 'Configure data retention rules', 'retention_policies', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'name VARCHAR(255) NOT NULL',
-            'description TEXT',
-            'entity_type VARCHAR(50) NOT NULL',
-            'condition_field VARCHAR(100)',
-            'condition_operator VARCHAR(20)',
-            'condition_value VARCHAR(255)',
-            'action VARCHAR(20) NOT NULL',
-            'retention_days INT',
-            'is_active TINYINT DEFAULT 1',
-            'last_executed_at DATETIME',
-            'items_affected INT DEFAULT 0',
-            'created_by INT',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL',
-        ]),
-        createTableMigration('Legal holds table', 'Prevent deletion of items under legal hold', 'legal_holds', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'name VARCHAR(255) NOT NULL',
-            'description TEXT',
-            'entity_type VARCHAR(50) NOT NULL',
-            'entity_id INT NOT NULL',
-            'reason TEXT NOT NULL',
-            'reference_number VARCHAR(100)',
-            'created_by INT NOT NULL',
-            'expires_at DATETIME',
-            'released_at DATETIME',
-            'released_by INT',
-            'release_reason TEXT',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE',
-            'FOREIGN KEY (released_by) REFERENCES users(id) ON DELETE SET NULL',
-        ], [
-            'idx_legal_holds_entity' => 'entity_type, entity_id',
-            'idx_legal_holds_active' => 'released_at',
-        ]),
-        createTableMigration('Retention execution log table', 'Track retention policy execution history', 'retention_log', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'policy_id INT NOT NULL',
-            'action_taken VARCHAR(20) NOT NULL',
-            'items_processed INT DEFAULT 0',
-            'items_affected INT DEFAULT 0',
-            'items_skipped INT DEFAULT 0',
-            'error_count INT DEFAULT 0',
-            'details TEXT',
-            'started_at DATETIME',
-            'completed_at DATETIME',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (policy_id) REFERENCES retention_policies(id) ON DELETE CASCADE',
-        ], [
-            'idx_retention_log_policy' => 'policy_id',
-        ]),
-        // Advanced Analytics
-        createTableMigration('Scheduled reports table', 'Configure automated report generation and delivery', 'scheduled_reports', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'name VARCHAR(255) NOT NULL',
-            'description TEXT',
-            'report_type VARCHAR(50) NOT NULL',
-            'filters TEXT',
-            'columns TEXT',
-            'schedule VARCHAR(50) NOT NULL',
-            'recipients TEXT NOT NULL',
-            'format VARCHAR(20) DEFAULT "csv"',
-            'include_charts TINYINT DEFAULT 0',
-            'is_active TINYINT DEFAULT 1',
-            'last_run_at DATETIME',
-            'last_status VARCHAR(20)',
-            'last_error TEXT',
-            'next_run_at DATETIME',
-            'created_by INT',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL',
-        ], [
-            'idx_scheduled_reports_next' => 'next_run_at',
-            'idx_scheduled_reports_active' => 'is_active',
-        ]),
-        createTableMigration('Report execution log table', 'Track report generation history', 'report_log', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'report_id INT',
-            'report_type VARCHAR(50) NOT NULL',
-            'status VARCHAR(20) NOT NULL',
-            'file_path VARCHAR(500)',
-            'file_size BIGINT',
-            'row_count INT',
-            'recipients_notified INT DEFAULT 0',
-            'error_message TEXT',
-            'execution_time_ms INT',
-            'triggered_by INT',
-            'started_at DATETIME',
-            'completed_at DATETIME',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (report_id) REFERENCES scheduled_reports(id) ON DELETE SET NULL',
-            'FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL',
-        ], [
-            'idx_report_log_report' => 'report_id',
-            'idx_report_log_created' => 'created_at',
-        ]),
-        createTableMigration('Dashboard widgets table', 'Store custom dashboard widget configurations', 'dashboard_widgets', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'user_id INT NOT NULL',
-            'widget_type VARCHAR(50) NOT NULL',
-            'title VARCHAR(255)',
-            'config TEXT',
-            'position_x INT DEFAULT 0',
-            'position_y INT DEFAULT 0',
-            'width INT DEFAULT 1',
-            'height INT DEFAULT 1',
-            'is_visible TINYINT DEFAULT 1',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-            'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
-        ], [
-            'idx_dashboard_widgets_user' => 'user_id',
-        ]),
-        createTableMigration('Saved filters table', 'Store reusable filter presets for reports', 'saved_filters', [
-            'id INT AUTO_INCREMENT PRIMARY KEY',
-            'user_id INT NOT NULL',
-            'name VARCHAR(255) NOT NULL',
-            'entity_type VARCHAR(50) NOT NULL',
-            'filters TEXT NOT NULL',
-            'is_default TINYINT DEFAULT 0',
-            'is_shared TINYINT DEFAULT 0',
-            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ], [
-            'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
-        ], [
-            'idx_saved_filters_user' => 'user_id',
         ]),
         createTableMigration('Share links table', 'Public share links for models', 'share_links', [
             'id INT AUTO_INCREMENT PRIMARY KEY',
@@ -955,49 +747,6 @@ function getMigrationList() {
         ], [
             'FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE',
             'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
-        ]),
-        createTableMigration('RUM metrics table', 'Stores Real User Monitoring performance metrics', 'rum_metrics', [
-            'id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT',
-            'url VARCHAR(255)',
-            'referrer VARCHAR(255)',
-            'user_agent VARCHAR(255)',
-            'connection_type VARCHAR(20)',
-            'lcp INT',
-            'fid INT',
-            'cls DECIMAL(5,3)',
-            'fcp INT',
-            'fp INT',
-            'ttfb INT',
-            'dom_content_loaded INT',
-            'page_load INT',
-            'dom_interactive INT',
-            'resource_count INT',
-            'js_errors INT',
-            'created_at' => 'created_at DATETIME',
-        ], [], [], [
-            'mysqlInlineIndexes' => [
-                'INDEX idx_rum_url (url)',
-                'INDEX idx_rum_created (created_at)',
-            ],
-            'sqliteOverrides' => [
-                'created_at' => 'created_at TEXT',
-            ],
-        ]),
-        createTableMigration('RUM errors table', 'Stores Real User Monitoring JavaScript error data', 'rum_errors', [
-            'id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT',
-            'url VARCHAR(255)',
-            'message VARCHAR(500)',
-            'source VARCHAR(255)',
-            'line_number INT',
-            'created_at' => 'created_at DATETIME',
-        ], [], [], [
-            'mysqlInlineIndexes' => [
-                'INDEX idx_rum_errors_url (url)',
-                'INDEX idx_rum_errors_created (created_at)',
-            ],
-            'sqliteOverrides' => [
-                'created_at' => 'created_at TEXT',
-            ],
         ]),
         // Special: Sessions table expires_at column (conditional tableExists guard)
         [

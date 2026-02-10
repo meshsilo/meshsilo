@@ -1,9 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/storage.php';
-// Set baseDir based on how we're accessed (router vs direct)
-// Router loads from root context, direct access needs ../
-$baseDir = isset($_SERVER['ROUTE_NAME']) ? '' : '../';
 
 // Require storage management permission
 if (!isLoggedIn() || !canManageStorage()) {

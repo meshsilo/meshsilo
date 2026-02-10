@@ -704,22 +704,22 @@ function getStatusMessage($services) {
 
 .health-status-banner.status-healthy {
     background: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
+    color: var(--color-success);
 }
 
 .health-status-banner.status-warning {
     background: rgba(234, 179, 8, 0.15);
-    color: #eab308;
+    color: var(--color-warning);
 }
 
 .health-status-banner.status-critical {
     background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    color: var(--color-danger);
 }
 
 .health-status-banner.status-down {
     background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    color: var(--color-danger);
 }
 
 .status-icon::before {
@@ -801,11 +801,11 @@ function getStatusMessage($services) {
 }
 
 .metric-bar-fill.warning {
-    background: #eab308;
+    background: var(--color-warning);
 }
 
 .metric-bar-fill.critical {
-    background: #ef4444;
+    background: var(--color-danger);
 }
 
 .metric-detail {
@@ -835,10 +835,10 @@ function getStatusMessage($services) {
     border-left: 4px solid var(--border-color);
 }
 
-.service-card.status-healthy { border-left-color: #22c55e; }
-.service-card.status-warning, .service-card.status-degraded { border-left-color: #eab308; }
-.service-card.status-critical, .service-card.status-down { border-left-color: #ef4444; }
-.service-card.status-configured { border-left-color: #3b82f6; }
+.service-card.status-healthy { border-left-color: var(--color-success); }
+.service-card.status-warning, .service-card.status-degraded { border-left-color: var(--color-warning); }
+.service-card.status-critical, .service-card.status-down { border-left-color: var(--color-danger); }
+.service-card.status-configured { border-left-color: var(--color-primary); }
 
 .service-name {
     font-weight: 600;
@@ -858,11 +858,11 @@ function getStatusMessage($services) {
     text-transform: uppercase;
 }
 
-.badge-healthy { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-.badge-warning, .badge-degraded { background: rgba(234, 179, 8, 0.2); color: #eab308; }
-.badge-critical, .badge-down { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.badge-configured { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
-.badge-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.badge-healthy { background: rgba(34, 197, 94, 0.2); color: var(--color-success); }
+.badge-warning, .badge-degraded { background: rgba(234, 179, 8, 0.2); color: var(--color-warning); }
+.badge-critical, .badge-down { background: rgba(239, 68, 68, 0.2); color: var(--color-danger); }
+.badge-configured { background: rgba(59, 130, 246, 0.2); color: var(--color-primary); }
+.badge-error { background: rgba(239, 68, 68, 0.2); color: var(--color-danger); }
 
 .service-message {
     font-size: 0.875rem;
@@ -941,8 +941,8 @@ function getStatusMessage($services) {
     text-align: center;
 }
 
-.text-danger { color: #ef4444; }
-.text-success { color: #22c55e; }
+.text-danger { color: var(--color-danger); }
+.text-success { color: var(--color-success); }
 
 @media (max-width: 768px) {
     .header-actions {

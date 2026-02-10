@@ -488,12 +488,12 @@ function parseUserAgent($ua) {
 
 .badge-admin {
     background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    color: var(--color-danger);
 }
 
 .badge-current {
     background: rgba(34, 197, 94, 0.2);
-    color: #22c55e;
+    color: var(--color-success);
 }
 
 .current-session {

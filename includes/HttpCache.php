@@ -283,27 +283,3 @@ class HttpCache {
     }
 }
 
-// ========================================
-// Helper Functions
-// ========================================
-
-/**
- * Send no-cache headers
- */
-function no_cache(): void {
-    HttpCache::noCache();
-}
-
-/**
- * Send cache headers for static content
- */
-function cache_static(int $maxAge = 86400): void {
-    HttpCache::staticContent($maxAge);
-}
-
-/**
- * Check if content is cached and send 304 if so
- */
-function check_etag(string $content): bool {
-    return HttpCache::etag($content);
-}

@@ -640,7 +640,7 @@ require_once 'includes/header.php';
         // File selection handlers
         function handleFileSelect(file) {
             display.textContent = 'Selected: ' + file.name;
-            display.style.color = '#22c55e';
+            display.style.color = 'var(--color-success)';
 
             // Auto-fill name from filename if empty
             const nameInput = document.getElementById('model-name');
@@ -662,7 +662,7 @@ require_once 'includes/header.php';
             photoInput.addEventListener('change', function(e) {
                 if (this.files.length > 0) {
                     display.textContent = 'Photo captured: ' + this.files[0].name;
-                    display.style.color = '#22c55e';
+                    display.style.color = 'var(--color-success)';
                 }
             });
         }

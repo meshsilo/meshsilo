@@ -39,7 +39,6 @@ if (!function_exists('isFeatureEnabled')) {
                         </div>
                     </div>
 
-                    <?php if (isFeatureEnabled('categories') || isFeatureEnabled('collections') || isFeatureEnabled('tags')): ?>
                     <div class="nav-category" data-category="content">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Content</span>
@@ -48,6 +47,7 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
+                            <a href="<?= route('admin.models') ?>" <?= ($adminPage ?? '') === 'models' ? 'class="active"' : '' ?>>Models</a>
                             <?php if (isFeatureEnabled('categories')): ?>
                             <a href="<?= route('admin.categories') ?>" <?= ($adminPage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
                             <?php endif; ?>
@@ -59,7 +59,6 @@ if (!function_exists('isFeatureEnabled')) {
                             <?php endif; ?>
                         </div>
                     </div>
-                    <?php endif; ?>
 
                     <?php if (isFeatureEnabled('api_keys')): ?>
                     <div class="nav-category" data-category="integration">
@@ -85,6 +84,7 @@ if (!function_exists('isFeatureEnabled')) {
                         <div class="nav-links">
                             <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active"' : '' ?>>Security Headers</a>
                             <?php if (isFeatureEnabled('activity_log')): ?>
+                            <a href="<?= route('admin.activity') ?>" <?= ($adminPage ?? '') === 'activity' ? 'class="active"' : '' ?>>Activity Log</a>
                             <a href="<?= route('admin.audit-log') ?>" <?= ($adminPage ?? '') === 'audit-log' ? 'class="active"' : '' ?>>Audit Log</a>
                             <?php endif; ?>
                         </div>
