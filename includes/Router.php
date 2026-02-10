@@ -172,6 +172,11 @@ class Router {
             $method = strtoupper($_POST['_method']);
         }
 
+        // HEAD requests should match GET routes (standard HTTP behavior)
+        if ($method === 'HEAD') {
+            $method = 'GET';
+        }
+
         // Get URI from route parameter or REQUEST_URI
         $uri = $_GET['route'] ?? '';
         if (empty($uri)) {
@@ -359,7 +364,7 @@ class Router {
 
                 case 'csrf':
                     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-                        $token = $_POST['_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+                        $token = $_POST['csrf_token'] ?? $_POST['_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
                         if (!isset($_SESSION['csrf_token']) || $token !== $_SESSION['csrf_token']) {
                             http_response_code(419);
                             echo json_encode(['error' => 'CSRF token mismatch']);

@@ -33,6 +33,9 @@ Thumbs.db
 # PHP
 *.log
 
+# Plugins (user-installed, not part of core)
+plugins/
+
 # Development files
 .claude/
 todo.txt

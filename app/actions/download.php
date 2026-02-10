@@ -38,7 +38,7 @@ if (!$part) {
 // Check ownership - user must own the model or be admin
 // Models with NULL user_id are accessible to all authenticated users (backward compatibility)
 $user = getCurrentUser();
-$ownerId = $part['user_id'];
+$ownerId = $part['user_id'] ?? null;
 
 // If this is a child part, check the parent model's ownership
 if ($part['parent_id']) {
@@ -47,7 +47,7 @@ if ($part['parent_id']) {
     $parentResult = $parentStmt->execute();
     $parentModel = $parentResult->fetchArray(PDO::FETCH_ASSOC);
     if ($parentModel) {
-        $ownerId = $parentModel['user_id'];
+        $ownerId = $parentModel['user_id'] ?? null;
     }
 }
 

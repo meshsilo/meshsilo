@@ -30,11 +30,11 @@ foreach ($favorites as &$model) {
         $partResult = $partStmt->execute();
         $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
-            $model['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
+            $model['preview_path'] = '/preview?id=' . $firstPart['id'];
             $model['preview_type'] = $firstPart['file_type'];
         }
     } else {
-        $model['preview_path'] = '/actions/preview?id=' . $model['id'];
+        $model['preview_path'] = '/preview?id=' . $model['id'];
         $model['preview_type'] = $model['file_type'];
     }
 }

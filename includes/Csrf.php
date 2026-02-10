@@ -126,6 +126,11 @@ class Csrf {
             return $_POST[self::TOKEN_NAME];
         }
 
+        // Check legacy field name for backward compatibility
+        if (!empty($_POST['_token'])) {
+            return $_POST['_token'];
+        }
+
         // Check header (for AJAX requests)
         $headers = function_exists('getallheaders') ? getallheaders() : [];
         if (!empty($headers[self::HEADER_NAME])) {

@@ -86,12 +86,12 @@ if ($model['part_count'] > 0) {
     }
     // Use first part for preview via preview endpoint
     if (!empty($parts)) {
-        $previewPath = '/actions/preview?id=' . $parts[0]['id'];
+        $previewPath = '/preview?id=' . $parts[0]['id'];
         $previewType = $parts[0]['file_type'];
     }
 } else {
     // Single model - use preview endpoint
-    $previewPath = '/actions/preview?id=' . $model['id'];
+    $previewPath = '/preview?id=' . $model['id'];
     $previewType = $model['file_type'];
 }
 
@@ -611,7 +611,7 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                         <div class="parts-list">
                             <?php foreach ($dirParts as $part): ?>
-                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="/actions/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
                                 <?php if (canEdit()): ?>
                                 <span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
                                 <?php endif; ?>

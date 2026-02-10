@@ -16,8 +16,8 @@ class LazyModelLoader {
             { rootMargin: '100px', threshold: 0.1 }
         );
 
-        // Observe both grid and list view thumbnails
-        document.querySelectorAll('.model-thumbnail[data-model-url], .model-list-thumbnail[data-model-url]').forEach(el => {
+        // Observe grid, list, and detail view thumbnails
+        document.querySelectorAll('.model-thumbnail[data-model-url], .model-list-thumbnail[data-model-url], .model-detail-thumbnail[data-model-url]').forEach(el => {
             this.observer.observe(el);
         });
     }

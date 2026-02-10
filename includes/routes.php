@@ -256,6 +256,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
 
     // User management
     $router->get('/users', ['file' => 'app/admin/users.php'], 'admin.users');
+    $router->post('/users', ['file' => 'app/admin/users.php'], 'admin.users.save');
     $router->get('/user/{id:\d+}', ['file' => 'app/admin/user.php', 'map' => ['id' => 'id']], 'admin.user');
     $router->post('/user/{id:\d+}', ['file' => 'app/admin/user.php', 'map' => ['id' => 'id']], 'admin.user.save');
 
@@ -314,6 +315,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
 
     // Routes (debugging)
     $router->get('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes');
+    $router->post('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes.action');
 
     // Plugins
     $router->get('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins');

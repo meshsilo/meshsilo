@@ -210,14 +210,14 @@ require_once __DIR__ . '/../../includes/header.php';
         <?php endif; ?>
 
         <!-- Tab Navigation -->
-        <div class="sso-tabs">
-            <a href="?tab=installed" class="sso-tab <?= $activeTab === 'installed' ? 'active' : '' ?>">Installed</a>
-            <a href="?tab=browse" class="sso-tab <?= $activeTab === 'browse' ? 'active' : '' ?>">Browse</a>
-            <a href="?tab=repositories" class="sso-tab <?= $activeTab === 'repositories' ? 'active' : '' ?>">Repositories</a>
+        <div class="plugin-tabs">
+            <a href="?tab=installed" class="plugin-tab <?= $activeTab === 'installed' ? 'active' : '' ?>">Installed</a>
+            <a href="?tab=browse" class="plugin-tab <?= $activeTab === 'browse' ? 'active' : '' ?>">Browse</a>
+            <a href="?tab=repositories" class="plugin-tab <?= $activeTab === 'repositories' ? 'active' : '' ?>">Repositories</a>
         </div>
 
         <!-- Tab Content -->
-        <div class="sso-tab-content">
+        <div class="plugin-tab-content">
 
             <?php if ($activeTab === 'installed'): ?>
             <!-- Upload Plugin -->
@@ -445,11 +445,54 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <style>
+/* Tab navigation */
+.plugin-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--color-border);
+    margin-bottom: 1.5rem;
+}
+
+.plugin-tab {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.plugin-tab:hover {
+    color: var(--color-text);
+}
+
+.plugin-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Tab content */
+.plugin-tab-content {
+    min-height: 200px;
+}
+
+.plugin-tab-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--color-text);
+}
+
 /* Upload section */
 .plugin-upload-section {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .plugin-upload-section h3 {
@@ -704,14 +747,6 @@ require_once __DIR__ . '/../../includes/header.php';
     text-decoration: underline;
 }
 
-/* Section headings */
-.sso-tab-content h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: var(--color-text);
-}
-
 /* Form help text */
 .form-help {
     font-size: 0.8rem;
@@ -719,8 +754,51 @@ require_once __DIR__ . '/../../includes/header.php';
     margin-top: 0.35rem;
 }
 
+/* Data table (repos) */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.data-table th {
+    font-weight: 600;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: var(--color-surface-hover);
+}
+
+.data-table tbody tr:hover {
+    background: var(--color-surface-hover);
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+    .plugin-tabs {
+        overflow-x: auto;
+    }
+
+    .plugin-tab {
+        white-space: nowrap;
+        padding: 0.6rem 1rem;
+    }
+
     .plugin-grid {
         grid-template-columns: 1fr;
     }

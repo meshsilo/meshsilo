@@ -18,6 +18,7 @@ class ModelViewer {
         this.renderer = null;
         this.controls = null;
         this.model = null;
+        this.pivot = null;
         this.lodGroup = null;
         this.animationId = null;
         this.isReady = false;
@@ -90,13 +91,6 @@ class ModelViewer {
     async loadSTL(url) {
         return new Promise(async (resolve, reject) => {
             try {
-                // Pre-flight check: verify URL returns valid data
-                const response = await fetch(url, { method: 'HEAD' });
-                if (!response.ok) {
-                    reject(new Error(`File not found: ${response.status}`));
-                    return;
-                }
-
                 const loader = new THREE.STLLoader();
                 loader.load(
                     url,
@@ -114,7 +108,6 @@ class ModelViewer {
 
                         this.model = new THREE.Mesh(geometry, material);
                         this.centerAndScaleModel();
-                        this.scene.add(this.model);
                         this.startAnimation();
                         resolve(this.model);
                     },
@@ -130,13 +123,6 @@ class ModelViewer {
     async load3MF(url) {
         return new Promise(async (resolve, reject) => {
             try {
-                // Pre-flight check: verify URL returns valid data
-                const response = await fetch(url, { method: 'HEAD' });
-                if (!response.ok) {
-                    reject(new Error(`File not found: ${response.status}`));
-                    return;
-                }
-
                 const loader = new THREE.ThreeMFLoader();
 
                 // Set a timeout to prevent hanging on problematic files
@@ -169,7 +155,6 @@ class ModelViewer {
                             });
 
                             this.centerAndScaleModel();
-                            this.scene.add(this.model);
                             this.startAnimation();
                             resolve(this.model);
                         } catch (err) {
@@ -246,7 +231,6 @@ class ModelViewer {
                     }
 
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 })
@@ -399,7 +383,6 @@ class ModelViewer {
                     });
 
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 },
@@ -427,7 +410,6 @@ class ModelViewer {
 
                     this.model = new THREE.Mesh(geometry, material);
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 },
@@ -454,7 +436,6 @@ class ModelViewer {
                     });
 
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 },
@@ -480,7 +461,6 @@ class ModelViewer {
                     });
 
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 },
@@ -506,7 +486,6 @@ class ModelViewer {
                     });
 
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 },
@@ -532,7 +511,6 @@ class ModelViewer {
                     });
 
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 },
@@ -567,7 +545,6 @@ class ModelViewer {
                     });
 
                     this.centerAndScaleModel();
-                    this.scene.add(this.model);
                     this.startAnimation();
                     resolve(this.model);
                 },
@@ -612,7 +589,6 @@ class ModelViewer {
                 this.model = this.convertOCCTToThree(result);
 
                 this.centerAndScaleModel();
-                this.scene.add(this.model);
                 this.startAnimation();
                 resolve(this.model);
             } catch (error) {
@@ -726,18 +702,38 @@ class ModelViewer {
     centerAndScaleModel() {
         if (!this.model) return;
 
+        // Reset transforms before measuring
+        this.model.position.set(0, 0, 0);
+        this.model.scale.set(1, 1, 1);
+        this.model.rotation.set(0, 0, 0);
+
         // Compute bounding box
         const box = new THREE.Box3().setFromObject(this.model);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        // Center the model
-        this.model.position.sub(center);
-
         // Scale to fit in view
         const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = 50 / maxDim;
+        const scale = maxDim > 0 ? 50 / maxDim : 1;
         this.model.scale.setScalar(scale);
+
+        // Center the model (offset must account for scale)
+        this.model.position.set(
+            -center.x * scale,
+            -center.y * scale,
+            -center.z * scale
+        );
+
+        // Wrap model in a pivot group so rotation happens around the visual center.
+        // The model's position offset centers geometry inside the pivot;
+        // rotating the pivot then orbits around origin correctly.
+        if (this.pivot) {
+            this.scene.remove(this.pivot);
+        }
+        this.pivot = new THREE.Group();
+        this.scene.remove(this.model);
+        this.pivot.add(this.model);
+        this.scene.add(this.pivot);
 
         // Position camera
         this.camera.position.set(0, 30, 80);
@@ -750,6 +746,10 @@ class ModelViewer {
     }
 
     clearModel() {
+        if (this.pivot) {
+            this.scene.remove(this.pivot);
+            this.pivot = null;
+        }
         if (this.model) {
             this.scene.remove(this.model);
             if (this.model.geometry) {
@@ -781,9 +781,9 @@ class ModelViewer {
     animate() {
         this.animationId = requestAnimationFrame(() => this.animate());
 
-        // Auto-rotate if no controls
-        if (!this.controls && this.model && this.options.autoRotate) {
-            this.model.rotation.y += 0.01;
+        // Auto-rotate if no controls (rotate pivot so it orbits around model center)
+        if (!this.controls && this.pivot && this.options.autoRotate) {
+            this.pivot.rotation.y += 0.01;
         }
 
         if (this.controls) {
@@ -889,7 +889,6 @@ class ModelViewer {
                 }
 
                 this.centerAndScaleModel();
-                this.scene.add(this.model);
                 this.startAnimation();
                 resolve(this.model);
 
@@ -921,7 +920,6 @@ class ModelViewer {
 
                 this.model = new THREE.Mesh(geometry, material);
                 this.centerAndScaleModel();
-                this.scene.add(this.model);
                 this.startAnimation();
             }
         } catch (e) {

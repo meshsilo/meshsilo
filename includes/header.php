@@ -42,8 +42,8 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TDSLoader.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/AMFLoader.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" crossorigin="anonymous"></script>
-    <script src="<?= basePath('js/viewer.js') ?>?v=11" defer></script>
-    <script src="<?= basePath('js/main.js') ?>?v=7" defer></script>
+    <script src="<?= basePath('js/viewer.js') ?>?v=15" defer></script>
+    <script src="<?= basePath('js/main.js') ?>?v=8" defer></script>
     <script>
         // Theme toggle functionality
         function toggleTheme() {

@@ -45,12 +45,12 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
         $partResult = $partStmt->execute();
         $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
-            $row['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
+            $row['preview_path'] = '/preview?id=' . $firstPart['id'];
             $row['preview_type'] = $firstPart['file_type'];
         }
 
     } else {
-        $row['preview_path'] = '/actions/preview?id=' . $row['id'];
+        $row['preview_path'] = '/preview?id=' . $row['id'];
         $row['preview_type'] = $row['file_type'];
     }
     $models[] = $row;

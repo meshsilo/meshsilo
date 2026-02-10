@@ -244,10 +244,13 @@ function formatBytes(int $bytes, int $precision = 2): string {
  * @return string HTML input field with CSRF token
  */
 function csrfField(): string {
+    if (class_exists('Csrf')) {
+        return Csrf::field();
+    }
     if (!isset($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
-    return '<input type="hidden" name="_token" value="' . htmlspecialchars($_SESSION['csrf_token']) . '">';
+    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($_SESSION['csrf_token']) . '">';
 }
 
 /**
@@ -675,10 +678,12 @@ if (!function_exists('csrf_token')) {
 if (!function_exists('csrf_field')) {
     /**
      * Generate a CSRF token hidden input field
-     * Uses "_token" field name to match the Router's CSRF middleware check
      */
     function csrf_field(): string {
-        return '<input type="hidden" name="_token" value="' . e(csrf_token()) . '">';
+        if (class_exists('Csrf')) {
+            return Csrf::field();
+        }
+        return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
     }
 }
 

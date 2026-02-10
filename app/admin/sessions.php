@@ -23,7 +23,7 @@ $message = '';
 $error = '';
 
 // Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && Csrf::validate()) {
     $action = $_POST['action'] ?? '';
 
     switch ($action) {
@@ -60,9 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'cleanup_expired':
-            $now = date('Y-m-d H:i:s');
-            $stmt = $db->prepare('DELETE FROM sessions WHERE expires_at < :now');
-            $stmt->bindValue(':now', $now, PDO::PARAM_STR);
+            $stmt = $db->prepare('DELETE FROM sessions WHERE expires_at > 0 AND expires_at < :now');
+            $stmt->bindValue(':now', time(), PDO::PARAM_INT);
             $stmt->execute();
             $deleted = $db->changes();
             $message = "Cleaned up $deleted expired sessions.";
@@ -78,67 +77,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Check if database sessions are enabled
+$useDbSessions = getenv('DB_SESSIONS') === 'true' ||
+    (defined('DB_SESSIONS') && DB_SESSIONS === true) ||
+    getSetting('db_sessions', '0') === '1';
+
 // Get session statistics
-$stats = [];
-$now = date('Y-m-d H:i:s');
-$today = date('Y-m-d');
-
-// Active sessions count
-$stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > :now");
-$stmt->bindValue(':now', $now, PDO::PARAM_STR);
-$result = $stmt->execute();
-$stats['active'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
-
-// Expired sessions count
-$stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at <= :now");
-$stmt->bindValue(':now', $now, PDO::PARAM_STR);
-$result = $stmt->execute();
-$stats['expired'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
-
-// Unique users with sessions
-$stmt = $db->prepare("SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE expires_at > :now");
-$stmt->bindValue(':now', $now, PDO::PARAM_STR);
-$result = $stmt->execute();
-$stats['unique_users'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
-
-// Sessions created today
-$stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE created_at >= :today");
-$stmt->bindValue(':today', $today, PDO::PARAM_STR);
-$result = $stmt->execute();
-$stats['today'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
-
-// Get active sessions with user info
+$stats = ['active' => 0, 'expired' => 0, 'unique_users' => 0, 'today' => 0];
 $sessions = [];
-$stmt = $db->prepare("
-    SELECT s.*, u.username, u.email, u.is_admin
-    FROM sessions s
-    LEFT JOIN users u ON s.user_id = u.id
-    WHERE s.expires_at > :now
-    ORDER BY s.last_activity DESC
-    LIMIT 100
-");
-$stmt->bindValue(':now', $now, PDO::PARAM_STR);
-$result = $stmt->execute();
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $sessions[] = $row;
-}
-
-// Get users with multiple sessions
 $multiSessionUsers = [];
-$stmt = $db->prepare("
-    SELECT u.id, u.username, COUNT(s.id) as session_count
-    FROM users u
-    JOIN sessions s ON u.id = s.user_id
-    WHERE s.expires_at > :now
-    GROUP BY u.id
-    HAVING session_count > 1
-    ORDER BY session_count DESC
-    LIMIT 20
-");
-$stmt->bindValue(':now', $now, PDO::PARAM_STR);
-$result = $stmt->execute();
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $multiSessionUsers[] = $row;
+$now = time();
+
+if ($useDbSessions) {
+    // Active sessions count
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > :now");
+    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $stats['active'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+
+    // Expired sessions count
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > 0 AND expires_at <= :now");
+    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $stats['expired'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+
+    // Unique users with sessions
+    $stmt = $db->prepare("SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE expires_at > :now");
+    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $stats['unique_users'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+
+    // Sessions created today
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE last_activity >= :today");
+    $stmt->bindValue(':today', strtotime('today'), PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $stats['today'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+
+    // Get active sessions with user info
+    $stmt = $db->prepare("
+        SELECT s.*, u.username, u.email, u.is_admin
+        FROM sessions s
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE s.expires_at > :now
+        ORDER BY s.last_activity DESC
+        LIMIT 100
+    ");
+    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        $sessions[] = $row;
+    }
+
+    // Get users with multiple sessions
+    $stmt = $db->prepare("
+        SELECT u.id, u.username, COUNT(s.id) as session_count
+        FROM users u
+        JOIN sessions s ON u.id = s.user_id
+        WHERE s.expires_at > :now
+        GROUP BY u.id
+        HAVING session_count > 1
+        ORDER BY session_count DESC
+        LIMIT 20
+    ");
+    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+        $multiSessionUsers[] = $row;
+    }
 }
 
 // Get session settings
@@ -158,10 +163,12 @@ require_once __DIR__ . '/../../includes/header.php';
         <h1>Session Management</h1>
         <div class="header-actions">
             <form method="POST" style="display: inline;">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="cleanup_expired">
                 <button type="submit" class="btn btn-secondary">Clean Up Expired</button>
             </form>
             <form method="POST" style="display: inline;">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="revoke_all">
                 <button type="submit" class="btn btn-danger"
                         onclick="return confirm('Revoke ALL sessions except yours? All users will be logged out.')">
@@ -177,6 +184,46 @@ require_once __DIR__ . '/../../includes/header.php';
 
     <?php if ($error): ?>
     <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
+
+    <?php if (!$useDbSessions): ?>
+    <div class="alert alert-warning">
+        <strong>File-based sessions active.</strong>
+        Database session tracking is not enabled. To track and manage all user sessions here,
+        set <code>DB_SESSIONS=true</code> as an environment variable or enable it in settings.
+    </div>
+
+    <div class="admin-section" style="margin-bottom: 1.5rem;">
+        <h2>Current Session</h2>
+        <div class="table-responsive">
+            <table class="data-table" style="width: 100%; table-layout: fixed;">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Session ID</th>
+                        <th>IP Address</th>
+                        <th>User Agent</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="current-session">
+                        <td>
+                            <strong><?= htmlspecialchars($_SESSION['username'] ?? 'Unknown') ?></strong>
+                            <?php if (isAdmin()): ?>
+                            <span class="badge badge-admin">Admin</span>
+                            <?php endif; ?>
+                            <span class="badge badge-current">Current</span>
+                        </td>
+                        <td class="ip-address"><?= htmlspecialchars(substr(session_id(), 0, 12)) ?>...</td>
+                        <td class="ip-address"><?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? '-') ?></td>
+                        <td class="user-agent"><?= htmlspecialchars(parseUserAgent($_SERVER['HTTP_USER_AGENT'] ?? '')) ?></td>
+                        <td><span class="badge badge-current">Active</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
     <?php endif; ?>
 
     <!-- Stats -->
@@ -233,12 +280,13 @@ require_once __DIR__ . '/../../includes/header.php';
                             <td class="user-agent" title="<?= htmlspecialchars($session['user_agent'] ?? '') ?>">
                                 <?= htmlspecialchars(parseUserAgent($session['user_agent'] ?? '')) ?>
                             </td>
-                            <td class="timestamp"><?= date('M j, H:i', strtotime($session['created_at'])) ?></td>
-                            <td class="timestamp"><?= date('M j, H:i', strtotime($session['last_activity'])) ?></td>
-                            <td class="timestamp"><?= date('M j, H:i', strtotime($session['expires_at'])) ?></td>
+                            <td class="timestamp"><?= formatSessionTime($session['created_at'] ?? '') ?></td>
+                            <td class="timestamp"><?= formatSessionTime($session['last_activity'] ?? '') ?></td>
+                            <td class="timestamp"><?= formatSessionTime($session['expires_at'] ?? '') ?></td>
                             <td>
                                 <?php if (!$isCurrent): ?>
                                 <form method="POST" style="display: inline;">
+                                    <?= csrf_field() ?>
                                     <input type="hidden" name="action" value="revoke">
                                     <input type="hidden" name="session_id" value="<?= htmlspecialchars($session['id']) ?>">
                                     <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
@@ -279,6 +327,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <td><?= $user['session_count'] ?></td>
                             <td>
                                 <form method="POST" style="display: inline;">
+                                    <?= csrf_field() ?>
                                     <input type="hidden" name="action" value="revoke_user">
                                     <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
                                     <button type="submit" class="btn btn-sm btn-warning"
@@ -299,6 +348,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="admin-section">
             <h2>Session Settings</h2>
             <form method="POST" class="settings-form">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="update_settings">
 
                 <div class="form-group">
@@ -338,6 +388,17 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <?php
+function formatSessionTime($value) {
+    if (empty($value) || $value === '0') return '-';
+    // If it's a large number, treat as epoch timestamp
+    if (is_numeric($value) && (int)$value > 1000000000) {
+        return date('M j, H:i', (int)$value);
+    }
+    // Otherwise treat as datetime string
+    $ts = strtotime($value);
+    return $ts ? date('M j, H:i', $ts) : '-';
+}
+
 function parseUserAgent($ua) {
     if (empty($ua)) return 'Unknown';
 
@@ -481,6 +542,7 @@ function parseUserAgent($ua) {
     color: var(--text-muted);
     padding: 2rem;
 }
+
 </style>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

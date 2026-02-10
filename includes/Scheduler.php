@@ -345,8 +345,12 @@ class Scheduler {
         try {
             $db = getDB();
 
-            // Check if table exists
-            $tableCheck = $db->querySingle("SELECT name FROM sqlite_master WHERE type='table' AND name='scheduler_log'");
+            // Check if table exists (DB-agnostic)
+            if ($db->getType() === 'mysql') {
+                $tableCheck = $db->querySingle("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'scheduler_log'");
+            } else {
+                $tableCheck = $db->querySingle("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='scheduler_log'");
+            }
             if (!$tableCheck) {
                 return;
             }
@@ -510,10 +514,12 @@ class Scheduler {
         self::register(self::TASK_DEDUP_SCAN, '0 1 * * *', function() {
             require_once __DIR__ . '/dedup.php';
 
-            if (function_exists('runDeduplication')) {
-                $result = runDeduplication(['scan' => true, 'limit' => 100]);
-                $found = $result['duplicates_found'] ?? 0;
-                return "Dedup scan complete, {$found} duplicates found";
+            if (function_exists('runDeduplicationScan')) {
+                $result = runDeduplicationScan();
+                $processed = $result['hashes_processed'] ?? 0;
+                $deleted = $result['files_deleted'] ?? 0;
+                $saved = $result['space_saved'] ?? 0;
+                return "Dedup scan complete: {$processed} hashes processed, {$deleted} files deleted, {$saved} bytes saved";
             }
             return 'Deduplication function not available';
         }, ['description' => 'Scan for duplicate files']);

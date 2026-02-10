@@ -553,9 +553,11 @@ CREATE TABLE IF NOT EXISTS models (
     remix_of INT,
     external_source_url VARCHAR(500),
     external_source_id VARCHAR(100),
+    user_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
+    FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE,
+    INDEX idx_models_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -672,6 +674,7 @@ CREATE TABLE IF NOT EXISTS models (
     remix_of INTEGER,
     external_source_url TEXT,
     external_source_id TEXT,
+    user_id INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
