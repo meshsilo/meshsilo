@@ -1224,74 +1224,6 @@ function runMigrations($db) {
     }
 
     // =====================
-    // Webhooks Migration
-    // =====================
-    if (!tableExists($db, 'webhooks')) {
-        if ($type === 'mysql') {
-            $db->exec('CREATE TABLE webhooks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255),
-                url VARCHAR(500) NOT NULL,
-                secret VARCHAR(255),
-                events TEXT NOT NULL,
-                is_active TINYINT DEFAULT 1,
-                last_triggered_at TIMESTAMP NULL,
-                last_status_code INT,
-                failure_count INT DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-        } else {
-            $db->exec('CREATE TABLE webhooks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                url TEXT NOT NULL,
-                secret TEXT,
-                events TEXT NOT NULL,
-                is_active INTEGER DEFAULT 1,
-                last_triggered_at DATETIME,
-                last_status_code INTEGER,
-                failure_count INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )');
-        }
-        logInfo('Migration: Created webhooks table');
-    }
-
-    // Webhook Delivery Log Migration
-    if (!tableExists($db, 'webhook_deliveries')) {
-        if ($type === 'mysql') {
-            $db->exec('CREATE TABLE webhook_deliveries (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                webhook_id INT NOT NULL,
-                event VARCHAR(100) NOT NULL,
-                payload TEXT NOT NULL,
-                response_code INT,
-                response_body TEXT,
-                success TINYINT DEFAULT 0,
-                duration_ms INT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-            $db->exec('CREATE INDEX idx_webhook_del_created ON webhook_deliveries(created_at)');
-        } else {
-            $db->exec('CREATE TABLE webhook_deliveries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                webhook_id INTEGER NOT NULL,
-                event TEXT NOT NULL,
-                payload TEXT NOT NULL,
-                response_code INTEGER,
-                response_body TEXT,
-                success INTEGER DEFAULT 0,
-                duration_ms INTEGER,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
-            )');
-            $db->exec('CREATE INDEX idx_webhook_del_created ON webhook_deliveries(created_at)');
-        }
-        logInfo('Migration: Created webhook_deliveries table');
-    }
-
-    // =====================
     // Print Photos Migration
     // =====================
     if (!tableExists($db, 'print_photos')) {
@@ -1925,25 +1857,6 @@ function initializeDefaultSettings($db) {
         // Rate limiting
         'rate_limiting' => '1',
         'rate_limit_storage' => 'file',
-
-        // Webhooks and events
-        'webhooks_enabled' => '1',
-        'event_logging' => '1',
-
-        // Notifications
-        'discord_enabled' => '0',
-        'discord_webhook_url' => '',
-        'discord_events' => '[]',
-        'slack_enabled' => '0',
-        'slack_webhook_url' => '',
-        'slack_events' => '[]',
-
-        // Backup
-        'backup_enabled' => '0',
-        'backup_frequency' => 'daily',
-        'backup_retention' => '10',
-        'backup_time' => '03:00',
-        'last_scheduled_backup' => '',
 
         // Branding
         'logo_path' => '',

@@ -38,31 +38,6 @@ if (isset($_GET['force_update_check'])) {
     exit;
 }
 
-// Handle demo reset request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['demo_reset'])) {
-    if (getSetting('demo_mode', '0') === '1') {
-        require_once __DIR__ . '/../../includes/DemoMode.php';
-        try {
-            $demoMode = new DemoMode();
-            $result = $demoMode->resetToDemo();
-            if ($result['success']) {
-                $message = 'Demo reset completed. Models created: ' . ($result['models_created'] ?? 0);
-                if (!empty($result['errors'])) {
-                    $message .= ' (with ' . count($result['errors']) . ' warnings)';
-                }
-                logInfo('Demo reset triggered from admin settings', ['by' => getCurrentUser()['username'], 'models_created' => $result['models_created'] ?? 0]);
-            } else {
-                $error = 'Demo reset failed: ' . ($result['error'] ?? 'Unknown error');
-            }
-        } catch (Exception $e) {
-            $error = 'Demo reset failed: ' . $e->getMessage();
-            logError('Demo reset failed', ['error' => $e->getMessage(), 'by' => getCurrentUser()['username']]);
-        }
-    } else {
-        $error = 'Demo mode is not enabled.';
-    }
-}
-
 // Handle Email test AJAX request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
     header('Content-Type: application/json');
@@ -581,26 +556,6 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </section>
                 </form>
-                <?php if (getSetting('demo_mode', '0') === '1'): ?>
-                <form class="settings-form" method="POST" style="margin-top: 2rem;" id="demo-reset-form">
-                    <?= csrf_field() ?>
-                    <section class="settings-section">
-                        <h2>Demo Mode</h2>
-                        <p class="form-help" style="margin-bottom: 1rem;">
-                            This instance is running in demo mode. Use the button below to reset all data and reload sample models.
-                        </p>
-                        <div class="alert alert-error" style="margin-bottom: 1rem;">
-                            <strong>Warning:</strong> This will delete ALL models, users, tags, and other data, then recreate demo content.
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" name="demo_reset" value="1" class="btn btn-primary"
-                                onclick="return confirm('Are you sure you want to reset all demo data? This cannot be undone.');">
-                                Reset Demo Data
-                            </button>
-                        </div>
-                    </section>
-                </form>
-                <?php endif; ?>
 
             </div>
         </div>

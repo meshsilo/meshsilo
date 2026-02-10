@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Silo API",
-    "description": "REST API for Silo - Digital Asset Manager for 3D Print Files\n\nSilo provides a comprehensive API for managing 3D models, categories, tags, collections, and system statistics.\n\n## Authentication\n\nAll API requests require authentication via API key. Include your API key in one of the following ways:\n\n1. **Header (recommended):** `X-API-Key: your-api-key`\n2. **Query parameter:** `?api_key=your-api-key`\n\nAPI keys can be created in the admin settings panel.\n\n## Permissions\n\nAPI keys have different permission levels:\n- **read**: View models, categories, tags, collections, and stats\n- **write**: Create and update models, tags, collections\n- **delete**: Delete models, tags, collections\n- **admin**: Full access including webhooks and category management\n\n## Rate Limiting\n\nAPI requests are rate-limited to prevent abuse. Current limits are returned in response headers:\n- `X-RateLimit-Limit`: Maximum requests per window\n- `X-RateLimit-Remaining`: Remaining requests in current window\n- `X-RateLimit-Reset`: Timestamp when the window resets\n\n## Pagination\n\nList endpoints support pagination:\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 20, max: 100)\n\nPaginated responses include metadata:\n```json\n{\n  \"data\": [...],\n  \"pagination\": {\n    \"page\": 1,\n    \"limit\": 20,\n    \"total\": 150,\n    \"total_pages\": 8\n  }\n}\n```",
+    "description": "REST API for Silo - Digital Asset Manager for 3D Print Files\n\nSilo provides a comprehensive API for managing 3D models, categories, tags, collections, and system statistics.\n\n## Authentication\n\nAll API requests require authentication via API key. Include your API key in one of the following ways:\n\n1. **Header (recommended):** `X-API-Key: your-api-key`\n2. **Query parameter:** `?api_key=your-api-key`\n\nAPI keys can be created in the admin settings panel.\n\n## Permissions\n\nAPI keys have different permission levels:\n- **read**: View models, categories, tags, collections, and stats\n- **write**: Create and update models, tags, collections\n- **delete**: Delete models, tags, collections\n- **admin**: Full access including category management\n\n## Rate Limiting\n\nAPI requests are rate-limited to prevent abuse. Current limits are returned in response headers:\n- `X-RateLimit-Limit`: Maximum requests per window\n- `X-RateLimit-Remaining`: Remaining requests in current window\n- `X-RateLimit-Reset`: Timestamp when the window resets\n\n## Pagination\n\nList endpoints support pagination:\n- `page`: Page number (default: 1)\n- `limit`: Items per page (default: 20, max: 100)\n\nPaginated responses include metadata:\n```json\n{\n  \"data\": [...],\n  \"pagination\": {\n    \"page\": 1,\n    \"limit\": 20,\n    \"total\": 150,\n    \"total_pages\": 8\n  }\n}\n```",
     "version": "1.0.0",
     "contact": {
       "name": "Silo Support"
@@ -829,168 +829,6 @@
           }
         }
       }
-    },
-    "/webhooks": {
-      "get": {
-        "summary": "List Webhooks",
-        "description": "Retrieve all configured webhooks (admin only)",
-        "tags": ["Webhooks"],
-        "responses": {
-          "200": {
-            "description": "List of webhooks",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookListResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create Webhook",
-        "description": "Create a new webhook (admin only)",
-        "tags": ["Webhooks"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["url", "events"],
-                "properties": {
-                  "name": { "type": "string" },
-                  "url": { "type": "string", "format": "uri" },
-                  "events": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": ["model.created", "model.updated", "model.deleted", "model.downloaded"]
-                    }
-                  },
-                  "secret": {
-                    "type": "string",
-                    "description": "Secret for webhook signature verification"
-                  },
-                  "is_active": {
-                    "type": "boolean",
-                    "default": true
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Webhook created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/webhooks/{id}": {
-      "get": {
-        "summary": "Get Webhook",
-        "description": "Retrieve a single webhook (admin only)",
-        "tags": ["Webhooks"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Webhook details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update Webhook",
-        "description": "Update a webhook (admin only)",
-        "tags": ["Webhooks"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": { "type": "string" },
-                  "url": { "type": "string", "format": "uri" },
-                  "events": {
-                    "type": "array",
-                    "items": { "type": "string" }
-                  },
-                  "secret": { "type": "string" },
-                  "is_active": { "type": "boolean" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Webhook updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete Webhook",
-        "description": "Delete a webhook (admin only)",
-        "tags": ["Webhooks"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Webhook deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -1095,23 +933,6 @@
           "model_count": { "type": "integer" }
         }
       },
-      "Webhook": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "name": { "type": "string" },
-          "url": { "type": "string" },
-          "events": {
-            "type": "array",
-            "items": { "type": "string" }
-          },
-          "is_active": { "type": "boolean" },
-          "last_triggered_at": { "type": "string", "format": "date-time" },
-          "last_status_code": { "type": "integer" },
-          "failure_count": { "type": "integer" },
-          "created_at": { "type": "string", "format": "date-time" }
-        }
-      },
       "Pagination": {
         "type": "object",
         "properties": {
@@ -1189,21 +1010,6 @@
         "type": "object",
         "properties": {
           "data": { "$ref": "#/components/schemas/Collection" }
-        }
-      },
-      "WebhookListResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Webhook" }
-          }
-        }
-      },
-      "WebhookResponse": {
-        "type": "object",
-        "properties": {
-          "data": { "$ref": "#/components/schemas/Webhook" }
         }
       },
       "StatsResponse": {
@@ -1325,10 +1131,6 @@
     {
       "name": "Statistics",
       "description": "System statistics and analytics"
-    },
-    {
-      "name": "Webhooks",
-      "description": "Webhook configuration (admin only)"
     }
   ]
 }

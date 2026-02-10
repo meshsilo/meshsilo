@@ -9,7 +9,6 @@
  *
  * Usage:
  *   Scheduler::register('cleanup', '0 * * * *', function() { ... });
- *   Scheduler::register('daily-backup', '0 2 * * *', [BackupTask::class, 'run']);
  */
 
 class Scheduler {

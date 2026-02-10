@@ -237,9 +237,6 @@ $router->group(['prefix' => '/actions'], function($router) {
     // Bulk upload
     $router->post('/bulk-upload', ['file' => 'app/actions/bulk-upload.php'], 'actions.bulk.upload');
 
-    // Usage dashboard
-    $router->get('/usage-dashboard', ['file' => 'app/actions/usage-dashboard.php'], 'actions.usage');
-
     // Homepage config
     $router->post('/homepage-config', ['file' => 'app/actions/homepage-config.php'], 'actions.homepage');
 
