@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y software-properties-common && apt updat
     php8.1-redis \
     php8.1-gd \
     supervisor \
+    sudo \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -48,8 +49,9 @@ RUN mkdir -p /var/www/meshsilo/storage/assets \
     /var/www/meshsilo/storage/logs \
     /var/www/meshsilo/storage/db
 
-# Copy nginx configuration
+# Copy nginx configuration (writable by www-data for admin UI upload size sync)
 COPY docker/nginx.conf /etc/nginx/sites-available/default
+RUN chown www-data:www-data /etc/nginx/sites-available/default
 
 # Copy PHP-FPM configuration
 COPY docker/php-fpm.conf /etc/php/8.1/fpm/pool.d/www.conf
@@ -60,10 +62,16 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Copy entrypoint and demo cron scripts
 COPY docker/entrypoint.sh /entrypoint.sh
 COPY docker/demo-cron.sh /demo-cron.sh
-RUN chmod +x /entrypoint.sh /demo-cron.sh
+COPY docker/reload-services.sh /usr/local/bin/meshsilo-reload
+RUN chmod +x /entrypoint.sh /demo-cron.sh /usr/local/bin/meshsilo-reload
+
+# Allow www-data to reload services via admin UI without password
+RUN echo "www-data ALL=(ALL) NOPASSWD: /usr/local/bin/meshsilo-reload" > /etc/sudoers.d/meshsilo \
+    && chmod 440 /etc/sudoers.d/meshsilo
 
 # Configure PHP settings for file uploads (both FPM and CLI)
 # Create custom config files in conf.d to override defaults reliably
+# Owned by www-data so the admin UI can update them at runtime
 RUN echo "upload_max_filesize = 100M" > /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
     && echo "post_max_size = 105M" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
     && echo "memory_limit = 2G" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
@@ -71,7 +79,9 @@ RUN echo "upload_max_filesize = 100M" > /etc/php/8.1/fpm/conf.d/99-meshsilo.ini 
     && echo "upload_max_filesize = 100M" > /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
     && echo "post_max_size = 105M" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
     && echo "memory_limit = 2G" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
-    && echo "max_execution_time = 300" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini
+    && echo "max_execution_time = 300" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
+    && chown www-data:www-data /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
+    && chown www-data:www-data /etc/php/8.1/cli/conf.d/99-meshsilo.ini
 
 # Configure OPcache for production performance with JIT and preloading
 RUN echo "opcache.enable=1" > /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \

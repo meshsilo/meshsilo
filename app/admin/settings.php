@@ -77,12 +77,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
 
 // Handle php.ini save request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
-    $phpIniPath = __DIR__ . '/../php.ini';
+    $isDocker = getenv('MESHSILO_DOCKER') === 'true';
     $content = $_POST['phpini_content'] ?? '';
+
+    // Determine paths based on environment
+    if ($isDocker) {
+        $phpIniPath = '/etc/php/8.1/fpm/conf.d/99-meshsilo.ini';
+        $phpIniCliPath = '/etc/php/8.1/cli/conf.d/99-meshsilo.ini';
+        $nginxConfPath = '/etc/nginx/sites-available/default';
+    } else {
+        $phpIniPath = __DIR__ . '/../php.ini';
+    }
 
     // Basic validation - check for valid ini format
     $lines = explode("\n", $content);
     $valid = true;
+    $uploadSize = null;
     foreach ($lines as $lineNum => $line) {
         $line = trim($line);
         // Skip empty lines and comments
@@ -90,23 +100,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
             continue;
         }
         // Check for valid directive format (key = value)
-        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*.+$/', $line)) {
+        if (!preg_match('/^([a-zA-Z_][a-zA-Z0-9_.]*)\s*=\s*(.+)$/', $line, $matches)) {
             $error = "Invalid syntax on line " . ($lineNum + 1) . ": " . htmlspecialchars($line);
             $valid = false;
             break;
+        }
+        // Extract upload_max_filesize for nginx sync
+        if (trim($matches[1]) === 'upload_max_filesize') {
+            $uploadSize = trim($matches[2]);
         }
     }
 
     if ($valid) {
         if (is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)))) {
             if (file_put_contents($phpIniPath, $content) !== false) {
-                $message = 'PHP configuration saved successfully. Restart the web server for changes to take effect.';
-                logInfo('php.ini updated', ['by' => getCurrentUser()['username']]);
+                if ($isDocker) {
+                    // Also write to CLI config
+                    @file_put_contents($phpIniCliPath, $content);
+
+                    // Update nginx client_max_body_size if upload size changed
+                    if ($uploadSize !== null && file_exists($nginxConfPath)) {
+                        $nginxConf = file_get_contents($nginxConfPath);
+                        $nginxConf = preg_replace(
+                            '/client_max_body_size\s+[^;]+;/',
+                            'client_max_body_size ' . $uploadSize . ';',
+                            $nginxConf
+                        );
+                        file_put_contents($nginxConfPath, $nginxConf);
+                    }
+
+                    // Reload PHP-FPM and nginx via helper script
+                    exec('sudo /usr/local/bin/meshsilo-reload 2>&1', $reloadOutput, $reloadResult);
+
+                    if ($reloadResult === 0) {
+                        $message = 'PHP configuration saved and services reloaded successfully.';
+                    } else {
+                        $message = 'PHP configuration saved. Services could not be reloaded automatically — restart the container for changes to take effect.';
+                    }
+                } else {
+                    $message = 'PHP configuration saved successfully. Restart the web server for changes to take effect.';
+                }
+                logInfo('php.ini updated', ['by' => getCurrentUser()['username'], 'docker' => $isDocker]);
             } else {
-                $error = 'Failed to write php.ini file.';
+                $error = 'Failed to write PHP configuration file.';
             }
         } else {
-            $error = 'php.ini file is not writable.';
+            $error = 'PHP configuration file is not writable.';
         }
     }
 }
@@ -473,7 +512,12 @@ require_once __DIR__ . '/../../includes/header.php';
                 </form>
 
                 <?php
-                $phpIniPath = __DIR__ . '/../php.ini';
+                $isDockerEnv = getenv('MESHSILO_DOCKER') === 'true';
+                if ($isDockerEnv) {
+                    $phpIniPath = '/etc/php/8.1/fpm/conf.d/99-meshsilo.ini';
+                } else {
+                    $phpIniPath = __DIR__ . '/../php.ini';
+                }
                 $phpIniContent = file_exists($phpIniPath) ? file_get_contents($phpIniPath) : "; Silo PHP Configuration\nupload_max_filesize = 100M\npost_max_size = 105M\nmax_execution_time = 300\nmemory_limit = 256M\n";
                 $phpIniWritable = is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)));
                 ?>
@@ -483,18 +527,27 @@ require_once __DIR__ . '/../../includes/header.php';
                     <section class="settings-section">
                         <h2>PHP Configuration</h2>
                         <p class="form-help" style="margin-bottom: 1rem;">
+                            <?php if ($isDockerEnv): ?>
+                            Edit PHP-FPM configuration for upload limits, memory, and execution time.
+                            Changes will automatically reload PHP-FPM and nginx. The <code>upload_max_filesize</code> value is synced with nginx's <code>client_max_body_size</code>.
+                            <?php else: ?>
                             Edit the php.ini file to configure PHP settings like upload limits and memory.
                             Changes require a web server restart to take effect.
+                            <?php endif; ?>
                         </p>
 
                         <?php if (!$phpIniWritable): ?>
                         <div class="alert alert-error">
+                            <?php if ($isDockerEnv): ?>
+                            The PHP-FPM configuration file is not writable. The web server process may not have sufficient permissions.
+                            <?php else: ?>
                             The php.ini file is not writable. Check file permissions.
+                            <?php endif; ?>
                         </div>
                         <?php endif; ?>
 
                         <div class="form-group">
-                            <label for="phpini_content">php.ini Contents</label>
+                            <label for="phpini_content"><?= $isDockerEnv ? 'PHP-FPM Configuration' : 'php.ini Contents' ?></label>
                             <textarea id="phpini_content" name="phpini_content" class="form-input code-textarea" rows="12" <?= !$phpIniWritable ? 'readonly' : '' ?>><?= htmlspecialchars($phpIniContent) ?></textarea>
                         </div>
 
@@ -506,7 +559,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="php-value"><span>max_execution_time:</span> <code><?= ini_get('max_execution_time') ?>s</code></div>
                                 <div class="php-value"><span>memory_limit:</span> <code><?= ini_get('memory_limit') ?></code></div>
                             </div>
-                            <p class="form-help">These are the currently active PHP values. They may differ from the file if the server hasn't been restarted.</p>
+                            <p class="form-help">These are the currently active PHP values.<?= $isDockerEnv ? '' : ' They may differ from the file if the server hasn\'t been restarted.' ?></p>
                         </div>
 
                         <div class="form-actions" style="margin-top: 1rem;">
