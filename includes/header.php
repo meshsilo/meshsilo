@@ -183,13 +183,4 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
         </div>
     </header>
 
-    <?php if (getSetting('demo_mode', '0') === '1'): ?>
-    <div class="demo-banner">
-        <div class="demo-banner-content">
-            <span class="demo-icon">&#9432;</span>
-            <span><strong>Demo Mode</strong> &mdash; This instance resets periodically. All data may be deleted. See documentation for demo credentials.</span>
-        </div>
-    </div>
-    <?php endif; ?>
-
     <main>

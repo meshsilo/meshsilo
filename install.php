@@ -136,14 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'configure_site':
-            // Demo mode can only be enabled if .demo file exists in root
-            $canEnableDemo = file_exists(__DIR__ . '/.demo');
             $_SESSION['install']['site'] = [
                 'name' => trim($_POST['site_name'] ?? 'MeshSilo'),
                 'description' => trim($_POST['site_description'] ?? '3D Model Library'),
                 'url' => trim($_POST['site_url'] ?? ''),
-                'force_url' => isset($_POST['force_url']) ? '1' : '0',
-                'demo_mode' => ($canEnableDemo && isset($_POST['demo_mode'])) ? '1' : '0'
+                'force_url' => isset($_POST['force_url']) ? '1' : '0'
             ];
             $step = 5;
             $_SESSION['install']['step'] = $step;
@@ -426,42 +423,6 @@ function initializeSQLiteDatabase($config) {
         $stmt->bindValue(':val', $serverUuid, PDO::PARAM_STR);
         $stmt->execute();
 
-        // Save demo mode setting (can only be set during installation)
-        $demoMode = $site['demo_mode'] ?? '0';
-        $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('demo_mode', :val)");
-        $stmt->bindValue(':val', $demoMode, PDO::PARAM_STR);
-        $stmt->execute();
-
-        if ($demoMode === '1') {
-            // Create demo user - credentials from environment or secure random
-            $demoUsername = getenv('DEMO_USER') ?: 'demo';
-            $demoUserPassword = getenv('DEMO_PASSWORD') ?: bin2hex(random_bytes(8));
-            $demoPassword = password_hash($demoUserPassword, PASSWORD_DEFAULT);
-            $stmt = $db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 0)');
-            $stmt->bindValue(':u', $demoUsername, PDO::PARAM_STR);
-            $stmt->bindValue(':e', $demoUsername . '@example.com', PDO::PARAM_STR);
-            $stmt->bindValue(':p', $demoPassword, PDO::PARAM_STR);
-            $stmt->execute();
-            $demoUserId = $db->lastInsertRowID();
-            $groupStmt = $db->prepare("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT :uid, id FROM groups WHERE name = 'Users'");
-            $groupStmt->bindValue(':uid', $demoUserId, PDO::PARAM_INT);
-            $groupStmt->execute();
-
-            // Create demo admin - credentials from environment or secure random
-            $demoAdminUsername = getenv('DEMO_ADMIN_USER') ?: 'demoadmin';
-            $demoAdminPasswordPlain = getenv('DEMO_ADMIN_PASSWORD') ?: bin2hex(random_bytes(12));
-            $demoAdminPassword = password_hash($demoAdminPasswordPlain, PASSWORD_DEFAULT);
-            $stmt = $db->prepare('INSERT OR IGNORE INTO users (username, email, password, is_admin) VALUES (:u, :e, :p, 1)');
-            $stmt->bindValue(':u', $demoAdminUsername, PDO::PARAM_STR);
-            $stmt->bindValue(':e', $demoAdminUsername . '@example.com', PDO::PARAM_STR);
-            $stmt->bindValue(':p', $demoAdminPassword, PDO::PARAM_STR);
-            $stmt->execute();
-            $demoAdminId = $db->lastInsertRowID();
-            $groupStmt = $db->prepare("INSERT OR IGNORE INTO user_groups (user_id, group_id) SELECT :uid, id FROM groups WHERE name = 'Admin'");
-            $groupStmt->bindValue(':uid', $demoAdminId, PDO::PARAM_INT);
-            $groupStmt->execute();
-        }
-
         $db->close();
         return true;
     } catch (Exception $e) {
@@ -526,32 +487,6 @@ function initializeMySQLDatabase($config) {
             mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
         );
         $stmt->execute([':k' => 'server_uuid', ':v' => $serverUuid, ':v2' => $serverUuid]);
-
-        // Save demo mode setting (can only be set during installation)
-        $demoMode = $site['demo_mode'] ?? '0';
-        $stmt->execute([':k' => 'demo_mode', ':v' => $demoMode, ':v2' => $demoMode]);
-
-        if ($demoMode === '1') {
-            // Create demo user - credentials from environment or secure random
-            $demoUsername = getenv('DEMO_USER') ?: 'demo';
-            $demoUserPassword = getenv('DEMO_PASSWORD') ?: bin2hex(random_bytes(8));
-            $demoPassword = password_hash($demoUserPassword, PASSWORD_DEFAULT);
-            $demoStmt = $pdo->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 0)');
-            $demoStmt->execute([':username' => $demoUsername, ':email' => $demoUsername . '@example.com', ':password' => $demoPassword]);
-            $demoUserId = $pdo->lastInsertId();
-            $groupStmt = $pdo->prepare("INSERT INTO user_groups (user_id, group_id) SELECT :uid, id FROM `groups` WHERE name = 'Users'");
-            $groupStmt->execute([':uid' => $demoUserId]);
-
-            // Create demo admin - credentials from environment or secure random
-            $demoAdminUsername = getenv('DEMO_ADMIN_USER') ?: 'demoadmin';
-            $demoAdminPasswordPlain = getenv('DEMO_ADMIN_PASSWORD') ?: bin2hex(random_bytes(12));
-            $demoAdminPassword = password_hash($demoAdminPasswordPlain, PASSWORD_DEFAULT);
-            $demoStmt = $pdo->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 1)');
-            $demoStmt->execute([':username' => $demoAdminUsername, ':email' => $demoAdminUsername . '@example.com', ':password' => $demoAdminPassword]);
-            $demoAdminId = $pdo->lastInsertId();
-            $groupStmt = $pdo->prepare("INSERT INTO user_groups (user_id, group_id) SELECT :uid, id FROM `groups` WHERE name = 'Admin'");
-            $groupStmt->execute([':uid' => $demoAdminId]);
-        }
 
         return true;
     } catch (Exception $e) {
@@ -831,9 +766,6 @@ function detectWebServer() {
 $requirements = checkRequirements();
 $allPassed = true;
 $criticalFailed = false;
-
-// Check if demo mode is available (requires .demo file in root)
-$demoModeAvailable = file_exists(__DIR__ . '/.demo');
 
 foreach ($requirements as $req) {
     if (!$req['passed'] && empty($req['optional'])) {
@@ -1214,18 +1146,6 @@ foreach ($requirements as $req) {
                 <p class="form-help">Reject requests that don't match the configured URL.</p>
             </div>
 
-            <?php if ($demoModeAvailable): ?>
-            <div class="toggle-section">
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="demo_mode" <?= ($_SESSION['install']['site']['demo_mode'] ?? '') === '1' ? 'checked' : '' ?>>
-                        <span>Enable Demo Mode</span>
-                    </label>
-                    <p class="form-help">Sets up the instance as a demo with sample models and a demo user. A banner will be shown to visitors. The instance can be periodically reset via cron. <strong>This cannot be changed after installation.</strong></p>
-                </div>
-            </div>
-            <?php endif; ?>
-
             <div class="btn-group">
                 <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>
                 <button type="submit" class="btn btn-primary">Continue</button>
@@ -1244,9 +1164,6 @@ foreach ($requirements as $req) {
             <li><strong>Site Name:</strong> <?= htmlspecialchars($_SESSION['install']['site']['name'] ?? 'MeshSilo') ?></li>
             <?php if (!empty($_SESSION['install']['site']['url'])): ?>
             <li><strong>Site URL:</strong> <?= htmlspecialchars($_SESSION['install']['site']['url']) ?></li>
-            <?php endif; ?>
-            <?php if ($demoModeAvailable && ($_SESSION['install']['site']['demo_mode'] ?? '0') === '1'): ?>
-            <li><strong>Demo Mode:</strong> <span style="color: var(--color-warning);">Enabled</span></li>
             <?php endif; ?>
         </ul>
 

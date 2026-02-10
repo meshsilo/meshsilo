@@ -56,9 +56,6 @@ $settingsMap = [
     'MESHSILO_REQUIRE_APPROVAL' => 'require_approval',
     'MESHSILO_AUTO_DEDUPLICATION' => 'auto_deduplication',
 
-    // Demo mode
-    'MESHSILO_DEMO_MODE' => 'demo_mode',
-    'MESHSILO_DEMO_RESET_INTERVAL' => 'demo_reset_interval',
 ];
 
 $updated = 0;

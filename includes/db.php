@@ -1880,11 +1880,6 @@ function initializeDefaultSettings($db) {
         'route_caching' => '0',
         'route_profiling' => '0',
 
-        // Demo mode
-        'demo_mode' => '0',
-        'demo_reset_interval' => '3600',
-        'demo_last_reset' => '0',
-
         // Printing and volume
         'default_material' => 'pla',
         'currency' => 'USD',
