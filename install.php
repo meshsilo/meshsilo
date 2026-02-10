@@ -157,16 +157,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             break;
 
-        case 'delete_installer':
-            if (unlink(__FILE__)) {
-                session_destroy();
-                header('Location: index.php');
-                exit;
-            } else {
-                $error = 'Could not delete installer. Please delete install.php manually.';
-            }
-            break;
-
         case 'go_back':
             $step = max(1, $step - 1);
             $_SESSION['install']['step'] = $step;
@@ -1206,17 +1196,9 @@ RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]</code>
             <?php endif; ?>
         </div>
 
-        <form method="post">
-            <div class="btn-group" style="flex-direction: column; gap: 0.5rem;">
-                <a href="/login" class="btn btn-primary btn-full" style="text-align: center; text-decoration: none;">Go to Login</a>
-                <button type="submit" name="action" value="delete_installer" class="btn btn-danger btn-full">
-                    Delete Installer (Recommended)
-                </button>
-            </div>
-        </form>
-        <p class="form-help" style="text-align: center; margin-top: 0.5rem;">
-            For security, delete install.php after installation.
-        </p>
+        <div class="btn-group" style="flex-direction: column; gap: 0.5rem;">
+            <a href="/login" class="btn btn-primary btn-full" style="text-align: center; text-decoration: none;">Go to Login</a>
+        </div>
         <?php endif; ?>
     </div>
     <script>
