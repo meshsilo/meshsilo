@@ -15,8 +15,7 @@ ENV MESHSILO_DOCKER=true
 # Install nginx, PHP, and required extensions
 RUN apt-get update && apt-get install -y software-properties-common && apt update && add-apt-repository ppa:ondrej/php && apt-get install -y \
     nginx \
-    nginx-module-brotli \
-    libbrotli1 \
+    libbrotli-dev \
     php8.1-fpm \
     php8.1-sqlite3 \
     php8.1-mysql \
