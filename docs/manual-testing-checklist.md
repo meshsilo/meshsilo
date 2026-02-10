@@ -184,17 +184,8 @@ All 87 route definitions in `includes/routes.php` point to files that exist. Ver
 - 21 admin files in `app/admin/`
 - 2 API files in `app/api/`
 
-### Documentation Discrepancies
-The following pages are listed in CLAUDE.md but do NOT exist as files or routes:
-- `admin/backups.php` (Backups page)
-- `admin/rum.php` (Real User Monitoring)
-- `admin/analytics.php` (Analytics dashboard)
-- `admin/ldap.php` (LDAP/AD configuration)
-- `admin/scim.php` (SCIM provisioning)
-- `admin/oauth-clients.php` (OAuth2 client management)
-- `admin/retention-policies.php` (Data retention policies)
-
-These should be either implemented or removed from CLAUDE.md.
+### Documentation Status
+All routes documented in CLAUDE.md now match the actual codebase. Previously documented pages that were removed during the refactor have been cleaned up from documentation.
 
 ---
 

@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Plugin System**: Extensible plugin architecture with plugin manager
+- **GraphQL API**: Flexible query language at `/api/graphql`
+- **Model Annotations**: Add notes and markers directly on 3D models
+- **Model Ratings**: Community-driven quality ratings
+- **Approval Workflow**: Model approval system for moderated environments
+- **CLI Optimize Tool**: Performance optimization utility (`cli/optimize.php`)
+- **404 Page**: Custom 404 error page
+
+### Removed
+- **Authentication Methods**: Removed OIDC/SSO, SAML 2.0, LDAP/Active Directory, OAuth2 Provider
+- **Printing System**: Removed print queue, printer management, print analytics, print history
+- **Analytics**: Removed RUM (Real User Monitoring) and usage analytics dashboard
+- **Backup System**: Removed automated backup manager and cloud backup features
+- **Retention Policies**: Removed data retention and auto-cleanup features
+- **Webhooks**: Removed webhook system and integrations
+- **Demo Mode**: Removed demo account and sample model system
+- **SCIM Provisioning**: Removed SCIM user provisioning
+- **G-code Support**: Removed G-code viewer and slicer integrations
+- **Cost Calculator**: Removed print cost estimation
+- **Mesh Analysis**: Removed mesh repair and volume calculation tools
+
+### Changed
+- Simplified admin interface with focus on core features
+- Streamlined authentication to local accounts and 2FA only
+- Reduced CSS bundle size significantly
+- Updated documentation to reflect current feature set
+
+### Technical Changes
+- Added CI workflow (`.github/workflows/ci.yml`)
+- Added `.gitattributes` and `.htaccess`
+- Added comprehensive test suite (migration, permissions, router, upload validation, mail)
+- Added database schema file (`storage/db/schema.sql`)
+- Updated Composer dependencies
+
 ## [1.0.0] - 2026-02-02
 
 ### Added
@@ -37,15 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Authentication & Security
 - Local username/password authentication
-- OpenID Connect (OIDC) SSO integration
-- SAML 2.0 authentication support
-- LDAP/Active Directory integration
 - Two-factor authentication (TOTP)
 - Role-based access control with permission groups
 - API key management
 - CSRF protection
 - Rate limiting
 - Audit logging
+- Session management
 
 #### Administration
 - Installation wizard with guided setup
@@ -54,19 +87,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Category and collection management
 - Storage statistics and deduplication metrics
 - Activity and audit logging
-- Database backup, restore, and optimization tools
-- Webhook support for event-driven integrations
+- Database optimization tools
 - Scheduled task management
 - Feature toggles for optional functionality
-- Data retention policies
+- Plugin management system
+- Health monitoring dashboard
 
 #### API & Integration
 - REST API with OpenAPI documentation
-- Webhook notifications for model events
+- GraphQL API for flexible queries
 - CLI tools for automation and maintenance
-- OAuth2 provider capability
-- SCIM provisioning support
-- Import from Thingiverse/Printables
+- Plugin system for extensibility
+- Import/export functionality
 
 #### Upgrade & Migration
 - Comprehensive database migration system with 50+ migrations

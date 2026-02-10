@@ -4,7 +4,7 @@
 
 - **PHP 8.1** or higher
 - **Required PHP extensions:** pdo, pdo_sqlite (or pdo_mysql), json, mbstring, openssl
-- **Optional PHP extensions:** gd or imagick (thumbnails), apcu (caching), ldap (LDAP auth), pcntl (queue workers)
+- **Optional PHP extensions:** gd or imagick (thumbnails), apcu (caching), pcntl (queue workers)
 - **Database:** SQLite 3 (default, zero-config) or MySQL 5.7+ / MariaDB 10.3+
 - **Web server:** nginx (recommended) or Apache with mod_rewrite
 
@@ -191,7 +191,7 @@ php cli/migrate.php
    * * * * * cd /var/www/meshsilo && php cli/scheduler.php >> /dev/null 2>&1
    ```
 
-5. **Enable features** - Go to Admin > Features to enable/disable optional functionality (tags, collections, print queue, etc.).
+5. **Enable features** - Go to Admin > Features to enable/disable optional functionality (tags, collections, etc.).
 
 ## WAMP / Local Windows Development
 

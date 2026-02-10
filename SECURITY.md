@@ -78,11 +78,12 @@ MeshSilo includes several built-in security features:
 
 - **CSRF Protection**: All forms include CSRF tokens
 - **Rate Limiting**: Configurable rate limits for API and login attempts
-- **Security Headers**: Configurable HTTP security headers (CSP, X-Frame-Options, etc.)
+- **Security Headers**: Configurable HTTP security headers (CSP, X-Frame-Options, HSTS, etc.)
 - **Input Validation**: Server-side validation of all user input
 - **Prepared Statements**: PDO prepared statements for database queries
 - **Session Security**: Secure session configuration with HttpOnly cookies
 - **Audit Trail**: Comprehensive logging of security-relevant actions
+- **Two-Factor Authentication**: TOTP-based 2FA for additional account security
 
 ## Acknowledgments
 

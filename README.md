@@ -9,7 +9,7 @@ MeshSilo is designed for makers, 3D printing enthusiasts, and teams who need to 
 ## Features
 
 ### 🎨 Model Management
-- **Multi-Format Support**: STL, 3MF, OBJ, PLY, AMF, GCODE, GLB, GLTF, FBX, DAE, BLEND, STEP, IGES, 3DS, DXF, OFF, X3D
+- **Multi-Format Support**: STL, 3MF, OBJ, PLY, AMF, GLB, GLTF, FBX, DAE, BLEND, STEP, IGES, 3DS, DXF, OFF, X3D
 - **Interactive 3D Preview**: View models in your browser with Three.js
 - **Multi-Part Models**: Organize models with multiple components
 - **Lazy-Loaded Thumbnails**: Fast browsing with automatically generated previews
@@ -17,6 +17,7 @@ MeshSilo is designed for makers, 3D printing enthusiasts, and teams who need to 
 - **Add Parts**: Add components to existing models
 - **Version Control**: Track model versions with upload history
 - **Download Tracking**: Monitor download counts per model
+- **Model Annotations**: Add notes and markers directly on 3D models
 
 ### 📁 Organization & Discovery
 - **Categories**: Organize by type (Functional, Decorative, Tools, etc.)
@@ -24,10 +25,11 @@ MeshSilo is designed for makers, 3D printing enthusiasts, and teams who need to 
 - **Smart Tags**: Tag models with custom colored labels
 - **Tag Autocomplete**: Quick tagging with suggestion system
 - **Full-Text Search**: Search across names, descriptions, and metadata
-- **Advanced Filtering**: Filter by category, tag, license, print status
+- **Advanced Filtering**: Filter by category, tag, license, status
 - **Favorites/Bookmarks**: Save frequently accessed models
 - **Recently Viewed**: Quick access to your browsing history
 - **Duplicate Detection**: Find similar models before upload
+- **Saved Searches**: Save and share search queries
 
 ### 👁️ Browsing & Views
 - **Grid/List View**: Toggle between compact and detailed layouts
@@ -40,22 +42,23 @@ MeshSilo is designed for makers, 3D printing enthusiasts, and teams who need to 
 ### 📊 Metadata & Details
 - **License Management**: Track Creative Commons and custom licenses
 - **Creator Attribution**: Record original creator and source URLs
-- **Print Status**: Mark models as printed with timestamp
 - **Archive/Hide**: Non-destructive model hiding
 - **Notes per Part**: Add notes to individual components
 - **Dimensions**: Automatic calculation of model dimensions
 - **File Statistics**: Size, part count, upload date
+- **Model Attachments**: Attach images and PDFs to models
+- **External Links**: Track source URLs and related resources
+- **Ratings**: Community-driven quality ratings
 
 ### 🔐 User Management & Security
 - **Local Authentication**: Built-in username/password system
-- **OIDC/SSO Support**: OpenID Connect integration
-- **SAML Support**: SAML 2.0 authentication
-- **LDAP Support**: Active Directory integration
 - **Two-Factor Authentication**: TOTP-based 2FA
 - **Role-Based Access Control**: Granular permission groups
 - **API Keys**: Secure API access with key management
 - **Session Management**: Secure session handling
 - **CSRF Protection**: Cross-site request forgery prevention
+- **Rate Limiting**: Configurable rate limits for API and login attempts
+- **Audit Trail**: Comprehensive logging of security-relevant actions
 
 ### 🛠️ Administration
 - **Installation Wizard**: Guided setup process
@@ -68,10 +71,10 @@ MeshSilo is designed for makers, 3D printing enthusiasts, and teams who need to 
 - **Category Management**: Create and organize categories
 - **Collection Management**: Manage model collections
 - **Settings Panel**: Configure site name, description, limits
-- **Database Tools**: Backup, restore, optimize database
-- **Analytics Dashboard**: Usage statistics and insights
-- **Retention Policies**: Auto-cleanup of old data
-- **Webhook Support**: Trigger external systems on events
+- **Database Tools**: Optimize and manage database
+- **Health Dashboard**: System health monitoring
+- **Scheduler**: Background task management
+- **Plugin System**: Extend functionality with plugins
 
 ### 🚀 Performance & Optimization
 - **File Deduplication**: Content-based dedup to save storage
@@ -85,11 +88,12 @@ MeshSilo is designed for makers, 3D printing enthusiasts, and teams who need to 
 
 ### 🔌 Integration & API
 - **REST API**: Full-featured API for automation
+- **GraphQL API**: Flexible query language at `/api/graphql`
 - **OpenAPI Documentation**: Interactive API docs at `/api/docs`
-- **Webhooks**: Event-driven integrations
 - **Batch Operations**: Mass actions via API
 - **Import/Export**: Backup and migrate your data
 - **CLI Tools**: Command-line management utilities
+- **Plugin System**: Extend with custom plugins
 
 ### 📦 File Operations
 - **STL to 3MF Conversion**: Compress STL files
@@ -235,21 +239,6 @@ volumes:
 | `MESHSILO_ALLOWED_EXTENSIONS` | Comma-separated file extensions | `stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d` |
 | `MESHSILO_DEDUP_ENABLED` | Enable file deduplication | `true` |
 
-##### OIDC/SSO Configuration
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MESHSILO_OIDC_PROVIDER_URL` | OIDC provider URL | - |
-| `MESHSILO_OIDC_CLIENT_ID` | OIDC client ID | - |
-| `MESHSILO_OIDC_CLIENT_SECRET` | OIDC client secret | - |
-| `MESHSILO_OIDC_REDIRECT_URI` | OIDC redirect URI | - |
-| `MESHSILO_OIDC_SCOPES` | OIDC scopes | `openid profile email` |
-| `MESHSILO_OIDC_USERNAME_CLAIM` | Claim for username | `preferred_username` |
-| `MESHSILO_OIDC_DISPLAY_NAME_CLAIM` | Claim for display name | `name` |
-| `MESHSILO_OIDC_EMAIL_CLAIM` | Claim for email | `email` |
-| `MESHSILO_OIDC_AUTO_REGISTER` | Auto-register OIDC users | `true` |
-| `MESHSILO_OIDC_DEFAULT_GROUP` | Default group for new users | - |
-
 ##### Development & Debugging
 
 | Variable | Description | Default |
@@ -345,7 +334,6 @@ Set `MESHSILO_SITE_URL=https://models.example.com` in your environment.
    - Database configuration (SQLite or MySQL)
    - Admin account creation
    - Site URL configuration
-   - Optional OIDC/SSO setup
 
 5. **Post-installation:**
 

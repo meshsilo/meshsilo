@@ -213,28 +213,26 @@ The v1.0.0 release includes these schema additions/changes:
 | Table | Purpose |
 |-------|---------|
 | `audit_log` | Enhanced security audit logging |
-| `retention_policies` | Data retention rule configuration |
-| `legal_holds` | Legal hold for compliance |
-| `retention_log` | Retention policy execution history |
-| `scheduled_reports` | Automated report configuration |
-| `report_log` | Report execution history |
-| `dashboard_widgets` | Custom dashboard configurations |
-| `saved_filters` | Reusable filter presets |
 | `model_attachments` | Document/image attachments for models |
 | `model_links` | External links attached to models |
 | `password_resets` | Password reset token storage |
-| `conversion_queue` | Batch file conversion queue |
-| `import_jobs` | Bulk import job tracking |
-| `import_job_items` | Individual import item tracking |
+| `saved_searches` | Saved search queries |
+| `api_keys` | API key management |
+| `rate_limits` | Rate limiting tracking |
+| `sessions` | User session management |
+| `two_factor` | Two-factor authentication data |
+| `scheduled_tasks` | Background task definitions |
+| `task_log` | Task execution history |
+| `plugins` | Installed plugins |
 
 #### New Columns
 
 | Table | Column | Purpose |
 |-------|--------|---------|
-| `users` | `saml_id`, `saml_idp`, `saml_attributes` | SAML SSO support |
-| `users` | `ldap_dn`, `ldap_guid`, `ldap_groups`, `ldap_synced_at` | LDAP integration |
-| `users` | `auth_method`, `last_auth_at`, `last_auth_ip` | Auth tracking |
-| `models` | `remix_of`, `external_source_url`, `external_source_id` | Remix tracking |
+| `users` | `totp_secret`, `totp_enabled` | Two-factor authentication |
+| `users` | `last_login_at`, `last_login_ip` | Login tracking |
+| `models` | `rating`, `rating_count` | Model ratings |
+| `models` | `approval_status`, `approved_by`, `approved_at` | Approval workflow |
 
 #### Performance Indexes
 
@@ -259,10 +257,10 @@ The following settings have been removed and will be automatically cleaned up:
 
 v1.0.0 adds these admin panel pages:
 - Audit Log (`/admin/audit-log`)
-- Retention Policies (`/admin/retention-policies`)
-- LDAP Configuration (`/admin/ldap`)
-- SCIM Provisioning (`/admin/scim`)
-- OAuth Clients (`/admin/oauth-clients`)
+- Health Dashboard (`/admin/health`)
+- Security Headers (`/admin/security-headers`)
+- Scheduler Management (`/admin/scheduler`)
+- Plugin Management (`/admin/plugins`)
 
 ### File Structure Changes
 
@@ -271,9 +269,9 @@ No changes to the file structure that would affect custom themes or configuratio
 ### API Changes
 
 The v1.0.0 API is backward compatible with pre-v1 versions. New endpoints added:
-- `/api/audit-log` - Audit log access
-- `/api/retention` - Retention policy management
-- `/api/reports` - Report generation
+- `/api/graphql` - GraphQL API for flexible queries
+- `/api/docs` - OpenAPI documentation
+- `/api/plugins` - Plugin management
 
 ---
 
