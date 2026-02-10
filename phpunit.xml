@@ -6,7 +6,7 @@
          cacheDirectory=".phpunit.cache"
          executionOrder="depends,defects"
          failOnRisky="true"
-         failOnWarning="false"
+         failOnWarning="true"
          beStrictAboutOutputDuringTests="true">
 
     <testsuites>
@@ -18,7 +18,7 @@
         </testsuite>
     </testsuites>
 
-    <coverage>
+    <source>
         <include>
             <directory suffix=".php">includes</directory>
         </include>
@@ -28,11 +28,7 @@
             <file>includes/footer.php</file>
             <file>includes/admin-sidebar.php</file>
         </exclude>
-        <report>
-            <html outputDirectory="coverage"/>
-            <text outputFile="php://stdout"/>
-        </report>
-    </coverage>
+    </source>
 
     <php>
         <env name="APP_ENV" value="testing"/>
