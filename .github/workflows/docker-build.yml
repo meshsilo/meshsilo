@@ -137,8 +137,6 @@ jobs:
 
       - name: Keyless attestation with cosign (predicate = SBOM)
         if: github.event_name != 'pull_request'
-        env:
-          COSIGN_EXPERIMENTAL: "1"
         run: |
           set -euo pipefail
           IMAGE="${{ steps.image_ref.outputs.image_ref }}"
@@ -150,7 +148,7 @@ jobs:
           tries=0
           until [ "$tries" -ge 3 ]
           do
-            if cosign attest --keyless --predicate "$PRED" "$IMAGE"; then
+            if cosign attest --yes --predicate "$PRED" --type cyclonedx "$IMAGE"; then
               echo "Attestation succeeded"
               break
             else
