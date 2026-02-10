@@ -378,9 +378,9 @@ function initializeSQLiteDatabase($config) {
         $hash = password_hash($admin['password'], PASSWORD_DEFAULT);
 
         $stmt = $db->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 1)');
-        $stmt->bindValue(':username', $admin['username'], PDO::PARAM_STR);
-        $stmt->bindValue(':email', $admin['email'], PDO::PARAM_STR);
-        $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
+        $stmt->bindValue(':username', $admin['username'], SQLITE3_TEXT);
+        $stmt->bindValue(':email', $admin['email'], SQLITE3_TEXT);
+        $stmt->bindValue(':password', $hash, SQLITE3_TEXT);
         $stmt->execute();
 
         $userId = $db->lastInsertRowID();
@@ -392,22 +392,22 @@ function initializeSQLiteDatabase($config) {
         $site = $config['site'];
         if (!empty($site['name'])) {
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_name', :val)");
-            $stmt->bindValue(':val', $site['name'], PDO::PARAM_STR);
+            $stmt->bindValue(':val', $site['name'], SQLITE3_TEXT);
             $stmt->execute();
         }
         if (!empty($site['description'])) {
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_description', :val)");
-            $stmt->bindValue(':val', $site['description'], PDO::PARAM_STR);
+            $stmt->bindValue(':val', $site['description'], SQLITE3_TEXT);
             $stmt->execute();
         }
         if (!empty($site['url'])) {
             $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('site_url', :val)");
-            $stmt->bindValue(':val', $site['url'], PDO::PARAM_STR);
+            $stmt->bindValue(':val', $site['url'], SQLITE3_TEXT);
             $stmt->execute();
         }
         // Always save force_site_url setting
         $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('force_site_url', :val)");
-        $stmt->bindValue(':val', $site['force_url'] ?? '0', PDO::PARAM_STR);
+        $stmt->bindValue(':val', $site['force_url'] ?? '0', SQLITE3_TEXT);
         $stmt->execute();
 
         // Generate and save server UUID for license tracking
@@ -420,7 +420,7 @@ function initializeSQLiteDatabase($config) {
             mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
         );
         $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('server_uuid', :val)");
-        $stmt->bindValue(':val', $serverUuid, PDO::PARAM_STR);
+        $stmt->bindValue(':val', $serverUuid, SQLITE3_TEXT);
         $stmt->execute();
 
         $db->close();

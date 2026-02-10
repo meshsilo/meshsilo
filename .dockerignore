@@ -11,15 +11,15 @@
 
 # Local configuration (will be generated or mounted)
 config.local.php
+**/config.local.php
 
 # Runtime data (should be mounted as volumes)
-assets/*
-!assets/.gitkeep
-db/*
-!db/.gitkeep
-!db/schema.sql
-logs/*
-!logs/.gitkeep
+storage/assets/*
+!storage/assets/.gitkeep
+storage/db/*.db
+storage/db/config.local.php
+storage/logs/*
+!storage/logs/.gitkeep
 
 # Documentation (not needed in container)
 *.md

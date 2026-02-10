@@ -21,7 +21,7 @@ services:
       # - ./demo-seed:/var/www/meshsilo/storage/demo-seed:ro
     environment:
       # Database Configuration (sqlite or mysql)
-      - MESHSILO_DB_TYPE=sqlite
+      # - MESHSILO_DB_TYPE=sqlite
       # For MySQL, uncomment and configure:
       # - MESHSILO_DB_TYPE=mysql
       # - MESHSILO_DB_HOST=db
