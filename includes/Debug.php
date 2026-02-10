@@ -30,9 +30,13 @@ class Debug {
     private static int $queryCount = 0;
     private static array $queries = [];
     private static array $timers = [];
+    /** @phpstan-ignore property.onlyWritten */
     private static array $includes = [];
+    /** @phpstan-ignore property.onlyWritten */
     private static array $routeInfo = [];
+    /** @phpstan-ignore property.onlyWritten */
     private static array $authInfo = [];
+    /** @phpstan-ignore property.onlyWritten */
     private static array $uploadInfo = [];
     private static array $configSnapshot = [];
     private static array $memorySnapshots = [];
@@ -387,7 +391,7 @@ class Debug {
             'request_is_https' => $isHttps ? 'Yes' : 'No',
             'secure_mismatch' => $cookieParams['secure'] && !$isHttps,
             'cookie_path' => $cookieParams['path'],
-            'cookie_samesite' => $cookieParams['samesite'] ?? 'not set',
+            'cookie_samesite' => $cookieParams['samesite'] ?: 'not set',
         ], 'session');
 
         if ($cookieParams['secure'] && !$isHttps) {
@@ -1202,7 +1206,7 @@ HTML;
         $html .= '<tr><td>Cookie Domain</td><td>' . ($cookieParams['domain'] ?: '<em>current host</em>') . '</td></tr>';
         $html .= '<tr><td>Cookie Path</td><td>' . $cookieParams['path'] . '</td></tr>';
         $html .= '<tr><td>Cookie Secure</td><td>' . ($cookieParams['secure'] ? 'Yes (HTTPS only)' : 'No') . '</td></tr>';
-        $html .= '<tr><td>Cookie SameSite</td><td>' . ($cookieParams['samesite'] ?? 'not set') . '</td></tr>';
+        $html .= '<tr><td>Cookie SameSite</td><td>' . ($cookieParams['samesite'] ?: 'not set') . '</td></tr>';
         $html .= '<tr><td>Session Keys</td><td>' . implode(', ', array_keys($_SESSION ?? [])) . '</td></tr>';
         $html .= '</tbody></table>';
 
@@ -1446,7 +1450,6 @@ HTML;
             PHP_SESSION_DISABLED => 'Disabled',
             PHP_SESSION_NONE => 'None (not started)',
             PHP_SESSION_ACTIVE => 'Active',
-            default => 'Unknown'
         };
     }
 
@@ -1458,7 +1461,7 @@ HTML;
             return [
                 'file' => self::shortenPath($frame['file'] ?? ''),
                 'line' => $frame['line'] ?? 0,
-                'function' => ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? ''),
+                'function' => ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'],
             ];
         }, $trace);
     }

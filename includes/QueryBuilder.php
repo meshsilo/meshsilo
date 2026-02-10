@@ -14,6 +14,7 @@ class QueryBuilder {
     private array $joins = [];
     private array $wheres = [];
     private array $orWheres = [];
+    /** @var array<string, mixed> */
     private array $bindings = [];
     private array $orderBy = [];
     private array $groupBy = [];
@@ -584,8 +585,9 @@ class QueryBuilder {
         $sql = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
 
         $stmt = $this->db->prepare($sql);
+        /** @phpstan-ignore foreach.emptyArray */
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR; // @phpstan-ignore ternary.elseUnreachable
             $stmt->bindValue($key, $value, $type);
         }
 
@@ -612,8 +614,9 @@ class QueryBuilder {
             $sql = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
 
             $stmt = $this->db->prepare($sql);
+            /** @phpstan-ignore foreach.emptyArray */
             foreach ($this->bindings as $key => $value) {
-                $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR; // @phpstan-ignore ternary.elseUnreachable
                 $stmt->bindValue($key, $value, $type);
             }
             $stmt->execute();
@@ -642,8 +645,9 @@ class QueryBuilder {
         }
 
         $stmt = $this->db->prepare($sql);
+        /** @phpstan-ignore foreach.emptyArray */
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR; // @phpstan-ignore ternary.elseUnreachable
             $stmt->bindValue($key, $value, $type);
         }
 
@@ -664,8 +668,9 @@ class QueryBuilder {
         }
 
         $stmt = $this->db->prepare($sql);
+        /** @phpstan-ignore foreach.emptyArray */
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR; // @phpstan-ignore ternary.elseUnreachable
             $stmt->bindValue($key, $value, $type);
         }
 

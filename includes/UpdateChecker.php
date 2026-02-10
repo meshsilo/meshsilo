@@ -99,6 +99,7 @@ class UpdateChecker {
 
         if ($response === false) {
             // Check if it's a 404 (no releases yet)
+            /** @phpstan-ignore isset.variable */
             if (isset($http_response_header)) {
                 foreach ($http_response_header as $header) {
                     if (strpos($header, '404') !== false) {

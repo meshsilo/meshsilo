@@ -151,7 +151,7 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
     private function scheduleRevalidation(string $cacheKey): void {
         // In a real production environment, this would trigger a background job
         // For now, we just mark the need for revalidation
-        register_shutdown_function(function() use ($cacheKey) {
+        register_shutdown_function(function() {
             // The next request will fetch fresh content
             // This could be enhanced with a job queue
         });

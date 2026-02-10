@@ -191,6 +191,7 @@ class RateLimiter {
      */
     private static function ensureTable() {
         try {
+            /** @phpstan-ignore booleanAnd.alwaysFalse, identical.alwaysFalse */
             if (defined('DB_TYPE') && DB_TYPE === 'mysql') {
                 self::$db->exec('
                     CREATE TABLE IF NOT EXISTS rate_limits (

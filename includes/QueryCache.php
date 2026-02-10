@@ -13,7 +13,6 @@
 class QueryCache {
     private static ?self $instance = null;
     private Cache $cache;
-    private array $tags = [];
     private bool $enabled = true;
     private int $defaultTtl = 300; // 5 minutes
 

@@ -185,7 +185,7 @@ class CursorPagination {
         $conditions[] = "{$this->orderColumn} $op :cursor_value";
         $params[':cursor_value'] = $cursorData['value'];
 
-        $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
+        $whereClause = 'WHERE ' . implode(' AND ', $conditions);
 
         $sql = "SELECT $columns FROM {$this->table} $whereClause
                 ORDER BY {$this->orderColumn} {$this->orderDirection}

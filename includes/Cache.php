@@ -206,7 +206,7 @@ class Cache {
         switch ($this->driver) {
             case 'redis':
                 if ($this->redis) {
-                    return $this->redis->del($prefixedKey) >= 0;
+                    return $this->redis->del($prefixedKey) !== false;
                 }
                 return true;
 

@@ -138,7 +138,7 @@ class Scheduler {
             $result = call_user_func($task['callback']);
             $output = ob_get_clean();
 
-            $duration = round((microtime(true) - $startTime) * 1000);
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
 
             // Log task completion
             self::logTaskRun($name, 'completed', $duration, $output);
@@ -159,7 +159,7 @@ class Scheduler {
                 'result' => $result
             ];
         } catch (Exception $e) {
-            $duration = round((microtime(true) - $startTime) * 1000);
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
 
             self::logTaskRun($name, 'failed', $duration, $e->getMessage());
 

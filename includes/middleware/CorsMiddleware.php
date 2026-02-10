@@ -230,6 +230,7 @@ class CorsMiddleware implements MiddlewareInterface {
                 $origins = array_map('trim', explode(',', $configured));
             }
         }
+        /** @phpstan-ignore booleanAnd.rightAlwaysTrue */
         if (empty($origins) && defined('SITE_URL') && SITE_URL) {
             $parsed = parse_url(SITE_URL);
             if ($parsed && isset($parsed['scheme'], $parsed['host'])) {

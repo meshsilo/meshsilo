@@ -455,7 +455,7 @@ if (!function_exists('array_flatten')) {
     /**
      * Flatten a multi-dimensional array into a single level
      */
-    function array_flatten(array $array, int $depth = INF): array {
+    function array_flatten(array $array, int $depth = PHP_INT_MAX): array {
         $result = [];
 
         foreach ($array as $item) {

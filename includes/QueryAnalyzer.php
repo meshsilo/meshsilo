@@ -16,7 +16,6 @@ class QueryAnalyzer {
     private static ?self $instance = null;
     private bool $enabled = false;
     private array $queries = [];
-    private float $startTime;
     private float $slowThreshold = 0.1; // 100ms
     private int $n1Threshold = 5; // queries with same pattern
     private string $logFile;
@@ -29,7 +28,6 @@ class QueryAnalyzer {
     }
 
     private function __construct() {
-        $this->startTime = microtime(true);
         $this->logFile = dirname(__DIR__) . '/storage/logs/queries.log';
     }
 

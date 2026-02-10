@@ -328,6 +328,7 @@ function getDB() {
 
     if ($db === null) {
         try {
+            /** @phpstan-ignore identical.alwaysFalse */
             if (DB_TYPE === 'mysql') {
                 $db = new Database('mysql', [
                     'host' => defined('DB_HOST') ? DB_HOST : 'localhost',
@@ -375,9 +376,7 @@ function initializeDatabase($db) {
     // Split and execute statements
     $statements = array_filter(array_map('trim', explode(';', $schema)));
     foreach ($statements as $stmt) {
-        if (!empty($stmt)) {
-            $db->exec($stmt);
-        }
+        $db->exec($stmt);
     }
 }
 
@@ -2887,7 +2886,9 @@ function reorderParts($parentId, $partIds) {
         $db->commit();
         return true;
     } catch (Exception $e) {
-        $db->rollBack();
+        if (isset($db)) {
+            $db->rollBack();
+        }
         return false;
     }
 }

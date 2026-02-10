@@ -9,6 +9,7 @@
 class Validator {
     private array $data = [];
     private array $rules = [];
+    /** @var array<string, string[]> */
     private array $errors = [];
     private array $validated = [];
     private array $customMessages = [];
@@ -143,6 +144,7 @@ class Validator {
             }
 
             // Add to validated data if no errors
+            /** @phpstan-ignore isset.offset */
             if (!isset($this->errors[$field])) {
                 $this->validated[$field] = $value;
             }

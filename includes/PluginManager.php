@@ -20,7 +20,6 @@ class PluginManager
     private array $filters = [];
     private string $pluginsDir;
     private string $currentPluginId = '';
-    private bool $booted = false;
 
     private function __construct()
     {
@@ -103,7 +102,6 @@ class PluginManager
         foreach ($this->activePlugins as $id => $active) {
             $this->bootPlugin($id);
         }
-        $this->booted = true;
     }
 
     public function bootPlugin(string $id): void

@@ -76,7 +76,8 @@ class SignedUrl {
 
         // Build final URL
         $finalUrl = $path;
-        if (!empty($query)) {
+        /** @phpstan-ignore if.alwaysTrue */
+        if ($query) {
             $finalUrl .= '?' . http_build_query($query);
         }
 

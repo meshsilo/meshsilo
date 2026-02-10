@@ -33,7 +33,7 @@ class Autoloader {
         }
 
         // Register this autoloader
-        spl_autoload_register([$this, 'load']);
+        spl_autoload_register($this->load(...)); // @phpstan-ignore argument.type
     }
 
     /**

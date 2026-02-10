@@ -21,7 +21,6 @@ class QueryBatcher {
     private $db;
     private array $batches = [];
     private array $results = [];
-    private bool $autoExecute = false;
 
     private function __construct($db = null) {
         $this->db = $db ?? (function_exists('getDB') ? getDB() : null);

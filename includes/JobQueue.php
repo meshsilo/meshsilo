@@ -348,9 +348,18 @@ class GenerateThumbnailJob extends BaseJob {
         if (!$modelId) return;
 
         // Generate thumbnail
-        if (class_exists('ThumbnailGenerator')) {
-            $generator = new ThumbnailGenerator();
-            $generator->generateForModel($modelId);
+        if (class_exists('ThumbnailGenerator') && function_exists('getDB')) {
+            try {
+                $db = getDB();
+                $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
+                $stmt->execute([':id' => $modelId]);
+                $model = $stmt->fetchArray(PDO::FETCH_ASSOC);
+                if ($model) {
+                    ThumbnailGenerator::generateThumbnail($model);
+                }
+            } catch (Exception $e) {
+                // Silently fail - thumbnail generation is non-critical
+            }
         }
     }
 }

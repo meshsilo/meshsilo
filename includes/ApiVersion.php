@@ -21,7 +21,7 @@ class ApiVersion {
     /** Version that will be deprecated */
     const DEPRECATED_VERSIONS = [];
 
-    /** Version sunset dates (version => date string) */
+    /** @var array<int, string> Version sunset dates (version => date string) */
     const SUNSET_DATES = [];
 
     private int $version;
@@ -94,6 +94,7 @@ class ApiVersion {
      * Get sunset date for deprecated version
      */
     public function getSunsetDate(): ?string {
+        /** @phpstan-ignore nullCoalesce.offset */
         return self::SUNSET_DATES[$this->version] ?? null;
     }
 

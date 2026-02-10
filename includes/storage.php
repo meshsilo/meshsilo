@@ -115,7 +115,6 @@ class S3Storage implements StorageInterface {
     private $bucket;
     private $accessKey;
     private $secretKey;
-    private $region;
     private $usePathStyle;
     private $publicUrl;
 
@@ -124,7 +123,6 @@ class S3Storage implements StorageInterface {
         $this->bucket = $config['bucket'] ?? '';
         $this->accessKey = $config['access_key'] ?? '';
         $this->secretKey = $config['secret_key'] ?? '';
-        $this->region = $config['region'] ?? 'us-east-1';
         $this->usePathStyle = $config['use_path_style'] ?? false;
         $this->publicUrl = rtrim($config['public_url'] ?? '', '/');
     }
