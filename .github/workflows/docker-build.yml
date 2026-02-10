@@ -131,9 +131,7 @@ jobs:
 
       - name: Install cosign (Sigstore)
         if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v2
-        with:
-          version: latest
+        uses: sigstore/cosign-installer@v3
 
       - name: Keyless attestation with cosign (predicate = SBOM)
         if: github.event_name != 'pull_request'
