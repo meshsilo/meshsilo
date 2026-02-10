@@ -71,7 +71,8 @@ jobs:
         if: github.event_name != 'pull_request'
         id: image_ref
         run: |
-          IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}"
+          IMAGE_NAME_LC=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_REF="${{ env.REGISTRY }}/${IMAGE_NAME_LC}@${{ steps.push.outputs.digest }}"
           echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
 
       - name: Retry docker pull (for robustness)
