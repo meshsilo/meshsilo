@@ -153,10 +153,7 @@ class Csrf {
             }
         }
 
-        // Check query string (not recommended, but supported)
-        if (!empty($_GET[self::TOKEN_NAME])) {
-            return $_GET[self::TOKEN_NAME];
-        }
+        // Query string tokens intentionally not supported (leak in logs/referrer)
 
         return null;
     }

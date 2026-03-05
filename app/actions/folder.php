@@ -15,6 +15,12 @@ if (!isLoggedIn()) {
 $user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for state-changing actions
+if (in_array($action, ['create', 'update', 'delete']) && !Csrf::check()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
 switch ($action) {
     case 'create':
         createFolder();

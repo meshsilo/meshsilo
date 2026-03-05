@@ -11,6 +11,11 @@ if (isset($_SESSION['session_timeout_message'])) {
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate CSRF token
+    if (!Csrf::check()) {
+        $error = 'Invalid request. Please try again.';
+    }
+
     // Rate limit login attempts (5 attempts per 15 minutes per IP)
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $cacheDir = __DIR__ . '/../../storage/cache/login_attempts';
@@ -96,7 +101,7 @@ require_once 'includes/header.php';
                     <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($logoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="auth-logo-img">
                     <?php endif; ?>
                     <h1>Welcome back</h1>
-                    <p>Log in to your <?= SITE_NAME ?> account</p>
+                    <p>Log in to your <?= htmlspecialchars(SITE_NAME) ?> account</p>
                 </div>
 
                 <?php if ($error): ?>

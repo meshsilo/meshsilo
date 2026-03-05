@@ -227,13 +227,12 @@ function deleteAttachment() {
 
     // Delete file (with path traversal protection)
     $relativePath = $attachment['file_path'];
-    if (strpos($relativePath, '..') !== false || strpos($relativePath, '//') !== false) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file path']);
-        return;
-    }
     $filePath = UPLOAD_PATH . $relativePath;
-    if (file_exists($filePath)) {
-        unlink($filePath);
+    // Verify resolved path is within UPLOAD_PATH to prevent directory traversal
+    $realFilePath = realpath($filePath);
+    $realUploadPath = realpath(UPLOAD_PATH);
+    if ($realFilePath && $realUploadPath && str_starts_with($realFilePath, $realUploadPath)) {
+        unlink($realFilePath);
     }
 
     // Delete database record

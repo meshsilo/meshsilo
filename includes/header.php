@@ -21,7 +21,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="<?= htmlspecialchars(getSetting('site_description', 'Digital Asset Manager for 3D print files')) ?>">
-    <title><?= $pageTitle ?? SITE_NAME ?> - <?= SITE_NAME ?></title>
+    <title><?= htmlspecialchars($pageTitle ?? SITE_NAME) ?> - <?= htmlspecialchars(SITE_NAME) ?></title>
     <link rel="manifest" href="<?= basePath('manifest.json') ?>">
     <link rel="icon" type="image/svg+xml" href="<?= basePath('images/icon.svg') ?>">
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
@@ -113,7 +113,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 <?php $logoPath = getSetting('logo_path', ''); if ($logoPath): ?>
                 <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($logoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="logo-img">
                 <?php endif; ?>
-                <span class="logo-text"><?= SITE_NAME ?></span>
+                <span class="logo-text"><?= htmlspecialchars(SITE_NAME) ?></span>
             </a>
             <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false">
                 <span class="hamburger-icon"></span>

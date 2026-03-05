@@ -19,6 +19,12 @@ $requireApproval = getSetting('require_approval', '0') === '1';
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for state-changing actions
+if (in_array($action, ['approve', 'reject', 'bulk_approve']) && !Csrf::check()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
 switch ($action) {
     case 'pending':
         listPendingApprovals();

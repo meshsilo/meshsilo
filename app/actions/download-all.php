@@ -60,6 +60,9 @@ foreach ($parts as $part) {
     if ($filePath && is_file($filePath)) {
         // Use original path structure if available, otherwise just filename
         $zipEntryPath = $part['original_path'] ?? $part['filename'];
+        // Prevent Zip Slip: remove path traversal sequences
+        $zipEntryPath = str_replace(['../', '..\\'], '', $zipEntryPath);
+        $zipEntryPath = ltrim($zipEntryPath, '/\\');
         $zip->addFile($filePath, $zipEntryPath);
     }
 }

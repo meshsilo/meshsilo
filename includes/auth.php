@@ -12,9 +12,16 @@ if ($useDbSessions && session_status() === PHP_SESSION_NONE) {
 }
 
 if (session_status() === PHP_SESSION_NONE) {
-    // Configure session cookie security (also check X-Forwarded-Proto behind reverse proxy)
-    $secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    // Configure session cookie security (also check X-Forwarded-Proto behind trusted reverse proxy)
+    $secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    // Only trust X-Forwarded-Proto from configured trusted proxies
+    if (!$secure && isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+        $trustedProxies = defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : [];
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+        if (!empty($trustedProxies) && (in_array($remoteAddr, $trustedProxies, true) || in_array('*', $trustedProxies, true))) {
+            $secure = true;
+        }
+    }
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',

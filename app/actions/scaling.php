@@ -16,6 +16,12 @@ if (!isLoggedIn()) {
 $user = getCurrentUser();
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// CSRF validation for state-changing requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
 switch ($action) {
     case 'preview':
         getScalingPreview();

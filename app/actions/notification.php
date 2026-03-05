@@ -21,6 +21,12 @@ if (!$user['is_admin']) {
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for state-changing actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
 switch ($action) {
     case 'test_discord':
         testDiscord();

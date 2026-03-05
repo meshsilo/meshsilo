@@ -237,7 +237,7 @@ require_once __DIR__ . '/../../includes/header.php';
             <div class="admin-content">
                 <div class="page-header">
                     <h1>Site Settings</h1>
-                    <p>Configure your <?= SITE_NAME ?> instance</p>
+                    <p>Configure your <?= htmlspecialchars(SITE_NAME) ?> instance</p>
                 </div>
 
                 <?php if ($message): ?>

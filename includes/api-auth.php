@@ -14,8 +14,12 @@ define('API_PERM_ADMIN', 'admin');
  * Returns the API key record with user info, or null if invalid
  */
 function authenticateApiRequest() {
-    // Get API key from header or query parameter
-    $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? null;
+    // Get API key from header only (never query params - they leak in logs/referrer)
+    $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+    // Strip "Bearer " prefix if using Authorization header
+    if ($apiKey && str_starts_with($apiKey, 'Bearer ')) {
+        $apiKey = substr($apiKey, 7);
+    }
 
     if (!$apiKey) {
         return null;

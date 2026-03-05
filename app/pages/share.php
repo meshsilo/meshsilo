@@ -9,6 +9,7 @@ define('PUBLIC_PAGE', true);
 
 require_once __DIR__ . '/includes/logger.php';
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/Csrf.php';
 
 $token = $_GET['t'] ?? '';
 $error = '';
@@ -57,7 +58,9 @@ if (empty($token)) {
             $requiresPassword = true;
 
             if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
-                if (password_verify($_POST['password'], $link['password_hash'])) {
+                if (!Csrf::check()) {
+                    $passwordError = true;
+                } elseif (password_verify($_POST['password'], $link['password_hash'])) {
                     // Password correct - allow access
                     $_SESSION['share_auth_' . $token] = true;
                     $requiresPassword = false;
@@ -187,6 +190,7 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
                     <p>This shared model requires a password to access.</p>
                 </div>
                 <form method="post" class="password-form">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                     <?php if ($passwordError): ?>
                         <div class="alert alert-danger" style="margin-bottom: 1rem;">Incorrect password</div>
                     <?php endif; ?>

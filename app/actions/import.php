@@ -20,6 +20,12 @@ if (!hasPermission(PERM_UPLOAD)) {
 $user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// CSRF validation for all import actions
+if (!Csrf::check()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
 switch ($action) {
     case 'fetch_thingiverse':
         fetchThingiverse();

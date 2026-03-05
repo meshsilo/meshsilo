@@ -16,6 +16,13 @@ if ($input) {
 }
 
 $action = $_POST['action'] ?? '';
+
+// CSRF validation for state-changing actions
+if (in_array($action, ['add', 'remove']) && !Csrf::check()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
 $modelId = isset($_POST['model_id']) ? (int)$_POST['model_id'] : 0;
 $relatedModelId = isset($_POST['related_model_id']) ? (int)$_POST['related_model_id'] : 0;
 

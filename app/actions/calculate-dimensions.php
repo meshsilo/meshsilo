@@ -10,6 +10,12 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// CSRF validation
+if (!Csrf::check()) {
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+    exit;
+}
+
 $modelId = isset($_POST['model_id']) ? (int)$_POST['model_id'] : 0;
 
 if (!$modelId) {

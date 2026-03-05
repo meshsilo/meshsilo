@@ -6,8 +6,8 @@
                 <?php $footerLogoPath = getSetting('logo_path', ''); if ($footerLogoPath): ?>
                 <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($footerLogoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="logo-img">
                 <?php endif; ?>
-                <span class="logo-text"><?= SITE_NAME ?></span>
-                <p><?= SITE_DESCRIPTION ?></p>
+                <span class="logo-text"><?= htmlspecialchars(SITE_NAME) ?></span>
+                <p><?= htmlspecialchars(SITE_DESCRIPTION) ?></p>
             </div>
             <?php
             $footerAboutUrl = getSetting('footer_about_url', '');
