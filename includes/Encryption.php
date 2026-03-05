@@ -167,6 +167,9 @@ class Encryption {
 
     /**
      * Encrypt a file and save to destination
+     *
+     * Format: version (1 byte) + chunk_count (4 bytes) + [iv (12) + tag (16) + ciphertext]...
+     * Each chunk is independently encrypted with AES-256-GCM using a unique IV.
      */
     public static function encryptFile(string $sourcePath, string $destPath): bool {
         if (!file_exists($sourcePath)) {
@@ -174,9 +177,7 @@ class Encryption {
         }
 
         $key = self::deriveKey('file');
-        $iv = random_bytes(self::IV_LENGTH);
 
-        // Open files
         $sourceHandle = fopen($sourcePath, 'rb');
         $destHandle = fopen($destPath, 'wb');
 
@@ -185,40 +186,46 @@ class Encryption {
         }
 
         try {
-            // Write header: version + iv + placeholder for tag
-            fwrite($destHandle, chr(1));
-            fwrite($destHandle, $iv);
-            $tagPosition = ftell($destHandle);
-            fwrite($destHandle, str_repeat("\0", self::TAG_LENGTH));
+            // Write header: version (2 = GCM chunked)
+            fwrite($destHandle, chr(2));
+            // Placeholder for chunk count (4 bytes, big-endian)
+            $chunkCountPos = ftell($destHandle);
+            fwrite($destHandle, pack('N', 0));
 
-            // Encrypt in chunks
             $chunkSize = 1024 * 1024; // 1MB chunks
-            $allCiphertext = '';
+            $chunkCount = 0;
 
             while (!feof($sourceHandle)) {
                 $chunk = fread($sourceHandle, $chunkSize);
-                if ($chunk === false) break;
+                if ($chunk === false || $chunk === '') break;
 
-                $encrypted = openssl_encrypt(
+                $iv = random_bytes(self::IV_LENGTH);
+                $ciphertext = openssl_encrypt(
                     $chunk,
-                    'aes-256-cbc', // Use CBC for streaming
+                    self::CIPHER,
                     $key,
                     OPENSSL_RAW_DATA,
-                    $iv
+                    $iv,
+                    $tag,
+                    pack('N', $chunkCount), // AAD: chunk index prevents reordering
+                    self::TAG_LENGTH
                 );
 
-                // Update IV for next chunk (CBC mode)
-                $iv = substr($encrypted, -16);
-                fwrite($destHandle, $encrypted);
-                $allCiphertext .= $encrypted;
+                if ($ciphertext === false) {
+                    throw new Exception('Encryption failed: ' . openssl_error_string());
+                }
+
+                // Write: iv + tag + ciphertext_length (4 bytes) + ciphertext
+                fwrite($destHandle, $iv);
+                fwrite($destHandle, $tag);
+                fwrite($destHandle, pack('N', strlen($ciphertext)));
+                fwrite($destHandle, $ciphertext);
+                $chunkCount++;
             }
 
-            // Calculate and write auth tag (HMAC of all ciphertext)
-            $tag = hash_hmac('sha256', $allCiphertext, $key, true);
-            $tag = substr($tag, 0, self::TAG_LENGTH);
-
-            fseek($destHandle, $tagPosition);
-            fwrite($destHandle, $tag);
+            // Write actual chunk count
+            fseek($destHandle, $chunkCountPos);
+            fwrite($destHandle, pack('N', $chunkCount));
 
             return true;
         } finally {
@@ -229,6 +236,8 @@ class Encryption {
 
     /**
      * Decrypt a file and save to destination
+     *
+     * Supports both v1 (legacy CBC+HMAC) and v2 (GCM chunked) formats.
      */
     public static function decryptFile(string $sourcePath, string $destPath): bool {
         if (!file_exists($sourcePath)) {
@@ -245,47 +254,73 @@ class Encryption {
         }
 
         try {
-            // Read header
             $version = ord(fread($sourceHandle, 1));
-            if ($version !== 1) {
-                throw new Exception('Unsupported file encryption version');
-            }
 
-            $iv = fread($sourceHandle, self::IV_LENGTH);
-            $storedTag = fread($sourceHandle, self::TAG_LENGTH);
-            $headerSize = 1 + self::IV_LENGTH + self::TAG_LENGTH;
+            if ($version === 2) {
+                // GCM chunked format
+                $chunkCountData = fread($sourceHandle, 4);
+                $chunkCount = unpack('N', $chunkCountData)[1];
 
-            // Read all ciphertext and verify tag
-            $ciphertext = stream_get_contents($sourceHandle);
-            $computedTag = substr(hash_hmac('sha256', $ciphertext, $key, true), 0, self::TAG_LENGTH);
+                for ($i = 0; $i < $chunkCount; $i++) {
+                    $iv = fread($sourceHandle, self::IV_LENGTH);
+                    $tag = fread($sourceHandle, self::TAG_LENGTH);
+                    $lenData = fread($sourceHandle, 4);
+                    $ciphertextLen = unpack('N', $lenData)[1];
+                    $ciphertext = fread($sourceHandle, $ciphertextLen);
 
-            if (!hash_equals($storedTag, $computedTag)) {
-                throw new Exception('File authentication failed - file may be corrupted or tampered');
-            }
+                    $decrypted = openssl_decrypt(
+                        $ciphertext,
+                        self::CIPHER,
+                        $key,
+                        OPENSSL_RAW_DATA,
+                        $iv,
+                        $tag,
+                        pack('N', $i) // AAD: chunk index
+                    );
 
-            // Decrypt in chunks
-            $chunkSize = 1024 * 1024 + 16; // 1MB + padding
-            $offset = 0;
+                    if ($decrypted === false) {
+                        throw new Exception('Decryption failed at chunk ' . $i . ': ' . openssl_error_string());
+                    }
 
-            while ($offset < strlen($ciphertext)) {
-                $chunk = substr($ciphertext, $offset, $chunkSize);
-                $offset += strlen($chunk);
+                    fwrite($destHandle, $decrypted);
+                }
+            } elseif ($version === 1) {
+                // Legacy CBC+HMAC format (read-only support for migration)
+                $iv = fread($sourceHandle, self::IV_LENGTH);
+                $storedTag = fread($sourceHandle, self::TAG_LENGTH);
 
-                $decrypted = openssl_decrypt(
-                    $chunk,
-                    'aes-256-cbc',
-                    $key,
-                    OPENSSL_RAW_DATA,
-                    $iv
-                );
+                $ciphertext = stream_get_contents($sourceHandle);
+                $computedTag = substr(hash_hmac('sha256', $ciphertext, $key, true), 0, self::TAG_LENGTH);
 
-                if ($decrypted === false) {
-                    throw new Exception('Decryption failed');
+                if (!hash_equals($storedTag, $computedTag)) {
+                    throw new Exception('File authentication failed - file may be corrupted or tampered');
                 }
 
-                // Update IV for next chunk
-                $iv = substr($chunk, -16);
-                fwrite($destHandle, $decrypted);
+                // Decrypt CBC chunks
+                $chunkSize = 1024 * 1024 + 16; // 1MB + padding
+                $offset = 0;
+
+                while ($offset < strlen($ciphertext)) {
+                    $chunk = substr($ciphertext, $offset, $chunkSize);
+                    $offset += strlen($chunk);
+
+                    $decrypted = openssl_decrypt(
+                        $chunk,
+                        'aes-256-cbc',
+                        $key,
+                        OPENSSL_RAW_DATA,
+                        $iv
+                    );
+
+                    if ($decrypted === false) {
+                        throw new Exception('Decryption failed');
+                    }
+
+                    $iv = substr($chunk, -16);
+                    fwrite($destHandle, $decrypted);
+                }
+            } else {
+                throw new Exception('Unsupported file encryption version: ' . $version);
             }
 
             return true;
@@ -349,7 +384,7 @@ class Encryption {
         $header = fread($handle, 1);
         fclose($handle);
 
-        return $header === chr(1);
+        return $header === chr(1) || $header === chr(2);
     }
 
     /**

@@ -13,7 +13,7 @@ class CorsMiddleware implements MiddlewareInterface {
 
     // Default CORS options
     private const DEFAULTS = [
-        'allowed_origins' => ['*'],           // Allow all origins by default
+        'allowed_origins' => [],              // No cross-origin by default (configure in settings)
         'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key', 'X-CSRF-Token'],
         'exposed_headers' => ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
@@ -257,7 +257,7 @@ class CorsMiddleware implements MiddlewareInterface {
 /**
  * Quick function to add CORS headers for simple use cases
  */
-function cors(array $allowedOrigins = ['*']): void {
+function cors(array $allowedOrigins = []): void {
     $middleware = new CorsMiddleware(['allowed_origins' => $allowedOrigins]);
     $middleware->handle([]);
 }

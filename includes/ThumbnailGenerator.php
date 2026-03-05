@@ -130,9 +130,14 @@ class ThumbnailGenerator {
         $tempScad = sys_get_temp_dir() . '/silo_render_' . $modelId . '.scad';
 
         // Create temporary OpenSCAD file to import and render the model
+        // Use realpath to resolve symlinks, then escape for OpenSCAD string literal
+        $resolvedPath = realpath($filePath);
+        if (!$resolvedPath) {
+            return null;
+        }
         $scadContent = sprintf(
             'import("%s");',
-            addslashes(realpath($filePath))
+            str_replace(['\\', '"'], ['\\\\', '\\"'], $resolvedPath)
         );
         file_put_contents($tempScad, $scadContent);
 

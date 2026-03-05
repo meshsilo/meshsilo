@@ -394,6 +394,11 @@ function updateModel($id, $apiUser) {
         apiError('Model not found', 404);
     }
 
+    // Verify ownership - must own the model or be admin
+    if (!$apiUser['is_admin'] && !empty($model['uploaded_by']) && $model['uploaded_by'] != $apiUser['user_id']) {
+        apiError('Not authorized to modify this model', 403);
+    }
+
     $data = getJsonBody();
 
     // Build update query
@@ -482,6 +487,11 @@ function deleteModel($id, $apiUser) {
 
     if (!$model) {
         apiError('Model not found', 404);
+    }
+
+    // Verify ownership - must own the model or be admin
+    if (!$apiUser['is_admin'] && !empty($model['uploaded_by']) && $model['uploaded_by'] != $apiUser['user_id']) {
+        apiError('Not authorized to delete this model', 403);
     }
 
     // Delete the file

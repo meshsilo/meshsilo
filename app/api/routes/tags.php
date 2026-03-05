@@ -20,12 +20,12 @@ function handleTagsRoute($method, $id, $apiUser) {
             break;
 
         case 'POST':
-            requireApiPermission($apiUser, API_PERM_WRITE);
+            requireApiPermission($apiUser, API_PERM_ADMIN);
             createTagApi($apiUser);
             break;
 
         case 'PUT':
-            requireApiPermission($apiUser, API_PERM_WRITE);
+            requireApiPermission($apiUser, API_PERM_ADMIN);
             updateTag(validateId($id), $apiUser);
             break;
 

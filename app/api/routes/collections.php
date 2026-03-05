@@ -20,12 +20,12 @@ function handleCollectionsRoute($method, $id, $apiUser) {
             break;
 
         case 'POST':
-            requireApiPermission($apiUser, API_PERM_WRITE);
+            requireApiPermission($apiUser, API_PERM_ADMIN);
             createCollectionApi($apiUser);
             break;
 
         case 'PUT':
-            requireApiPermission($apiUser, API_PERM_WRITE);
+            requireApiPermission($apiUser, API_PERM_ADMIN);
             updateCollection(validateId($id), $apiUser);
             break;
 

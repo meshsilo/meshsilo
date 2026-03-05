@@ -9,6 +9,8 @@ class GraphQL {
     private static array $queries = [];
     private static array $mutations = [];
     private static ?PDO $db = null;
+    private const MAX_QUERY_DEPTH = 5;
+    private const MAX_SELECTIONS = 50;
 
     /**
      * Initialize GraphQL schema
@@ -185,7 +187,7 @@ class GraphQL {
                 elseif ($value === 'false') $value = false;
                 elseif ($value === 'null') $value = null;
                 elseif (is_numeric($value)) $value = strpos($value, '.') !== false ? (float)$value : (int)$value;
-                elseif (preg_match('/^"(.*)"$/', $value, $vm)) $value = $vm[1];
+                elseif (preg_match('/^"(.*)"$/', $value, $vm)) $value = stripcslashes($vm[1]);
                 elseif (preg_match('/^\$(\w+)$/', $value, $vm)) $value = ['$var' => $vm[1]];
 
                 $result[$key] = $value;
@@ -196,9 +198,30 @@ class GraphQL {
     }
 
     /**
+     * Check query depth and selection count to prevent DoS
+     */
+    private static function validateQueryComplexity(array $selections, int $depth = 1, int &$count = 0): void {
+        if ($depth > self::MAX_QUERY_DEPTH) {
+            throw new Exception('Query exceeds maximum depth of ' . self::MAX_QUERY_DEPTH);
+        }
+
+        foreach ($selections as $selection) {
+            $count++;
+            if ($count > self::MAX_SELECTIONS) {
+                throw new Exception('Query exceeds maximum of ' . self::MAX_SELECTIONS . ' fields');
+            }
+            if (!empty($selection['selections'])) {
+                self::validateQueryComplexity($selection['selections'], $depth + 1, $count);
+            }
+        }
+    }
+
+    /**
      * Resolve the parsed operation
      */
     private static function resolveOperation(array $parsed, ?array $variables, ?int $userId): array {
+        self::validateQueryComplexity($parsed['selections']);
+
         $result = [];
 
         foreach ($parsed['selections'] as $selection) {

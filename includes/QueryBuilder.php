@@ -30,11 +30,24 @@ class QueryBuilder {
     }
 
     /**
+     * Validate an identifier (table/column name) to prevent SQL injection
+     */
+    private static function validateIdentifier(string $identifier): string {
+        // Allow: word chars, dots (table.column), and backtick-quoted identifiers
+        // Strip any backticks and re-validate the bare name
+        $bare = str_replace('`', '', $identifier);
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $bare)) {
+            throw new \InvalidArgumentException("Invalid SQL identifier: $identifier");
+        }
+        return $identifier;
+    }
+
+    /**
      * Static factory
      */
     public static function table(string $table): self {
         $builder = new self();
-        $builder->table = $table;
+        $builder->table = self::validateIdentifier($table);
         return $builder;
     }
 
@@ -42,7 +55,7 @@ class QueryBuilder {
      * Set the table
      */
     public function from(string $table): self {
-        $this->table = $table;
+        $this->table = self::validateIdentifier($table);
         return $this;
     }
 
@@ -113,7 +126,7 @@ class QueryBuilder {
 
         $this->wheres[] = [
             'type' => 'basic',
-            'column' => $column,
+            'column' => self::validateIdentifier($column),
             'operator' => strtoupper($operator),
             'value' => $value
         ];
@@ -132,7 +145,7 @@ class QueryBuilder {
 
         $this->orWheres[] = [
             'type' => 'basic',
-            'column' => $column,
+            'column' => self::validateIdentifier($column),
             'operator' => strtoupper($operator),
             'value' => $value
         ];
@@ -144,7 +157,7 @@ class QueryBuilder {
      * Where column is NULL
      */
     public function whereNull(string $column): self {
-        $this->wheres[] = ['type' => 'null', 'column' => $column];
+        $this->wheres[] = ['type' => 'null', 'column' => self::validateIdentifier($column)];
         return $this;
     }
 
@@ -152,7 +165,7 @@ class QueryBuilder {
      * Where column is NOT NULL
      */
     public function whereNotNull(string $column): self {
-        $this->wheres[] = ['type' => 'notNull', 'column' => $column];
+        $this->wheres[] = ['type' => 'notNull', 'column' => self::validateIdentifier($column)];
         return $this;
     }
 
@@ -160,7 +173,7 @@ class QueryBuilder {
      * Where column IN array
      */
     public function whereIn(string $column, array $values): self {
-        $this->wheres[] = ['type' => 'in', 'column' => $column, 'values' => $values];
+        $this->wheres[] = ['type' => 'in', 'column' => self::validateIdentifier($column), 'values' => $values];
         return $this;
     }
 
@@ -168,7 +181,7 @@ class QueryBuilder {
      * Where column NOT IN array
      */
     public function whereNotIn(string $column, array $values): self {
-        $this->wheres[] = ['type' => 'notIn', 'column' => $column, 'values' => $values];
+        $this->wheres[] = ['type' => 'notIn', 'column' => self::validateIdentifier($column), 'values' => $values];
         return $this;
     }
 
@@ -176,7 +189,7 @@ class QueryBuilder {
      * Where column BETWEEN values
      */
     public function whereBetween(string $column, $min, $max): self {
-        $this->wheres[] = ['type' => 'between', 'column' => $column, 'min' => $min, 'max' => $max];
+        $this->wheres[] = ['type' => 'between', 'column' => self::validateIdentifier($column), 'min' => $min, 'max' => $max];
         return $this;
     }
 
@@ -184,7 +197,7 @@ class QueryBuilder {
      * Where column LIKE pattern
      */
     public function whereLike(string $column, string $pattern): self {
-        $this->wheres[] = ['type' => 'basic', 'column' => $column, 'operator' => 'LIKE', 'value' => $pattern];
+        $this->wheres[] = ['type' => 'basic', 'column' => self::validateIdentifier($column), 'operator' => 'LIKE', 'value' => $pattern];
         return $this;
     }
 
@@ -202,10 +215,10 @@ class QueryBuilder {
     public function join(string $table, string $first, string $operator, string $second): self {
         $this->joins[] = [
             'type' => 'INNER',
-            'table' => $table,
-            'first' => $first,
+            'table' => self::validateIdentifier($table),
+            'first' => self::validateIdentifier($first),
             'operator' => $operator,
-            'second' => $second
+            'second' => self::validateIdentifier($second)
         ];
         return $this;
     }
@@ -216,10 +229,10 @@ class QueryBuilder {
     public function leftJoin(string $table, string $first, string $operator, string $second): self {
         $this->joins[] = [
             'type' => 'LEFT',
-            'table' => $table,
-            'first' => $first,
+            'table' => self::validateIdentifier($table),
+            'first' => self::validateIdentifier($first),
             'operator' => $operator,
-            'second' => $second
+            'second' => self::validateIdentifier($second)
         ];
         return $this;
     }
@@ -229,7 +242,7 @@ class QueryBuilder {
      */
     public function orderBy(string $column, string $direction = 'ASC'): self {
         $this->orderBy[] = [
-            'column' => $column,
+            'column' => self::validateIdentifier($column),
             'direction' => strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC'
         ];
         return $this;
@@ -261,7 +274,7 @@ class QueryBuilder {
      */
     public function groupBy(...$columns): self {
         foreach ($columns as $col) {
-            $this->groupBy[] = $col;
+            $this->groupBy[] = self::validateIdentifier($col);
         }
         return $this;
     }
@@ -524,6 +537,7 @@ class QueryBuilder {
      * Get sum of column
      */
     public function sum(string $column): float {
+        self::validateIdentifier($column);
         $this->select = ["SUM($column) as sum"];
         $result = $this->first();
         return (float)($result['sum'] ?? 0);
@@ -533,6 +547,7 @@ class QueryBuilder {
      * Get average of column
      */
     public function avg(string $column): float {
+        self::validateIdentifier($column);
         $this->select = ["AVG($column) as avg"];
         $result = $this->first();
         return (float)($result['avg'] ?? 0);
@@ -542,6 +557,7 @@ class QueryBuilder {
      * Get max of column
      */
     public function max(string $column) {
+        self::validateIdentifier($column);
         $this->select = ["MAX($column) as max"];
         $result = $this->first();
         return $result['max'] ?? null;
@@ -551,6 +567,7 @@ class QueryBuilder {
      * Get min of column
      */
     public function min(string $column) {
+        self::validateIdentifier($column);
         $this->select = ["MIN($column) as min"];
         $result = $this->first();
         return $result['min'] ?? null;
@@ -574,7 +591,7 @@ class QueryBuilder {
      * Insert a record
      */
     public function insert(array $data): int {
-        $columns = array_keys($data);
+        $columns = array_map([self::class, 'validateIdentifier'], array_keys($data));
         $placeholders = [];
         $this->bindings = [];
 
@@ -601,7 +618,7 @@ class QueryBuilder {
     public function insertMany(array $records): bool {
         if (empty($records)) return true;
 
-        $columns = array_keys($records[0]);
+        $columns = array_map([self::class, 'validateIdentifier'], array_keys($records[0]));
 
         foreach ($records as $data) {
             $this->bindings = [];
@@ -633,6 +650,7 @@ class QueryBuilder {
         $this->bindings = [];
 
         foreach ($data as $column => $value) {
+            self::validateIdentifier($column);
             $placeholder = $this->addBinding($value);
             $sets[] = "$column = $placeholder";
         }
@@ -682,6 +700,7 @@ class QueryBuilder {
      * Increment a column
      */
     public function increment(string $column, int $amount = 1): int {
+        self::validateIdentifier($column);
         $sql = "UPDATE {$this->table} SET $column = $column + :amount";
 
         $this->bindings = [':amount' => $amount];
