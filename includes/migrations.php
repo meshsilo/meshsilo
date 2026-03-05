@@ -800,5 +800,28 @@ function getMigrationList() {
         ], [
             'idx_models_user_id' => 'user_id',
         ]),
+        // Performance indexes for sorting and filtering
+        [
+            'name' => 'Performance indexes for models table',
+            'description' => 'Add indexes for download_count, name, and is_archived columns used in sorting and filtering',
+            'check' => function($db) {
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $stmt = $db->prepare("SHOW INDEX FROM models WHERE Key_name = 'idx_models_download_count'");
+                    $stmt->execute();
+                    return $stmt->fetch() !== false;
+                } else {
+                    $stmt = $db->prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_models_download_count'");
+                    $result = $stmt->execute();
+                    return $result->fetchArray() !== false;
+                }
+            },
+            'apply' => function($db) {
+                $db->exec('CREATE INDEX idx_models_download_count ON models(download_count)');
+                $db->exec('CREATE INDEX idx_models_name ON models(name)');
+                try { $db->exec('CREATE INDEX idx_models_is_archived ON models(is_archived)'); } catch (Exception $e) {}
+                try { $db->exec('CREATE INDEX idx_model_categories_composite ON model_categories(category_id, model_id)'); } catch (Exception $e) {}
+            }
+        ],
     ];
 }

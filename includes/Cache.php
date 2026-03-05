@@ -130,7 +130,9 @@ class Cache {
             case 'apcu':
                 $success = false;
                 $value = apcu_fetch($prefixedKey, $success);
-                return $success ? $value : $default;
+                if (!$success) return $default;
+                $unserialized = @unserialize($value);
+                return $unserialized !== false ? $unserialized : $default;
 
             case 'file':
                 return $this->getFromFile($prefixedKey, $default);
@@ -168,7 +170,7 @@ class Cache {
                 return false;
 
             case 'apcu':
-                return apcu_store($prefixedKey, $value, $ttl);
+                return apcu_store($prefixedKey, serialize($value), $ttl);
 
             case 'file':
                 return $this->setToFile($prefixedKey, $value, $expires);
@@ -332,21 +334,9 @@ class Cache {
     public function increment(string $key, int $amount = 1): int {
         $prefixedKey = $this->prefix . $key;
 
-        switch ($this->driver) {
-            case 'apcu':
-                $success = false;
-                $newValue = apcu_inc($prefixedKey, $amount, $success);
-                if (!$success) {
-                    $this->set($key, $amount);
-                    return $amount;
-                }
-                return $newValue;
-
-            default:
-                $value = (int)$this->get($key, 0) + $amount;
-                $this->set($key, $value);
-                return $value;
-        }
+        $value = (int)$this->get($key, 0) + $amount;
+        $this->set($key, $value);
+        return $value;
     }
 
     /**

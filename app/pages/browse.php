@@ -168,12 +168,15 @@ if (!empty($modelIds)) {
     unset($model); // Break reference
 }
 
-// Get categories for filter dropdown
-$categories = [];
-$catResult = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
-while ($row = $catResult->fetchArray(PDO::FETCH_ASSOC)) {
-    $categories[] = $row;
-}
+// Get categories for filter dropdown (cached for 5 minutes)
+$categories = cache_remember('browse_categories', 300, function() use ($db) {
+    $cats = [];
+    $catResult = $db->query('SELECT c.id, c.name, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
+    while ($row = $catResult->fetchArray(PDO::FETCH_ASSOC)) {
+        $cats[] = $row;
+    }
+    return $cats;
+});
 
 // Get tags for filter dropdown
 $tags = getAllTags();

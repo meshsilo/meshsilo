@@ -16,21 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid request. Please try again.';
     }
 
-    // Rate limit login attempts (5 attempts per 15 minutes per IP)
+    // Rate limit login attempts using RateLimiter
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $cacheDir = __DIR__ . '/../../storage/cache/login_attempts';
-    if (!is_dir($cacheDir)) {
-        @mkdir($cacheDir, 0755, true);
-    }
-    $attemptFile = $cacheDir . '/' . md5($ip) . '.json';
-    $attempts = [];
-    if (file_exists($attemptFile)) {
-        $attempts = json_decode(file_get_contents($attemptFile), true) ?: [];
-        // Remove attempts older than 15 minutes
-        $cutoff = time() - 900;
-        $attempts = array_filter($attempts, fn($t) => $t > $cutoff);
-    }
-    if (count($attempts) >= 5) {
+    $rateResult = RateLimiter::check($ip, 'anonymous', 'login');
+    if (!$rateResult['allowed']) {
         $error = 'Too many login attempts. Please try again in a few minutes.';
         logAuthEvent('login', $_POST['username'] ?? '', false, ['reason' => 'rate_limited', 'ip' => $ip]);
     }
@@ -63,9 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             // Clear login attempts on success
-            if (isset($attemptFile) && file_exists($attemptFile)) {
-                @unlink($attemptFile);
-            }
+            RateLimiter::reset($ip, 'login');
 
             header('Location: ' . route('home'));
             exit;
@@ -75,9 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'reason' => $user ? 'invalid_password' : 'user_not_found',
                 'method' => 'password'
             ]);
-            // Record failed attempt for rate limiting
-            $attempts[] = time();
-            file_put_contents($attemptFile, json_encode(array_values($attempts)));
+            // Failed attempt already recorded by RateLimiter::check()
         }
     }
     } // end if (!$error) rate limit check

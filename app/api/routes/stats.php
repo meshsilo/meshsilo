@@ -10,7 +10,7 @@ function handleStatsRoute($method, $apiUser) {
         apiError('Method not allowed', 405);
     }
 
-    requireApiPermission($apiUser, API_PERM_READ);
+    requireApiPermission($apiUser, API_PERM_ADMIN);
 
     $db = getDB();
 

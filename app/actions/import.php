@@ -292,12 +292,27 @@ function importModel() {
             $errors[] = "Invalid download URL for {$file['name']} - only HTTP/HTTPS allowed";
             continue;
         }
-        // Block internal/private network addresses
+        // Block internal/private network addresses (IPv4 and IPv6)
         $host = $parsedUrl['host'] ?? '';
-        $hostIp = gethostbyname($host);
-        if ($hostIp && filter_var($hostIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-            $errors[] = "Download URL for {$file['name']} resolves to a private/reserved address";
-            continue;
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            // Host is a raw IP - validate directly
+            if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                $errors[] = "Download URL for {$file['name']} uses a private/reserved address";
+                continue;
+            }
+        } else {
+            // Resolve hostname and check all returned IPs
+            $ips = gethostbynamel($host);
+            if ($ips === false) {
+                $errors[] = "Download URL for {$file['name']} - hostname cannot be resolved";
+                continue;
+            }
+            foreach ($ips as $resolvedIp) {
+                if (filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                    $errors[] = "Download URL for {$file['name']} resolves to a private/reserved address";
+                    continue 2;
+                }
+            }
         }
 
         $filePath = $uploadDir . '/' . $filename;
