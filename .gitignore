@@ -44,6 +44,7 @@ docs/
 # Development files
 .claude/
 todo.txt
+mcp_servers.json
 
 # License tools (keep private keys secure)
 cli/generate-license.php
