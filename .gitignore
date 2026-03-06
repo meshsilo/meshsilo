@@ -46,6 +46,10 @@ docs/
 todo.txt
 mcp_servers.json
 
+# Tests (local development only)
+tests/
+phpunit.xml
+
 # License tools (keep private keys secure)
 cli/generate-license.php
 cli/LICENSE-TOOLS-README.md
