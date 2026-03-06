@@ -181,7 +181,7 @@ class Events
                 continue;
             }
 
-            $regex = '/^' . str_replace(['*', '.'], ['.*', '\\.'], $pattern) . '$/';
+            $regex = '/^' . str_replace('*', '.*', str_replace('.', '\\.', $pattern)) . '$/';
             if (preg_match($regex, $event)) {
                 foreach ($listeners as $listener) {
                     try {

@@ -8,6 +8,7 @@ storage/cache/*
 !storage/cache/.gitkeep
 storage/demo-seed/*
 !storage/demo-seed/.gitkeep
+storage/.encryption_key
 
 # Local configuration
 config.local.php

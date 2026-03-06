@@ -16,6 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI Optimize Tool**: Performance optimization utility (`cli/optimize.php`)
 - **404 Page**: Custom 404 error page
 
+### Security
+- **CSRF Protection**: Double-submit cookie pattern with `X-CSRF-Token` header validation on all state-changing requests
+- **XSS Prevention**: Context-aware output escaping via `Sanitizer` class; Content Security Policy headers; sanitized SVG/HTML upload paths
+- **Encryption**: AES-256-GCM encryption for sensitive data at rest; key rotation support; encrypted file storage backend
+- **CORS Hardening**: Strict origin allowlist, preflight caching, credentials restricted to allowlisted origins
+- **IDOR Prevention**: Resource ownership validation on all model/file access endpoints
+- **GraphQL Security**: Query depth and complexity limits; introspection disabled in production; field-level authorization
+- **SQL Injection**: Parameterized queries enforced across QueryBuilder; raw query surface area reduced
+- **Rate Limiting**: Configurable per-IP and per-user limits on login, upload, API, and password-reset endpoints
+- **SSRF Prevention**: URL allowlist validation on remote import and webhook endpoints
+- **Query Caching**: Tag-based cache invalidation prevents stale privilege escalation paths
+- **Database Indexes**: Added missing indexes on high-traffic foreign key columns to prevent denial-of-service via slow queries
+- **Audit Logging**: Security events (login, failed auth, permission changes) written to tamper-evident audit log
+
+### Fixed
+- **QueryBuilder**: `update()` no longer discards SET bindings when building WHERE clauses
+- **QueryBuilder**: `whereRaw()` preserves named placeholder keys instead of renaming them to positional aliases
+- **QueryBuilder**: `increment()`/`decrement()` binds string column values with `PARAM_STR` instead of `PARAM_INT`
+- **Encryption**: `encryptAllFiles()` and `decryptAllFiles()` nullable parameter declarations compatible with PHP 8.5
+
 ### Removed
 - **Authentication Methods**: Removed OIDC/SSO, SAML 2.0, LDAP/Active Directory, OAuth2 Provider
 - **Printing System**: Removed print queue, printer management, print analytics, print history
@@ -41,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added comprehensive test suite (migration, permissions, router, upload validation, mail)
 - Added database schema file (`storage/db/schema.sql`)
 - Updated Composer dependencies
+- Applied PSR-12 code style across all `includes/` files via PHPCBF (1695 violations fixed)
+- All implicit nullable parameters updated for PHP 8.5 compatibility
+- PHPStan level-5 static analysis passes with zero errors
+- `storage/.encryption_key` added to `.gitignore` to prevent accidental key exposure
 
 ## [1.0.0] - 2026-02-02
 
