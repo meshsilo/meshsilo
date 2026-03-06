@@ -1,4 +1,5 @@
 <?php
+
 /**
  * API Authentication Middleware
  *
@@ -7,7 +8,8 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class ApiAuthMiddleware implements MiddlewareInterface {
+class ApiAuthMiddleware implements MiddlewareInterface
+{
     private bool $required;
 
     /**
@@ -15,14 +17,16 @@ class ApiAuthMiddleware implements MiddlewareInterface {
      *
      * @param bool $required Whether API key is required (default: true)
      */
-    public function __construct(bool $required = true) {
+    public function __construct(bool $required = true)
+    {
         $this->required = $required;
     }
 
     /**
      * Handle the middleware
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         header('Content-Type: application/json');
 
         // Get API key from header or query
@@ -71,7 +75,8 @@ class ApiAuthMiddleware implements MiddlewareInterface {
     /**
      * Extract API key from request
      */
-    private function getApiKey(): ?string {
+    private function getApiKey(): ?string
+    {
         // Check Authorization header (Bearer token)
         $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
         if (preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {

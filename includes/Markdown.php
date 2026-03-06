@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Lightweight Markdown Parser
  *
@@ -237,7 +238,9 @@ class Markdown
 
         foreach ($blocks as $block) {
             $block = trim($block);
-            if (empty($block)) continue;
+            if (empty($block)) {
+                continue;
+            }
 
             // Don't wrap block-level elements
             if (preg_match('/^<(h[2-6]|ul|ol|li|blockquote|pre|hr|div|table)/i', $block)) {

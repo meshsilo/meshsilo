@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Database Schema Definitions
  *
@@ -6,11 +7,13 @@
  * Used by migrations, CLI tools, and schema repair scripts.
  */
 
-class Schema {
+class Schema
+{
     /**
      * Get the rate_limits table schema
      */
-    public static function getRateLimitsSchema(string $dbType): array {
+    public static function getRateLimitsSchema(string $dbType): array
+    {
         if ($dbType === 'mysql') {
             return [
                 'create' => 'CREATE TABLE rate_limits (
@@ -40,7 +43,8 @@ class Schema {
     /**
      * Get the sessions table schema
      */
-    public static function getSessionsSchema(string $dbType): array {
+    public static function getSessionsSchema(string $dbType): array
+    {
         if ($dbType === 'mysql') {
             return [
                 'create' => 'CREATE TABLE sessions (
@@ -78,7 +82,8 @@ class Schema {
     /**
      * Get the activity_log table schema
      */
-    public static function getActivityLogSchema(string $dbType): array {
+    public static function getActivityLogSchema(string $dbType): array
+    {
         if ($dbType === 'mysql') {
             return [
                 'create' => 'CREATE TABLE activity_log (
@@ -124,7 +129,8 @@ class Schema {
     /**
      * Create a table from schema definition
      */
-    public static function createTable($db, string $tableName): void {
+    public static function createTable($db, string $tableName): void
+    {
         $dbType = $db->getType();
         $methodName = 'get' . str_replace('_', '', ucwords($tableName, '_')) . 'Schema';
 
@@ -146,7 +152,8 @@ class Schema {
     /**
      * Recreate a table (drop and create)
      */
-    public static function recreateTable($db, string $tableName): void {
+    public static function recreateTable($db, string $tableName): void
+    {
         $db->exec("DROP TABLE IF EXISTS {$tableName}");
         self::createTable($db, $tableName);
     }
@@ -154,7 +161,8 @@ class Schema {
     /**
      * Get list of known table names
      */
-    public static function getKnownTables(): array {
+    public static function getKnownTables(): array
+    {
         return [
             'rate_limits',
             'sessions',

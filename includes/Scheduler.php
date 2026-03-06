@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Task Scheduler for Silo
  *
@@ -11,7 +12,8 @@
  *   Scheduler::register('cleanup', '0 * * * *', function() { ... });
  */
 
-class Scheduler {
+class Scheduler
+{
     private static array $tasks = [];
     private static bool $initialized = false;
 
@@ -29,7 +31,8 @@ class Scheduler {
     /**
      * Initialize scheduler with default tasks
      */
-    public static function init(): void {
+    public static function init(): void
+    {
         if (self::$initialized) {
             return;
         }
@@ -66,14 +69,16 @@ class Scheduler {
     /**
      * Unregister a task
      */
-    public static function unregister(string $name): void {
+    public static function unregister(string $name): void
+    {
         unset(self::$tasks[$name]);
     }
 
     /**
      * Run all due tasks
      */
-    public static function run(): array {
+    public static function run(): array
+    {
         self::init();
 
         $results = [];
@@ -105,7 +110,8 @@ class Scheduler {
     /**
      * Run a specific task by name
      */
-    public static function runTask(string $name, ?array $task = null): array {
+    public static function runTask(string $name, ?array $task = null): array
+    {
         self::init();
 
         if ($task === null) {
@@ -186,7 +192,8 @@ class Scheduler {
     /**
      * Check if a cron expression is due
      */
-    public static function isDue(string $schedule, ?int $time = null): bool {
+    public static function isDue(string $schedule, ?int $time = null): bool
+    {
         $time = $time ?? time();
         $parts = preg_split('/\s+/', trim($schedule));
 
@@ -212,7 +219,8 @@ class Scheduler {
     /**
      * Match a single cron part
      */
-    private static function matchesCronPart(string $pattern, int $value, int $min, int $max): bool {
+    private static function matchesCronPart(string $pattern, int $value, int $min, int $max): bool
+    {
         // Wildcard
         if ($pattern === '*') {
             return true;
@@ -253,7 +261,8 @@ class Scheduler {
     /**
      * Get all registered tasks
      */
-    public static function getTasks(): array {
+    public static function getTasks(): array
+    {
         self::init();
         return self::$tasks;
     }
@@ -261,7 +270,8 @@ class Scheduler {
     /**
      * Get task run history
      */
-    public static function getHistory(int $limit = 50): array {
+    public static function getHistory(int $limit = 50): array
+    {
         if (!function_exists('getDB')) {
             return [];
         }
@@ -290,7 +300,8 @@ class Scheduler {
     /**
      * Check if a task is currently running
      */
-    private static function isRunning(string $name): bool {
+    private static function isRunning(string $name): bool
+    {
         $lockFile = self::getLockFile($name);
         return file_exists($lockFile);
     }
@@ -298,7 +309,8 @@ class Scheduler {
     /**
      * Get lock file path for a task
      */
-    private static function getLockFile(string $name): string {
+    private static function getLockFile(string $name): string
+    {
         $dir = __DIR__ . '/../storage/cache/locks';
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -309,7 +321,8 @@ class Scheduler {
     /**
      * Acquire a lock for a task
      */
-    private static function acquireLock(string $lockFile, int $timeout): bool {
+    private static function acquireLock(string $lockFile, int $timeout): bool
+    {
         // Check if lock exists and is stale
         if (file_exists($lockFile)) {
             $lockTime = filemtime($lockFile);
@@ -328,7 +341,8 @@ class Scheduler {
     /**
      * Release a lock
      */
-    private static function releaseLock(string $lockFile): void {
+    private static function releaseLock(string $lockFile): void
+    {
         if (file_exists($lockFile)) {
             unlink($lockFile);
         }
@@ -337,7 +351,8 @@ class Scheduler {
     /**
      * Log a task run
      */
-    private static function logTaskRun(string $name, string $status, ?int $duration = null, ?string $output = null): void {
+    private static function logTaskRun(string $name, string $status, ?int $duration = null, ?string $output = null): void
+    {
         if (!function_exists('getDB')) {
             return;
         }
@@ -375,9 +390,10 @@ class Scheduler {
     /**
      * Register default system tasks
      */
-    private static function registerDefaultTasks(): void {
+    private static function registerDefaultTasks(): void
+    {
         // Session cleanup - every hour
-        self::register(self::TASK_CLEANUP_SESSIONS, '0 * * * *', function() {
+        self::register(self::TASK_CLEANUP_SESSIONS, '0 * * * *', function () {
             if (function_exists('getDB')) {
                 $db = getDB();
                 // Clean expired sessions (older than 24 hours)
@@ -390,7 +406,7 @@ class Scheduler {
         }, ['description' => 'Clean up expired sessions']);
 
         // Log cleanup - daily at 3am
-        self::register(self::TASK_CLEANUP_LOGS, '0 3 * * *', function() {
+        self::register(self::TASK_CLEANUP_LOGS, '0 3 * * *', function () {
             $logsDir = __DIR__ . '/../storage/logs';
             $cleaned = 0;
 
@@ -408,7 +424,7 @@ class Scheduler {
         }, ['description' => 'Clean up old log files']);
 
         // Cache cleanup - every 6 hours
-        self::register(self::TASK_CLEANUP_CACHE, '0 */6 * * *', function() {
+        self::register(self::TASK_CLEANUP_CACHE, '0 */6 * * *', function () {
             $cacheDir = __DIR__ . '/../storage/cache';
             $cleaned = 0;
 
@@ -433,7 +449,7 @@ class Scheduler {
         }, ['description' => 'Clean up expired cache files']);
 
         // Rate limit cleanup - every 15 minutes
-        self::register(self::TASK_CLEANUP_RATE_LIMITS, '*/15 * * * *', function() {
+        self::register(self::TASK_CLEANUP_RATE_LIMITS, '*/15 * * * *', function () {
             if (class_exists('RateLimitMiddleware')) {
                 $cleaned = RateLimitMiddleware::cleanup();
                 return "Cleaned {$cleaned} rate limit entries";
@@ -442,7 +458,7 @@ class Scheduler {
         }, ['description' => 'Clean up expired rate limit data']);
 
         // Activity log cleanup - daily at 4am
-        self::register('cleanup:activity', '0 4 * * *', function() {
+        self::register('cleanup:activity', '0 4 * * *', function () {
             if (function_exists('getDB') && function_exists('getSetting')) {
                 $db = getDB();
                 $retention = (int)getSetting('activity_log_retention', 90);
@@ -456,7 +472,7 @@ class Scheduler {
         }, ['description' => 'Clean up old activity log entries']);
 
         // Database optimization - weekly on Sunday at 5am
-        self::register('maintenance:optimize', '0 5 * * 0', function() {
+        self::register('maintenance:optimize', '0 5 * * 0', function () {
             if (function_exists('getDB')) {
                 $db = getDB();
                 $db->exec('VACUUM');
@@ -467,7 +483,7 @@ class Scheduler {
         }, ['description' => 'Optimize database (VACUUM and ANALYZE)']);
 
         // Queue processing - every minute
-        self::register(self::TASK_QUEUE_PROCESS, '* * * * *', function() {
+        self::register(self::TASK_QUEUE_PROCESS, '* * * * *', function () {
             if (!class_exists('Queue')) {
                 require_once __DIR__ . '/Queue.php';
             }
@@ -478,7 +494,9 @@ class Scheduler {
 
             for ($i = 0; $i < $maxJobs; $i++) {
                 $job = Queue::pop();
-                if (!$job) break;
+                if (!$job) {
+                    break;
+                }
 
                 try {
                     if (Queue::process($job)) {
@@ -498,7 +516,7 @@ class Scheduler {
         }, ['description' => 'Process background job queue']);
 
         // Thumbnail generation - every 5 minutes
-        self::register(self::TASK_THUMBNAILS_GENERATE, '*/5 * * * *', function() {
+        self::register(self::TASK_THUMBNAILS_GENERATE, '*/5 * * * *', function () {
             if (!class_exists('ThumbnailGenerator')) {
                 require_once __DIR__ . '/ThumbnailGenerator.php';
             }
@@ -511,7 +529,7 @@ class Scheduler {
         }, ['description' => 'Generate thumbnails for new models']);
 
         // Deduplication scan - daily at 1am
-        self::register(self::TASK_DEDUP_SCAN, '0 1 * * *', function() {
+        self::register(self::TASK_DEDUP_SCAN, '0 1 * * *', function () {
             require_once __DIR__ . '/dedup.php';
 
             if (function_exists('runDeduplicationScan')) {
@@ -533,7 +551,8 @@ class Scheduler {
     /**
      * Enable/disable a task
      */
-    public static function setEnabled(string $name, bool $enabled): void {
+    public static function setEnabled(string $name, bool $enabled): void
+    {
         if (isset(self::$tasks[$name])) {
             self::$tasks[$name]['enabled'] = $enabled;
         }
@@ -542,7 +561,8 @@ class Scheduler {
     /**
      * Get next run time for a task
      */
-    public static function getNextRun(string $schedule): ?int {
+    public static function getNextRun(string $schedule): ?int
+    {
         $now = time();
 
         // Check next 60 minutes
@@ -576,6 +596,7 @@ class Scheduler {
 /**
  * Helper function to run the scheduler
  */
-function runScheduler(): array {
+function runScheduler(): array
+{
     return Scheduler::run();
 }

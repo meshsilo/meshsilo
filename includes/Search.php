@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Full-Text Search System
  *
@@ -7,7 +8,8 @@
  * names, descriptions, tags, and categories.
  */
 
-class Search {
+class Search
+{
     private $db;
     private bool $ftsAvailable = false;
     private static ?self $instance = null;
@@ -15,7 +17,8 @@ class Search {
     /**
      * Get singleton instance
      */
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
@@ -25,7 +28,8 @@ class Search {
     /**
      * Constructor
      */
-    private function __construct() {
+    private function __construct()
+    {
         $this->db = function_exists('getDB') ? getDB() : null;
         $this->checkFtsAvailability();
     }
@@ -33,8 +37,11 @@ class Search {
     /**
      * Check if FTS5 is available
      */
-    private function checkFtsAvailability(): void {
-        if (!$this->db) return;
+    private function checkFtsAvailability(): void
+    {
+        if (!$this->db) {
+            return;
+        }
 
         try {
             // Check if FTS5 is compiled in
@@ -49,8 +56,11 @@ class Search {
     /**
      * Initialize search tables
      */
-    public function initialize(): bool {
-        if (!$this->db) return false;
+    public function initialize(): bool
+    {
+        if (!$this->db) {
+            return false;
+        }
 
         if ($this->ftsAvailable) {
             return $this->initializeFts();
@@ -62,7 +72,8 @@ class Search {
     /**
      * Initialize FTS5 virtual table
      */
-    private function initializeFts(): bool {
+    private function initializeFts(): bool
+    {
         // Create FTS5 virtual table
         $sql = "
             CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
@@ -91,7 +102,8 @@ class Search {
     /**
      * Initialize fallback search table
      */
-    private function initializeFallback(): bool {
+    private function initializeFallback(): bool
+    {
         $sql = "
             CREATE TABLE IF NOT EXISTS search_index (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,8 +137,11 @@ class Search {
     /**
      * Index a model
      */
-    public function indexModel(int $modelId): bool {
-        if (!$this->db) return false;
+    public function indexModel(int $modelId): bool
+    {
+        if (!$this->db) {
+            return false;
+        }
 
         // Get model data
         $stmt = $this->db->prepare("
@@ -146,7 +161,9 @@ class Search {
         $result = $stmt->execute();
         $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
-        if (!$model) return false;
+        if (!$model) {
+            return false;
+        }
 
         // Prepare search data
         $data = [
@@ -168,7 +185,8 @@ class Search {
     /**
      * Index model using FTS5
      */
-    private function indexModelFts(array $data): bool {
+    private function indexModelFts(array $data): bool
+    {
         try {
             // Delete existing entry
             $stmt = $this->db->prepare("DELETE FROM search_index WHERE model_id = :id");
@@ -200,7 +218,8 @@ class Search {
     /**
      * Index model using fallback table
      */
-    private function indexModelFallback(array $data): bool {
+    private function indexModelFallback(array $data): bool
+    {
         // Create combined search text
         $searchText = strtolower(implode(' ', [
             $data['name'],
@@ -238,8 +257,11 @@ class Search {
     /**
      * Remove a model from the index
      */
-    public function removeModel(int $modelId): bool {
-        if (!$this->db) return false;
+    public function removeModel(int $modelId): bool
+    {
+        if (!$this->db) {
+            return false;
+        }
 
         try {
             $stmt = $this->db->prepare("DELETE FROM search_index WHERE model_id = :id");
@@ -253,7 +275,8 @@ class Search {
     /**
      * Search for models
      */
-    public function search(string $query, array $options = []): array {
+    public function search(string $query, array $options = []): array
+    {
         if (!$this->db || trim($query) === '') {
             return ['results' => [], 'total' => 0];
         }
@@ -272,7 +295,8 @@ class Search {
     /**
      * Search using FTS5
      */
-    private function searchFts(string $query, int $limit, int $offset, ?int $categoryId): array {
+    private function searchFts(string $query, int $limit, int $offset, ?int $categoryId): array
+    {
         // Escape and prepare FTS query
         $ftsQuery = $this->prepareFtsQuery($query);
 
@@ -345,7 +369,8 @@ class Search {
     /**
      * Search using LIKE fallback
      */
-    private function searchFallback(string $query, int $limit, int $offset, ?int $categoryId): array {
+    private function searchFallback(string $query, int $limit, int $offset, ?int $categoryId): array
+    {
         // Split query into terms
         $terms = preg_split('/\s+/', strtolower(trim($query)));
         $terms = array_filter($terms, fn($t) => strlen($t) >= 2);
@@ -409,7 +434,9 @@ class Search {
 
             $stmt = $this->db->prepare($countSql);
             foreach ($params as $key => $value) {
-                if ($key === ':limit' || $key === ':offset') continue;
+                if ($key === ':limit' || $key === ':offset') {
+                    continue;
+                }
                 $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
                 $stmt->bindValue($key, $value, $type);
             }
@@ -432,7 +459,8 @@ class Search {
     /**
      * Prepare FTS5 query string
      */
-    private function prepareFtsQuery(string $query): string {
+    private function prepareFtsQuery(string $query): string
+    {
         // Remove special FTS characters
         $query = preg_replace('/[":*^~(){}[\]\\\\]/', ' ', $query);
 
@@ -449,7 +477,8 @@ class Search {
     /**
      * Rebuild entire search index
      */
-    public function rebuildIndex(): array {
+    public function rebuildIndex(): array
+    {
         if (!$this->db) {
             return ['success' => false, 'error' => 'No database connection'];
         }
@@ -486,7 +515,8 @@ class Search {
     /**
      * Get search suggestions (autocomplete)
      */
-    public function suggest(string $query, int $limit = 10): array {
+    public function suggest(string $query, int $limit = 10): array
+    {
         if (!$this->db || strlen($query) < 2) {
             return [];
         }
@@ -532,14 +562,16 @@ class Search {
     /**
      * Check if FTS is available
      */
-    public function isFtsAvailable(): bool {
+    public function isFtsAvailable(): bool
+    {
         return $this->ftsAvailable;
     }
 
     /**
      * Get index statistics
      */
-    public function stats(): array {
+    public function stats(): array
+    {
         if (!$this->db) {
             return ['error' => 'No database'];
         }
@@ -559,6 +591,7 @@ class Search {
 /**
  * Helper function
  */
-function search(string $query, array $options = []): array {
+function search(string $query, array $options = []): array
+{
     return Search::getInstance()->search($query, $options);
 }

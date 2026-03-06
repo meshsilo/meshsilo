@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Simple GraphQL Implementation for Silo
  * Provides a flexible query API for models, categories, tags, etc.
  */
 
-class GraphQL {
+class GraphQL
+{
     private static array $types = [];
     private static array $queries = [];
     private static array $mutations = [];
@@ -15,7 +17,8 @@ class GraphQL {
     /**
      * Initialize GraphQL schema
      */
-    public static function init(): void {
+    public static function init(): void
+    {
         self::$db = getDB();
         self::registerTypes();
         self::registerQueries();
@@ -25,7 +28,8 @@ class GraphQL {
     /**
      * Execute a GraphQL query
      */
-    public static function execute(string $query, ?array $variables = null, ?int $userId = null): array {
+    public static function execute(string $query, ?array $variables = null, ?int $userId = null): array
+    {
         try {
             self::init();
 
@@ -50,7 +54,8 @@ class GraphQL {
     /**
      * Parse GraphQL query (simplified parser)
      */
-    private static function parse(string $query): array {
+    private static function parse(string $query): array
+    {
         // Remove comments
         $query = preg_replace('/\#[^\n]*/', '', $query);
         $query = trim($query);
@@ -84,7 +89,8 @@ class GraphQL {
     /**
      * Parse selection set (fields to return)
      */
-    private static function parseSelectionSet(string $query): array {
+    private static function parseSelectionSet(string $query): array
+    {
         $selections = [];
         $depth = 0;
         $current = '';
@@ -103,13 +109,16 @@ class GraphQL {
         for ($i = 0; $i < count($chars); $i++) {
             $char = $chars[$i];
 
-            if ($char === '"' && ($i === 0 || $chars[$i-1] !== '\\')) {
+            if ($char === '"' && ($i === 0 || $chars[$i - 1] !== '\\')) {
                 $inString = !$inString;
             }
 
             if (!$inString) {
-                if ($char === '{') $depth++;
-                elseif ($char === '}') $depth--;
+                if ($char === '{') {
+                    $depth++;
+                } elseif ($char === '}') {
+                    $depth--;
+                }
             }
 
             if ($depth === 0 && !$inString && ($char === "\n" || $char === ',')) {
@@ -134,9 +143,12 @@ class GraphQL {
     /**
      * Parse a single field
      */
-    private static function parseField(string $field): ?array {
+    private static function parseField(string $field): ?array
+    {
         $field = trim($field);
-        if (empty($field)) return null;
+        if (empty($field)) {
+            return null;
+        }
 
         $result = [
             'name' => '',
@@ -173,7 +185,8 @@ class GraphQL {
     /**
      * Parse arguments from a field
      */
-    private static function parseArguments(string $args): array {
+    private static function parseArguments(string $args): array
+    {
         $result = [];
         $pairs = preg_split('/\s*,\s*/', $args);
 
@@ -183,12 +196,19 @@ class GraphQL {
                 $value = trim($m[2]);
 
                 // Parse value
-                if ($value === 'true') $value = true;
-                elseif ($value === 'false') $value = false;
-                elseif ($value === 'null') $value = null;
-                elseif (is_numeric($value)) $value = strpos($value, '.') !== false ? (float)$value : (int)$value;
-                elseif (preg_match('/^"(.*)"$/', $value, $vm)) $value = stripcslashes($vm[1]);
-                elseif (preg_match('/^\$(\w+)$/', $value, $vm)) $value = ['$var' => $vm[1]];
+                if ($value === 'true') {
+                    $value = true;
+                } elseif ($value === 'false') {
+                    $value = false;
+                } elseif ($value === 'null') {
+                    $value = null;
+                } elseif (is_numeric($value)) {
+                    $value = strpos($value, '.') !== false ? (float)$value : (int)$value;
+                } elseif (preg_match('/^"(.*)"$/', $value, $vm)) {
+                    $value = stripcslashes($vm[1]);
+                } elseif (preg_match('/^\$(\w+)$/', $value, $vm)) {
+                    $value = ['$var' => $vm[1]];
+                }
 
                 $result[$key] = $value;
             }
@@ -200,7 +220,8 @@ class GraphQL {
     /**
      * Check query depth and selection count to prevent DoS
      */
-    private static function validateQueryComplexity(array $selections, int $depth = 1, int &$count = 0): void {
+    private static function validateQueryComplexity(array $selections, int $depth = 1, int &$count = 0): void
+    {
         if ($depth > self::MAX_QUERY_DEPTH) {
             throw new Exception('Query exceeds maximum depth of ' . self::MAX_QUERY_DEPTH);
         }
@@ -219,7 +240,8 @@ class GraphQL {
     /**
      * Resolve the parsed operation
      */
-    private static function resolveOperation(array $parsed, ?array $variables, ?int $userId): array {
+    private static function resolveOperation(array $parsed, ?array $variables, ?int $userId): array
+    {
         self::validateQueryComplexity($parsed['selections']);
 
         $result = [];
@@ -252,8 +274,11 @@ class GraphQL {
     /**
      * Resolve variable references in arguments
      */
-    private static function resolveVariables(array $args, ?array $variables): array {
-        if (!$variables) return $args;
+    private static function resolveVariables(array $args, ?array $variables): array
+    {
+        if (!$variables) {
+            return $args;
+        }
 
         foreach ($args as $key => $value) {
             if (is_array($value) && isset($value['$var'])) {
@@ -268,7 +293,8 @@ class GraphQL {
     /**
      * Register GraphQL types
      */
-    private static function registerTypes(): void {
+    private static function registerTypes(): void
+    {
         self::$types = [
             'Model' => [
                 'id' => 'Int',
@@ -319,25 +345,30 @@ class GraphQL {
     /**
      * Register query resolvers
      */
-    private static function registerQueries(): void {
+    private static function registerQueries(): void
+    {
         // Model query
-        self::$queries['model'] = function($args, $selections, $userId) {
+        self::$queries['model'] = function ($args, $selections, $userId) {
             $db = self::$db;
             $id = $args['id'] ?? null;
 
-            if (!$id) throw new Exception('Model id is required');
+            if (!$id) {
+                throw new Exception('Model id is required');
+            }
 
             $stmt = $db->prepare("SELECT * FROM models WHERE id = :id AND parent_id IS NULL");
             $stmt->execute([':id' => $id]);
             $model = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$model) return null;
+            if (!$model) {
+                return null;
+            }
 
             return self::resolveModel($model, $selections, $userId);
         };
 
         // Models query (list)
-        self::$queries['models'] = function($args, $selections, $userId) {
+        self::$queries['models'] = function ($args, $selections, $userId) {
             $db = self::$db;
             $limit = min($args['limit'] ?? 20, 100);
             $offset = $args['offset'] ?? 0;
@@ -366,7 +397,9 @@ class GraphQL {
             }
 
             $allowedSort = ['created_at', 'updated_at', 'name', 'download_count'];
-            if (!in_array($sort, $allowedSort)) $sort = 'created_at';
+            if (!in_array($sort, $allowedSort)) {
+                $sort = 'created_at';
+            }
 
             $sql = "SELECT m.* FROM models m WHERE " . implode(' AND ', $where) .
                    " ORDER BY m.$sort $order LIMIT :limit OFFSET :offset";
@@ -388,7 +421,7 @@ class GraphQL {
         };
 
         // Categories query
-        self::$queries['categories'] = function($args, $selections, $userId) {
+        self::$queries['categories'] = function ($args, $selections, $userId) {
             $db = self::$db;
             $parent = $args['parent'] ?? null;
 
@@ -396,8 +429,11 @@ class GraphQL {
             $params = $parent === null ? [] : [':parent' => $parent];
 
             $stmt = $db->prepare("SELECT c.*, (SELECT COUNT(*) FROM models WHERE category_id = c.id AND parent_id IS NULL) as model_count FROM categories c WHERE $where ORDER BY name");
-            if ($params) $stmt->execute($params);
-            else $stmt->execute();
+            if ($params) {
+                $stmt->execute($params);
+            } else {
+                $stmt->execute();
+            }
 
             $categories = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -408,7 +444,7 @@ class GraphQL {
         };
 
         // Tags query
-        self::$queries['tags'] = function($args, $selections, $userId) {
+        self::$queries['tags'] = function ($args, $selections, $userId) {
             $db = self::$db;
             $limit = min($args['limit'] ?? 50, 200);
 
@@ -425,7 +461,7 @@ class GraphQL {
         };
 
         // Collections query
-        self::$queries['collections'] = function($args, $selections, $userId) {
+        self::$queries['collections'] = function ($args, $selections, $userId) {
             $db = self::$db;
             $public = $args['public'] ?? true;
             $owner = $args['owner'] ?? null;
@@ -463,8 +499,10 @@ class GraphQL {
         };
 
         // Me query (current user)
-        self::$queries['me'] = function($args, $selections, $userId) {
-            if (!$userId) return null;
+        self::$queries['me'] = function ($args, $selections, $userId) {
+            if (!$userId) {
+                return null;
+            }
 
             $db = self::$db;
             $stmt = $db->prepare("SELECT id, username, email, is_admin, created_at FROM users WHERE id = :id");
@@ -473,7 +511,7 @@ class GraphQL {
         };
 
         // Stats query
-        self::$queries['stats'] = function($args, $selections, $userId) {
+        self::$queries['stats'] = function ($args, $selections, $userId) {
             $db = self::$db;
 
             return [
@@ -489,13 +527,18 @@ class GraphQL {
     /**
      * Register mutation resolvers
      */
-    private static function registerMutations(): void {
+    private static function registerMutations(): void
+    {
         // Toggle favorite
-        self::$mutations['toggleFavorite'] = function($args, $selections, $userId) {
-            if (!$userId) throw new Exception('Authentication required');
+        self::$mutations['toggleFavorite'] = function ($args, $selections, $userId) {
+            if (!$userId) {
+                throw new Exception('Authentication required');
+            }
 
             $modelId = $args['modelId'] ?? null;
-            if (!$modelId) throw new Exception('modelId is required');
+            if (!$modelId) {
+                throw new Exception('modelId is required');
+            }
 
             $db = self::$db;
 
@@ -517,13 +560,17 @@ class GraphQL {
         };
 
         // Add tag to model
-        self::$mutations['addTag'] = function($args, $selections, $userId) {
-            if (!$userId) throw new Exception('Authentication required');
+        self::$mutations['addTag'] = function ($args, $selections, $userId) {
+            if (!$userId) {
+                throw new Exception('Authentication required');
+            }
 
             $modelId = $args['modelId'] ?? null;
             $tagName = $args['tag'] ?? null;
 
-            if (!$modelId || !$tagName) throw new Exception('modelId and tag are required');
+            if (!$modelId || !$tagName) {
+                throw new Exception('modelId and tag are required');
+            }
 
             $db = self::$db;
 
@@ -552,9 +599,11 @@ class GraphQL {
         };
 
         // Increment download count
-        self::$mutations['trackDownload'] = function($args, $selections, $userId) {
+        self::$mutations['trackDownload'] = function ($args, $selections, $userId) {
             $modelId = $args['modelId'] ?? null;
-            if (!$modelId) throw new Exception('modelId is required');
+            if (!$modelId) {
+                throw new Exception('modelId is required');
+            }
 
             $db = self::$db;
             $stmt = $db->prepare("UPDATE models SET download_count = download_count + 1 WHERE id = :id");
@@ -567,7 +616,8 @@ class GraphQL {
     /**
      * Resolve a model with requested fields
      */
-    private static function resolveModel(array $model, array $selections, ?int $userId): array {
+    private static function resolveModel(array $model, array $selections, ?int $userId): array
+    {
         $db = self::$db;
         $result = $model;
 
@@ -629,7 +679,8 @@ class GraphQL {
     /**
      * Get GraphQL schema for introspection
      */
-    public static function getSchema(): array {
+    public static function getSchema(): array
+    {
         self::init();
 
         return [

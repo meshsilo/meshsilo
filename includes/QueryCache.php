@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Query Result Caching
  *
@@ -10,20 +11,23 @@
  * - Works with APCu, Redis, or file cache
  */
 
-class QueryCache {
+class QueryCache
+{
     private static ?self $instance = null;
     private Cache $cache;
     private bool $enabled = true;
     private int $defaultTtl = 300; // 5 minutes
 
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->cache = Cache::getInstance();
         $this->enabled = getSetting('query_cache_enabled', '1') === '1';
     }
@@ -31,7 +35,8 @@ class QueryCache {
     /**
      * Execute a cached query
      */
-    public function remember(string $key, int $ttl, callable $callback, array $tags = []): mixed {
+    public function remember(string $key, int $ttl, callable $callback, array $tags = []): mixed
+    {
         if (!$this->enabled) {
             return $callback();
         }
@@ -60,11 +65,12 @@ class QueryCache {
     /**
      * Cache a query result with automatic key generation
      */
-    public function query(string $sql, array $params = [], int $ttl = null, array $tags = []): mixed {
+    public function query(string $sql, array $params = [], ?int $ttl = null, array $tags = []): mixed
+    {
         $key = md5($sql . serialize($params));
         $ttl = $ttl ?? $this->defaultTtl;
 
-        return $this->remember($key, $ttl, function() use ($sql, $params) {
+        return $this->remember($key, $ttl, function () use ($sql, $params) {
             $db = getDB();
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
@@ -75,11 +81,12 @@ class QueryCache {
     /**
      * Cache a single row query
      */
-    public function queryOne(string $sql, array $params = [], int $ttl = null, array $tags = []): ?array {
+    public function queryOne(string $sql, array $params = [], ?int $ttl = null, array $tags = []): ?array
+    {
         $key = md5('one:' . $sql . serialize($params));
         $ttl = $ttl ?? $this->defaultTtl;
 
-        return $this->remember($key, $ttl, function() use ($sql, $params) {
+        return $this->remember($key, $ttl, function () use ($sql, $params) {
             $db = getDB();
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
@@ -91,11 +98,12 @@ class QueryCache {
     /**
      * Cache a scalar query result
      */
-    public function queryScalar(string $sql, array $params = [], int $ttl = null, array $tags = []): mixed {
+    public function queryScalar(string $sql, array $params = [], ?int $ttl = null, array $tags = []): mixed
+    {
         $key = md5('scalar:' . $sql . serialize($params));
         $ttl = $ttl ?? $this->defaultTtl;
 
-        return $this->remember($key, $ttl, function() use ($sql, $params) {
+        return $this->remember($key, $ttl, function () use ($sql, $params) {
             $db = getDB();
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
@@ -106,7 +114,8 @@ class QueryCache {
     /**
      * Invalidate cache entries by tag
      */
-    public function invalidateTag(string $tag): int {
+    public function invalidateTag(string $tag): int
+    {
         $tagKey = 'query_tag:' . $tag;
         $keys = $this->cache->get($tagKey) ?? [];
 
@@ -124,7 +133,8 @@ class QueryCache {
     /**
      * Invalidate multiple tags
      */
-    public function invalidateTags(array $tags): int {
+    public function invalidateTags(array $tags): int
+    {
         $count = 0;
         foreach ($tags as $tag) {
             $count += $this->invalidateTag($tag);
@@ -135,14 +145,16 @@ class QueryCache {
     /**
      * Invalidate a specific cache key
      */
-    public function invalidate(string $key): bool {
+    public function invalidate(string $key): bool
+    {
         return $this->cache->forget('query:' . $key);
     }
 
     /**
      * Clear all query cache
      */
-    public function flush(): bool {
+    public function flush(): bool
+    {
         // This will clear all cache, not just queries
         // In production, you'd want to track query keys separately
         return $this->cache->flush();
@@ -151,7 +163,8 @@ class QueryCache {
     /**
      * Register a cache key with a tag
      */
-    private function registerTag(string $tag, string $key): void {
+    private function registerTag(string $tag, string $key): void
+    {
         $tagKey = 'query_tag:' . $tag;
         $keys = $this->cache->get($tagKey) ?? [];
 
@@ -165,7 +178,8 @@ class QueryCache {
     /**
      * Enable/disable query caching
      */
-    public function setEnabled(bool $enabled): self {
+    public function setEnabled(bool $enabled): self
+    {
         $this->enabled = $enabled;
         return $this;
     }
@@ -173,14 +187,16 @@ class QueryCache {
     /**
      * Check if caching is enabled
      */
-    public function isEnabled(): bool {
+    public function isEnabled(): bool
+    {
         return $this->enabled;
     }
 
     /**
      * Set default TTL
      */
-    public function setDefaultTtl(int $ttl): self {
+    public function setDefaultTtl(int $ttl): self
+    {
         $this->defaultTtl = $ttl;
         return $this;
     }
@@ -193,7 +209,8 @@ class QueryCache {
 /**
  * Get cached model count
  */
-function getCachedModelCount(?int $categoryId = null): int {
+function getCachedModelCount(?int $categoryId = null): int
+{
     $cache = QueryCache::getInstance();
 
     $key = 'model_count' . ($categoryId ? '_cat' . $categoryId : '');
@@ -202,7 +219,7 @@ function getCachedModelCount(?int $categoryId = null): int {
         $tags[] = 'category:' . $categoryId;
     }
 
-    return (int)$cache->remember($key, 300, function() use ($categoryId) {
+    return (int)$cache->remember($key, 300, function () use ($categoryId) {
         $db = getDB();
         $sql = 'SELECT COUNT(*) FROM models WHERE parent_id IS NULL';
         $params = [];
@@ -221,10 +238,11 @@ function getCachedModelCount(?int $categoryId = null): int {
 /**
  * Get cached category list with counts
  */
-function getCachedCategories(): array {
+function getCachedCategories(): array
+{
     $cache = QueryCache::getInstance();
 
-    return $cache->remember('categories_with_counts', 600, function() {
+    return $cache->remember('categories_with_counts', 600, function () {
         $db = getDB();
         $stmt = $db->query('
             SELECT c.*, COUNT(m.id) as model_count
@@ -240,10 +258,11 @@ function getCachedCategories(): array {
 /**
  * Get cached tag list with counts
  */
-function getCachedTags(): array {
+function getCachedTags(): array
+{
     $cache = QueryCache::getInstance();
 
-    return $cache->remember('tags_with_counts', 600, function() {
+    return $cache->remember('tags_with_counts', 600, function () {
         $db = getDB();
         $stmt = $db->query('
             SELECT t.*, COUNT(mt.model_id) as model_count
@@ -259,10 +278,11 @@ function getCachedTags(): array {
 /**
  * Get cached storage statistics
  */
-function getCachedStorageStats(): array {
+function getCachedStorageStats(): array
+{
     $cache = QueryCache::getInstance();
 
-    return $cache->remember('storage_stats', 3600, function() {
+    return $cache->remember('storage_stats', 3600, function () {
         $db = getDB();
 
         $totalModels = $db->query('SELECT COUNT(*) FROM models WHERE parent_id IS NULL')->fetchColumn();
@@ -280,7 +300,8 @@ function getCachedStorageStats(): array {
 /**
  * Invalidate model-related cache
  */
-function invalidateModelCache(?int $modelId = null, ?int $categoryId = null): void {
+function invalidateModelCache(?int $modelId = null, ?int $categoryId = null): void
+{
     $cache = QueryCache::getInstance();
 
     $cache->invalidateTag('models');

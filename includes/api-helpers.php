@@ -1,4 +1,5 @@
 <?php
+
 /**
  * API Helper Functions
  */
@@ -6,7 +7,8 @@
 /**
  * Send a JSON API response
  */
-function apiResponse($data, $statusCode = 200) {
+function apiResponse($data, $statusCode = 200)
+{
     http_response_code($statusCode);
     echo json_encode($data, JSON_PRETTY_PRINT);
     exit;
@@ -15,7 +17,8 @@ function apiResponse($data, $statusCode = 200) {
 /**
  * Send an API error response
  */
-function apiError($message, $statusCode = 400, $details = null) {
+function apiError($message, $statusCode = 400, $details = null)
+{
     $response = [
         'error' => true,
         'message' => $message
@@ -29,7 +32,8 @@ function apiError($message, $statusCode = 400, $details = null) {
 /**
  * Get JSON request body
  */
-function getJsonBody() {
+function getJsonBody()
+{
     $json = file_get_contents('php://input');
     if (empty($json)) {
         return [];
@@ -44,7 +48,8 @@ function getJsonBody() {
 /**
  * Get pagination parameters
  */
-function getPaginationParams($defaults = []) {
+function getPaginationParams($defaults = [])
+{
     $page = max(1, intval($_GET['page'] ?? 1));
     $limit = min(100, max(1, intval($_GET['limit'] ?? ($defaults['limit'] ?? 20))));
     $offset = ($page - 1) * $limit;
@@ -59,7 +64,8 @@ function getPaginationParams($defaults = []) {
 /**
  * Create paginated response
  */
-function paginatedResponse($items, $total, $page, $limit) {
+function paginatedResponse($items, $total, $page, $limit)
+{
     $totalPages = ceil($total / $limit);
 
     return [
@@ -77,8 +83,11 @@ function paginatedResponse($items, $total, $page, $limit) {
 /**
  * Format a model for API response
  */
-function formatModelForApi($model) {
-    if (!$model) return null;
+function formatModelForApi($model)
+{
+    if (!$model) {
+        return null;
+    }
 
     // Get categories
     $categories = getModelCategories($model['id']);
@@ -110,10 +119,10 @@ function formatModelForApi($model) {
         'is_printed' => (bool)($model['is_printed'] ?? false),
         'printed_at' => $model['printed_at'],
         'current_version' => (int)($model['current_version'] ?? 1),
-        'categories' => array_map(function($c) {
+        'categories' => array_map(function ($c) {
             return ['id' => (int)$c['id'], 'name' => $c['name']];
         }, $categories),
-        'tags' => array_map(function($t) {
+        'tags' => array_map(function ($t) {
             return ['id' => (int)$t['id'], 'name' => $t['name'], 'color' => $t['color']];
         }, $tags),
         'created_at' => $model['created_at'],
@@ -124,7 +133,8 @@ function formatModelForApi($model) {
 /**
  * Get model categories
  */
-function getModelCategories($modelId) {
+function getModelCategories($modelId)
+{
     $db = getDB();
     $stmt = $db->prepare('
         SELECT c.* FROM categories c
@@ -144,7 +154,8 @@ function getModelCategories($modelId) {
 /**
  * Format a category for API response
  */
-function formatCategoryForApi($category, $includeCount = false) {
+function formatCategoryForApi($category, $includeCount = false)
+{
     $result = [
         'id' => (int)$category['id'],
         'name' => $category['name']
@@ -160,7 +171,8 @@ function formatCategoryForApi($category, $includeCount = false) {
 /**
  * Format a tag for API response
  */
-function formatTagForApi($tag, $includeCount = false) {
+function formatTagForApi($tag, $includeCount = false)
+{
     $result = [
         'id' => (int)$tag['id'],
         'name' => $tag['name'],
@@ -178,7 +190,8 @@ function formatTagForApi($tag, $includeCount = false) {
 /**
  * Format a collection for API response
  */
-function formatCollectionForApi($collection, $includeCount = false) {
+function formatCollectionForApi($collection, $includeCount = false)
+{
     $result = [
         'id' => (int)$collection['id'],
         'name' => $collection['name'],
@@ -196,7 +209,8 @@ function formatCollectionForApi($collection, $includeCount = false) {
 /**
  * Validate required fields in request
  */
-function validateRequired($data, $fields) {
+function validateRequired($data, $fields)
+{
     $missing = [];
     foreach ($fields as $field) {
         if (!isset($data[$field]) || $data[$field] === '') {
@@ -211,7 +225,8 @@ function validateRequired($data, $fields) {
 /**
  * Sanitize and validate ID parameter
  */
-function validateId($id, $name = 'id') {
+function validateId($id, $name = 'id')
+{
     if (!is_numeric($id) || $id < 1) {
         apiError("Invalid $name", 400);
     }

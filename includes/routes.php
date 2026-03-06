@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Route Definitions for Silo
  *
@@ -81,7 +82,7 @@ $router->post('/update', ['file' => 'app/pages/update.php'], 'update.run');
 // AUTHENTICATED USER PAGES
 // ============================================================================
 
-$router->group(['middleware' => ['auth']], function($router) {
+$router->group(['middleware' => ['auth']], function ($router) {
     // User Settings
     $router->get('/settings', ['file' => 'app/pages/settings.php'], 'settings');
     $router->post('/settings', ['file' => 'app/pages/settings.php'], 'settings.post');
@@ -117,7 +118,7 @@ $router->get('/download-all/{id:\d+}', ['file' => 'app/actions/download-all.php'
 // Short preview route (used by model cards)
 $router->get('/preview', ['file' => 'app/actions/preview.php'], 'preview');
 
-$router->group(['prefix' => '/actions'], function($router) {
+$router->group(['prefix' => '/actions'], function ($router) {
     // File downloads and previews
     $router->get('/download', ['file' => 'app/actions/download.php'], 'actions.download');
     $router->get('/download-all', ['file' => 'app/actions/download-all.php'], 'actions.download.all');
@@ -242,7 +243,7 @@ $router->group(['prefix' => '/actions'], function($router) {
 // ADMIN ROUTES
 // ============================================================================
 
-$router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($router) {
+$router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($router) {
     // System Health Dashboard
     $router->get('/health', ['file' => 'app/admin/health.php'], 'admin.health');
 
@@ -323,7 +324,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function($rout
 });
 
 // Plugin assets (path:.+ allows subdirectories like css/style.css)
-$router->get('/plugin-assets/{pluginId}/{path:.+}', function($params) {
+$router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
     $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($params['pluginId'] ?? ''));
     $path = $params['path'] ?? '';
 
@@ -375,7 +376,7 @@ $router->get('/plugin-assets/{pluginId}/{path:.+}', function($params) {
 // These routes redirect to the API for clean URL access
 // ============================================================================
 
-$router->group(['prefix' => '/api'], function($router) {
+$router->group(['prefix' => '/api'], function ($router) {
     // GraphQL endpoint
     $router->any('/graphql', ['file' => 'app/api/graphql.php'], 'api.graphql');
 

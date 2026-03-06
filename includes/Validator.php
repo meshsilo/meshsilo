@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Input Validation System
  *
@@ -6,7 +7,8 @@
  * Supports common validation rules and custom validators.
  */
 
-class Validator {
+class Validator
+{
     private array $data = [];
     private array $rules = [];
     /** @var array<string, string[]> */
@@ -57,7 +59,8 @@ class Validator {
     /**
      * Create a new validator instance
      */
-    public function __construct(array $data = [], array $rules = []) {
+    public function __construct(array $data = [], array $rules = [])
+    {
         $this->data = $data;
         if (!empty($rules)) {
             $this->setRules($rules);
@@ -67,14 +70,16 @@ class Validator {
     /**
      * Static factory method
      */
-    public static function make(array $data, array $rules = []): self {
+    public static function make(array $data, array $rules = []): self
+    {
         return new self($data, $rules);
     }
 
     /**
      * Validate request data
      */
-    public static function request(array $rules = []): self {
+    public static function request(array $rules = []): self
+    {
         $data = array_merge($_GET, $_POST);
 
         // Include JSON body if present
@@ -92,7 +97,8 @@ class Validator {
     /**
      * Set validation rules
      */
-    public function setRules(array $rules): self {
+    public function setRules(array $rules): self
+    {
         foreach ($rules as $field => $fieldRules) {
             if (is_string($fieldRules)) {
                 $fieldRules = explode('|', $fieldRules);
@@ -105,7 +111,8 @@ class Validator {
     /**
      * Add a single rule
      */
-    public function addRule(string $field, $rule): self {
+    public function addRule(string $field, $rule): self
+    {
         if (!isset($this->rules[$field])) {
             $this->rules[$field] = [];
         }
@@ -116,7 +123,8 @@ class Validator {
     /**
      * Set custom error messages
      */
-    public function messages(array $messages): self {
+    public function messages(array $messages): self
+    {
         $this->customMessages = $messages;
         return $this;
     }
@@ -124,7 +132,8 @@ class Validator {
     /**
      * Run validation
      */
-    public function validate(): bool {
+    public function validate(): bool
+    {
         $this->errors = [];
         $this->validated = [];
 
@@ -156,35 +165,40 @@ class Validator {
     /**
      * Check if validation passed
      */
-    public function passes(): bool {
+    public function passes(): bool
+    {
         return $this->validate();
     }
 
     /**
      * Check if validation failed
      */
-    public function fails(): bool {
+    public function fails(): bool
+    {
         return !$this->validate();
     }
 
     /**
      * Get validation errors
      */
-    public function errors(): array {
+    public function errors(): array
+    {
         return $this->errors;
     }
 
     /**
      * Get first error for a field
      */
-    public function error(string $field): ?string {
+    public function error(string $field): ?string
+    {
         return $this->errors[$field][0] ?? null;
     }
 
     /**
      * Get all errors as flat array
      */
-    public function allErrors(): array {
+    public function allErrors(): array
+    {
         $all = [];
         foreach ($this->errors as $fieldErrors) {
             $all = array_merge($all, $fieldErrors);
@@ -195,21 +209,24 @@ class Validator {
     /**
      * Get validated data
      */
-    public function validated(): array {
+    public function validated(): array
+    {
         return $this->validated;
     }
 
     /**
      * Get a validated value
      */
-    public function get(string $field, $default = null) {
+    public function get(string $field, $default = null)
+    {
         return $this->validated[$field] ?? $default;
     }
 
     /**
      * Validate and throw exception on failure
      */
-    public function validateOrFail(): array {
+    public function validateOrFail(): array
+    {
         if (!$this->validate()) {
             throw new ValidationException($this->errors);
         }
@@ -219,7 +236,8 @@ class Validator {
     /**
      * Get value from data using dot notation
      */
-    private function getValue(string $field) {
+    private function getValue(string $field)
+    {
         if (strpos($field, '.') === false) {
             return $this->data[$field] ?? null;
         }
@@ -238,7 +256,8 @@ class Validator {
     /**
      * Check if value is empty
      */
-    private function isEmpty($value): bool {
+    private function isEmpty($value): bool
+    {
         return $value === null || $value === '' || $value === [] ||
                (is_string($value) && trim($value) === '');
     }
@@ -246,7 +265,8 @@ class Validator {
     /**
      * Validate a single rule
      */
-    private function validateRule(string $field, $value, $rule): bool {
+    private function validateRule(string $field, $value, $rule): bool
+    {
         // Parse rule and parameters
         if (is_string($rule)) {
             $parts = explode(':', $rule, 2);
@@ -277,7 +297,8 @@ class Validator {
     /**
      * Validate with callback
      */
-    private function validateCallback(string $field, $value, callable $callback): bool {
+    private function validateCallback(string $field, $value, callable $callback): bool
+    {
         $result = $callback($value, $field, $this->data);
         if ($result !== true) {
             $message = is_string($result) ? $result : "The $field field is invalid.";
@@ -290,7 +311,8 @@ class Validator {
     /**
      * Add an error message
      */
-    private function addError(string $field, string $rule, array $params = []): void {
+    private function addError(string $field, string $rule, array $params = []): void
+    {
         // Check for custom message
         $customKey = "$field.$rule";
         if (isset($this->customMessages[$customKey])) {
@@ -318,31 +340,38 @@ class Validator {
     // Validation Rules
     // ========================================
 
-    protected function validateRequired(string $field, $value, array $params): bool {
+    protected function validateRequired(string $field, $value, array $params): bool
+    {
         return !$this->isEmpty($value);
     }
 
-    protected function validateString(string $field, $value, array $params): bool {
+    protected function validateString(string $field, $value, array $params): bool
+    {
         return is_string($value);
     }
 
-    protected function validateInteger(string $field, $value, array $params): bool {
+    protected function validateInteger(string $field, $value, array $params): bool
+    {
         return filter_var($value, FILTER_VALIDATE_INT) !== false;
     }
 
-    protected function validateNumeric(string $field, $value, array $params): bool {
+    protected function validateNumeric(string $field, $value, array $params): bool
+    {
         return is_numeric($value);
     }
 
-    protected function validateEmail(string $field, $value, array $params): bool {
+    protected function validateEmail(string $field, $value, array $params): bool
+    {
         return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
     }
 
-    protected function validateUrl(string $field, $value, array $params): bool {
+    protected function validateUrl(string $field, $value, array $params): bool
+    {
         return filter_var($value, FILTER_VALIDATE_URL) !== false;
     }
 
-    protected function validateMin(string $field, $value, array $params): bool {
+    protected function validateMin(string $field, $value, array $params): bool
+    {
         $min = $params[0] ?? 0;
         if (is_numeric($value)) {
             return $value >= $min;
@@ -350,7 +379,8 @@ class Validator {
         return strlen($value) >= $min;
     }
 
-    protected function validateMax(string $field, $value, array $params): bool {
+    protected function validateMax(string $field, $value, array $params): bool
+    {
         $max = $params[0] ?? PHP_INT_MAX;
         if (is_numeric($value)) {
             return $value <= $max;
@@ -358,15 +388,18 @@ class Validator {
         return strlen($value) <= $max;
     }
 
-    protected function validateMinLength(string $field, $value, array $params): bool {
+    protected function validateMinLength(string $field, $value, array $params): bool
+    {
         return strlen($value) >= ($params[0] ?? 0);
     }
 
-    protected function validateMaxLength(string $field, $value, array $params): bool {
+    protected function validateMaxLength(string $field, $value, array $params): bool
+    {
         return strlen($value) <= ($params[0] ?? PHP_INT_MAX);
     }
 
-    protected function validateBetween(string $field, $value, array $params): bool {
+    protected function validateBetween(string $field, $value, array $params): bool
+    {
         $min = $params[0] ?? 0;
         $max = $params[1] ?? PHP_INT_MAX;
         if (is_numeric($value)) {
@@ -376,109 +409,138 @@ class Validator {
         return $len >= $min && $len <= $max;
     }
 
-    protected function validateIn(string $field, $value, array $params): bool {
+    protected function validateIn(string $field, $value, array $params): bool
+    {
         return in_array($value, $params, true);
     }
 
-    protected function validateNotIn(string $field, $value, array $params): bool {
+    protected function validateNotIn(string $field, $value, array $params): bool
+    {
         return !in_array($value, $params, true);
     }
 
-    protected function validateRegex(string $field, $value, array $params): bool {
+    protected function validateRegex(string $field, $value, array $params): bool
+    {
         $pattern = $params[0] ?? '';
         return preg_match($pattern, $value) === 1;
     }
 
-    protected function validateAlpha(string $field, $value, array $params): bool {
+    protected function validateAlpha(string $field, $value, array $params): bool
+    {
         return preg_match('/^[a-zA-Z]+$/', $value) === 1;
     }
 
-    protected function validateAlphaNum(string $field, $value, array $params): bool {
+    protected function validateAlphaNum(string $field, $value, array $params): bool
+    {
         return preg_match('/^[a-zA-Z0-9]+$/', $value) === 1;
     }
 
-    protected function validateAlphaDash(string $field, $value, array $params): bool {
+    protected function validateAlphaDash(string $field, $value, array $params): bool
+    {
         return preg_match('/^[a-zA-Z0-9_-]+$/', $value) === 1;
     }
 
-    protected function validateDate(string $field, $value, array $params): bool {
+    protected function validateDate(string $field, $value, array $params): bool
+    {
         return strtotime($value) !== false;
     }
 
-    protected function validateDateFormat(string $field, $value, array $params): bool {
+    protected function validateDateFormat(string $field, $value, array $params): bool
+    {
         $format = $params[0] ?? 'Y-m-d';
         $date = DateTime::createFromFormat($format, $value);
         return $date && $date->format($format) === $value;
     }
 
-    protected function validateBefore(string $field, $value, array $params): bool {
+    protected function validateBefore(string $field, $value, array $params): bool
+    {
         $date = $params[0] ?? 'now';
         return strtotime($value) < strtotime($date);
     }
 
-    protected function validateAfter(string $field, $value, array $params): bool {
+    protected function validateAfter(string $field, $value, array $params): bool
+    {
         $date = $params[0] ?? 'now';
         return strtotime($value) > strtotime($date);
     }
 
-    protected function validateConfirmed(string $field, $value, array $params): bool {
+    protected function validateConfirmed(string $field, $value, array $params): bool
+    {
         $confirmField = $field . '_confirmation';
         return $value === ($this->data[$confirmField] ?? null);
     }
 
-    protected function validateSame(string $field, $value, array $params): bool {
+    protected function validateSame(string $field, $value, array $params): bool
+    {
         $otherField = $params[0] ?? '';
         return $value === ($this->data[$otherField] ?? null);
     }
 
-    protected function validateDifferent(string $field, $value, array $params): bool {
+    protected function validateDifferent(string $field, $value, array $params): bool
+    {
         $otherField = $params[0] ?? '';
         return $value !== ($this->data[$otherField] ?? null);
     }
 
-    protected function validateBoolean(string $field, $value, array $params): bool {
+    protected function validateBoolean(string $field, $value, array $params): bool
+    {
         return in_array($value, [true, false, 1, 0, '1', '0', 'true', 'false', 'on', 'off'], true);
     }
 
-    protected function validateArray(string $field, $value, array $params): bool {
+    protected function validateArray(string $field, $value, array $params): bool
+    {
         return is_array($value);
     }
 
-    protected function validateJson(string $field, $value, array $params): bool {
-        if (!is_string($value)) return false;
+    protected function validateJson(string $field, $value, array $params): bool
+    {
+        if (!is_string($value)) {
+            return false;
+        }
         json_decode($value);
         return json_last_error() === JSON_ERROR_NONE;
     }
 
-    protected function validateIp(string $field, $value, array $params): bool {
+    protected function validateIp(string $field, $value, array $params): bool
+    {
         return filter_var($value, FILTER_VALIDATE_IP) !== false;
     }
 
-    protected function validateSlug(string $field, $value, array $params): bool {
+    protected function validateSlug(string $field, $value, array $params): bool
+    {
         return preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $value) === 1;
     }
 
-    protected function validateUuid(string $field, $value, array $params): bool {
+    protected function validateUuid(string $field, $value, array $params): bool
+    {
         return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value) === 1;
     }
 
-    protected function validateFile(string $field, $value, array $params): bool {
+    protected function validateFile(string $field, $value, array $params): bool
+    {
         return isset($_FILES[$field]) && $_FILES[$field]['error'] === UPLOAD_ERR_OK;
     }
 
-    protected function validateFileType(string $field, $value, array $params): bool {
-        if (!isset($_FILES[$field])) return false;
+    protected function validateFileType(string $field, $value, array $params): bool
+    {
+        if (!isset($_FILES[$field])) {
+            return false;
+        }
         $ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
         return in_array($ext, $params);
     }
 
-    protected function validateFileSize(string $field, $value, array $params): bool {
-        if (!isset($_FILES[$field])) return false;
+    protected function validateFileSize(string $field, $value, array $params): bool
+    {
+        if (!isset($_FILES[$field])) {
+            return false;
+        }
         $maxSize = $this->parseSize($params[0] ?? '10M');
         return $_FILES[$field]['size'] <= $maxSize;
     }
 
-    protected function validateImage(string $field, $value, array $params): bool {
+    protected function validateImage(string $field, $value, array $params): bool
+    {
         if (!isset($_FILES[$field]) || $_FILES[$field]['error'] !== UPLOAD_ERR_OK) {
             return false;
         }
@@ -489,15 +551,19 @@ class Validator {
     /**
      * Parse size string (e.g., "10M", "1G") to bytes
      */
-    private function parseSize(string $size): int {
+    private function parseSize(string $size): int
+    {
         $size = trim($size);
         $last = strtoupper(substr($size, -1));
         $value = (int)$size;
 
         switch ($last) {
-            case 'G': $value *= 1024;
-            case 'M': $value *= 1024;
-            case 'K': $value *= 1024;
+            case 'G':
+                $value *= 1024;
+            case 'M':
+                $value *= 1024;
+            case 'K':
+                $value *= 1024;
         }
 
         return $value;
@@ -507,19 +573,23 @@ class Validator {
 /**
  * Validation Exception
  */
-class ValidationException extends Exception {
+class ValidationException extends Exception
+{
     private array $errors;
 
-    public function __construct(array $errors, string $message = 'Validation failed') {
+    public function __construct(array $errors, string $message = 'Validation failed')
+    {
         parent::__construct($message, 422);
         $this->errors = $errors;
     }
 
-    public function errors(): array {
+    public function errors(): array
+    {
         return $this->errors;
     }
 
-    public function firstError(): ?string {
+    public function firstError(): ?string
+    {
         foreach ($this->errors as $fieldErrors) {
             return $fieldErrors[0] ?? null;
         }
@@ -530,6 +600,7 @@ class ValidationException extends Exception {
 /**
  * Helper function
  */
-function validate(array $data, array $rules): Validator {
+function validate(array $data, array $rules): Validator
+{
     return Validator::make($data, $rules);
 }

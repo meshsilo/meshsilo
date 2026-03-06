@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Authentication Middleware
  *
@@ -7,11 +8,13 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class AuthMiddleware implements MiddlewareInterface {
+class AuthMiddleware implements MiddlewareInterface
+{
     /**
      * Handle the middleware
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         if (!function_exists('isLoggedIn') || !isLoggedIn()) {
             // Store intended destination (sanitize to prevent open redirect)
             $uri = $_SERVER['REQUEST_URI'] ?? '/';

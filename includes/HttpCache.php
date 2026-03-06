@@ -1,4 +1,5 @@
 <?php
+
 /**
  * HTTP Caching Helper
  *
@@ -9,11 +10,13 @@
  * - Conditional request handling (304 responses)
  */
 
-class HttpCache {
+class HttpCache
+{
     /**
      * Set cache headers for static content
      */
-    public static function staticContent(int $maxAge = 86400, bool $public = true): void {
+    public static function staticContent(int $maxAge = 86400, bool $public = true): void
+    {
         $visibility = $public ? 'public' : 'private';
         header("Cache-Control: {$visibility}, max-age={$maxAge}");
         header('Vary: Accept-Encoding');
@@ -22,7 +25,8 @@ class HttpCache {
     /**
      * Set cache headers for dynamic content that can be cached
      */
-    public static function dynamic(int $maxAge = 300, bool $public = false): void {
+    public static function dynamic(int $maxAge = 300, bool $public = false): void
+    {
         $visibility = $public ? 'public' : 'private';
         header("Cache-Control: {$visibility}, max-age={$maxAge}, must-revalidate");
         header('Vary: Accept-Encoding, Cookie');
@@ -31,7 +35,8 @@ class HttpCache {
     /**
      * Disable caching entirely
      */
-    public static function noCache(): void {
+    public static function noCache(): void
+    {
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Cache-Control: post-check=0, pre-check=0', false);
         header('Pragma: no-cache');
@@ -41,7 +46,8 @@ class HttpCache {
     /**
      * Set cache for immutable content (versioned assets)
      */
-    public static function immutable(int $maxAge = 31536000): void {
+    public static function immutable(int $maxAge = 31536000): void
+    {
         header("Cache-Control: public, max-age={$maxAge}, immutable");
     }
 
@@ -49,7 +55,8 @@ class HttpCache {
      * Set ETag header and check for conditional request
      * Returns true if client cache is valid (304 should be sent)
      */
-    public static function etag(string $content, bool $weak = false): bool {
+    public static function etag(string $content, bool $weak = false): bool
+    {
         $hash = md5($content);
         $etag = $weak ? 'W/"' . $hash . '"' : '"' . $hash . '"';
 
@@ -67,7 +74,8 @@ class HttpCache {
     /**
      * Set ETag from file and check conditional request
      */
-    public static function etagFile(string $filepath): bool {
+    public static function etagFile(string $filepath): bool
+    {
         if (!file_exists($filepath)) {
             return false;
         }
@@ -89,7 +97,8 @@ class HttpCache {
      * Set Last-Modified header and check conditional request
      * Returns true if client cache is valid (304 should be sent)
      */
-    public static function lastModified(int $timestamp): bool {
+    public static function lastModified(int $timestamp): bool
+    {
         $lastModified = gmdate('D, d M Y H:i:s', $timestamp) . ' GMT';
         header('Last-Modified: ' . $lastModified);
 
@@ -108,7 +117,8 @@ class HttpCache {
     /**
      * Set Last-Modified from file
      */
-    public static function lastModifiedFile(string $filepath): bool {
+    public static function lastModifiedFile(string $filepath): bool
+    {
         if (!file_exists($filepath)) {
             return false;
         }
@@ -119,7 +129,8 @@ class HttpCache {
     /**
      * Send 304 Not Modified response
      */
-    public static function notModified(): void {
+    public static function notModified(): void
+    {
         http_response_code(304);
         // Remove content-related headers
         header_remove('Content-Type');
@@ -130,7 +141,8 @@ class HttpCache {
     /**
      * Handle caching for a file (complete workflow)
      */
-    public static function serveFile(string $filepath, int $maxAge = 86400): void {
+    public static function serveFile(string $filepath, int $maxAge = 86400): void
+    {
         if (!file_exists($filepath)) {
             http_response_code(404);
             exit;
@@ -157,7 +169,8 @@ class HttpCache {
     /**
      * Handle caching for dynamic content (complete workflow)
      */
-    public static function serveDynamic(string $content, int $maxAge = 300, ?string $contentType = null): void {
+    public static function serveDynamic(string $content, int $maxAge = 300, ?string $contentType = null): void
+    {
         // Check ETag
         if (self::etag($content)) {
             self::notModified();
@@ -179,7 +192,8 @@ class HttpCache {
     /**
      * Set Expires header (for older HTTP/1.0 clients)
      */
-    public static function expires(int $seconds): void {
+    public static function expires(int $seconds): void
+    {
         $expires = gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT';
         header('Expires: ' . $expires);
     }
@@ -187,7 +201,8 @@ class HttpCache {
     /**
      * Set caching for API responses
      */
-    public static function api(int $maxAge = 60, bool $public = false): void {
+    public static function api(int $maxAge = 60, bool $public = false): void
+    {
         $visibility = $public ? 'public' : 'private';
         header("Cache-Control: {$visibility}, max-age={$maxAge}");
         header('Vary: Accept, Accept-Encoding, Authorization');
@@ -196,14 +211,16 @@ class HttpCache {
     /**
      * Set stale-while-revalidate for better UX
      */
-    public static function staleWhileRevalidate(int $maxAge = 300, int $staleAge = 86400): void {
+    public static function staleWhileRevalidate(int $maxAge = 300, int $staleAge = 86400): void
+    {
         header("Cache-Control: public, max-age={$maxAge}, stale-while-revalidate={$staleAge}");
     }
 
     /**
      * Get cache-safe headers for thumbnails/images
      */
-    public static function thumbnail(int $maxAge = 604800): void {
+    public static function thumbnail(int $maxAge = 604800): void
+    {
         self::staticContent($maxAge, true);
         header('Accept-Ranges: bytes');
     }
@@ -211,7 +228,8 @@ class HttpCache {
     /**
      * Set download headers with caching
      */
-    public static function download(string $filename, int $size, int $maxAge = 3600): void {
+    public static function download(string $filename, int $size, int $maxAge = 3600): void
+    {
         self::staticContent($maxAge);
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -222,7 +240,8 @@ class HttpCache {
     /**
      * Handle range requests for large files
      */
-    public static function rangeRequest(string $filepath): void {
+    public static function rangeRequest(string $filepath): void
+    {
         if (!file_exists($filepath)) {
             http_response_code(404);
             exit;
@@ -247,7 +266,8 @@ class HttpCache {
     /**
      * Handle byte range request
      */
-    private static function handleRangeRequest(string $filepath, int $size, string $mimeType): void {
+    private static function handleRangeRequest(string $filepath, int $size, string $mimeType): void
+    {
         $range = $_SERVER['HTTP_RANGE'];
 
         // Parse range header
@@ -282,4 +302,3 @@ class HttpCache {
         fclose($fp);
     }
 }
-

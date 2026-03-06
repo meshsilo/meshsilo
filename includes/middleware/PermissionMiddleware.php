@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Permission Middleware
  *
@@ -8,7 +9,8 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class PermissionMiddleware implements MiddlewareInterface {
+class PermissionMiddleware implements MiddlewareInterface
+{
     private string $permission;
 
     /**
@@ -16,14 +18,16 @@ class PermissionMiddleware implements MiddlewareInterface {
      *
      * @param string $permission Permission name (upload, edit, delete, admin, view_stats)
      */
-    public function __construct(string $permission) {
+    public function __construct(string $permission)
+    {
         $this->permission = $permission;
     }
 
     /**
      * Handle the middleware
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         // First check if logged in
         if (!function_exists('isLoggedIn') || !isLoggedIn()) {
             // Sanitize URI to prevent open redirect
@@ -72,7 +76,8 @@ class PermissionMiddleware implements MiddlewareInterface {
     /**
      * Check if this is an AJAX request
      */
-    private function isAjaxRequest(): bool {
+    private function isAjaxRequest(): bool
+    {
         return !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
             && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }

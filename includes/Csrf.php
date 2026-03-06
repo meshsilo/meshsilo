@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CSRF Protection
  *
@@ -6,7 +7,8 @@
  * Uses per-session tokens with optional per-form tokens for sensitive operations.
  */
 
-class Csrf {
+class Csrf
+{
     const TOKEN_NAME = 'csrf_token';
     const HEADER_NAME = 'X-CSRF-Token';
     const TOKEN_LENGTH = 32;
@@ -15,7 +17,8 @@ class Csrf {
     /**
      * Get or generate the session CSRF token
      */
-    public static function getToken(): string {
+    public static function getToken(): string
+    {
         self::ensureSession();
 
         if (empty($_SESSION[self::TOKEN_NAME])) {
@@ -28,7 +31,8 @@ class Csrf {
     /**
      * Generate a new token (for regeneration after sensitive actions)
      */
-    public static function regenerateToken(): string {
+    public static function regenerateToken(): string
+    {
         self::ensureSession();
         $_SESSION[self::TOKEN_NAME] = self::generateToken();
         return $_SESSION[self::TOKEN_NAME];
@@ -37,7 +41,8 @@ class Csrf {
     /**
      * Generate a time-limited token for specific forms
      */
-    public static function getTimedToken(string $formId = 'default'): string {
+    public static function getTimedToken(string $formId = 'default'): string
+    {
         self::ensureSession();
 
         $data = [
@@ -70,7 +75,8 @@ class Csrf {
     /**
      * Validate CSRF token from request
      */
-    public static function validate(?string $token = null): bool {
+    public static function validate(?string $token = null): bool
+    {
         self::ensureSession();
 
         // Get token from various sources
@@ -104,7 +110,8 @@ class Csrf {
     /**
      * Validate and throw exception on failure
      */
-    public static function validateOrFail(?string $token = null): void {
+    public static function validateOrFail(?string $token = null): void
+    {
         if (!self::validate($token)) {
             if (function_exists('logWarning')) {
                 logWarning('CSRF validation failed', [
@@ -120,7 +127,8 @@ class Csrf {
     /**
      * Get token from request (POST, header, or JSON body)
      */
-    public static function getTokenFromRequest(): ?string {
+    public static function getTokenFromRequest(): ?string
+    {
         // Check POST data
         if (!empty($_POST[self::TOKEN_NAME])) {
             return $_POST[self::TOKEN_NAME];
@@ -161,7 +169,8 @@ class Csrf {
     /**
      * Generate HTML hidden input field
      */
-    public static function field(): string {
+    public static function field(): string
+    {
         return sprintf(
             '<input type="hidden" name="%s" value="%s">',
             htmlspecialchars(self::TOKEN_NAME),
@@ -172,7 +181,8 @@ class Csrf {
     /**
      * Generate HTML hidden input field with timed token
      */
-    public static function timedField(string $formId = 'default'): string {
+    public static function timedField(string $formId = 'default'): string
+    {
         return sprintf(
             '<input type="hidden" name="%s" value="%s">',
             htmlspecialchars(self::TOKEN_NAME),
@@ -183,7 +193,8 @@ class Csrf {
     /**
      * Generate meta tag for AJAX requests
      */
-    public static function metaTag(): string {
+    public static function metaTag(): string
+    {
         return sprintf(
             '<meta name="csrf-token" content="%s">',
             htmlspecialchars(self::getToken())
@@ -193,14 +204,16 @@ class Csrf {
     /**
      * Generate a cryptographically secure token
      */
-    private static function generateToken(): string {
+    private static function generateToken(): string
+    {
         return bin2hex(random_bytes(self::TOKEN_LENGTH));
     }
 
     /**
      * Ensure session is started
      */
-    private static function ensureSession(): void {
+    private static function ensureSession(): void
+    {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -209,7 +222,8 @@ class Csrf {
     /**
      * Middleware-style check for routes
      */
-    public static function check(): bool {
+    public static function check(): bool
+    {
         // Skip for safe methods
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         if (in_array($method, ['GET', 'HEAD', 'OPTIONS'])) {
@@ -222,7 +236,8 @@ class Csrf {
     /**
      * Get JavaScript code for AJAX setup
      */
-    public static function ajaxSetupScript(): string {
+    public static function ajaxSetupScript(): string
+    {
         $token = self::getToken();
         return <<<JS
 <script>
@@ -264,8 +279,10 @@ JS;
 /**
  * CSRF Exception
  */
-class CsrfException extends Exception {
-    public function __construct(string $message = 'CSRF validation failed', int $code = 403) {
+class CsrfException extends Exception
+{
+    public function __construct(string $message = 'CSRF validation failed', int $code = 403)
+    {
         parent::__construct($message, $code);
     }
 }
@@ -274,19 +291,22 @@ class CsrfException extends Exception {
  * Helper functions for templates
  */
 if (!function_exists('csrf_field')) {
-    function csrf_field(): string {
+    function csrf_field(): string
+    {
         return Csrf::field();
     }
 }
 
 if (!function_exists('csrf_token')) {
-    function csrf_token(): string {
+    function csrf_token(): string
+    {
         return Csrf::getToken();
     }
 }
 
 if (!function_exists('csrf_meta')) {
-    function csrf_meta(): string {
+    function csrf_meta(): string
+    {
         return Csrf::metaTag();
     }
 }

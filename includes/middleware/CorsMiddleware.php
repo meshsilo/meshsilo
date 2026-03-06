@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CORS (Cross-Origin Resource Sharing) Middleware
  *
@@ -8,7 +9,8 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class CorsMiddleware implements MiddlewareInterface {
+class CorsMiddleware implements MiddlewareInterface
+{
     private array $options;
 
     // Default CORS options
@@ -27,7 +29,8 @@ class CorsMiddleware implements MiddlewareInterface {
      *
      * @param array $options CORS configuration options
      */
-    public function __construct(array $options = []) {
+    public function __construct(array $options = [])
+    {
         $this->options = array_merge(self::DEFAULTS, $options);
 
         // Load settings from database if available
@@ -39,7 +42,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Load CORS settings from database
      */
-    private function loadSettingsFromDatabase(): void {
+    private function loadSettingsFromDatabase(): void
+    {
         $origins = getSetting('cors_allowed_origins', '');
         if (!empty($origins)) {
             $this->options['allowed_origins'] = array_map('trim', explode(',', $origins));
@@ -62,7 +66,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Handle the middleware
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
         // Check if origin is allowed
@@ -86,7 +91,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Check if origin is allowed
      */
-    private function isOriginAllowed(string $origin): bool {
+    private function isOriginAllowed(string $origin): bool
+    {
         if (empty($origin)) {
             return false;
         }
@@ -113,7 +119,9 @@ class CorsMiddleware implements MiddlewareInterface {
             if ($allowed !== '*' && strpos($allowed, '*') !== false) {
                 // Split on *, quote each segment, then join with .*
                 $segments = explode('*', $allowed);
-                $pattern = implode('.*', array_map(function($s) { return preg_quote($s, '/'); }, $segments));
+                $pattern = implode('.*', array_map(function ($s) {
+                    return preg_quote($s, '/');
+                }, $segments));
                 if (preg_match('/^' . $pattern . '$/', $origin)) {
                     return true;
                 }
@@ -126,7 +134,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Handle preflight OPTIONS request
      */
-    private function handlePreflightRequest(string $origin): void {
+    private function handlePreflightRequest(string $origin): void
+    {
         http_response_code(204); // No Content
 
         // Set origin header
@@ -170,7 +179,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Add CORS headers to actual response
      */
-    private function addCorsHeaders(string $origin): void {
+    private function addCorsHeaders(string $origin): void
+    {
         $this->setOriginHeader($origin);
 
         // Exposed headers
@@ -192,7 +202,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Set the Access-Control-Allow-Origin header
      */
-    private function setOriginHeader(string $origin): void {
+    private function setOriginHeader(string $origin): void
+    {
         $allowedOrigins = $this->options['allowed_origins'];
 
         if (in_array('*', $allowedOrigins) && !$this->options['allow_credentials']) {
@@ -207,7 +218,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Create CORS middleware for API routes
      */
-    public static function api(): self {
+    public static function api(): self
+    {
         return new self([
             'allowed_origins' => ['*'],
             'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -221,7 +233,8 @@ class CorsMiddleware implements MiddlewareInterface {
      * Note: With credentials, wildcard origins are rejected. Configure
      * cors_allowed_origins in settings to list specific trusted origins.
      */
-    public static function authenticatedApi(): self {
+    public static function authenticatedApi(): self
+    {
         // Do not use wildcard with credentials -- load from settings or deny cross-origin
         $origins = [];
         if (function_exists('getSetting')) {
@@ -247,7 +260,8 @@ class CorsMiddleware implements MiddlewareInterface {
     /**
      * Create strict CORS middleware (same-origin only)
      */
-    public static function strict(): self {
+    public static function strict(): self
+    {
         return new self([
             'allowed_origins' => [], // No cross-origin allowed
         ]);
@@ -257,7 +271,8 @@ class CorsMiddleware implements MiddlewareInterface {
 /**
  * Quick function to add CORS headers for simple use cases
  */
-function cors(array $allowedOrigins = []): void {
+function cors(array $allowedOrigins = []): void
+{
     $middleware = new CorsMiddleware(['allowed_origins' => $allowedOrigins]);
     $middleware->handle([]);
 }

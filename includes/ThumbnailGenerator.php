@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Thumbnail Generator for 3D Models
  *
@@ -7,7 +8,8 @@
  * Fallback: OpenSCAD CLI rendering (if available)
  */
 
-class ThumbnailGenerator {
+class ThumbnailGenerator
+{
     // Thumbnail storage directory (relative to assets)
     const THUMBNAIL_DIR = 'thumbnails';
 
@@ -23,7 +25,8 @@ class ThumbnailGenerator {
      * @param int $size Desired size (width/height)
      * @return string|null Path to thumbnail, or null on failure
      */
-    public static function generateThumbnail($model, $size = self::SIZE_MEDIUM) {
+    public static function generateThumbnail($model, $size = self::SIZE_MEDIUM)
+    {
         $filePath = getAbsoluteFilePath($model);
         if (!$filePath || !file_exists($filePath)) {
             return null;
@@ -58,7 +61,8 @@ class ThumbnailGenerator {
      * 3MF files are ZIP archives that may contain thumbnail images
      * Common locations: Thumbnails/thumbnail.png, /Metadata/thumbnail.png
      */
-    public static function extractFrom3MF($filePath, $modelId, $size = self::SIZE_MEDIUM) {
+    public static function extractFrom3MF($filePath, $modelId, $size = self::SIZE_MEDIUM)
+    {
         $zip = new ZipArchive();
         if ($zip->open($filePath) !== true) {
             return null;
@@ -120,7 +124,8 @@ class ThumbnailGenerator {
      * Requires OpenSCAD to be installed and available in PATH
      * Supports STL and 3MF file formats
      */
-    public static function renderWithOpenSCAD($filePath, $modelId, $size = self::SIZE_MEDIUM, $fileType = 'stl') {
+    public static function renderWithOpenSCAD($filePath, $modelId, $size = self::SIZE_MEDIUM, $fileType = 'stl')
+    {
         if (!self::isOpenSCADAvailable()) {
             return null;
         }
@@ -165,7 +170,8 @@ class ThumbnailGenerator {
     /**
      * Save thumbnail data and resize to target size
      */
-    private static function saveAndResizeThumbnail($imageData, $modelId, $size) {
+    private static function saveAndResizeThumbnail($imageData, $modelId, $size)
+    {
         $thumbnailDir = self::ensureThumbnailDir();
 
         // Load image from data
@@ -199,9 +205,16 @@ class ThumbnailGenerator {
         $offsetY = (int)(($size - $newHeight) / 2);
 
         imagecopyresampled(
-            $resized, $image,
-            $offsetX, $offsetY, 0, 0,
-            $newWidth, $newHeight, $origWidth, $origHeight
+            $resized,
+            $image,
+            $offsetX,
+            $offsetY,
+            0,
+            0,
+            $newWidth,
+            $newHeight,
+            $origWidth,
+            $origHeight
         );
 
         // Save as PNG
@@ -217,7 +230,8 @@ class ThumbnailGenerator {
     /**
      * Ensure thumbnail directory exists
      */
-    private static function ensureThumbnailDir() {
+    private static function ensureThumbnailDir()
+    {
         $dir = rtrim(UPLOAD_PATH, '/') . '/' . self::THUMBNAIL_DIR;
 
         if (!is_dir($dir)) {
@@ -230,7 +244,8 @@ class ThumbnailGenerator {
     /**
      * Check if OpenSCAD is available
      */
-    public static function isOpenSCADAvailable() {
+    public static function isOpenSCADAvailable()
+    {
         static $available = null;
 
         if ($available === null) {
@@ -244,7 +259,8 @@ class ThumbnailGenerator {
     /**
      * Update model's thumbnail path in database
      */
-    private static function updateThumbnailPath($modelId, $thumbnailPath) {
+    private static function updateThumbnailPath($modelId, $thumbnailPath)
+    {
         $db = getDB();
 
         // Ensure column exists
@@ -260,9 +276,12 @@ class ThumbnailGenerator {
     /**
      * Ensure the thumbnail_path column exists
      */
-    private static function ensureThumbnailColumn($db) {
+    private static function ensureThumbnailColumn($db)
+    {
         static $checked = false;
-        if ($checked) return;
+        if ($checked) {
+            return;
+        }
 
         try {
             if ($db->getType() === 'mysql') {
@@ -283,7 +302,8 @@ class ThumbnailGenerator {
      * @param array $model Model record
      * @return string|null URL to thumbnail, or null if not available
      */
-    public static function getThumbnailUrl($model) {
+    public static function getThumbnailUrl($model)
+    {
         if (!empty($model['thumbnail_path'])) {
             return 'assets/' . $model['thumbnail_path'];
         }
@@ -294,7 +314,8 @@ class ThumbnailGenerator {
     /**
      * Delete thumbnail for a model
      */
-    public static function deleteThumbnail($modelId) {
+    public static function deleteThumbnail($modelId)
+    {
         $thumbnailDir = rtrim(UPLOAD_PATH, '/') . '/' . self::THUMBNAIL_DIR;
         $path = $thumbnailDir . '/' . $modelId . '.png';
 
@@ -309,7 +330,8 @@ class ThumbnailGenerator {
      * @param int $limit Max models to process
      * @return array Results summary
      */
-    public static function batchGenerate($limit = 100) {
+    public static function batchGenerate($limit = 100)
+    {
         $db = getDB();
 
         // Ensure column exists

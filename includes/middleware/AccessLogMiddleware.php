@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Access Log Middleware
  *
@@ -10,11 +11,13 @@
 require_once __DIR__ . '/MiddlewareInterface.php';
 require_once __DIR__ . '/../logger.php';
 
-class AccessLogMiddleware implements MiddlewareInterface {
+class AccessLogMiddleware implements MiddlewareInterface
+{
     private $skipPaths = [];
     private $skipExtensions = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot'];
 
-    public function __construct($options = []) {
+    public function __construct($options = [])
+    {
         if (isset($options['skip_paths'])) {
             $this->skipPaths = $options['skip_paths'];
         }
@@ -23,7 +26,8 @@ class AccessLogMiddleware implements MiddlewareInterface {
         }
     }
 
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         $path = parse_url($uri, PHP_URL_PATH) ?? '/';
 
@@ -41,7 +45,8 @@ class AccessLogMiddleware implements MiddlewareInterface {
         return true;
     }
 
-    private function shouldSkip($path) {
+    private function shouldSkip($path)
+    {
         // Check skip paths
         foreach ($this->skipPaths as $skipPath) {
             if (strpos($path, $skipPath) === 0) {
@@ -58,7 +63,8 @@ class AccessLogMiddleware implements MiddlewareInterface {
         return false;
     }
 
-    public function logShutdown() {
+    public function logShutdown()
+    {
         // Get the actual response code
         $statusCode = http_response_code();
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Configuration Validator
  *
@@ -6,14 +7,16 @@
  * Run early in the application lifecycle to catch misconfigurations.
  */
 
-class ConfigValidator {
+class ConfigValidator
+{
     private array $errors = [];
     private array $warnings = [];
 
     /**
      * Run all validation checks
      */
-    public function validate(): bool {
+    public function validate(): bool
+    {
         $this->errors = [];
         $this->warnings = [];
 
@@ -30,21 +33,24 @@ class ConfigValidator {
     /**
      * Get validation errors
      */
-    public function getErrors(): array {
+    public function getErrors(): array
+    {
         return $this->errors;
     }
 
     /**
      * Get validation warnings
      */
-    public function getWarnings(): array {
+    public function getWarnings(): array
+    {
         return $this->warnings;
     }
 
     /**
      * Check required constants are defined
      */
-    private function checkRequiredConstants(): void {
+    private function checkRequiredConstants(): void
+    {
         $required = ['SITE_URL', 'STORAGE_PATH'];
 
         foreach ($required as $const) {
@@ -67,7 +73,8 @@ class ConfigValidator {
     /**
      * Check directory permissions
      */
-    private function checkDirectoryPermissions(): void {
+    private function checkDirectoryPermissions(): void
+    {
         if (!defined('STORAGE_PATH')) {
             return;
         }
@@ -97,7 +104,8 @@ class ConfigValidator {
     /**
      * Check database connection
      */
-    private function checkDatabaseConnection(): void {
+    private function checkDatabaseConnection(): void
+    {
         try {
             if (function_exists('getDB')) {
                 $db = getDB();
@@ -112,7 +120,8 @@ class ConfigValidator {
     /**
      * Check session configuration
      */
-    private function checkSessionConfiguration(): void {
+    private function checkSessionConfiguration(): void
+    {
         if (session_status() === PHP_SESSION_DISABLED) {
             $this->errors[] = "PHP sessions are disabled. Sessions are required for authentication.";
             return;
@@ -128,15 +137,18 @@ class ConfigValidator {
     /**
      * Check security settings
      */
-    private function checkSecuritySettings(): void {
+    private function checkSecuritySettings(): void
+    {
         // Check for development/debug mode in production
         if (defined('DEBUG_MODE') && DEBUG_MODE === true) {
             $this->warnings[] = "DEBUG_MODE is enabled. Disable in production.";
         }
 
         // Check for secure cookie settings
-        if (ini_get('session.cookie_secure') !== '1' &&
-            defined('SITE_URL') && strpos(SITE_URL, 'https://') === 0) {
+        if (
+            ini_get('session.cookie_secure') !== '1' &&
+            defined('SITE_URL') && strpos(SITE_URL, 'https://') === 0
+        ) {
             $this->warnings[] = "session.cookie_secure is not enabled for HTTPS site.";
         }
 
@@ -149,7 +161,8 @@ class ConfigValidator {
     /**
      * Check feature dependencies
      */
-    private function checkFeatureDependencies(): void {
+    private function checkFeatureDependencies(): void
+    {
         if (!function_exists('isFeatureEnabled') || !function_exists('areFeatureDependenciesMet')) {
             return;
         }
@@ -170,7 +183,8 @@ class ConfigValidator {
     /**
      * Run validation and log results
      */
-    public static function validateAndLog(): bool {
+    public static function validateAndLog(): bool
+    {
         $validator = new self();
         $valid = $validator->validate();
 
@@ -192,7 +206,8 @@ class ConfigValidator {
     /**
      * Get a summary of validation results
      */
-    public function getSummary(): array {
+    public function getSummary(): array
+    {
         return [
             'valid' => empty($this->errors),
             'error_count' => count($this->errors),

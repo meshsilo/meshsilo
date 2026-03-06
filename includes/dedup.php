@@ -1,4 +1,5 @@
 <?php
+
 /**
  * File Deduplication System
  *
@@ -13,7 +14,8 @@ define('DEDUP_FOLDER', 'assets/_dedup/');
  * Returns the path as stored in database (includes assets/ prefix)
  * Use this for URLs
  */
-function getRealFilePath($model) {
+function getRealFilePath($model)
+{
     if (!empty($model['dedup_path'])) {
         return $model['dedup_path'];
     }
@@ -24,7 +26,8 @@ function getRealFilePath($model) {
  * Get the absolute filesystem path for a model file
  * Use this for file operations (file_exists, unlink, etc.)
  */
-function getAbsoluteFilePath($model) {
+function getAbsoluteFilePath($model)
+{
     $relativePath = getRealFilePath($model);
     // Paths in DB include 'assets/' prefix, files are stored in storage/assets/
     // Replace 'assets/' with 'storage/assets/' for correct path resolution
@@ -38,7 +41,8 @@ function getAbsoluteFilePath($model) {
  * Find all files with duplicate hashes
  * @return array Array of hashes that have duplicates, with count
  */
-function findDuplicateHashes() {
+function findDuplicateHashes()
+{
     $db = getDB();
     $result = $db->query('
         SELECT file_hash, COUNT(*) as count, SUM(file_size) as total_size
@@ -61,7 +65,8 @@ function findDuplicateHashes() {
 /**
  * Get all parts with a specific hash
  */
-function getPartsByHash($hash) {
+function getPartsByHash($hash)
+{
     $db = getDB();
     $stmt = $db->prepare('
         SELECT m.*, p.name as parent_name
@@ -85,7 +90,8 @@ function getPartsByHash($hash) {
  * Keeps the first file and points all others to it
  * @return array Result with success status and details
  */
-function deduplicateByHash($hash) {
+function deduplicateByHash($hash)
+{
     $db = getDB();
     $parts = getPartsByHash($hash);
 
@@ -176,7 +182,8 @@ function deduplicateByHash($hash) {
  * Run full deduplication scan
  * @return array Summary of deduplication results
  */
-function runDeduplicationScan() {
+function runDeduplicationScan()
+{
     $duplicates = findDuplicateHashes();
 
     $totalSpaceSaved = 0;
@@ -210,7 +217,8 @@ function runDeduplicationScan() {
  * Check if a deduplicated file can be safely deleted
  * (only if no other parts reference it)
  */
-function canDeleteDedupFile($dedupPath) {
+function canDeleteDedupFile($dedupPath)
+{
     $db = getDB();
     $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
     $stmt->bindValue(':path', $dedupPath, PDO::PARAM_STR);
@@ -223,7 +231,8 @@ function canDeleteDedupFile($dedupPath) {
 /**
  * Get the count of references to a deduplicated file
  */
-function getDedupReferenceCount($dedupPath) {
+function getDedupReferenceCount($dedupPath)
+{
     $db = getDB();
     $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
     $stmt->bindValue(':path', $dedupPath, PDO::PARAM_STR);
@@ -237,7 +246,8 @@ function getDedupReferenceCount($dedupPath) {
  * Migrate a deduplicated file back to its original location
  * Used when a file only has one reference left
  */
-function migrateDedupBack($modelId) {
+function migrateDedupBack($modelId)
+{
     $db = getDB();
 
     // Get the model
@@ -283,7 +293,8 @@ function migrateDedupBack($modelId) {
 /**
  * Run cleanup scan - migrate files back that only have one reference
  */
-function runDedupCleanupScan() {
+function runDedupCleanupScan()
+{
     $db = getDB();
 
     // Find dedup paths with only one reference
@@ -314,7 +325,8 @@ function runDedupCleanupScan() {
 /**
  * Get deduplication statistics
  */
-function getDeduplicationStats() {
+function getDeduplicationStats()
+{
     $db = getDB();
 
     // Count deduplicated files
@@ -370,7 +382,8 @@ function getDeduplicationStats() {
  * For 3MF files, extracts and hashes the actual model content (ignoring ZIP metadata)
  * For other files, uses standard file hash
  */
-function calculateContentHash($filePath) {
+function calculateContentHash($filePath)
+{
     if (!file_exists($filePath) || !is_file($filePath)) {
         return null;
     }
@@ -390,7 +403,8 @@ function calculateContentHash($filePath) {
  * Calculate content-based hash for 3MF files
  * 3MF files are ZIP archives - we hash the actual model content, not the ZIP metadata
  */
-function calculate3mfContentHash($filePath) {
+function calculate3mfContentHash($filePath)
+{
     $zip = new ZipArchive();
     if ($zip->open($filePath) !== true) {
         // If can't open as ZIP, fall back to file hash
@@ -410,8 +424,12 @@ function calculate3mfContentHash($filePath) {
     foreach ($files as $fileName) {
         // Skip files that only contain metadata
         $lowerName = strtolower($fileName);
-        if (strpos($lowerName, '_rels/') === 0) continue;
-        if ($lowerName === '[content_types].xml') continue;
+        if (strpos($lowerName, '_rels/') === 0) {
+            continue;
+        }
+        if ($lowerName === '[content_types].xml') {
+            continue;
+        }
 
         $content = $zip->getFromName($fileName);
         if ($content !== false) {
@@ -433,7 +451,8 @@ function calculate3mfContentHash($filePath) {
 /**
  * Calculate and store hashes for all files that don't have one
  */
-function calculateMissingHashes() {
+function calculateMissingHashes()
+{
     $db = getDB();
 
     $result = $db->query('
@@ -467,7 +486,8 @@ function calculateMissingHashes() {
  * Recalculate hashes for all 3MF files using content-based hashing
  * Use this to update existing hashes after implementing content-based hashing
  */
-function recalculate3mfHashes() {
+function recalculate3mfHashes()
+{
     $db = getDB();
 
     $result = $db->query('
@@ -501,7 +521,8 @@ function recalculate3mfHashes() {
  * Check for duplicate files before upload
  * Returns array of existing models that match the given file hash
  */
-function findExistingByHash($hash) {
+function findExistingByHash($hash)
+{
     if (empty($hash)) {
         return [];
     }
@@ -530,7 +551,8 @@ function findExistingByHash($hash) {
  * @param string $tempPath Path to the temporary uploaded file
  * @return array ['is_duplicate' => bool, 'hash' => string, 'existing' => array]
  */
-function checkUploadForDuplicates($tempPath) {
+function checkUploadForDuplicates($tempPath)
+{
     if (!file_exists($tempPath)) {
         return ['is_duplicate' => false, 'hash' => null, 'existing' => []];
     }
@@ -554,7 +576,8 @@ function checkUploadForDuplicates($tempPath) {
  * @param string $name Model name to check
  * @return array Existing models with similar names
  */
-function findSimilarByName($name) {
+function findSimilarByName($name)
+{
     if (empty($name)) {
         return [];
     }

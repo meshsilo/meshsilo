@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Feature Toggles
  *
@@ -11,14 +12,16 @@
  * Maps features to their required dependencies.
  * If a dependency is disabled, the feature cannot function properly.
  */
-function getFeatureDependencies(): array {
+function getFeatureDependencies(): array
+{
     return [];
 }
 
 /**
  * Get features that depend on a given feature
  */
-function getDependentFeatures(string $feature): array {
+function getDependentFeatures(string $feature): array
+{
     $dependencies = getFeatureDependencies();
     $dependents = [];
 
@@ -34,7 +37,8 @@ function getDependentFeatures(string $feature): array {
 /**
  * Check if a feature's dependencies are satisfied
  */
-function areFeatureDependenciesMet(string $feature): bool {
+function areFeatureDependenciesMet(string $feature): bool
+{
     $dependencies = getFeatureDependencies();
 
     if (!isset($dependencies[$feature])) {
@@ -53,7 +57,8 @@ function areFeatureDependenciesMet(string $feature): bool {
 /**
  * Get missing dependencies for a feature
  */
-function getMissingDependencies(string $feature): array {
+function getMissingDependencies(string $feature): array
+{
     $dependencies = getFeatureDependencies();
     $missing = [];
 
@@ -72,7 +77,8 @@ function getMissingDependencies(string $feature): array {
 }
 
 // Define available features with metadata
-function getAvailableFeatures(): array {
+function getAvailableFeatures(): array
+{
     $features = [
         'api_keys' => [
             'name' => 'API Keys',
@@ -223,7 +229,8 @@ $_featureStateCache = null;
 /**
  * Load all feature states into cache
  */
-function loadFeatureStates(): array {
+function loadFeatureStates(): array
+{
     global $_featureStateCache;
 
     if ($_featureStateCache !== null) {
@@ -244,7 +251,8 @@ function loadFeatureStates(): array {
 /**
  * Clear the feature state cache (call after enabling/disabling)
  */
-function clearFeatureStateCache(): void {
+function clearFeatureStateCache(): void
+{
     global $_featureStateCache;
     $_featureStateCache = null;
 }
@@ -252,7 +260,8 @@ function clearFeatureStateCache(): void {
 /**
  * Check if a feature is enabled
  */
-function isFeatureEnabled(string $feature): bool {
+function isFeatureEnabled(string $feature): bool
+{
     $features = getAvailableFeatures();
 
     // Unknown feature = enabled (don't break things)
@@ -268,7 +277,8 @@ function isFeatureEnabled(string $feature): bool {
 /**
  * Enable a feature
  */
-function enableFeature(string $feature): bool {
+function enableFeature(string $feature): bool
+{
     $features = getAvailableFeatures();
     if (!isset($features[$feature])) {
         return false;
@@ -281,7 +291,8 @@ function enableFeature(string $feature): bool {
 /**
  * Disable a feature
  */
-function disableFeature(string $feature): bool {
+function disableFeature(string $feature): bool
+{
     $features = getAvailableFeatures();
     if (!isset($features[$feature])) {
         return false;
@@ -294,7 +305,8 @@ function disableFeature(string $feature): bool {
 /**
  * Get all enabled features
  */
-function getEnabledFeatures(): array {
+function getEnabledFeatures(): array
+{
     $features = getAvailableFeatures();
     $enabled = [];
 
@@ -310,7 +322,8 @@ function getEnabledFeatures(): array {
 /**
  * Get features grouped by category
  */
-function getFeaturesByCategory(): array {
+function getFeaturesByCategory(): array
+{
     $features = getAvailableFeatures();
     $grouped = [];
 
@@ -333,7 +346,8 @@ function getFeaturesByCategory(): array {
 /**
  * Require a feature to be enabled (redirect if not)
  */
-function requireFeature(string $feature): void {
+function requireFeature(string $feature): void
+{
     if (!isFeatureEnabled($feature)) {
         // Redirect to home with message
         $_SESSION['flash_error'] = 'This feature is not enabled.';
@@ -346,7 +360,8 @@ function requireFeature(string $feature): void {
  * Get feature presets
  * Returns predefined feature configurations for different use cases
  */
-function getFeaturePresets(): array {
+function getFeaturePresets(): array
+{
     return [
         'minimal' => [
             'name' => 'Minimal',
@@ -429,7 +444,8 @@ function getFeaturePresets(): array {
 /**
  * Apply a feature preset
  */
-function applyFeaturePreset(string $presetName): bool {
+function applyFeaturePreset(string $presetName): bool
+{
     $presets = getFeaturePresets();
     if (!isset($presets[$presetName])) {
         return false;
@@ -451,7 +467,8 @@ function applyFeaturePreset(string $presetName): bool {
  * Get usage statistics for features
  * Returns counts of data associated with each feature
  */
-function getFeatureUsageStats(): array {
+function getFeatureUsageStats(): array
+{
     $db = getDB();
     $stats = [];
 
@@ -557,7 +574,8 @@ function getFeatureUsageStats(): array {
 /**
  * Get icon HTML for a feature icon name
  */
-function getFeatureIcon(string $icon): string {
+function getFeatureIcon(string $icon): string
+{
     $icons = [
         'users' => '&#128101;',       // Team
         'key' => '&#128273;',         // Key

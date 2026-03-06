@@ -1,16 +1,19 @@
 <?php
+
 /**
  * Saved Searches Manager
  * Save, load, and share search queries
  */
 
-class SavedSearches {
+class SavedSearches
+{
     private static ?PDO $db = null;
 
     /**
      * Initialize database connection
      */
-    private static function getDB(): PDO {
+    private static function getDB(): PDO
+    {
         if (self::$db === null) {
             self::$db = getDB();
             self::ensureTable();
@@ -21,7 +24,8 @@ class SavedSearches {
     /**
      * Ensure the saved searches table exists
      */
-    private static function ensureTable(): void {
+    private static function ensureTable(): void
+    {
         $db = self::$db;
         $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
 
@@ -170,7 +174,8 @@ class SavedSearches {
     /**
      * Delete a saved search
      */
-    public static function delete(int $id, int $userId): bool {
+    public static function delete(int $id, int $userId): bool
+    {
         $db = self::getDB();
 
         $stmt = $db->prepare("DELETE FROM saved_searches WHERE id = :id AND user_id = :user_id");
@@ -180,7 +185,8 @@ class SavedSearches {
     /**
      * Get a saved search by ID
      */
-    public static function get(int $id): ?array {
+    public static function get(int $id): ?array
+    {
         $db = self::getDB();
 
         $stmt = $db->prepare("SELECT * FROM saved_searches WHERE id = :id");
@@ -197,7 +203,8 @@ class SavedSearches {
     /**
      * Get a saved search by share token
      */
-    public static function getByToken(string $token): ?array {
+    public static function getByToken(string $token): ?array
+    {
         $db = self::getDB();
 
         $stmt = $db->prepare("SELECT * FROM saved_searches WHERE share_token = :token AND is_public = 1");
@@ -214,7 +221,8 @@ class SavedSearches {
     /**
      * Get all saved searches for a user
      */
-    public static function getUserSearches(int $userId, int $limit = 50): array {
+    public static function getUserSearches(int $userId, int $limit = 50): array
+    {
         $db = self::getDB();
 
         $stmt = $db->prepare("
@@ -239,7 +247,8 @@ class SavedSearches {
     /**
      * Get public saved searches
      */
-    public static function getPublicSearches(int $limit = 20): array {
+    public static function getPublicSearches(int $limit = 20): array
+    {
         $db = self::getDB();
 
         $stmt = $db->prepare("
@@ -265,7 +274,8 @@ class SavedSearches {
     /**
      * Record usage of a saved search
      */
-    public static function recordUsage(int $id): void {
+    public static function recordUsage(int $id): void
+    {
         $db = self::getDB();
 
         $stmt = $db->prepare("
@@ -279,7 +289,8 @@ class SavedSearches {
     /**
      * Get share URL for a saved search
      */
-    public static function getShareUrl(int $id, int $userId): ?string {
+    public static function getShareUrl(int $id, int $userId): ?string
+    {
         $db = self::getDB();
 
         $stmt = $db->prepare("SELECT share_token FROM saved_searches WHERE id = :id AND user_id = :user_id AND is_public = 1");
@@ -297,7 +308,8 @@ class SavedSearches {
     /**
      * Build query parameters from saved search
      */
-    public static function toQueryParams(array $search): array {
+    public static function toQueryParams(array $search): array
+    {
         $params = [];
 
         if (!empty($search['query'])) {
@@ -326,7 +338,8 @@ class SavedSearches {
     /**
      * Build URL from saved search
      */
-    public static function toUrl(array $search): string {
+    public static function toUrl(array $search): string
+    {
         $params = self::toQueryParams($search);
 
         if (function_exists('route')) {
@@ -339,7 +352,8 @@ class SavedSearches {
     /**
      * Create saved search from current URL parameters
      */
-    public static function fromRequest(array $request): array {
+    public static function fromRequest(array $request): array
+    {
         return [
             'query' => $request['q'] ?? '',
             'filters' => array_filter([
@@ -352,7 +366,9 @@ class SavedSearches {
                 'min_parts' => $request['min_parts'] ?? null,
                 'max_parts' => $request['max_parts'] ?? null,
                 'owner' => $request['owner'] ?? null,
-            ], function($v) { return $v !== null && $v !== ''; }),
+            ], function ($v) {
+                return $v !== null && $v !== '';
+            }),
             'sort_by' => $request['sort'] ?? null,
             'sort_order' => $request['order'] ?? 'desc',
         ];
@@ -361,7 +377,8 @@ class SavedSearches {
     /**
      * Clone a public search for the current user
      */
-    public static function clone(int $searchId, int $userId, ?string $newName = null): ?int {
+    public static function clone(int $searchId, int $userId, ?string $newName = null): ?int
+    {
         $original = self::get($searchId);
 
         if (!$original || (!$original['is_public'] && $original['user_id'] != $userId)) {
@@ -385,7 +402,8 @@ class SavedSearches {
     /**
      * Get suggested searches based on user history
      */
-    public static function getSuggestions(int $userId, int $limit = 5): array {
+    public static function getSuggestions(int $userId, int $limit = 5): array
+    {
         $db = self::getDB();
 
         // Get user's most used searches
@@ -411,13 +429,14 @@ class SavedSearches {
     /**
      * Export saved searches as JSON
      */
-    public static function export(int $userId): string {
+    public static function export(int $userId): string
+    {
         $searches = self::getUserSearches($userId);
 
         return json_encode([
             'version' => 1,
             'exported_at' => date('c'),
-            'searches' => array_map(function($s) {
+            'searches' => array_map(function ($s) {
                 return [
                     'name' => $s['name'],
                     'description' => $s['description'],
@@ -433,7 +452,8 @@ class SavedSearches {
     /**
      * Import saved searches from JSON
      */
-    public static function import(int $userId, string $json): array {
+    public static function import(int $userId, string $json): array
+    {
         $data = json_decode($json, true);
 
         if (!$data || !isset($data['searches'])) {

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Optimized Autoloader
  *
@@ -10,21 +11,24 @@
  * - Can be regenerated via CLI for production
  */
 
-class Autoloader {
+class Autoloader
+{
     private static ?self $instance = null;
     private array $classMap = [];
     private array $directories = [];
     private string $cacheFile;
     private bool $useCache = true;
 
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->cacheFile = dirname(__DIR__) . '/storage/cache/classmap.php';
 
         // Load cached classmap if available
@@ -39,7 +43,8 @@ class Autoloader {
     /**
      * Add a directory to scan for classes
      */
-    public function addDirectory(string $directory, string $namespace = ''): self {
+    public function addDirectory(string $directory, string $namespace = ''): self
+    {
         $this->directories[] = [
             'path' => rtrim($directory, '/') . '/',
             'namespace' => $namespace,
@@ -50,7 +55,8 @@ class Autoloader {
     /**
      * Add a class to the map
      */
-    public function addClass(string $class, string $file): self {
+    public function addClass(string $class, string $file): self
+    {
         $this->classMap[$class] = $file;
         return $this;
     }
@@ -58,7 +64,8 @@ class Autoloader {
     /**
      * Load a class
      */
-    public function load(string $class): bool {
+    public function load(string $class): bool
+    {
         // Check classmap first
         if (isset($this->classMap[$class])) {
             $file = $this->classMap[$class];
@@ -85,7 +92,8 @@ class Autoloader {
     /**
      * Find class file in directory
      */
-    private function findClassFile(string $class, string $directory, string $namespace): ?string {
+    private function findClassFile(string $class, string $directory, string $namespace): ?string
+    {
         // Remove namespace prefix if present
         if ($namespace && strpos($class, $namespace) === 0) {
             $class = substr($class, strlen($namespace) + 1);
@@ -100,7 +108,8 @@ class Autoloader {
     /**
      * Generate optimized classmap from directories
      */
-    public function generateClassMap(): array {
+    public function generateClassMap(): array
+    {
         $classMap = [];
         $basePath = dirname(__DIR__);
 
@@ -111,14 +120,18 @@ class Autoloader {
         ];
 
         foreach ($scanDirs as $dir) {
-            if (!is_dir($dir)) continue;
+            if (!is_dir($dir)) {
+                continue;
+            }
 
             $files = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
             );
 
             foreach ($files as $file) {
-                if ($file->getExtension() !== 'php') continue;
+                if ($file->getExtension() !== 'php') {
+                    continue;
+                }
 
                 $content = file_get_contents($file->getPathname());
 
@@ -137,7 +150,8 @@ class Autoloader {
     /**
      * Save classmap to cache file
      */
-    public function saveClassMap(): bool {
+    public function saveClassMap(): bool
+    {
         $classMap = $this->generateClassMap();
 
         $content = "<?php\n// Auto-generated classmap - " . date('Y-m-d H:i:s') . "\n";
@@ -154,7 +168,8 @@ class Autoloader {
     /**
      * Clear classmap cache
      */
-    public function clearCache(): bool {
+    public function clearCache(): bool
+    {
         $this->classMap = [];
         if (file_exists($this->cacheFile)) {
             return unlink($this->cacheFile);
@@ -165,21 +180,24 @@ class Autoloader {
     /**
      * Get current classmap
      */
-    public function getClassMap(): array {
+    public function getClassMap(): array
+    {
         return $this->classMap;
     }
 
     /**
      * Check if classmap cache exists
      */
-    public function hasCachedClassMap(): bool {
+    public function hasCachedClassMap(): bool
+    {
         return file_exists($this->cacheFile);
     }
 
     /**
      * Get classmap stats
      */
-    public function stats(): array {
+    public function stats(): array
+    {
         return [
             'cached' => $this->hasCachedClassMap(),
             'classes' => count($this->classMap),

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Query Analyzer
  *
@@ -12,7 +13,8 @@
  * Enable with: QueryAnalyzer::enable();
  */
 
-class QueryAnalyzer {
+class QueryAnalyzer
+{
     private static ?self $instance = null;
     private bool $enabled = false;
     private array $queries = [];
@@ -20,43 +22,51 @@ class QueryAnalyzer {
     private int $n1Threshold = 5; // queries with same pattern
     private string $logFile;
 
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->logFile = dirname(__DIR__) . '/storage/logs/queries.log';
     }
 
     /**
      * Enable query analysis
      */
-    public static function enable(): void {
+    public static function enable(): void
+    {
         self::getInstance()->enabled = true;
     }
 
     /**
      * Disable query analysis
      */
-    public static function disable(): void {
+    public static function disable(): void
+    {
         self::getInstance()->enabled = false;
     }
 
     /**
      * Check if enabled
      */
-    public function isEnabled(): bool {
+    public function isEnabled(): bool
+    {
         return $this->enabled;
     }
 
     /**
      * Log a query
      */
-    public function logQuery(string $sql, array $params, float $duration, ?string $location = null): void {
-        if (!$this->enabled) return;
+    public function logQuery(string $sql, array $params, float $duration, ?string $location = null): void
+    {
+        if (!$this->enabled) {
+            return;
+        }
 
         $normalizedSql = $this->normalizeSql($sql);
 
@@ -74,14 +84,16 @@ class QueryAnalyzer {
     /**
      * Get all logged queries
      */
-    public function getQueries(): array {
+    public function getQueries(): array
+    {
         return $this->queries;
     }
 
     /**
      * Get query statistics
      */
-    public function getStats(): array {
+    public function getStats(): array
+    {
         $totalQueries = count($this->queries);
         $totalTime = array_sum(array_column($this->queries, 'duration'));
         $slowQueries = array_filter($this->queries, fn($q) => $q['is_slow']);
@@ -122,7 +134,8 @@ class QueryAnalyzer {
     /**
      * Get slow queries
      */
-    public function getSlowQueries(): array {
+    public function getSlowQueries(): array
+    {
         $slow = array_filter($this->queries, fn($q) => $q['is_slow']);
         usort($slow, fn($a, $b) => $b['duration'] <=> $a['duration']);
         return $slow;
@@ -131,7 +144,8 @@ class QueryAnalyzer {
     /**
      * Detect N+1 query patterns
      */
-    public function detectN1(): array {
+    public function detectN1(): array
+    {
         $patterns = [];
         foreach ($this->queries as $query) {
             $pattern = $query['normalized'];
@@ -152,7 +166,8 @@ class QueryAnalyzer {
     /**
      * Export queries to log file
      */
-    public function exportToLog(): void {
+    public function exportToLog(): void
+    {
         $stats = $this->getStats();
         $output = [];
 
@@ -189,7 +204,8 @@ class QueryAnalyzer {
     /**
      * Get a summary for the current request
      */
-    public function getSummary(): string {
+    public function getSummary(): string
+    {
         $stats = $this->getStats();
         $summary = "Queries: {$stats['total_queries']} ({$stats['total_time']})";
 
@@ -207,7 +223,8 @@ class QueryAnalyzer {
     /**
      * Normalize SQL for pattern matching
      */
-    private function normalizeSql(string $sql): string {
+    private function normalizeSql(string $sql): string
+    {
         // Remove extra whitespace
         $sql = preg_replace('/\s+/', ' ', trim($sql));
 
@@ -227,13 +244,16 @@ class QueryAnalyzer {
     /**
      * Get caller location
      */
-    private function getCallerLocation(): string {
+    private function getCallerLocation(): string
+    {
         $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
 
         foreach ($trace as $frame) {
             $file = $frame['file'] ?? '';
-            if (strpos($file, 'QueryAnalyzer') === false &&
-                strpos($file, 'db.php') === false) {
+            if (
+                strpos($file, 'QueryAnalyzer') === false &&
+                strpos($file, 'db.php') === false
+            ) {
                 return basename($file) . ':' . ($frame['line'] ?? 0);
             }
         }
@@ -244,7 +264,8 @@ class QueryAnalyzer {
     /**
      * Set slow query threshold
      */
-    public function setSlowThreshold(float $seconds): self {
+    public function setSlowThreshold(float $seconds): self
+    {
         $this->slowThreshold = $seconds;
         return $this;
     }
@@ -252,7 +273,8 @@ class QueryAnalyzer {
     /**
      * Set N+1 detection threshold
      */
-    public function setN1Threshold(int $count): self {
+    public function setN1Threshold(int $count): self
+    {
         $this->n1Threshold = $count;
         return $this;
     }
@@ -260,14 +282,16 @@ class QueryAnalyzer {
     /**
      * Clear logged queries
      */
-    public function clear(): void {
+    public function clear(): void
+    {
         $this->queries = [];
     }
 
     /**
      * Render debug bar HTML
      */
-    public function renderDebugBar(): string {
+    public function renderDebugBar(): string
+    {
         if (!$this->enabled || empty($this->queries)) {
             return '';
         }
@@ -312,12 +336,15 @@ class QueryAnalyzer {
 /**
  * Wrap PDO to log queries
  */
-class ProfiledPDO extends PDO {
-    public function prepare(string $query, array $options = []): PDOStatement|false {
+class ProfiledPDO extends PDO
+{
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
         return new ProfiledPDOStatement(parent::prepare($query, $options), $query);
     }
 
-    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false {
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
+    {
         $start = microtime(true);
         $result = parent::query($query, $fetchMode, ...$fetchModeArgs);
         $duration = microtime(true) - $start;
@@ -327,7 +354,8 @@ class ProfiledPDO extends PDO {
         return $result;
     }
 
-    public function exec(string $statement): int|false {
+    public function exec(string $statement): int|false
+    {
         $start = microtime(true);
         $result = parent::exec($statement);
         $duration = microtime(true) - $start;
@@ -338,16 +366,19 @@ class ProfiledPDO extends PDO {
     }
 }
 
-class ProfiledPDOStatement extends PDOStatement {
+class ProfiledPDOStatement extends PDOStatement
+{
     private PDOStatement $stmt;
     private string $query;
 
-    public function __construct(PDOStatement $stmt, string $query) {
+    public function __construct(PDOStatement $stmt, string $query)
+    {
         $this->stmt = $stmt;
         $this->query = $query;
     }
 
-    public function execute(?array $params = null): bool {
+    public function execute(?array $params = null): bool
+    {
         $start = microtime(true);
         $result = $this->stmt->execute($params);
         $duration = microtime(true) - $start;
@@ -357,27 +388,33 @@ class ProfiledPDOStatement extends PDOStatement {
         return $result;
     }
 
-    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed {
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed
+    {
         return $this->stmt->fetch($mode, $cursorOrientation, $cursorOffset);
     }
 
-    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array {
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
+    {
         return $this->stmt->fetchAll($mode, ...$args);
     }
 
-    public function fetchColumn(int $column = 0): mixed {
+    public function fetchColumn(int $column = 0): mixed
+    {
         return $this->stmt->fetchColumn($column);
     }
 
-    public function rowCount(): int {
+    public function rowCount(): int
+    {
         return $this->stmt->rowCount();
     }
 
-    public function bindValue(string|int $param, mixed $value, int $type = PDO::PARAM_STR): bool {
+    public function bindValue(string|int $param, mixed $value, int $type = PDO::PARAM_STR): bool
+    {
         return $this->stmt->bindValue($param, $value, $type);
     }
 
-    public function bindParam(string|int $param, mixed &$var, int $type = PDO::PARAM_STR, int $maxLength = 0, mixed $driverOptions = null): bool {
+    public function bindParam(string|int $param, mixed &$var, int $type = PDO::PARAM_STR, int $maxLength = 0, mixed $driverOptions = null): bool
+    {
         return $this->stmt->bindParam($param, $var, $type, $maxLength, $driverOptions);
     }
 }

@@ -1,11 +1,13 @@
 <?php
+
 /**
  * Middleware Interface
  *
  * All custom middleware classes should implement this interface.
  */
 
-interface MiddlewareInterface {
+interface MiddlewareInterface
+{
     /**
      * Handle the middleware logic
      *

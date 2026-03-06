@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Advanced Audit Logging System
  *
@@ -6,7 +7,8 @@
  * with export capabilities and detailed change tracking
  */
 
-class AuditLogger {
+class AuditLogger
+{
     // Event types
     const TYPE_AUTH = 'auth';
     const TYPE_DATA = 'data';
@@ -26,7 +28,8 @@ class AuditLogger {
     /**
      * Get or generate request ID for correlating logs
      */
-    public static function getRequestId() {
+    public static function getRequestId()
+    {
         if (self::$requestId === null) {
             self::$requestId = bin2hex(random_bytes(18));
         }
@@ -36,7 +39,8 @@ class AuditLogger {
     /**
      * Log an audit event
      */
-    public static function log($eventType, $eventName, $data = [], $severity = self::SEVERITY_INFO) {
+    public static function log($eventType, $eventName, $data = [], $severity = self::SEVERITY_INFO)
+    {
         if (getSetting('audit_logging_enabled', '1') !== '1') {
             return false;
         }
@@ -92,7 +96,8 @@ class AuditLogger {
     /**
      * Log a data change with old/new values
      */
-    public static function logDataChange($resourceType, $resourceId, $oldValue, $newValue, $resourceName = null) {
+    public static function logDataChange($resourceType, $resourceId, $oldValue, $newValue, $resourceName = null)
+    {
         return self::log(self::TYPE_DATA, 'data_change', [
             'resource_type' => $resourceType,
             'resource_id' => $resourceId,
@@ -105,35 +110,40 @@ class AuditLogger {
     /**
      * Log authentication event
      */
-    public static function logAuth($eventName, $data = [], $severity = self::SEVERITY_INFO) {
+    public static function logAuth($eventName, $data = [], $severity = self::SEVERITY_INFO)
+    {
         return self::log(self::TYPE_AUTH, $eventName, $data, $severity);
     }
 
     /**
      * Log security event
      */
-    public static function logSecurity($eventName, $data = [], $severity = self::SEVERITY_WARNING) {
+    public static function logSecurity($eventName, $data = [], $severity = self::SEVERITY_WARNING)
+    {
         return self::log(self::TYPE_SECURITY, $eventName, $data, $severity);
     }
 
     /**
      * Log admin action
      */
-    public static function logAdmin($eventName, $data = []) {
+    public static function logAdmin($eventName, $data = [])
+    {
         return self::log(self::TYPE_ADMIN, $eventName, $data);
     }
 
     /**
      * Log API access
      */
-    public static function logAPI($eventName, $data = []) {
+    public static function logAPI($eventName, $data = [])
+    {
         return self::log(self::TYPE_API, $eventName, $data);
     }
 
     /**
      * Check if audit_log table exists
      */
-    public static function tableExists() {
+    public static function tableExists()
+    {
         static $exists = null;
         if ($exists !== null) {
             return $exists;
@@ -156,7 +166,8 @@ class AuditLogger {
     /**
      * Query audit logs with filters
      */
-    public static function query($filters = [], $limit = 100, $offset = 0) {
+    public static function query($filters = [], $limit = 100, $offset = 0)
+    {
         if (!self::tableExists()) {
             return ['data' => [], 'total' => 0, 'limit' => $limit, 'offset' => $offset];
         }
@@ -247,9 +258,15 @@ class AuditLogger {
         $logs = [];
         while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
             // Decode JSON fields
-            if ($row['old_value']) $row['old_value'] = json_decode($row['old_value'], true);
-            if ($row['new_value']) $row['new_value'] = json_decode($row['new_value'], true);
-            if ($row['metadata']) $row['metadata'] = json_decode($row['metadata'], true);
+            if ($row['old_value']) {
+                $row['old_value'] = json_decode($row['old_value'], true);
+            }
+            if ($row['new_value']) {
+                $row['new_value'] = json_decode($row['new_value'], true);
+            }
+            if ($row['metadata']) {
+                $row['metadata'] = json_decode($row['metadata'], true);
+            }
             $logs[] = $row;
         }
 
@@ -264,7 +281,8 @@ class AuditLogger {
     /**
      * Export audit logs to CSV
      */
-    public static function exportCSV($filters = [], $filename = null) {
+    public static function exportCSV($filters = [], $filename = null)
+    {
         $result = self::query($filters, 100000, 0);
 
         if ($filename === null) {
@@ -321,7 +339,8 @@ class AuditLogger {
     /**
      * Export audit logs to JSON
      */
-    public static function exportJSON($filters = [], $filename = null) {
+    public static function exportJSON($filters = [], $filename = null)
+    {
         $result = self::query($filters, 100000, 0);
 
         if ($filename === null) {
@@ -336,7 +355,8 @@ class AuditLogger {
     /**
      * Generate compliance report
      */
-    public static function generateComplianceReport($startDate, $endDate, $format = 'summary') {
+    public static function generateComplianceReport($startDate, $endDate, $format = 'summary')
+    {
         $report = [
             'generated_at' => date('Y-m-d H:i:s'),
             'period' => [
@@ -470,7 +490,8 @@ class AuditLogger {
     /**
      * Purge old audit logs
      */
-    public static function purgeOldLogs($daysToKeep = 365) {
+    public static function purgeOldLogs($daysToKeep = 365)
+    {
         if (!self::tableExists()) {
             return 0;
         }
@@ -488,7 +509,8 @@ class AuditLogger {
     /**
      * Get statistics
      */
-    public static function getStats() {
+    public static function getStats()
+    {
         $stats = [
             'total' => 0,
             'today' => 0,

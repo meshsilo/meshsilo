@@ -1,28 +1,44 @@
 <?php
+
 /**
  * Database abstraction layer supporting SQLite and MySQL
  */
 
 // SQLite3 type constants for compatibility
-if (!defined('SQLITE3_TEXT')) define('SQLITE3_TEXT', 3);
-if (!defined('SQLITE3_INTEGER')) define('SQLITE3_INTEGER', 1);
-if (!defined('SQLITE3_FLOAT')) define('SQLITE3_FLOAT', 2);
-if (!defined('SQLITE3_BLOB')) define('SQLITE3_BLOB', 4);
-if (!defined('SQLITE3_NULL')) define('SQLITE3_NULL', 5);
-if (!defined('SQLITE3_ASSOC')) define('SQLITE3_ASSOC', 1);
+if (!defined('SQLITE3_TEXT')) {
+    define('SQLITE3_TEXT', 3);
+}
+if (!defined('SQLITE3_INTEGER')) {
+    define('SQLITE3_INTEGER', 1);
+}
+if (!defined('SQLITE3_FLOAT')) {
+    define('SQLITE3_FLOAT', 2);
+}
+if (!defined('SQLITE3_BLOB')) {
+    define('SQLITE3_BLOB', 4);
+}
+if (!defined('SQLITE3_NULL')) {
+    define('SQLITE3_NULL', 5);
+}
+if (!defined('SQLITE3_ASSOC')) {
+    define('SQLITE3_ASSOC', 1);
+}
 
 // Statement wrapper for SQLite3 API compatibility
-class DatabaseStatement {
+class DatabaseStatement
+{
     private $stmt;
     private $params = [];
     private $paramTypes = [];
     private ?DatabaseResult $lastResult = null;
 
-    public function __construct($stmt) {
+    public function __construct($stmt)
+    {
         $this->stmt = $stmt;
     }
 
-    public function bindValue($param, $value, $type = null) {
+    public function bindValue($param, $value, $type = null)
+    {
         $this->params[$param] = $value;
         if ($type !== null) {
             $this->paramTypes[$param] = $type;
@@ -30,7 +46,8 @@ class DatabaseStatement {
         return true;
     }
 
-    public function execute($params = null) {
+    public function execute($params = null)
+    {
         if ($params !== null) {
             // Use type-aware binding instead of PDOStatement::execute($params)
             // PDO::execute() binds ALL values as strings, which breaks
@@ -64,7 +81,8 @@ class DatabaseStatement {
      * Detects PHP value types to use PDO::PARAM_INT for integers,
      * which is required for MySQL LIMIT/OFFSET clauses.
      */
-    private function bindTypedParams(array $params, array $types = [], bool $adjustIndex = true): void {
+    private function bindTypedParams(array $params, array $types = [], bool $adjustIndex = true): void
+    {
         foreach ($params as $key => $value) {
             // PDO bindValue uses 1-based index for positional params
             // adjustIndex=true: external 0-based arrays need +1
@@ -90,25 +108,35 @@ class DatabaseStatement {
     /**
      * Map SQLite3 type constants to PDO type constants
      */
-    private function mapToPdoType($type): int {
-        if ($type === PDO::PARAM_INT || $type === PDO::PARAM_STR ||
-            $type === PDO::PARAM_NULL || $type === PDO::PARAM_BOOL) {
+    private function mapToPdoType($type): int
+    {
+        if (
+            $type === PDO::PARAM_INT || $type === PDO::PARAM_STR ||
+            $type === PDO::PARAM_NULL || $type === PDO::PARAM_BOOL
+        ) {
             return $type;
         }
         // Map SQLITE3_* constants to PDO equivalents
         switch ($type) {
-            case SQLITE3_INTEGER: return PDO::PARAM_INT;
-            case SQLITE3_TEXT: return PDO::PARAM_STR;
-            case SQLITE3_NULL: return PDO::PARAM_NULL;
-            case SQLITE3_FLOAT: return PDO::PARAM_STR; // PDO has no float type
-            case SQLITE3_BLOB: return PDO::PARAM_LOB;
-            default: return PDO::PARAM_STR;
+            case SQLITE3_INTEGER:
+                return PDO::PARAM_INT;
+            case SQLITE3_TEXT:
+                return PDO::PARAM_STR;
+            case SQLITE3_NULL:
+                return PDO::PARAM_NULL;
+            case SQLITE3_FLOAT:
+                return PDO::PARAM_STR; // PDO has no float type
+            case SQLITE3_BLOB:
+                return PDO::PARAM_LOB;
+            default:
+                return PDO::PARAM_STR;
         }
     }
 
     // Convenience method: execute and fetch single column
     // If execute() was already called, fetches from that result
-    public function fetchColumn($column = 0) {
+    public function fetchColumn($column = 0)
+    {
         $result = $this->lastResult ?? $this->execute();
         return $result->fetchColumn($column);
     }
@@ -116,7 +144,8 @@ class DatabaseStatement {
     // Convenience method: execute and fetch single row
     // If execute() was already called, fetches from that result
     // Safe to call in loops - lastResult persists until next execute()
-    public function fetch($mode = PDO::FETCH_ASSOC) {
+    public function fetch($mode = PDO::FETCH_ASSOC)
+    {
         $result = $this->lastResult ?? $this->execute();
         return $result->fetch($mode);
     }
@@ -124,51 +153,61 @@ class DatabaseStatement {
     // Convenience method: execute and fetch as array (SQLite3 compat)
     // If execute() was already called, fetches from that result
     // Safe to call in loops - lastResult persists until next execute()
-    public function fetchArray($mode = SQLITE3_ASSOC) {
+    public function fetchArray($mode = SQLITE3_ASSOC)
+    {
         $result = $this->lastResult ?? $this->execute();
         return $result->fetchArray($mode);
     }
 
     // Convenience method: execute and fetch all rows
-    public function fetchAll($mode = PDO::FETCH_ASSOC) {
+    public function fetchAll($mode = PDO::FETCH_ASSOC)
+    {
         $result = $this->lastResult ?? $this->execute();
         return $result->fetchAll($mode);
     }
 }
 
 // Result wrapper for SQLite3 API compatibility
-class DatabaseResult {
+class DatabaseResult
+{
     private $stmt;
 
-    public function __construct($stmt) {
+    public function __construct($stmt)
+    {
         $this->stmt = $stmt;
     }
 
-    public function fetchArray($mode = SQLITE3_ASSOC) {
+    public function fetchArray($mode = SQLITE3_ASSOC)
+    {
         return $this->stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function fetch($mode = PDO::FETCH_ASSOC) {
+    public function fetch($mode = PDO::FETCH_ASSOC)
+    {
         return $this->stmt->fetch($mode);
     }
 
-    public function fetchAll($mode = PDO::FETCH_ASSOC) {
+    public function fetchAll($mode = PDO::FETCH_ASSOC)
+    {
         return $this->stmt->fetchAll($mode);
     }
 
-    public function fetchColumn($column = 0) {
+    public function fetchColumn($column = 0)
+    {
         return $this->stmt->fetchColumn($column);
     }
 }
 
 // Database wrapper class for unified interface
-class Database {
+class Database
+{
     private $pdo;
     private $type;
     private static $queryCount = 0;
     private static $queryTime = 0;
 
-    public function __construct($type, $config = []) {
+    public function __construct($type, $config = [])
+    {
         $this->type = $type;
 
         if ($type === 'mysql') {
@@ -198,20 +237,24 @@ class Database {
     }
 
     // Query profiling methods
-    public static function getQueryCount(): int {
+    public static function getQueryCount(): int
+    {
         return self::$queryCount;
     }
 
-    public static function getQueryTime(): float {
+    public static function getQueryTime(): float
+    {
         return self::$queryTime;
     }
 
-    public static function resetStats(): void {
+    public static function resetStats(): void
+    {
         self::$queryCount = 0;
         self::$queryTime = 0;
     }
 
-    private function profileQuery(callable $callback, $sql = null) {
+    private function profileQuery(callable $callback, $sql = null)
+    {
         self::$queryCount++;
         $start = microtime(true);
         $result = $callback();
@@ -229,11 +272,13 @@ class Database {
         return $result;
     }
 
-    public function getType() {
+    public function getType()
+    {
         return $this->type;
     }
 
-    public function getPDO() {
+    public function getPDO()
+    {
         return $this->pdo;
     }
 
@@ -242,7 +287,8 @@ class Database {
      * Converts INSERT OR IGNORE → INSERT IGNORE, INSERT OR REPLACE → REPLACE INTO,
      * and backticks MySQL reserved words used as table/column names.
      */
-    private function normalizeSql($sql) {
+    private function normalizeSql($sql)
+    {
         if ($this->type !== 'mysql') {
             return $sql;
         }
@@ -269,34 +315,39 @@ class Database {
         return $sql;
     }
 
-    public function prepare($sql) {
+    public function prepare($sql)
+    {
         $sql = $this->normalizeSql($sql);
         // Return wrapped statement for SQLite3 API compatibility with profiling
-        return $this->profileQuery(function() use ($sql) {
+        return $this->profileQuery(function () use ($sql) {
             return new DatabaseStatement($this->pdo->prepare($sql));
         }, $sql);
     }
 
-    public function query($sql) {
+    public function query($sql)
+    {
         $sql = $this->normalizeSql($sql);
         // Return wrapped result for SQLite3 API compatibility with profiling
-        return $this->profileQuery(function() use ($sql) {
+        return $this->profileQuery(function () use ($sql) {
             return new DatabaseResult($this->pdo->query($sql));
         }, $sql);
     }
 
-    public function exec($sql) {
+    public function exec($sql)
+    {
         $sql = $this->normalizeSql($sql);
-        return $this->profileQuery(function() use ($sql) {
+        return $this->profileQuery(function () use ($sql) {
             return $this->pdo->exec($sql);
         }, $sql);
     }
 
-    public function lastInsertId() {
+    public function lastInsertId()
+    {
         return $this->pdo->lastInsertId();
     }
 
-    public function querySingle($sql) {
+    public function querySingle($sql)
+    {
         $sql = $this->normalizeSql($sql);
         $stmt = $this->pdo->query($sql);
         $row = $stmt->fetch(PDO::FETCH_NUM);
@@ -304,12 +355,14 @@ class Database {
     }
 
     // SQLite3 compatibility shim
-    public function lastInsertRowID() {
+    public function lastInsertRowID()
+    {
         return $this->lastInsertId();
     }
 
     // Get the number of rows changed by the last statement
-    public function changes() {
+    public function changes()
+    {
         if ($this->type === 'mysql') {
             // MySQL uses ROW_COUNT()
             $result = $this->pdo->query('SELECT ROW_COUNT()');
@@ -323,7 +376,8 @@ class Database {
 }
 
 // Get database connection
-function getDB() {
+function getDB()
+{
     static $db = null;
 
     if ($db === null) {
@@ -364,7 +418,8 @@ function getDB() {
 }
 
 // Initialize a new database
-function initializeDatabase($db) {
+function initializeDatabase($db)
+{
     $type = $db->getType();
 
     if ($type === 'mysql') {
@@ -381,7 +436,8 @@ function initializeDatabase($db) {
 }
 
 // Get SQLite schema
-function getSQLiteSchema() {
+function getSQLiteSchema()
+{
     return <<<'SQL'
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -472,7 +528,8 @@ SQL;
 }
 
 // Get MySQL schema
-function getMySQLSchema() {
+function getMySQLSchema()
+{
     return <<<'SQL'
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -559,7 +616,8 @@ SQL;
 }
 
 // Get user by username or email
-function getUserByLogin($login) {
+function getUserByLogin($login)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('SELECT * FROM users WHERE username = :login1 OR email = :login2');
@@ -572,12 +630,14 @@ function getUserByLogin($login) {
 }
 
 // Verify password
-function verifyPassword($password, $hash) {
+function verifyPassword($password, $hash)
+{
     return password_verify($password, $hash);
 }
 
 // Check if a column exists in a table
-function columnExists($db, $table, $column) {
+function columnExists($db, $table, $column)
+{
     $type = $db->getType();
 
     if ($type === 'mysql') {
@@ -596,7 +656,8 @@ function columnExists($db, $table, $column) {
 }
 
 // Check if a table exists
-function tableExists($db, $table) {
+function tableExists($db, $table)
+{
     $type = $db->getType();
 
     if ($type === 'mysql') {
@@ -611,7 +672,8 @@ function tableExists($db, $table) {
 }
 
 // Check if an index exists
-function indexExists($db, $table, $indexName) {
+function indexExists($db, $table, $indexName)
+{
     $type = $db->getType();
 
     if ($type === 'mysql') {
@@ -636,7 +698,8 @@ function indexExists($db, $table, $indexName) {
  * @param Database $db Database connection
  * @return bool True if schema is ready, false otherwise
  */
-function verifySchemaReady($db) {
+function verifySchemaReady($db)
+{
     // CLI scripts run full migrations
     if (php_sapi_name() === 'cli') {
         runMigrations($db);
@@ -686,7 +749,8 @@ function verifySchemaReady($db) {
 }
 
 // Run database migrations
-function runMigrations($db) {
+function runMigrations($db)
+{
     $type = $db->getType();
 
     // Ensure tables exist
@@ -1789,7 +1853,8 @@ function runMigrations($db) {
  * Uses INSERT OR IGNORE (SQLite) / INSERT IGNORE (MySQL) so existing values are preserved.
  * Called by runMigrations() to ensure all settings exist after install/upgrade.
  */
-function initializeDefaultSettings($db) {
+function initializeDefaultSettings($db)
+{
     $type = $db->getType();
 
     $defaults = [
@@ -1929,7 +1994,8 @@ function initializeDefaultSettings($db) {
 $GLOBALS['_settings_cache'] = [];
 
 // Get a setting value (with in-memory cache for performance)
-function getSetting($key, $default = null) {
+function getSetting($key, $default = null)
+{
     // Return cached value if available
     if (array_key_exists($key, $GLOBALS['_settings_cache'])) {
         return $GLOBALS['_settings_cache'][$key];
@@ -1954,7 +2020,8 @@ function getSetting($key, $default = null) {
 }
 
 // Set a setting value
-function setSetting($key, $value) {
+function setSetting($key, $value)
+{
     try {
         $db = getDB();
         $type = $db->getType();
@@ -1978,7 +2045,8 @@ function setSetting($key, $value) {
 }
 
 // Get all settings
-function getAllSettings() {
+function getAllSettings()
+{
     try {
         $db = getDB();
         $type = $db->getType();
@@ -1995,7 +2063,8 @@ function getAllSettings() {
 }
 
 // Get allowed file extensions (configurable via settings)
-function getAllowedExtensions() {
+function getAllowedExtensions()
+{
     $setting = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
     $allowedExtensions = array_map('trim', explode(',', $setting));
 
@@ -2007,18 +2076,21 @@ function getAllowedExtensions() {
 }
 
 // Get model extensions (non-zip file types that can be 3D rendered)
-function getModelExtensions() {
+function getModelExtensions()
+{
     $allowed = getAllowedExtensions();
     return array_filter($allowed, fn($ext) => $ext !== 'zip');
 }
 
 // Check if an extension is allowed
-function isExtensionAllowed($extension) {
+function isExtensionAllowed($extension)
+{
     return in_array(strtolower($extension), getAllowedExtensions());
 }
 
 // Check if an extension is a model format (not a container like zip)
-function isModelExtension($extension) {
+function isModelExtension($extension)
+{
     return in_array(strtolower($extension), getModelExtensions());
 }
 
@@ -2027,7 +2099,8 @@ function isModelExtension($extension) {
 // =====================
 
 // Get all tags (cached for 5 minutes)
-function getAllTags($useCache = true) {
+function getAllTags($useCache = true)
+{
     $cacheKey = 'all_tags';
 
     // Try to get from cache first
@@ -2055,7 +2128,8 @@ function getAllTags($useCache = true) {
 }
 
 // Get all categories with model counts (cached for 5 minutes)
-function getAllCategories($useCache = true) {
+function getAllCategories($useCache = true)
+{
     $cacheKey = 'all_categories';
 
     // Try to get from cache first
@@ -2083,17 +2157,20 @@ function getAllCategories($useCache = true) {
 }
 
 // Invalidate tags cache (call after adding/removing tags)
-function invalidateTagsCache() {
+function invalidateTagsCache()
+{
     cache_forget('all_tags');
 }
 
 // Invalidate categories cache (call after modifying categories)
-function invalidateCategoriesCache() {
+function invalidateCategoriesCache()
+{
     cache_forget('all_categories');
 }
 
 // Get tags for a model
-function getModelTags($modelId) {
+function getModelTags($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('
@@ -2114,7 +2191,8 @@ function getModelTags($modelId) {
 }
 
 // Get tags for multiple models in one query (optimized for N+1 prevention)
-function getTagsForModels(array $modelIds) {
+function getTagsForModels(array $modelIds)
+{
     if (empty($modelIds)) {
         return [];
     }
@@ -2154,7 +2232,8 @@ function getTagsForModels(array $modelIds) {
 }
 
 // Get first part for multiple parent models in one query (optimized for N+1 prevention)
-function getFirstPartsForModels(array $modelIds) {
+function getFirstPartsForModels(array $modelIds)
+{
     if (empty($modelIds)) {
         return [];
     }
@@ -2196,7 +2275,8 @@ function getFirstPartsForModels(array $modelIds) {
 }
 
 // Get categories for a single model
-function getCategoriesForModel($modelId) {
+function getCategoriesForModel($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('
@@ -2214,7 +2294,8 @@ function getCategoriesForModel($modelId) {
 }
 
 // Get categories for multiple models in batch (reduces N+1 queries)
-function getCategoriesForModels(array $modelIds) {
+function getCategoriesForModels(array $modelIds)
+{
     if (empty($modelIds)) {
         return [];
     }
@@ -2253,7 +2334,8 @@ function getCategoriesForModels(array $modelIds) {
 }
 
 // Get absolute file path for a model/part
-function getModelFilePath($model) {
+function getModelFilePath($model)
+{
     $basePath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../storage/assets/';
     $filePath = $model['dedup_path'] ?? $model['file_path'] ?? '';
     if (empty($filePath)) {
@@ -2267,7 +2349,8 @@ function getModelFilePath($model) {
 }
 
 // Add tag to model
-function addTagToModel($modelId, $tagId) {
+function addTagToModel($modelId, $tagId)
+{
     try {
         $db = getDB();
         $type = $db->getType();
@@ -2281,7 +2364,8 @@ function addTagToModel($modelId, $tagId) {
 }
 
 // Remove tag from model
-function removeTagFromModel($modelId, $tagId) {
+function removeTagFromModel($modelId, $tagId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('DELETE FROM model_tags WHERE model_id = :model_id AND tag_id = :tag_id');
@@ -2293,7 +2377,8 @@ function removeTagFromModel($modelId, $tagId) {
 }
 
 // Create a new tag
-function createTag($name, $color = '#6366f1') {
+function createTag($name, $color = '#6366f1')
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('INSERT INTO tags (name, color) VALUES (:name, :color)');
@@ -2306,7 +2391,8 @@ function createTag($name, $color = '#6366f1') {
 }
 
 // Delete a tag
-function deleteTag($tagId) {
+function deleteTag($tagId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('DELETE FROM tags WHERE id = :id');
@@ -2319,7 +2405,8 @@ function deleteTag($tagId) {
 }
 
 // Get tag by name (case insensitive)
-function getTagByName($name) {
+function getTagByName($name)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('SELECT * FROM tags WHERE LOWER(name) = LOWER(:name)');
@@ -2331,7 +2418,8 @@ function getTagByName($name) {
 }
 
 // Get or create tag by name
-function getOrCreateTag($name, $color = '#6366f1') {
+function getOrCreateTag($name, $color = '#6366f1')
+{
     $tag = getTagByName($name);
     if ($tag) {
         return $tag['id'];
@@ -2344,12 +2432,15 @@ function getOrCreateTag($name, $color = '#6366f1') {
 // =====================
 
 // Check if model is favorited by user
-function isModelFavorited($modelId, $userId = null) {
+function isModelFavorited($modelId, $userId = null)
+{
     if (!$userId) {
         $user = getCurrentUser();
         $userId = $user ? $user['id'] : null;
     }
-    if (!$userId) return false;
+    if (!$userId) {
+        return false;
+    }
 
     try {
         $db = getDB();
@@ -2362,12 +2453,15 @@ function isModelFavorited($modelId, $userId = null) {
 }
 
 // Toggle favorite status
-function toggleFavorite($modelId, $userId = null) {
+function toggleFavorite($modelId, $userId = null)
+{
     if (!$userId) {
         $user = getCurrentUser();
         $userId = $user ? $user['id'] : null;
     }
-    if (!$userId) return ['success' => false, 'error' => 'Not logged in'];
+    if (!$userId) {
+        return ['success' => false, 'error' => 'Not logged in'];
+    }
 
     try {
         $db = getDB();
@@ -2387,12 +2481,15 @@ function toggleFavorite($modelId, $userId = null) {
 }
 
 // Get user's favorites
-function getUserFavorites($userId = null, $limit = 50) {
+function getUserFavorites($userId = null, $limit = 50)
+{
     if (!$userId) {
         $user = getCurrentUser();
         $userId = $user ? $user['id'] : null;
     }
-    if (!$userId) return [];
+    if (!$userId) {
+        return [];
+    }
 
     try {
         $db = getDB();
@@ -2415,7 +2512,8 @@ function getUserFavorites($userId = null, $limit = 50) {
 }
 
 // Get favorite count for a model
-function getModelFavoriteCount($modelId) {
+function getModelFavoriteCount($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('SELECT COUNT(*) FROM favorites WHERE model_id = :model_id');
@@ -2431,7 +2529,8 @@ function getModelFavoriteCount($modelId) {
 // =====================
 
 // Log an activity
-function logActivity($action, $entityType, $entityId = null, $entityName = null, $details = null) {
+function logActivity($action, $entityType, $entityId = null, $entityName = null, $details = null)
+{
     if (getSetting('enable_activity_log', '1') !== '1') {
         return true;
     }
@@ -2462,7 +2561,8 @@ function logActivity($action, $entityType, $entityId = null, $entityName = null,
 }
 
 // Get activity log entries
-function getActivityLog($limit = 50, $offset = 0, $filters = []) {
+function getActivityLog($limit = 50, $offset = 0, $filters = [])
+{
     try {
         $db = getDB();
         $where = ['1=1'];
@@ -2506,9 +2606,12 @@ function getActivityLog($limit = 50, $offset = 0, $filters = []) {
 }
 
 // Clean old activity log entries
-function cleanActivityLog() {
+function cleanActivityLog()
+{
     $retentionDays = (int)getSetting('activity_log_retention_days', '90');
-    if ($retentionDays <= 0) return true;
+    if ($retentionDays <= 0) {
+        return true;
+    }
 
     try {
         $db = getDB();
@@ -2531,7 +2634,8 @@ function cleanActivityLog() {
 // =====================
 
 // Record a model view
-function recordModelView($modelId) {
+function recordModelView($modelId)
+{
     try {
         $db = getDB();
         $user = getCurrentUser();
@@ -2578,7 +2682,8 @@ function recordModelView($modelId) {
 }
 
 // Get recently viewed models
-function getRecentlyViewed($limit = 10) {
+function getRecentlyViewed($limit = 10)
+{
     try {
         $db = getDB();
         $user = getCurrentUser();
@@ -2620,7 +2725,8 @@ function getRecentlyViewed($limit = 10) {
 // =====================
 
 // Increment download count
-function incrementDownloadCount($modelId) {
+function incrementDownloadCount($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('UPDATE models SET download_count = download_count + 1 WHERE id = :id');
@@ -2632,7 +2738,8 @@ function incrementDownloadCount($modelId) {
 }
 
 // Get download count
-function getDownloadCount($modelId) {
+function getDownloadCount($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('SELECT download_count FROM models WHERE id = :id');
@@ -2648,7 +2755,8 @@ function getDownloadCount($modelId) {
 // License Constants
 // =====================
 
-function getLicenseOptions() {
+function getLicenseOptions()
+{
     return [
         '' => 'No License Specified',
         'cc0' => 'CC0 (Public Domain)',
@@ -2665,7 +2773,8 @@ function getLicenseOptions() {
     ];
 }
 
-function getLicenseName($key) {
+function getLicenseName($key)
+{
     $options = getLicenseOptions();
     return $options[$key] ?? $key;
 }
@@ -2674,7 +2783,8 @@ function getLicenseName($key) {
 // Related Models Functions
 // =====================
 
-function getRelatedModels($modelId) {
+function getRelatedModels($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('
@@ -2691,8 +2801,11 @@ function getRelatedModels($modelId) {
     }
 }
 
-function addRelatedModel($modelId, $relatedModelId, $relationshipType = 'related') {
-    if ($modelId == $relatedModelId) return false;
+function addRelatedModel($modelId, $relatedModelId, $relationshipType = 'related')
+{
+    if ($modelId == $relatedModelId) {
+        return false;
+    }
     try {
         $db = getDB();
         // Add relation both ways
@@ -2705,7 +2818,8 @@ function addRelatedModel($modelId, $relatedModelId, $relationshipType = 'related
     }
 }
 
-function removeRelatedModel($modelId, $relatedModelId) {
+function removeRelatedModel($modelId, $relatedModelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('DELETE FROM related_models WHERE (model_id = :model_id1 AND related_model_id = :related_id1) OR (model_id = :related_id2 AND related_model_id = :model_id2)');
@@ -2720,7 +2834,8 @@ function removeRelatedModel($modelId, $relatedModelId) {
 // Version History Functions
 // =====================
 
-function getModelVersions($modelId) {
+function getModelVersions($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('
@@ -2737,7 +2852,8 @@ function getModelVersions($modelId) {
     }
 }
 
-function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog = '', $createdBy = null) {
+function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog = '', $createdBy = null)
+{
     try {
         $db = getDB();
         // Get current max version
@@ -2770,7 +2886,8 @@ function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog =
     }
 }
 
-function getModelVersion($modelId, $versionNumber) {
+function getModelVersion($modelId, $versionNumber)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('SELECT * FROM model_versions WHERE model_id = :model_id AND version_number = :version');
@@ -2785,7 +2902,8 @@ function getModelVersion($modelId, $versionNumber) {
 // Storage Usage Functions
 // =====================
 
-function getStorageUsageByCategory() {
+function getStorageUsageByCategory()
+{
     try {
         $db = getDB();
         $stmt = $db->query('
@@ -2803,7 +2921,8 @@ function getStorageUsageByCategory() {
     }
 }
 
-function getStorageUsageByUser() {
+function getStorageUsageByUser()
+{
     try {
         $db = getDB();
         $stmt = $db->query('
@@ -2821,7 +2940,8 @@ function getStorageUsageByUser() {
     }
 }
 
-function getTotalStorageUsage() {
+function getTotalStorageUsage()
+{
     try {
         $db = getDB();
         $stmt = $db->query('
@@ -2836,7 +2956,8 @@ function getTotalStorageUsage() {
     }
 }
 
-function getDedupStorageSavings() {
+function getDedupStorageSavings()
+{
     try {
         $db = getDB();
         // Get total file sizes
@@ -2864,7 +2985,8 @@ function getDedupStorageSavings() {
 // Part Ordering Functions
 // =====================
 
-function updatePartOrder($partId, $sortOrder) {
+function updatePartOrder($partId, $sortOrder)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('UPDATE models SET sort_order = :sort_order WHERE id = :id');
@@ -2875,7 +2997,8 @@ function updatePartOrder($partId, $sortOrder) {
     }
 }
 
-function reorderParts($parentId, $partIds) {
+function reorderParts($parentId, $partIds)
+{
     try {
         $db = getDB();
         $db->beginTransaction();
@@ -2897,7 +3020,8 @@ function reorderParts($parentId, $partIds) {
 // Model Dimensions Functions
 // =====================
 
-function updateModelDimensions($modelId, $dimX, $dimY, $dimZ, $unit = 'mm') {
+function updateModelDimensions($modelId, $dimX, $dimY, $dimZ, $unit = 'mm')
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('UPDATE models SET dim_x = :x, dim_y = :y, dim_z = :z, dim_unit = :unit WHERE id = :id');
@@ -2908,7 +3032,8 @@ function updateModelDimensions($modelId, $dimX, $dimY, $dimZ, $unit = 'mm') {
     }
 }
 
-function getModelDimensions($modelId) {
+function getModelDimensions($modelId)
+{
     try {
         $db = getDB();
         $stmt = $db->prepare('SELECT dim_x, dim_y, dim_z, dim_unit FROM models WHERE id = :id');
@@ -2930,7 +3055,8 @@ function getModelDimensions($modelId) {
 /**
  * Trigger webhook for an event (delegated to plugins via filter)
  */
-function triggerWebhook($event, $payload) {
+function triggerWebhook($event, $payload)
+{
     if (class_exists('PluginManager')) {
         PluginManager::applyFilter('trigger_webhook', null, $event, $payload);
     }
@@ -2948,7 +3074,8 @@ function triggerWebhook($event, $payload) {
  * @param int $chunkSize Number of rows per insert (default 100)
  * @return int Number of rows inserted
  */
-function batchInsert(string $table, array $columns, array $rows, int $chunkSize = 100): int {
+function batchInsert(string $table, array $columns, array $rows, int $chunkSize = 100): int
+{
     if (empty($rows) || empty($columns)) {
         return 0;
     }
@@ -2958,7 +3085,7 @@ function batchInsert(string $table, array $columns, array $rows, int $chunkSize 
     $inserted = 0;
 
     // Build column list
-    $columnList = implode(', ', array_map(function($col) use ($type) {
+    $columnList = implode(', ', array_map(function ($col) use ($type) {
         return $type === 'mysql' ? "`$col`" : "\"$col\"";
     }, $columns));
 
@@ -2988,7 +3115,8 @@ function batchInsert(string $table, array $columns, array $rows, int $chunkSize 
 /**
  * Batch insert with IGNORE (skip duplicates)
  */
-function batchInsertIgnore(string $table, array $columns, array $rows, int $chunkSize = 100): int {
+function batchInsertIgnore(string $table, array $columns, array $rows, int $chunkSize = 100): int
+{
     if (empty($rows) || empty($columns)) {
         return 0;
     }
@@ -2997,7 +3125,7 @@ function batchInsertIgnore(string $table, array $columns, array $rows, int $chun
     $type = $db->getType();
     $inserted = 0;
 
-    $columnList = implode(', ', array_map(function($col) use ($type) {
+    $columnList = implode(', ', array_map(function ($col) use ($type) {
         return $type === 'mysql' ? "`$col`" : "\"$col\"";
     }, $columns));
 
@@ -3032,7 +3160,8 @@ function batchInsertIgnore(string $table, array $columns, array $rows, int $chun
  * @param array $updates Array of [id => value] pairs
  * @return int Number of rows affected
  */
-function batchUpdate(string $table, string $idColumn, string $updateColumn, array $updates): int {
+function batchUpdate(string $table, string $idColumn, string $updateColumn, array $updates): int
+{
     if (empty($updates)) {
         return 0;
     }

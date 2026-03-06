@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Image Optimizer
  *
@@ -10,20 +11,23 @@
  * - Falls back to original format if WebP not supported
  */
 
-class ImageOptimizer {
+class ImageOptimizer
+{
     private static ?self $instance = null;
     private string $cachePath;
     private int $quality = 80;
     private bool $webpEnabled = true;
 
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->cachePath = dirname(__DIR__) . '/storage/cache/images/';
 
         if (!is_dir($this->cachePath)) {
@@ -37,7 +41,8 @@ class ImageOptimizer {
     /**
      * Configure the optimizer
      */
-    public function configure(array $options): self {
+    public function configure(array $options): self
+    {
         if (isset($options['quality'])) {
             $this->quality = max(1, min(100, (int)$options['quality']));
         }
@@ -53,7 +58,8 @@ class ImageOptimizer {
     /**
      * Get optimized image URL (WebP if supported)
      */
-    public function url(string $originalPath, bool $forceWebp = false): string {
+    public function url(string $originalPath, bool $forceWebp = false): string
+    {
         if (!$this->webpEnabled && !$forceWebp) {
             return $originalPath;
         }
@@ -74,7 +80,8 @@ class ImageOptimizer {
     /**
      * Convert an image to WebP format
      */
-    public function toWebp(string $sourcePath, ?string $destPath = null, ?int $quality = null): ?string {
+    public function toWebp(string $sourcePath, ?string $destPath = null, ?int $quality = null): ?string
+    {
         if (!$this->webpEnabled) {
             return null;
         }
@@ -144,7 +151,8 @@ class ImageOptimizer {
     /**
      * Resize and convert image
      */
-    public function resize(string $sourcePath, int $maxWidth, int $maxHeight, bool $webp = true): ?string {
+    public function resize(string $sourcePath, int $maxWidth, int $maxHeight, bool $webp = true): ?string
+    {
         $fullSourcePath = $this->getFullPath($sourcePath);
 
         if (!file_exists($fullSourcePath)) {
@@ -231,7 +239,8 @@ class ImageOptimizer {
     /**
      * Generate responsive srcset
      */
-    public function srcset(string $sourcePath, array $widths = [320, 640, 1024, 1280]): string {
+    public function srcset(string $sourcePath, array $widths = [320, 640, 1024, 1280]): string
+    {
         $srcset = [];
 
         foreach ($widths as $width) {
@@ -247,7 +256,8 @@ class ImageOptimizer {
     /**
      * Check if browser supports WebP
      */
-    private function browserSupportsWebp(): bool {
+    private function browserSupportsWebp(): bool
+    {
         $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
         return strpos($accept, 'image/webp') !== false;
     }
@@ -255,7 +265,8 @@ class ImageOptimizer {
     /**
      * Get cached WebP path for an image
      */
-    private function getWebpPath(string $originalPath): ?string {
+    private function getWebpPath(string $originalPath): ?string
+    {
         $fullPath = $this->getFullPath($originalPath);
         if (!file_exists($fullPath)) {
             return null;
@@ -275,7 +286,8 @@ class ImageOptimizer {
     /**
      * Get full filesystem path
      */
-    private function getFullPath(string $path): string {
+    private function getFullPath(string $path): string
+    {
         if (strpos($path, '/') === 0) {
             return dirname(__DIR__) . $path;
         }
@@ -285,7 +297,8 @@ class ImageOptimizer {
     /**
      * Get relative path for URL
      */
-    private function getRelativePath(string $fullPath): string {
+    private function getRelativePath(string $fullPath): string
+    {
         $basePath = dirname(__DIR__);
         if (strpos($fullPath, $basePath) === 0) {
             return substr($fullPath, strlen($basePath));
@@ -296,7 +309,8 @@ class ImageOptimizer {
     /**
      * Clear image cache
      */
-    public function clearCache(): int {
+    public function clearCache(): int
+    {
         $count = 0;
         $files = glob($this->cachePath . '*');
         foreach ($files as $file) {
@@ -311,7 +325,8 @@ class ImageOptimizer {
     /**
      * Get cache statistics
      */
-    public function stats(): array {
+    public function stats(): array
+    {
         $files = glob($this->cachePath . '*');
         $totalSize = 0;
         foreach ($files as $file) {
@@ -328,7 +343,8 @@ class ImageOptimizer {
         ];
     }
 
-    private function formatBytes(int $bytes): string {
+    private function formatBytes(int $bytes): string
+    {
         $units = ['B', 'KB', 'MB', 'GB'];
         $i = 0;
         while ($bytes >= 1024 && $i < count($units) - 1) {
@@ -347,7 +363,8 @@ class ImageOptimizer {
  * Get optimized image URL (WebP if supported)
  */
 if (!function_exists('optimized_image')) {
-    function optimized_image(string $path): string {
+    function optimized_image(string $path): string
+    {
         return ImageOptimizer::getInstance()->url($path);
     }
 }
@@ -356,7 +373,8 @@ if (!function_exists('optimized_image')) {
  * Get resized image URL
  */
 if (!function_exists('resized_image')) {
-    function resized_image(string $path, int $width, int $height = 0): ?string {
+    function resized_image(string $path, int $width, int $height = 0): ?string
+    {
         return ImageOptimizer::getInstance()->resize($path, $width, $height ?: $width);
     }
 }
@@ -365,7 +383,8 @@ if (!function_exists('resized_image')) {
  * Generate responsive srcset
  */
 if (!function_exists('image_srcset')) {
-    function image_srcset(string $path, array $widths = [320, 640, 1024]): string {
+    function image_srcset(string $path, array $widths = [320, 640, 1024]): string
+    {
         return ImageOptimizer::getInstance()->srcset($path, $widths);
     }
 }
@@ -374,7 +393,8 @@ if (!function_exists('image_srcset')) {
  * Render optimized image tag with WebP and srcset
  */
 if (!function_exists('optimized_img')) {
-    function optimized_img(string $src, string $alt, array $attrs = []): string {
+    function optimized_img(string $src, string $alt, array $attrs = []): string
+    {
         $optimizer = ImageOptimizer::getInstance();
 
         // Get WebP version

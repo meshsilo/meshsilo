@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Logger Class
  *
@@ -13,7 +14,8 @@
  * - error: PHP errors and exceptions (also written to php-error.log)
  */
 
-class Logger {
+class Logger
+{
     // Log levels (lower = more severe)
     const ERROR = 1;
     const WARNING = 2;
@@ -39,7 +41,8 @@ class Logger {
     private $queryLog = [];
     private $slowQueryThreshold = 1.0; // seconds
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->logPath = __DIR__ . '/../storage/logs/';
         $this->requestId = $this->generateRequestId();
         $this->requestStartTime = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
@@ -59,14 +62,16 @@ class Logger {
         ];
     }
 
-    public static function getInstance() {
+    public static function getInstance()
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    public function configure($config) {
+    public function configure($config)
+    {
         if (isset($config['min_level'])) {
             $this->minLevel = $config['min_level'];
         }
@@ -88,34 +93,40 @@ class Logger {
         return $this;
     }
 
-    public function getRequestId() {
+    public function getRequestId()
+    {
         return $this->requestId;
     }
 
-    public function getRequestStartTime() {
+    public function getRequestStartTime()
+    {
         return $this->requestStartTime;
     }
 
-    private function generateRequestId() {
+    private function generateRequestId()
+    {
         return substr(md5(uniqid('', true) . microtime(true) . random_int(0, PHP_INT_MAX)), 0, 12);
     }
 
     /**
      * Get the minimum log level for a channel
      */
-    private function getChannelLevel($channel) {
+    private function getChannelLevel($channel)
+    {
         return $this->channelLevels[$channel] ?? $this->minLevel;
     }
 
     /**
      * Set the log level for a specific channel
      */
-    public function setChannelLevel($channel, $level) {
+    public function setChannelLevel($channel, $level)
+    {
         $this->channelLevels[$channel] = $level;
         return $this;
     }
 
-    public function log($level, $message, $context = [], $channel = 'app') {
+    public function log($level, $message, $context = [], $channel = 'app')
+    {
         // Check channel-specific level first, then global level
         $channelLevel = $this->getChannelLevel($channel);
         if ($level > $channelLevel) {
@@ -193,27 +204,33 @@ class Logger {
     // Standard logging methods (default to 'app' channel)
     // =========================================================================
 
-    public function error($message, $context = []) {
+    public function error($message, $context = [])
+    {
         $this->log(self::ERROR, $message, $context);
     }
 
-    public function warning($message, $context = []) {
+    public function warning($message, $context = [])
+    {
         $this->log(self::WARNING, $message, $context);
     }
 
-    public function info($message, $context = []) {
+    public function info($message, $context = [])
+    {
         $this->log(self::INFO, $message, $context);
     }
 
-    public function debug($message, $context = []) {
+    public function debug($message, $context = [])
+    {
         $this->log(self::DEBUG, $message, $context);
     }
 
-    public function notice($message, $context = []) {
+    public function notice($message, $context = [])
+    {
         $this->log(self::NOTICE, $message, $context);
     }
 
-    public function exception($exception, $context = []) {
+    public function exception($exception, $context = [])
+    {
         if ($exception instanceof Throwable) {
             $context['exception'] = $exception;
             $this->error($exception->getMessage(), $context);
@@ -224,17 +241,20 @@ class Logger {
     // Security logging (channel: security)
     // =========================================================================
 
-    public function securityInfo($message, $context = []) {
+    public function securityInfo($message, $context = [])
+    {
         $context = $this->addSecurityContext($context);
         $this->log(self::INFO, $message, $context, self::CHANNEL_SECURITY);
     }
 
-    public function securityWarning($message, $context = []) {
+    public function securityWarning($message, $context = [])
+    {
         $context = $this->addSecurityContext($context);
         $this->log(self::WARNING, $message, $context, self::CHANNEL_SECURITY);
     }
 
-    public function securityError($message, $context = []) {
+    public function securityError($message, $context = [])
+    {
         $context = $this->addSecurityContext($context);
         $this->log(self::ERROR, $message, $context, self::CHANNEL_SECURITY);
     }
@@ -242,7 +262,8 @@ class Logger {
     /**
      * Log authentication events (login, logout, failed attempts)
      */
-    public function authEvent($event, $username, $success = true, $context = []) {
+    public function authEvent($event, $username, $success = true, $context = [])
+    {
         $context['event'] = $event;
         $context['username'] = $username;
         $context['success'] = $success;
@@ -259,7 +280,8 @@ class Logger {
     /**
      * Log permission checks
      */
-    public function permissionDenied($permission, $userId, $context = []) {
+    public function permissionDenied($permission, $userId, $context = [])
+    {
         $context['permission'] = $permission;
         $context['user_id'] = $userId;
         $context = $this->addSecurityContext($context);
@@ -267,7 +289,8 @@ class Logger {
         $this->log(self::WARNING, "Permission denied: {$permission} for user {$userId}", $context, self::CHANNEL_SECURITY);
     }
 
-    private function addSecurityContext($context) {
+    private function addSecurityContext($context)
+    {
         $context['ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
         $context['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
@@ -285,7 +308,8 @@ class Logger {
     /**
      * Log HTTP request (call at start of request)
      */
-    public function logRequest($context = []) {
+    public function logRequest($context = [])
+    {
         $context['method'] = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';
         $context['uri'] = $_SERVER['REQUEST_URI'] ?? '/';
         $context['ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -302,7 +326,8 @@ class Logger {
     /**
      * Log HTTP response (call at end of request)
      */
-    public function logResponse($statusCode = null, $context = []) {
+    public function logResponse($statusCode = null, $context = [])
+    {
         $statusCode = $statusCode ?? http_response_code();
         $duration = (microtime(true) - $this->requestStartTime) * 1000; // ms
 
@@ -332,7 +357,8 @@ class Logger {
     /**
      * Log a database query
      */
-    public function logQuery($sql, $params = [], $duration = null, $context = []) {
+    public function logQuery($sql, $params = [], $duration = null, $context = [])
+    {
         $context['sql'] = $sql;
         if (!empty($params)) {
             $context['params'] = $params;
@@ -360,7 +386,8 @@ class Logger {
     /**
      * Log a database error
      */
-    public function logQueryError($sql, $error, $context = []) {
+    public function logQueryError($sql, $error, $context = [])
+    {
         $context['sql'] = $sql;
         $context['error'] = $error;
 
@@ -371,7 +398,8 @@ class Logger {
     /**
      * Get query log summary
      */
-    public function getQuerySummary() {
+    public function getQuerySummary()
+    {
         $totalQueries = count($this->queryLog);
         $totalTime = array_sum(array_column($this->queryLog, 'duration'));
         $slowQueries = array_filter($this->queryLog, fn($q) => ($q['duration'] ?? 0) >= $this->slowQueryThreshold);
@@ -387,7 +415,8 @@ class Logger {
     // Log rotation
     // =========================================================================
 
-    private function rotateIfNeeded($logFile) {
+    private function rotateIfNeeded($logFile)
+    {
         if (!file_exists($logFile)) {
             return;
         }
@@ -406,7 +435,8 @@ class Logger {
         $this->cleanupOldRotatedFiles($logFile);
     }
 
-    private function cleanupOldRotatedFiles($baseFile) {
+    private function cleanupOldRotatedFiles($baseFile)
+    {
         $pattern = $baseFile . '.*';
         $files = glob($pattern);
 
@@ -415,7 +445,7 @@ class Logger {
         }
 
         // Sort by modification time
-        usort($files, function($a, $b) {
+        usort($files, function ($a, $b) {
             return filemtime($a) - filemtime($b);
         });
 
@@ -431,27 +461,33 @@ class Logger {
 // Helper functions for backward compatibility
 // =============================================================================
 
-function logError($message, $context = []) {
+function logError($message, $context = [])
+{
     Logger::getInstance()->error($message, $context);
 }
 
-function logWarning($message, $context = []) {
+function logWarning($message, $context = [])
+{
     Logger::getInstance()->warning($message, $context);
 }
 
-function logInfo($message, $context = []) {
+function logInfo($message, $context = [])
+{
     Logger::getInstance()->info($message, $context);
 }
 
-function logDebug($message, $context = []) {
+function logDebug($message, $context = [])
+{
     Logger::getInstance()->debug($message, $context);
 }
 
-function logNotice($message, $context = []) {
+function logNotice($message, $context = [])
+{
     Logger::getInstance()->notice($message, $context);
 }
 
-function logException($exception, $context = []) {
+function logException($exception, $context = [])
+{
     Logger::getInstance()->exception($exception, $context);
 }
 
@@ -459,23 +495,28 @@ function logException($exception, $context = []) {
 // Security logging helpers
 // =============================================================================
 
-function logSecurityInfo($message, $context = []) {
+function logSecurityInfo($message, $context = [])
+{
     Logger::getInstance()->securityInfo($message, $context);
 }
 
-function logSecurityWarning($message, $context = []) {
+function logSecurityWarning($message, $context = [])
+{
     Logger::getInstance()->securityWarning($message, $context);
 }
 
-function logSecurityError($message, $context = []) {
+function logSecurityError($message, $context = [])
+{
     Logger::getInstance()->securityError($message, $context);
 }
 
-function logAuthEvent($event, $username, $success = true, $context = []) {
+function logAuthEvent($event, $username, $success = true, $context = [])
+{
     Logger::getInstance()->authEvent($event, $username, $success, $context);
 }
 
-function logPermissionDenied($permission, $userId, $context = []) {
+function logPermissionDenied($permission, $userId, $context = [])
+{
     Logger::getInstance()->permissionDenied($permission, $userId, $context);
 }
 
@@ -483,11 +524,13 @@ function logPermissionDenied($permission, $userId, $context = []) {
 // Access logging helpers
 // =============================================================================
 
-function logRequest($context = []) {
+function logRequest($context = [])
+{
     Logger::getInstance()->logRequest($context);
 }
 
-function logResponse($statusCode = null, $context = []) {
+function logResponse($statusCode = null, $context = [])
+{
     Logger::getInstance()->logResponse($statusCode, $context);
 }
 
@@ -495,10 +538,12 @@ function logResponse($statusCode = null, $context = []) {
 // Database logging helpers
 // =============================================================================
 
-function logQuery($sql, $params = [], $duration = null, $context = []) {
+function logQuery($sql, $params = [], $duration = null, $context = [])
+{
     Logger::getInstance()->logQuery($sql, $params, $duration, $context);
 }
 
-function logQueryError($sql, $error, $context = []) {
+function logQueryError($sql, $error, $context = [])
+{
     Logger::getInstance()->logQueryError($sql, $error, $context);
 }

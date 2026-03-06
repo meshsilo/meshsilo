@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Maintenance Mode Middleware
  *
@@ -8,11 +9,13 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class MaintenanceMiddleware implements MiddlewareInterface {
+class MaintenanceMiddleware implements MiddlewareInterface
+{
     /**
      * Handle the middleware
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         // Check if maintenance mode is enabled
         if (!$this->isMaintenanceMode()) {
             return true;
@@ -44,7 +47,8 @@ class MaintenanceMiddleware implements MiddlewareInterface {
     /**
      * Check if maintenance mode is enabled
      */
-    private function isMaintenanceMode(): bool {
+    private function isMaintenanceMode(): bool
+    {
         // Check for maintenance file (quick toggle)
         if (file_exists(__DIR__ . '/../../.maintenance')) {
             return true;
@@ -61,7 +65,8 @@ class MaintenanceMiddleware implements MiddlewareInterface {
     /**
      * Check if current user can bypass maintenance mode
      */
-    private function canBypass(): bool {
+    private function canBypass(): bool
+    {
         // Check for bypass cookie (set by admin)
         $bypassSecret = $this->getBypassSecret();
         if ($bypassSecret && isset($_COOKIE['maintenance_bypass'])) {
@@ -93,7 +98,8 @@ class MaintenanceMiddleware implements MiddlewareInterface {
     /**
      * Get bypass secret from settings
      */
-    private function getBypassSecret(): ?string {
+    private function getBypassSecret(): ?string
+    {
         if (function_exists('getSetting')) {
             $secret = getSetting('maintenance_bypass_secret', '');
             return !empty($secret) ? $secret : null;
@@ -104,7 +110,8 @@ class MaintenanceMiddleware implements MiddlewareInterface {
     /**
      * Get whitelisted IPs
      */
-    private function getWhitelistedIps(): array {
+    private function getWhitelistedIps(): array
+    {
         if (function_exists('getSetting')) {
             $ips = getSetting('maintenance_whitelist_ips', '');
             if (!empty($ips)) {
@@ -117,7 +124,8 @@ class MaintenanceMiddleware implements MiddlewareInterface {
     /**
      * Display the maintenance page
      */
-    private function showMaintenancePage(): void {
+    private function showMaintenancePage(): void
+    {
         http_response_code(503);
         header('Retry-After: 3600'); // Suggest retry in 1 hour
 
@@ -212,7 +220,8 @@ class MaintenanceMiddleware implements MiddlewareInterface {
 /**
  * Helper function to enable maintenance mode programmatically
  */
-function enableMaintenanceMode(string $message = '', int $duration = 0): void {
+function enableMaintenanceMode(string $message = '', int $duration = 0): void
+{
     $maintenanceFile = __DIR__ . '/../../.maintenance';
     $data = [
         'enabled_at' => time(),
@@ -225,7 +234,8 @@ function enableMaintenanceMode(string $message = '', int $duration = 0): void {
 /**
  * Helper function to disable maintenance mode
  */
-function disableMaintenanceMode(): void {
+function disableMaintenanceMode(): void
+{
     $maintenanceFile = __DIR__ . '/../../.maintenance';
     if (file_exists($maintenanceFile)) {
         unlink($maintenanceFile);
@@ -235,7 +245,8 @@ function disableMaintenanceMode(): void {
 /**
  * Check if site is in maintenance mode
  */
-function isMaintenanceMode(): bool {
+function isMaintenanceMode(): bool
+{
     if (file_exists(__DIR__ . '/../../.maintenance')) {
         return true;
     }

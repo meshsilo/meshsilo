@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Comprehensive Debug System
  *
@@ -21,7 +22,8 @@
  * }
  */
 
-class Debug {
+class Debug
+{
     private static bool $enabled = false;
     private static bool $initialized = false;
     private static array $config = [];
@@ -67,7 +69,8 @@ class Debug {
     /**
      * Initialize debug system
      */
-    public static function init(): void {
+    public static function init(): void
+    {
         if (self::$initialized) {
             return;
         }
@@ -143,7 +146,8 @@ class Debug {
     /**
      * Check if debug mode is enabled
      */
-    public static function isEnabled(): bool {
+    public static function isEnabled(): bool
+    {
         if (!self::$initialized) {
             self::init();
         }
@@ -153,7 +157,8 @@ class Debug {
     /**
      * Get config value
      */
-    public static function config(string $key, $default = null) {
+    public static function config(string $key, $default = null)
+    {
         return self::$config[$key] ?? $default;
     }
 
@@ -164,7 +169,8 @@ class Debug {
     /**
      * Log a debug message
      */
-    public static function log(string $message, array $context = [], string $level = 'debug'): void {
+    public static function log(string $message, array $context = [], string $level = 'debug'): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -198,19 +204,23 @@ class Debug {
         }
     }
 
-    public static function info(string $message, array $context = []): void {
+    public static function info(string $message, array $context = []): void
+    {
         self::log($message, $context, 'info');
     }
 
-    public static function notice(string $message, array $context = []): void {
+    public static function notice(string $message, array $context = []): void
+    {
         self::log($message, $context, 'notice');
     }
 
-    public static function warn(string $message, array $context = []): void {
+    public static function warn(string $message, array $context = []): void
+    {
         self::log($message, $context, 'warning');
     }
 
-    public static function error(string $message, array $context = []): void {
+    public static function error(string $message, array $context = []): void
+    {
         self::log($message, $context, 'error');
     }
 
@@ -221,7 +231,8 @@ class Debug {
     /**
      * Log a database query
      */
-    public static function query(string $sql, array $params = [], ?float $duration = null): void {
+    public static function query(string $sql, array $params = [], ?float $duration = null): void
+    {
         if (!self::isEnabled() || !self::$config['log_queries']) {
             return;
         }
@@ -257,14 +268,16 @@ class Debug {
     /**
      * Start a query timer
      */
-    public static function queryStart(): float {
+    public static function queryStart(): float
+    {
         return microtime(true);
     }
 
     /**
      * End query timer and log
      */
-    public static function queryEnd(float $start, string $sql, array $params = []): void {
+    public static function queryEnd(float $start, string $sql, array $params = []): void
+    {
         $duration = microtime(true) - $start;
         self::query($sql, $params, $duration);
     }
@@ -276,7 +289,8 @@ class Debug {
     /**
      * Log session information
      */
-    private static function logSession(): void {
+    private static function logSession(): void
+    {
         if (session_status() === PHP_SESSION_NONE) {
             @session_start();
         }
@@ -307,7 +321,8 @@ class Debug {
     /**
      * Diagnose CSRF issues
      */
-    public static function diagnoseCsrf(): void {
+    public static function diagnoseCsrf(): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -404,7 +419,8 @@ class Debug {
     /**
      * Log authentication events
      */
-    public static function auth(string $event, array $context = []): void {
+    public static function auth(string $event, array $context = []): void
+    {
         if (!self::isEnabled() || !self::$config['log_auth']) {
             return;
         }
@@ -425,7 +441,8 @@ class Debug {
     /**
      * Log route matching
      */
-    public static function route(string $event, array $context = []): void {
+    public static function route(string $event, array $context = []): void
+    {
         if (!self::isEnabled() || !self::$config['log_routes']) {
             return;
         }
@@ -442,7 +459,8 @@ class Debug {
     /**
      * Log route match result
      */
-    public static function routeMatched(string $pattern, string $name, string $file): void {
+    public static function routeMatched(string $pattern, string $name, string $file): void
+    {
         self::route('matched', [
             'pattern' => $pattern,
             'name' => $name,
@@ -455,7 +473,8 @@ class Debug {
     /**
      * Log route not found
      */
-    public static function routeNotFound(string $uri): void {
+    public static function routeNotFound(string $uri): void
+    {
         self::route('not_found', [
             'uri' => $uri,
             'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
@@ -469,7 +488,8 @@ class Debug {
     /**
      * Log file upload attempt
      */
-    public static function upload(string $event, array $context = []): void {
+    public static function upload(string $event, array $context = []): void
+    {
         if (!self::isEnabled() || !self::$config['log_uploads']) {
             return;
         }
@@ -486,7 +506,8 @@ class Debug {
     /**
      * Diagnose file upload issues
      */
-    public static function diagnoseUpload(): void {
+    public static function diagnoseUpload(): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -539,7 +560,8 @@ class Debug {
         self::log('=== UPLOAD DIAGNOSIS END ===', [], 'upload');
     }
 
-    private static function logFileInfo(string $fieldName, array $file): void {
+    private static function logFileInfo(string $fieldName, array $file): void
+    {
         $errorMessages = [
             UPLOAD_ERR_OK => 'OK',
             UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize',
@@ -573,7 +595,8 @@ class Debug {
     /**
      * Start a timer
      */
-    public static function timerStart(string $name): void {
+    public static function timerStart(string $name): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -586,7 +609,8 @@ class Debug {
     /**
      * End a timer and log
      */
-    public static function timerEnd(string $name): ?float {
+    public static function timerEnd(string $name): ?float
+    {
         if (!self::isEnabled() || !isset(self::$timers[$name])) {
             return null;
         }
@@ -609,7 +633,8 @@ class Debug {
     /**
      * Take a memory snapshot
      */
-    public static function memorySnapshot(string $label): void {
+    public static function memorySnapshot(string $label): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -635,7 +660,8 @@ class Debug {
     /**
      * Capture configuration snapshot
      */
-    private static function captureConfig(): void {
+    private static function captureConfig(): void
+    {
         self::$configSnapshot = [
             'defined_constants' => self::getAppConstants(),
             'php_settings' => [
@@ -665,7 +691,8 @@ class Debug {
     /**
      * Get application-specific constants
      */
-    private static function getAppConstants(): array {
+    private static function getAppConstants(): array
+    {
         $constants = get_defined_constants(true)['user'] ?? [];
 
         // Filter to app-related constants
@@ -692,7 +719,8 @@ class Debug {
     /**
      * Log a configuration value
      */
-    public static function configValue(string $name, $value): void {
+    public static function configValue(string $name, $value): void
+    {
         if (!self::isEnabled() || !self::$config['log_config']) {
             return;
         }
@@ -707,7 +735,8 @@ class Debug {
     /**
      * Log the current request
      */
-    private static function logRequest(): void {
+    private static function logRequest(): void
+    {
         $request = [
             'method' => $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN',
             'uri' => $_SERVER['REQUEST_URI'] ?? '',
@@ -732,7 +761,8 @@ class Debug {
     /**
      * Log response info
      */
-    public static function response(int $statusCode, ?string $contentType = null): void {
+    public static function response(int $statusCode, ?string $contentType = null): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -751,7 +781,8 @@ class Debug {
     /**
      * Handle PHP errors
      */
-    public static function handleError(int $errno, string $errstr, string $errfile, int $errline): bool {
+    public static function handleError(int $errno, string $errstr, string $errfile, int $errline): bool
+    {
         if (!(error_reporting() & $errno)) {
             return false;
         }
@@ -792,7 +823,8 @@ class Debug {
     /**
      * Handle shutdown (for fatal errors)
      */
-    public static function handleShutdown(): void {
+    public static function handleShutdown(): void
+    {
         $error = error_get_last();
         if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
             self::log('Fatal Error: ' . $error['message'], [
@@ -811,7 +843,8 @@ class Debug {
     /**
      * Log an exception
      */
-    public static function exception(\Throwable $e, array $context = []): void {
+    public static function exception(\Throwable $e, array $context = []): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -831,7 +864,8 @@ class Debug {
     /**
      * Dump a variable with context
      */
-    public static function dump($var, string $label = 'dump'): void {
+    public static function dump($var, string $label = 'dump'): void
+    {
         if (!self::isEnabled()) {
             return;
         }
@@ -845,7 +879,8 @@ class Debug {
     /**
      * Dump and die (for debugging)
      */
-    public static function dd($var, string $label = 'dump'): never {
+    public static function dd($var, string $label = 'dump'): never
+    {
         self::dump($var, $label);
 
         if (self::isEnabled()) {
@@ -876,7 +911,8 @@ class Debug {
     /**
      * Write log entry to file
      */
-    private static function writeToFile(array $entry): void {
+    private static function writeToFile(array $entry): void
+    {
         $logDir = dirname(__DIR__) . '/storage/logs';
         if (!is_dir($logDir)) {
             @mkdir($logDir, 0755, true);
@@ -909,7 +945,8 @@ class Debug {
     /**
      * Write request summary
      */
-    private static function writeSummary(): void {
+    private static function writeSummary(): void
+    {
         $duration = microtime(true) - self::$startTime;
         $memory = memory_get_peak_usage(true);
         $errors = count(array_filter(self::$logs, fn($l) => in_array($l['level'], ['error', 'fatal'])));
@@ -939,7 +976,8 @@ class Debug {
     /**
      * Render debug bar HTML
      */
-    public static function renderBar(): string {
+    public static function renderBar(): string
+    {
         if (!self::isEnabled() || !self::$config['show_bar']) {
             return '';
         }
@@ -1115,7 +1153,8 @@ function debugTogglePanel(name) {
 HTML;
     }
 
-    private static function renderLogsPanel(): string {
+    private static function renderLogsPanel(): string
+    {
         $html = '<div class="debug-section">';
 
         if (empty(self::$logs)) {
@@ -1150,7 +1189,8 @@ HTML;
         return $html;
     }
 
-    private static function renderQueriesPanel(): string {
+    private static function renderQueriesPanel(): string
+    {
         $html = '<div class="debug-section">';
         $html .= '<h4>🗄️ Database Queries (' . self::$queryCount . ')</h4>';
 
@@ -1163,7 +1203,9 @@ HTML;
                 $duration = $q['duration'] ? round($q['duration'] * 1000, 2) . 'ms' : '-';
                 $durationColor = ($q['duration'] ?? 0) > 0.1 ? '#ef4444' : '#22c55e';
                 $sql = htmlspecialchars(substr($q['sql'], 0, 300));
-                if (strlen($q['sql']) > 300) $sql .= '...';
+                if (strlen($q['sql']) > 300) {
+                    $sql .= '...';
+                }
 
                 $html .= sprintf(
                     '<tr>
@@ -1190,7 +1232,8 @@ HTML;
         return $html;
     }
 
-    private static function renderSessionPanel(): string {
+    private static function renderSessionPanel(): string
+    {
         $html = '<div class="debug-section">';
         $html .= '<h4>🔐 Session & Authentication</h4>';
 
@@ -1214,7 +1257,8 @@ HTML;
         return $html;
     }
 
-    private static function renderRequestPanel(): string {
+    private static function renderRequestPanel(): string
+    {
         $html = '<div class="debug-section">';
         $html .= '<h4>📥 Request Details</h4>';
 
@@ -1259,7 +1303,8 @@ HTML;
                     for ($i = 0; $i < count($file['name']); $i++) {
                         $html .= sprintf(
                             '<tr><td>%s[%d]</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
-                            htmlspecialchars($field), $i,
+                            htmlspecialchars($field),
+                            $i,
                             htmlspecialchars($file['name'][$i]),
                             self::formatBytes($file['size'][$i]),
                             htmlspecialchars($file['type'][$i]),
@@ -1284,7 +1329,8 @@ HTML;
         return $html;
     }
 
-    private static function renderConfigPanel(): string {
+    private static function renderConfigPanel(): string
+    {
         $html = '<div class="debug-section">';
         $html .= '<h4>⚙️ Configuration</h4>';
 
@@ -1315,7 +1361,8 @@ HTML;
         return $html;
     }
 
-    private static function renderTimelinePanel(): string {
+    private static function renderTimelinePanel(): string
+    {
         $html = '<div class="debug-section">';
         $html .= '<h4>📊 Timeline</h4>';
 
@@ -1360,7 +1407,8 @@ HTML;
     // UTILITY METHODS
     // =========================================================================
 
-    public static function getMetrics(): array {
+    public static function getMetrics(): array
+    {
         return [
             'duration' => microtime(true) - self::$startTime,
             'memory_current' => memory_get_usage(true),
@@ -1370,15 +1418,18 @@ HTML;
         ];
     }
 
-    public static function getLogs(): array {
+    public static function getLogs(): array
+    {
         return self::$logs;
     }
 
-    public static function getQueries(): array {
+    public static function getQueries(): array
+    {
         return self::$queries;
     }
 
-    private static function formatBytes(int $bytes): string {
+    private static function formatBytes(int $bytes): string
+    {
         $units = ['B', 'KB', 'MB', 'GB'];
         $i = 0;
         while ($bytes >= 1024 && $i < count($units) - 1) {
@@ -1388,7 +1439,8 @@ HTML;
         return round($bytes, 2) . ' ' . $units[$i];
     }
 
-    private static function formatValue($var, int $depth = 0): mixed {
+    private static function formatValue($var, int $depth = 0): mixed
+    {
         $maxLen = self::$config['truncate_strings'] ?? 500;
 
         if ($depth > 3) {
@@ -1413,7 +1465,8 @@ HTML;
         return $var;
     }
 
-    private static function sanitizeContext(array $context): array {
+    private static function sanitizeContext(array $context): array
+    {
         $sensitiveKeys = ['password', 'secret', 'token', 'key', 'auth', 'credential'];
 
         array_walk_recursive($context, function (&$value, $key) use ($sensitiveKeys) {
@@ -1433,7 +1486,8 @@ HTML;
         return $context;
     }
 
-    private static function shortenPath(string $path): string {
+    private static function shortenPath(string $path): string
+    {
         $root = dirname(__DIR__);
         if (strpos($path, $root) === 0) {
             return substr($path, strlen($root) + 1);
@@ -1441,19 +1495,22 @@ HTML;
         return basename(dirname($path)) . '/' . basename($path);
     }
 
-    private static function tokenPreview(string $token): string {
+    private static function tokenPreview(string $token): string
+    {
         return substr($token, 0, 8) . '...' . substr($token, -4);
     }
 
-    private static function getSessionStatusName(): string {
-        return match(session_status()) {
+    private static function getSessionStatusName(): string
+    {
+        return match (session_status()) {
             PHP_SESSION_DISABLED => 'Disabled',
             PHP_SESSION_NONE => 'None (not started)',
             PHP_SESSION_ACTIVE => 'Active',
         };
     }
 
-    private static function getShortTrace(int $skip = 2): array {
+    private static function getShortTrace(int $skip = 2): array
+    {
         $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, self::$config['trace_depth'] + $skip);
         $trace = array_slice($trace, $skip);
 
@@ -1466,7 +1523,8 @@ HTML;
         }, $trace);
     }
 
-    private static function formatTrace(array $trace): array {
+    private static function formatTrace(array $trace): array
+    {
         $depth = self::$config['trace_depth'] ?? 5;
         $trace = array_slice($trace, 0, $depth);
 
@@ -1482,49 +1540,57 @@ HTML;
 // =========================================================================
 
 if (!function_exists('debug_log')) {
-    function debug_log(string $message, array $context = []): void {
+    function debug_log(string $message, array $context = []): void
+    {
         Debug::log($message, $context);
     }
 }
 
 if (!function_exists('debug_info')) {
-    function debug_info(string $message, array $context = []): void {
+    function debug_info(string $message, array $context = []): void
+    {
         Debug::info($message, $context);
     }
 }
 
 if (!function_exists('debug_warn')) {
-    function debug_warn(string $message, array $context = []): void {
+    function debug_warn(string $message, array $context = []): void
+    {
         Debug::warn($message, $context);
     }
 }
 
 if (!function_exists('debug_error')) {
-    function debug_error(string $message, array $context = []): void {
+    function debug_error(string $message, array $context = []): void
+    {
         Debug::error($message, $context);
     }
 }
 
 if (!function_exists('debug_dump')) {
-    function debug_dump($var, string $label = 'dump'): void {
+    function debug_dump($var, string $label = 'dump'): void
+    {
         Debug::dump($var, $label);
     }
 }
 
 if (!function_exists('debug_dd')) {
-    function debug_dd($var, string $label = 'dump'): never {
+    function debug_dd($var, string $label = 'dump'): never
+    {
         Debug::dd($var, $label);
     }
 }
 
 if (!function_exists('debug_timer_start')) {
-    function debug_timer_start(string $name): void {
+    function debug_timer_start(string $name): void
+    {
         Debug::timerStart($name);
     }
 }
 
 if (!function_exists('debug_timer_end')) {
-    function debug_timer_end(string $name): ?float {
+    function debug_timer_end(string $name): ?float
+    {
         return Debug::timerEnd($name);
     }
 }

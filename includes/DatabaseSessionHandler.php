@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Database Session Handler
  *
@@ -10,19 +11,22 @@
  * - Better security (sessions stored securely in DB)
  */
 
-class DatabaseSessionHandler implements SessionHandlerInterface {
+class DatabaseSessionHandler implements SessionHandlerInterface
+{
     private ?PDO $db = null;
     private string $table = 'sessions';
     private int $lifetime;
 
-    public function __construct(int $lifetime = 7200) {
+    public function __construct(int $lifetime = 7200)
+    {
         $this->lifetime = $lifetime;
     }
 
     /**
      * Open the session
      */
-    public function open(string $path, string $name): bool {
+    public function open(string $path, string $name): bool
+    {
         try {
             $this->db = getDB();
             $this->ensureTable();
@@ -36,7 +40,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Close the session
      */
-    public function close(): bool {
+    public function close(): bool
+    {
         $this->db = null;
         return true;
     }
@@ -44,7 +49,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Read session data
      */
-    public function read(string $id): string|false {
+    public function read(string $id): string|false
+    {
         try {
             $stmt = $this->db->prepare(
                 "SELECT data FROM {$this->table} WHERE id = :id AND expires_at > :now"
@@ -64,7 +70,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Write session data
      */
-    public function write(string $id, string $data): bool {
+    public function write(string $id, string $data): bool
+    {
         try {
             $expiresAt = time() + $this->lifetime;
             $userId = $_SESSION['user_id'] ?? null;
@@ -94,7 +101,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Destroy a session
      */
-    public function destroy(string $id): bool {
+    public function destroy(string $id): bool
+    {
         try {
             $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = :id");
             return $stmt->execute([':id' => $id]);
@@ -107,7 +115,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Garbage collection
      */
-    public function gc(int $max_lifetime): int|false {
+    public function gc(int $max_lifetime): int|false
+    {
         try {
             $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE expires_at < :now");
             $stmt->execute([':now' => time()]);
@@ -121,7 +130,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Ensure the sessions table exists
      */
-    private function ensureTable(): void {
+    private function ensureTable(): void
+    {
         $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
 
         if ($driver === 'sqlite') {
@@ -160,7 +170,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Get all active sessions for a user
      */
-    public static function getUserSessions(int $userId): array {
+    public static function getUserSessions(int $userId): array
+    {
         try {
             $db = getDB();
             $stmt = $db->prepare(
@@ -179,7 +190,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Destroy all sessions for a user (useful for "log out everywhere")
      */
-    public static function destroyUserSessions(int $userId, ?string $exceptSessionId = null): int {
+    public static function destroyUserSessions(int $userId, ?string $exceptSessionId = null): int
+    {
         try {
             $db = getDB();
             if ($exceptSessionId) {
@@ -198,7 +210,8 @@ class DatabaseSessionHandler implements SessionHandlerInterface {
     /**
      * Get session statistics
      */
-    public static function getStats(): array {
+    public static function getStats(): array
+    {
         try {
             $db = getDB();
             $now = time();

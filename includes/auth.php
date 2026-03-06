@@ -1,4 +1,5 @@
 <?php
+
 // Configure database sessions if enabled
 $useDbSessions = getenv('DB_SESSIONS') === 'true' ||
     (defined('DB_SESSIONS') && DB_SESSIONS === true) ||
@@ -104,12 +105,14 @@ if ($forceSiteUrl && !empty($siteUrl) && php_sapi_name() !== 'cli') {
 }
 
 // Check if user is logged in
-function isLoggedIn() {
+function isLoggedIn()
+{
     return isset($_SESSION['user_id']);
 }
 
 // Get current user
-function getCurrentUser() {
+function getCurrentUser()
+{
     return $_SESSION['user'] ?? null;
 }
 
@@ -120,7 +123,8 @@ function getCurrentUser() {
  * plugins have loaded, allowing plugins to register additional public routes
  * via the 'public_routes' filter.
  */
-function enforceAuthentication(): void {
+function enforceAuthentication(): void
+{
     // Pages that don't require authentication (old direct-access pattern)
     $publicPages = ['login.php', 'install.php', 'forgot-password.php', 'reset-password.php'];
 

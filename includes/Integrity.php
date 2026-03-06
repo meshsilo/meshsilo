@@ -1,4 +1,5 @@
 <?php
+
 /**
  * File Integrity Checking for Silo
  *
@@ -11,7 +12,8 @@
  *   Integrity::verifyAll();                      // Verify all files
  */
 
-class Integrity {
+class Integrity
+{
     // Hash algorithm to use
     private const ALGORITHM = 'sha256';
 
@@ -24,7 +26,8 @@ class Integrity {
      * @param string $filePath Path to file
      * @return string|null SHA-256 hash or null on failure
      */
-    public static function hashFile(string $filePath): ?string {
+    public static function hashFile(string $filePath): ?string
+    {
         if (!file_exists($filePath) || !is_readable($filePath)) {
             return null;
         }
@@ -54,7 +57,8 @@ class Integrity {
      * @param string|null $hash Hash to store (calculated if null)
      * @return bool Success
      */
-    public static function storeHash(int $modelId, ?string $hash = null): bool {
+    public static function storeHash(int $modelId, ?string $hash = null): bool
+    {
         if (!function_exists('getDB')) {
             return false;
         }
@@ -103,7 +107,8 @@ class Integrity {
      * @param int $modelId Model or part ID
      * @return array Verification result
      */
-    public static function verify(int $modelId): array {
+    public static function verify(int $modelId): array
+    {
         if (!function_exists('getDB')) {
             return ['status' => 'error', 'message' => 'Database not available'];
         }
@@ -203,7 +208,8 @@ class Integrity {
      * @param bool $prioritizeUnchecked Check files without hashes first
      * @return array Summary of results
      */
-    public static function verifyAll(int $limit = 0, bool $prioritizeUnchecked = true): array {
+    public static function verifyAll(int $limit = 0, bool $prioritizeUnchecked = true): array
+    {
         if (!function_exists('getDB')) {
             return ['error' => 'Database not available'];
         }
@@ -272,7 +278,8 @@ class Integrity {
     /**
      * Get integrity status summary
      */
-    public static function getStatus(): array {
+    public static function getStatus(): array
+    {
         if (!function_exists('getDB')) {
             return [];
         }
@@ -321,7 +328,8 @@ class Integrity {
     /**
      * Get files with integrity issues
      */
-    public static function getIssues(int $limit = 50): array {
+    public static function getIssues(int $limit = 50): array
+    {
         if (!function_exists('getDB')) {
             return [];
         }
@@ -349,7 +357,8 @@ class Integrity {
     /**
      * Resolve file path, handling deduplication
      */
-    private static function resolveFilePath(array $model): ?string {
+    private static function resolveFilePath(array $model): ?string
+    {
         $uploadPath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../assets/';
 
         // Prefer dedup path if available
@@ -374,7 +383,8 @@ class Integrity {
     /**
      * Log an integrity issue
      */
-    private static function logIntegrityIssue(int $modelId, string $status, string $message, array $details = []): void {
+    private static function logIntegrityIssue(int $modelId, string $status, string $message, array $details = []): void
+    {
         if (!function_exists('getDB')) {
             return;
         }
@@ -405,7 +415,8 @@ class Integrity {
     /**
      * Mark an issue as resolved
      */
-    public static function resolveIssue(int $issueId, string $resolution): bool {
+    public static function resolveIssue(int $issueId, string $resolution): bool
+    {
         if (!function_exists('getDB')) {
             return false;
         }
@@ -427,7 +438,8 @@ class Integrity {
     /**
      * Recalculate and update hash for a model (after repair)
      */
-    public static function rehash(int $modelId): array {
+    public static function rehash(int $modelId): array
+    {
         $result = self::verify($modelId);
 
         if ($result['status'] === 'corrupted') {
@@ -457,7 +469,8 @@ class Integrity {
     /**
      * Calculate hashes for all files that don't have one
      */
-    public static function initializeHashes(int $batchSize = 100): array {
+    public static function initializeHashes(int $batchSize = 100): array
+    {
         if (!function_exists('getDB')) {
             return ['error' => 'Database not available'];
         }
@@ -495,7 +508,7 @@ if (class_exists('Scheduler')) {
     Scheduler::register(
         Scheduler::TASK_INTEGRITY_CHECK,
         '0 4 * * *', // Daily at 4am
-        function() {
+        function () {
             $result = Integrity::verifyAll(500); // Check up to 500 files per run
             return sprintf(
                 'Checked %d files: %d valid, %d corrupted, %d missing',

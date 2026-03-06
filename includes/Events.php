@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Event System for Silo
  *
@@ -10,7 +11,8 @@
  *   Events::emit('model.uploaded', ['model_id' => 123, 'user_id' => 1]);
  */
 
-class Events {
+class Events
+{
     private static array $listeners = [];
     private static bool $initialized = false;
     private static bool $loggingEnabled = true;
@@ -61,7 +63,8 @@ class Events {
     /**
      * Initialize the event system
      */
-    public static function init(): void {
+    public static function init(): void
+    {
         if (self::$initialized) {
             return;
         }
@@ -85,7 +88,8 @@ class Events {
      * @param int $priority Priority (higher runs first, default 10)
      * @return void
      */
-    public static function on(string $event, callable $callback, int $priority = 10): void {
+    public static function on(string $event, callable $callback, int $priority = 10): void
+    {
         if (!isset(self::$listeners[$event])) {
             self::$listeners[$event] = [];
         }
@@ -102,8 +106,9 @@ class Events {
     /**
      * Register a one-time listener
      */
-    public static function once(string $event, callable $callback, int $priority = 10): void {
-        $wrapper = function($data) use ($event, $callback, &$wrapper) {
+    public static function once(string $event, callable $callback, int $priority = 10): void
+    {
+        $wrapper = function ($data) use ($event, $callback, &$wrapper) {
             self::off($event, $wrapper);
             return $callback($data);
         };
@@ -114,7 +119,8 @@ class Events {
     /**
      * Remove a listener
      */
-    public static function off(string $event, ?callable $callback = null): void {
+    public static function off(string $event, ?callable $callback = null): void
+    {
         if ($callback === null) {
             // Remove all listeners for this event
             unset(self::$listeners[$event]);
@@ -139,7 +145,8 @@ class Events {
      * @param bool $async Run webhooks asynchronously (default true)
      * @return array Results from listeners
      */
-    public static function emit(string $event, array $data = [], bool $async = true): array {
+    public static function emit(string $event, array $data = [], bool $async = true): array
+    {
         self::init();
 
         $results = [];
@@ -200,7 +207,8 @@ class Events {
     /**
      * Emit an event asynchronously (fire and forget)
      */
-    public static function emitAsync(string $event, array $data = []): void {
+    public static function emitAsync(string $event, array $data = []): void
+    {
         // For true async, we'd need a queue system
         // For now, just emit normally but suppress errors
         try {
@@ -219,7 +227,8 @@ class Events {
     /**
      * Log an event to the database
      */
-    private static function logEvent(string $event, array $data): void {
+    private static function logEvent(string $event, array $data): void
+    {
         // Don't log system events to avoid recursion
         if (strpos($event, 'system.') === 0) {
             return;
@@ -259,7 +268,8 @@ class Events {
     /**
      * Handle listener errors
      */
-    private static function handleListenerError(string $event, Exception $e): void {
+    private static function handleListenerError(string $event, Exception $e): void
+    {
         if (function_exists('logError')) {
             logError('Event listener error', [
                 'event' => $event,
@@ -272,9 +282,10 @@ class Events {
     /**
      * Register default system listeners
      */
-    private static function registerDefaultListeners(): void {
+    private static function registerDefaultListeners(): void
+    {
         // Log security events
-        self::on(self::USER_LOGIN_FAILED, function($data) {
+        self::on(self::USER_LOGIN_FAILED, function ($data) {
             if (function_exists('logWarning')) {
                 logWarning('Failed login attempt', [
                     'username' => $data['username'] ?? 'unknown',
@@ -284,7 +295,7 @@ class Events {
         });
 
         // Activity logging for model events
-        self::on('model.*', function($data) {
+        self::on('model.*', function ($data) {
             if (function_exists('logActivity') && isset($data['model_id'])) {
                 $event = $data['_event'];
                 $action = str_replace('model.', '', $event);
@@ -296,14 +307,16 @@ class Events {
     /**
      * Get all registered listeners (for debugging)
      */
-    public static function getListeners(): array {
+    public static function getListeners(): array
+    {
         return self::$listeners;
     }
 
     /**
      * Clear all listeners (useful for testing)
      */
-    public static function clear(): void {
+    public static function clear(): void
+    {
         self::$listeners = [];
         self::$initialized = false;
     }
@@ -314,13 +327,15 @@ class Events {
 /**
  * Emit an event (shorthand)
  */
-function emit(string $event, array $data = []): array {
+function emit(string $event, array $data = []): array
+{
     return Events::emit($event, $data);
 }
 
 /**
  * Register an event listener (shorthand)
  */
-function on(string $event, callable $callback, int $priority = 10): void {
+function on(string $event, callable $callback, int $priority = 10): void
+{
     Events::on($event, $callback, $priority);
 }

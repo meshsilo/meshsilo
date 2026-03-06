@@ -1,17 +1,20 @@
 <?php
+
 /**
  * Security Headers Manager
  * Configure and apply security headers (CSP, HSTS, X-Frame-Options, etc.)
  */
 
-class SecurityHeaders {
+class SecurityHeaders
+{
     private static array $headers = [];
     private static bool $initialized = false;
 
     /**
      * Initialize headers from settings
      */
-    public static function init(): void {
+    public static function init(): void
+    {
         if (self::$initialized) {
             return;
         }
@@ -23,7 +26,8 @@ class SecurityHeaders {
     /**
      * Load security header settings
      */
-    private static function loadSettings(): array {
+    private static function loadSettings(): array
+    {
         $defaults = self::getDefaults();
 
         if (!function_exists('getSetting')) {
@@ -44,7 +48,8 @@ class SecurityHeaders {
     /**
      * Get default security headers configuration
      */
-    public static function getDefaults(): array {
+    public static function getDefaults(): array
+    {
         return [
             'hsts' => [
                 'enabled' => true,
@@ -113,7 +118,8 @@ class SecurityHeaders {
     /**
      * Apply all configured security headers
      */
-    public static function apply(): void {
+    public static function apply(): void
+    {
         self::init();
 
         if (headers_sent()) {
@@ -181,7 +187,8 @@ class SecurityHeaders {
     /**
      * Apply HSTS header
      */
-    private static function applyHSTS(): void {
+    private static function applyHSTS(): void
+    {
         $value = 'max-age=' . self::$headers['hsts']['max_age'];
 
         if (self::$headers['hsts']['include_subdomains']) {
@@ -198,7 +205,8 @@ class SecurityHeaders {
     /**
      * Apply Content Security Policy header
      */
-    private static function applyCSP(): void {
+    private static function applyCSP(): void
+    {
         $directives = [];
 
         foreach (self::$headers['csp']['directives'] as $directive => $sources) {
@@ -222,14 +230,15 @@ class SecurityHeaders {
     /**
      * Apply Permissions-Policy header
      */
-    private static function applyPermissionsPolicy(): void {
+    private static function applyPermissionsPolicy(): void
+    {
         $directives = [];
 
         foreach (self::$headers['permissions_policy']['directives'] as $feature => $allowlist) {
             if (empty($allowlist)) {
                 $directives[] = $feature . '=()';
             } else {
-                $directives[] = $feature . '=(' . implode(' ', array_map(function($v) {
+                $directives[] = $feature . '=(' . implode(' ', array_map(function ($v) {
                     return '"' . $v . '"';
                 }, $allowlist)) . ')';
             }
@@ -243,7 +252,8 @@ class SecurityHeaders {
     /**
      * Get current configuration
      */
-    public static function getConfig(): array {
+    public static function getConfig(): array
+    {
         self::init();
         return self::$headers;
     }
@@ -251,7 +261,8 @@ class SecurityHeaders {
     /**
      * Save security headers configuration
      */
-    public static function saveConfig(array $config): bool {
+    public static function saveConfig(array $config): bool
+    {
         if (!function_exists('setSetting')) {
             return false;
         }
@@ -268,7 +279,8 @@ class SecurityHeaders {
     /**
      * Validate configuration
      */
-    private static function validateConfig(array $config): array {
+    private static function validateConfig(array $config): array
+    {
         $defaults = self::getDefaults();
         $validated = [];
 
@@ -302,12 +314,16 @@ class SecurityHeaders {
                 if (is_array($sources)) {
                     $validated['csp']['directives'][$directive] = array_filter(
                         array_map('trim', $sources),
-                        function($s) { return !empty($s); }
+                        function ($s) {
+                            return !empty($s);
+                        }
                     );
                 } elseif (is_string($sources)) {
                     $validated['csp']['directives'][$directive] = array_filter(
                         array_map('trim', explode(' ', $sources)),
-                        function($s) { return !empty($s); }
+                        function ($s) {
+                            return !empty($s);
+                        }
                     );
                 }
             } else {
@@ -386,7 +402,8 @@ class SecurityHeaders {
     /**
      * Test headers and get a security score
      */
-    public static function analyze(): array {
+    public static function analyze(): array
+    {
         self::init();
 
         $score = 0;
@@ -496,9 +513,15 @@ class SecurityHeaders {
 
         // Cross-Origin policies (10 points)
         $coPoints = 0;
-        if (self::$headers['cross_origin_embedder_policy']['enabled']) $coPoints += 3;
-        if (self::$headers['cross_origin_opener_policy']['enabled']) $coPoints += 4;
-        if (self::$headers['cross_origin_resource_policy']['enabled']) $coPoints += 3;
+        if (self::$headers['cross_origin_embedder_policy']['enabled']) {
+            $coPoints += 3;
+        }
+        if (self::$headers['cross_origin_opener_policy']['enabled']) {
+            $coPoints += 4;
+        }
+        if (self::$headers['cross_origin_resource_policy']['enabled']) {
+            $coPoints += 3;
+        }
         $score += $coPoints;
 
         if ($coPoints < 10) {
@@ -511,11 +534,17 @@ class SecurityHeaders {
 
         // Calculate grade
         $grade = 'F';
-        if ($score >= 90) $grade = 'A+';
-        elseif ($score >= 80) $grade = 'A';
-        elseif ($score >= 70) $grade = 'B';
-        elseif ($score >= 60) $grade = 'C';
-        elseif ($score >= 50) $grade = 'D';
+        if ($score >= 90) {
+            $grade = 'A+';
+        } elseif ($score >= 80) {
+            $grade = 'A';
+        } elseif ($score >= 70) {
+            $grade = 'B';
+        } elseif ($score >= 60) {
+            $grade = 'C';
+        } elseif ($score >= 50) {
+            $grade = 'D';
+        }
 
         return [
             'score' => $score,
@@ -529,14 +558,19 @@ class SecurityHeaders {
     /**
      * Generate .htaccess snippet for Apache
      */
-    public static function generateApacheConfig(): string {
+    public static function generateApacheConfig(): string
+    {
         self::init();
         $lines = ["# Security Headers - Generated by Silo", ""];
 
         if (self::$headers['hsts']['enabled']) {
             $value = 'max-age=' . self::$headers['hsts']['max_age'];
-            if (self::$headers['hsts']['include_subdomains']) $value .= '; includeSubDomains';
-            if (self::$headers['hsts']['preload']) $value .= '; preload';
+            if (self::$headers['hsts']['include_subdomains']) {
+                $value .= '; includeSubDomains';
+            }
+            if (self::$headers['hsts']['preload']) {
+                $value .= '; preload';
+            }
             $lines[] = 'Header always set Strict-Transport-Security "' . $value . '"';
         }
 
@@ -572,14 +606,19 @@ class SecurityHeaders {
     /**
      * Generate nginx config snippet
      */
-    public static function generateNginxConfig(): string {
+    public static function generateNginxConfig(): string
+    {
         self::init();
         $lines = ["# Security Headers - Generated by Silo", ""];
 
         if (self::$headers['hsts']['enabled']) {
             $value = 'max-age=' . self::$headers['hsts']['max_age'];
-            if (self::$headers['hsts']['include_subdomains']) $value .= '; includeSubDomains';
-            if (self::$headers['hsts']['preload']) $value .= '; preload';
+            if (self::$headers['hsts']['include_subdomains']) {
+                $value .= '; includeSubDomains';
+            }
+            if (self::$headers['hsts']['preload']) {
+                $value .= '; preload';
+            }
             $lines[] = 'add_header Strict-Transport-Security "' . $value . '" always;';
         }
 

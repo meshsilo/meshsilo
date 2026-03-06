@@ -48,19 +48,19 @@ if (!function_exists('isFeatureEnabled')) {
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.models') ?>" <?= ($adminPage ?? '') === 'models' ? 'class="active"' : '' ?>>Models</a>
-                            <?php if (isFeatureEnabled('categories')): ?>
+                            <?php if (isFeatureEnabled('categories')) : ?>
                             <a href="<?= route('admin.categories') ?>" <?= ($adminPage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
                             <?php endif; ?>
-                            <?php if (isFeatureEnabled('collections')): ?>
+                            <?php if (isFeatureEnabled('collections')) : ?>
                             <a href="<?= route('admin.collections') ?>" <?= ($adminPage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
                             <?php endif; ?>
-                            <?php if (isFeatureEnabled('tags')): ?>
+                            <?php if (isFeatureEnabled('tags')) : ?>
                             <a href="<?= route('admin.tags') ?>" <?= ($adminPage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
                             <?php endif; ?>
                         </div>
                     </div>
 
-                    <?php if (isFeatureEnabled('api_keys')): ?>
+                    <?php if (isFeatureEnabled('api_keys')) : ?>
                     <div class="nav-category" data-category="integration">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Integration</span>
@@ -83,7 +83,7 @@ if (!function_exists('isFeatureEnabled')) {
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active"' : '' ?>>Security Headers</a>
-                            <?php if (isFeatureEnabled('activity_log')): ?>
+                            <?php if (isFeatureEnabled('activity_log')) : ?>
                             <a href="<?= route('admin.activity') ?>" <?= ($adminPage ?? '') === 'activity' ? 'class="active"' : '' ?>>Activity Log</a>
                             <a href="<?= route('admin.audit-log') ?>" <?= ($adminPage ?? '') === 'audit-log' ? 'class="active"' : '' ?>>Audit Log</a>
                             <?php endif; ?>
@@ -105,8 +105,8 @@ if (!function_exists('isFeatureEnabled')) {
 <?php
 if (class_exists('PluginManager')) {
     $pluginMenuGroups = PluginManager::getInstance()->getAdminMenuItems();
-    foreach ($pluginMenuGroups as $category => $items):
-?>
+    foreach ($pluginMenuGroups as $category => $items) :
+        ?>
                     <div class="nav-category" data-category="plugin-<?= htmlspecialchars(strtolower(str_replace(' ', '-', $category))) ?>">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span><?= htmlspecialchars($category) ?></span>
@@ -115,12 +115,12 @@ if (class_exists('PluginManager')) {
                             </svg>
                         </button>
                         <div class="nav-links">
-                            <?php foreach ($items as $item): ?>
+                            <?php foreach ($items as $item) : ?>
                             <a href="<?= route($item['route'] ?? 'admin.plugins') ?>" <?= ($adminPage ?? '') === $item['slug'] ? 'class="active"' : '' ?>><?= htmlspecialchars($item['label']) ?></a>
                             <?php endforeach; ?>
                         </div>
                     </div>
-<?php
+        <?php
     endforeach;
 }
 ?>

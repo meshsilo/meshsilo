@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Rate Limiting Middleware
  *
@@ -8,7 +9,8 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class RateLimitMiddleware implements MiddlewareInterface {
+class RateLimitMiddleware implements MiddlewareInterface
+{
     private int $maxRequests;
     private int $windowSeconds;
     private string $prefix;
@@ -43,7 +45,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Handle the middleware
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         // Check if rate limiting is enabled
         if (function_exists('getSetting') && getSetting('rate_limiting', '1') !== '1') {
             return true;
@@ -60,7 +63,7 @@ class RateLimitMiddleware implements MiddlewareInterface {
         $windowStart = $now - $this->windowSeconds;
 
         // Filter out old requests
-        $requests = array_filter($data['requests'] ?? [], function($timestamp) use ($windowStart) {
+        $requests = array_filter($data['requests'] ?? [], function ($timestamp) use ($windowStart) {
             return $timestamp > $windowStart;
         });
 
@@ -85,7 +88,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Get unique identifier for the requester
      */
-    private function getIdentifier(): string {
+    private function getIdentifier(): string
+    {
         // Prefer user ID if logged in
         if (function_exists('isLoggedIn') && isLoggedIn()) {
             $user = getCurrentUser();
@@ -109,7 +113,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Get rate limit data from storage
      */
-    private function getRateLimitData(string $key): array {
+    private function getRateLimitData(string $key): array
+    {
         // Try database first if available
         if ($this->useDatabase()) {
             return $this->getDatabaseData($key);
@@ -122,7 +127,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Save rate limit data to storage
      */
-    private function saveRateLimitData(string $key, array $data): void {
+    private function saveRateLimitData(string $key, array $data): void
+    {
         if ($this->useDatabase()) {
             $this->saveDatabaseData($key, $data);
         } else {
@@ -133,7 +139,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Check if we should use database storage
      */
-    private function useDatabase(): bool {
+    private function useDatabase(): bool
+    {
         // If database storage already failed this request, use file storage
         if (self::$databaseFailed) {
             return false;
@@ -146,7 +153,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Get data from database
      */
-    private function getDatabaseData(string $key): array {
+    private function getDatabaseData(string $key): array
+    {
         try {
             $db = getDB();
             $stmt = $db->prepare('SELECT data, expires_at FROM rate_limits WHERE key_name = :key');
@@ -169,7 +177,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Save data to database
      */
-    private function saveDatabaseData(string $key, array $data): void {
+    private function saveDatabaseData(string $key, array $data): void
+    {
         try {
             $db = getDB();
             $expiresAt = time() + $this->windowSeconds + 60; // Add buffer
@@ -201,7 +210,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Get data from file storage
      */
-    private function getFileData(string $key): array {
+    private function getFileData(string $key): array
+    {
         $file = $this->getFilePath($key);
 
         if (!file_exists($file)) {
@@ -217,7 +227,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Save data to file storage
      */
-    private function saveFileData(string $key, array $data): void {
+    private function saveFileData(string $key, array $data): void
+    {
         $file = $this->getFilePath($key);
         $dir = dirname($file);
 
@@ -231,7 +242,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Get file path for a key
      */
-    private function getFilePath(string $key): string {
+    private function getFilePath(string $key): string
+    {
         $hash = md5($key);
         $subdir = substr($hash, 0, 2);
         return self::STORAGE_DIR . '/' . $subdir . '/' . $hash . '.json';
@@ -240,7 +252,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Send rate limit exceeded response
      */
-    private function sendRateLimitResponse(array $requests, int $now): void {
+    private function sendRateLimitResponse(array $requests, int $now): void
+    {
         $oldestRequest = min($requests);
         $retryAfter = $oldestRequest + $this->windowSeconds - $now;
 
@@ -314,7 +327,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Add rate limit headers to response
      */
-    private function addRateLimitHeaders(int $currentCount): void {
+    private function addRateLimitHeaders(int $currentCount): void
+    {
         $remaining = max(0, $this->maxRequests - $currentCount);
 
         header('X-RateLimit-Limit: ' . $this->maxRequests);
@@ -325,7 +339,8 @@ class RateLimitMiddleware implements MiddlewareInterface {
     /**
      * Clean up expired rate limit data (call periodically)
      */
-    public static function cleanup(): int {
+    public static function cleanup(): int
+    {
         $cleaned = 0;
 
         // Clean file storage
@@ -374,53 +389,61 @@ class RateLimitMiddleware implements MiddlewareInterface {
 /**
  * Preset rate limits for common use cases
  */
-class RateLimits {
+class RateLimits
+{
     /**
      * Standard rate limit (60 requests/minute)
      */
-    public static function standard(): RateLimitMiddleware {
+    public static function standard(): RateLimitMiddleware
+    {
         return new RateLimitMiddleware(60, 60, 'standard');
     }
 
     /**
      * API rate limit (100 requests/minute)
      */
-    public static function api(): RateLimitMiddleware {
+    public static function api(): RateLimitMiddleware
+    {
         return new RateLimitMiddleware(100, 60, 'api');
     }
 
     /**
      * Auth rate limit (5 attempts/minute for login/password reset)
      */
-    public static function auth(): RateLimitMiddleware {
+    public static function auth(): RateLimitMiddleware
+    {
         return new RateLimitMiddleware(5, 60, 'auth');
     }
 
     /**
      * Upload rate limit (10 uploads/minute)
      */
-    public static function upload(): RateLimitMiddleware {
+    public static function upload(): RateLimitMiddleware
+    {
         return new RateLimitMiddleware(10, 60, 'upload');
     }
 
     /**
      * Search rate limit (30 searches/minute)
      */
-    public static function search(): RateLimitMiddleware {
+    public static function search(): RateLimitMiddleware
+    {
         return new RateLimitMiddleware(30, 60, 'search');
     }
 
     /**
      * Download rate limit (100 downloads/hour)
      */
-    public static function download(): RateLimitMiddleware {
+    public static function download(): RateLimitMiddleware
+    {
         return new RateLimitMiddleware(100, 3600, 'download');
     }
 
     /**
      * Strict rate limit (10 requests/minute for sensitive operations)
      */
-    public static function strict(): RateLimitMiddleware {
+    public static function strict(): RateLimitMiddleware
+    {
         return new RateLimitMiddleware(10, 60, 'strict');
     }
 }

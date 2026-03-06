@@ -1,4 +1,5 @@
 <?php
+
 /**
  * API Versioning
  *
@@ -8,7 +9,8 @@
  * - Query param: /api/models?version=1
  */
 
-class ApiVersion {
+class ApiVersion
+{
     /** Current/default API version */
     const CURRENT_VERSION = 1;
 
@@ -27,7 +29,8 @@ class ApiVersion {
     private int $version;
     private string $detectedFrom;
 
-    public function __construct(?int $version = null, string $detectedFrom = 'default') {
+    public function __construct(?int $version = null, string $detectedFrom = 'default')
+    {
         $this->version = $version ?? self::CURRENT_VERSION;
         $this->detectedFrom = $detectedFrom;
     }
@@ -35,7 +38,8 @@ class ApiVersion {
     /**
      * Detect version from request
      */
-    public static function fromRequest(): self {
+    public static function fromRequest(): self
+    {
         // 1. Check URL path for /api/v{N}/
         $uri = $_SERVER['REQUEST_URI'] ?? '';
         if (preg_match('#/api/v(\d+)/#', $uri, $matches)) {
@@ -65,35 +69,40 @@ class ApiVersion {
     /**
      * Get the detected version
      */
-    public function getVersion(): int {
+    public function getVersion(): int
+    {
         return $this->version;
     }
 
     /**
      * Get how the version was detected
      */
-    public function getDetectedFrom(): string {
+    public function getDetectedFrom(): string
+    {
         return $this->detectedFrom;
     }
 
     /**
      * Check if this version is supported
      */
-    public function isSupported(): bool {
+    public function isSupported(): bool
+    {
         return in_array($this->version, self::SUPPORTED_VERSIONS);
     }
 
     /**
      * Check if this version is deprecated
      */
-    public function isDeprecated(): bool {
+    public function isDeprecated(): bool
+    {
         return in_array($this->version, self::DEPRECATED_VERSIONS);
     }
 
     /**
      * Get sunset date for deprecated version
      */
-    public function getSunsetDate(): ?string {
+    public function getSunsetDate(): ?string
+    {
         /** @phpstan-ignore nullCoalesce.offset */
         return self::SUNSET_DATES[$this->version] ?? null;
     }
@@ -101,7 +110,8 @@ class ApiVersion {
     /**
      * Validate version and throw exception if unsupported
      */
-    public function validate(): void {
+    public function validate(): void
+    {
         if (!$this->isSupported()) {
             $supported = implode(', ', self::SUPPORTED_VERSIONS);
             throw new Exception(
@@ -114,7 +124,8 @@ class ApiVersion {
     /**
      * Add deprecation headers if needed
      */
-    public function addDeprecationHeaders(): void {
+    public function addDeprecationHeaders(): void
+    {
         if ($this->isDeprecated()) {
             header('Deprecation: true');
             if ($sunsetDate = $this->getSunsetDate()) {
@@ -130,14 +141,16 @@ class ApiVersion {
     /**
      * Check if version is at least the specified version
      */
-    public function isAtLeast(int $minVersion): bool {
+    public function isAtLeast(int $minVersion): bool
+    {
         return $this->version >= $minVersion;
     }
 
     /**
      * Get version-specific route file if it exists
      */
-    public function getRouteFile(string $baseFile): string {
+    public function getRouteFile(string $baseFile): string
+    {
         $dir = dirname($baseFile);
         $name = basename($baseFile, '.php');
 
@@ -154,7 +167,8 @@ class ApiVersion {
     /**
      * Get version info for API response
      */
-    public function getVersionInfo(): array {
+    public function getVersionInfo(): array
+    {
         return [
             'version' => $this->version,
             'current' => self::CURRENT_VERSION,
@@ -167,14 +181,16 @@ class ApiVersion {
     /**
      * Strip version prefix from URI
      */
-    public static function stripVersionFromUri(string $uri): string {
+    public static function stripVersionFromUri(string $uri): string
+    {
         return preg_replace('#/v\d+/#', '/', $uri);
     }
 
     /**
      * Get documentation URL for version
      */
-    public function getDocsUrl(): string {
+    public function getDocsUrl(): string
+    {
         $baseUrl = defined('SITE_URL') ? SITE_URL : '';
         return "{$baseUrl}/api/v{$this->version}/docs";
     }
@@ -183,7 +199,8 @@ class ApiVersion {
 /**
  * Helper function to get current API version
  */
-function api_version(): ApiVersion {
+function api_version(): ApiVersion
+{
     static $version = null;
     if ($version === null) {
         $version = ApiVersion::fromRequest();
@@ -194,7 +211,8 @@ function api_version(): ApiVersion {
 /**
  * Helper to check minimum version requirement
  */
-function api_requires_version(int $minVersion): void {
+function api_requires_version(int $minVersion): void
+{
     $version = api_version();
     if (!$version->isAtLeast($minVersion)) {
         throw new Exception(

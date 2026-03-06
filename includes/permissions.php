@@ -1,4 +1,5 @@
 <?php
+
 // Permission constants - Basic
 define('PERM_UPLOAD', 'upload');
 define('PERM_DELETE', 'delete');
@@ -52,7 +53,8 @@ define('ADMIN_PERMISSIONS', [
 /**
  * Check if current user has a specific permission
  */
-function hasPermission($permission) {
+function hasPermission($permission)
+{
     $user = getCurrentUser();
     if (!$user) {
         return false;
@@ -72,7 +74,8 @@ function hasPermission($permission) {
  * Get all permissions for a user (combining direct and group permissions)
  * Results are cached per-request to avoid redundant DB queries.
  */
-function getUserPermissions($userId) {
+function getUserPermissions($userId)
+{
     // Per-request cache to avoid N+1 queries
     static $cache = [];
     if (isset($cache[$userId])) {
@@ -139,7 +142,8 @@ function getUserPermissions($userId) {
 /**
  * Get user's groups
  */
-function getUserGroups($userId) {
+function getUserGroups($userId)
+{
     $db = getDB();
     $stmt = $db->prepare('
         SELECT g.*
@@ -161,7 +165,8 @@ function getUserGroups($userId) {
 /**
  * Add user to a group
  */
-function addUserToGroup($userId, $groupId) {
+function addUserToGroup($userId, $groupId)
+{
     $db = getDB();
     try {
         $stmt = $db->prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (:user_id, :group_id)');
@@ -177,7 +182,8 @@ function addUserToGroup($userId, $groupId) {
 /**
  * Remove user from a group
  */
-function removeUserFromGroup($userId, $groupId) {
+function removeUserFromGroup($userId, $groupId)
+{
     $db = getDB();
     try {
         $stmt = $db->prepare('DELETE FROM user_groups WHERE user_id = :user_id AND group_id = :group_id');
@@ -193,7 +199,8 @@ function removeUserFromGroup($userId, $groupId) {
 /**
  * Get all groups
  */
-function getAllGroups() {
+function getAllGroups()
+{
     $db = getDB();
     $result = $db->query('SELECT * FROM groups ORDER BY is_system DESC, name ASC');
     $groups = [];
@@ -207,7 +214,8 @@ function getAllGroups() {
 /**
  * Get a single group by ID
  */
-function getGroup($groupId) {
+function getGroup($groupId)
+{
     $db = getDB();
     $stmt = $db->prepare('SELECT * FROM groups WHERE id = :id');
     $stmt->bindValue(':id', $groupId, PDO::PARAM_INT);
@@ -222,7 +230,8 @@ function getGroup($groupId) {
 /**
  * Create a new group
  */
-function createGroup($name, $description, $permissions) {
+function createGroup($name, $description, $permissions)
+{
     $db = getDB();
     try {
         $stmt = $db->prepare('INSERT INTO groups (name, description, permissions) VALUES (:name, :description, :permissions)');
@@ -240,7 +249,8 @@ function createGroup($name, $description, $permissions) {
 /**
  * Update a group
  */
-function updateGroup($groupId, $name, $description, $permissions) {
+function updateGroup($groupId, $name, $description, $permissions)
+{
     $db = getDB();
     try {
         $stmt = $db->prepare('UPDATE groups SET name = :name, description = :description, permissions = :permissions WHERE id = :id AND is_system = 0');
@@ -258,7 +268,8 @@ function updateGroup($groupId, $name, $description, $permissions) {
 /**
  * Update system group permissions only
  */
-function updateSystemGroupPermissions($groupId, $permissions) {
+function updateSystemGroupPermissions($groupId, $permissions)
+{
     $db = getDB();
     try {
         $stmt = $db->prepare('UPDATE groups SET permissions = :permissions WHERE id = :id');
@@ -274,7 +285,8 @@ function updateSystemGroupPermissions($groupId, $permissions) {
 /**
  * Delete a group (only non-system groups)
  */
-function deleteGroup($groupId) {
+function deleteGroup($groupId)
+{
     $db = getDB();
     try {
         // Check if it's a system group
@@ -299,7 +311,8 @@ function deleteGroup($groupId) {
 /**
  * Get group members
  */
-function getGroupMembers($groupId) {
+function getGroupMembers($groupId)
+{
     $db = getDB();
     $stmt = $db->prepare('
         SELECT u.*
@@ -321,7 +334,8 @@ function getGroupMembers($groupId) {
 /**
  * Set permissions for a user (direct permissions)
  */
-function setUserPermissions($userId, $permissions) {
+function setUserPermissions($userId, $permissions)
+{
     $db = getDB();
     $stmt = $db->prepare('UPDATE users SET permissions = :permissions WHERE id = :id');
     $stmt->bindValue(':permissions', json_encode($permissions), PDO::PARAM_STR);
@@ -332,7 +346,8 @@ function setUserPermissions($userId, $permissions) {
 /**
  * Require a permission - redirect if not authorized
  */
-function requirePermission($permission, $redirectUrl = 'index.php') {
+function requirePermission($permission, $redirectUrl = 'index.php')
+{
     if (!hasPermission($permission)) {
         logWarning('Permission denied', [
             'user_id' => $_SESSION['user_id'] ?? null,
@@ -348,140 +363,160 @@ function requirePermission($permission, $redirectUrl = 'index.php') {
 /**
  * Check if user can upload models
  */
-function canUpload() {
+function canUpload()
+{
     return hasPermission(PERM_UPLOAD);
 }
 
 /**
  * Check if user can delete models
  */
-function canDelete() {
+function canDelete()
+{
     return hasPermission(PERM_DELETE);
 }
 
 /**
  * Check if user can edit models
  */
-function canEdit() {
+function canEdit()
+{
     return hasPermission(PERM_EDIT);
 }
 
 /**
  * Check if user is admin
  */
-function isAdmin() {
+function isAdmin()
+{
     return hasPermission(PERM_ADMIN);
 }
 
 /**
  * Check if user can view stats
  */
-function canViewStats() {
+function canViewStats()
+{
     return hasPermission(PERM_VIEW_STATS);
 }
 
 /**
  * Check if user can convert files
  */
-function canConvert() {
+function canConvert()
+{
     return hasPermission(PERM_CONVERT);
 }
 
 /**
  * Check if user can manage users
  */
-function canManageUsers() {
+function canManageUsers()
+{
     return hasPermission(PERM_MANAGE_USERS);
 }
 
 /**
  * Check if user can manage groups
  */
-function canManageGroups() {
+function canManageGroups()
+{
     return hasPermission(PERM_MANAGE_GROUPS);
 }
 
 /**
  * Check if user can manage categories
  */
-function canManageCategories() {
+function canManageCategories()
+{
     return hasPermission(PERM_MANAGE_CATEGORIES);
 }
 
 /**
  * Check if user can manage collections
  */
-function canManageCollections() {
+function canManageCollections()
+{
     return hasPermission(PERM_MANAGE_COLLECTIONS);
 }
 
 /**
  * Check if user can manage settings
  */
-function canManageSettings() {
+function canManageSettings()
+{
     return hasPermission(PERM_MANAGE_SETTINGS);
 }
 
 /**
  * Check if user can view logs
  */
-function canViewLogs() {
+function canViewLogs()
+{
     return hasPermission(PERM_VIEW_LOGS);
 }
 
 /**
  * Check if user can save searches
  */
-function canSaveSearches() {
+function canSaveSearches()
+{
     return hasPermission(PERM_SAVE_SEARCHES);
 }
 
 /**
  * Check if user can manage sessions
  */
-function canManageSessions() {
+function canManageSessions()
+{
     return hasPermission(PERM_MANAGE_SESSIONS);
 }
 
 /**
  * Check if user can manage security settings
  */
-function canManageSecurity() {
+function canManageSecurity()
+{
     return hasPermission(PERM_MANAGE_SECURITY);
 }
 
 /**
  * Check if user can view audit log
  */
-function canViewAuditLog() {
+function canViewAuditLog()
+{
     return hasPermission(PERM_VIEW_AUDIT_LOG);
 }
 
 /**
  * Check if user can manage API keys
  */
-function canManageApiKeys() {
+function canManageApiKeys()
+{
     return hasPermission(PERM_MANAGE_API_KEYS);
 }
 
 /**
  * Check if user can manage scheduled tasks
  */
-function canManageScheduler() {
+function canManageScheduler()
+{
     return hasPermission(PERM_MANAGE_SCHEDULER);
 }
 
 /**
  * Check if user can manage storage
  */
-function canManageStorage() {
+function canManageStorage()
+{
     return hasPermission(PERM_MANAGE_STORAGE);
 }
 
 /**
  * Get list of all available permissions with descriptions
  */
-function getAllPermissions() {
+function getAllPermissions()
+{
     $permissions = [
         // Basic permissions
         PERM_UPLOAD => 'Upload new models',
@@ -519,7 +554,8 @@ function getAllPermissions() {
 /**
  * Get permissions grouped by category
  */
-function getPermissionsByCategory() {
+function getPermissionsByCategory()
+{
     $categories = [
         'Basic' => [
             PERM_UPLOAD => 'Upload new models',

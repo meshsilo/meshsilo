@@ -1,4 +1,5 @@
 <?php
+
 /**
  * STL to 3MF Converter
  * Converts STL files to 3MF format for better compression
@@ -6,16 +7,20 @@
 
 require_once __DIR__ . '/dedup.php';
 
-class STLConverter {
+class STLConverter
+{
     private $vertices = [];
     private $triangles = [];
 
     /**
      * Check if an STL file is binary or ASCII
      */
-    public function isBinarySTL($filePath) {
+    public function isBinarySTL($filePath)
+    {
         $handle = fopen($filePath, 'rb');
-        if (!$handle) return false;
+        if (!$handle) {
+            return false;
+        }
 
         // Read first 80 bytes (header) + 4 bytes (triangle count)
         $header = fread($handle, 80);
@@ -41,7 +46,8 @@ class STLConverter {
     /**
      * Parse a binary STL file
      */
-    public function parseBinarySTL($filePath) {
+    public function parseBinarySTL($filePath)
+    {
         $this->vertices = [];
         $this->triangles = [];
 
@@ -105,7 +111,8 @@ class STLConverter {
     /**
      * Parse an ASCII STL file
      */
-    public function parseASCIISTL($filePath) {
+    public function parseASCIISTL($filePath)
+    {
         $this->vertices = [];
         $this->triangles = [];
 
@@ -158,7 +165,8 @@ class STLConverter {
     /**
      * Parse an STL file (auto-detect format)
      */
-    public function parseSTL($filePath) {
+    public function parseSTL($filePath)
+    {
         if ($this->isBinarySTL($filePath)) {
             return $this->parseBinarySTL($filePath);
         } else {
@@ -169,7 +177,8 @@ class STLConverter {
     /**
      * Generate 3MF XML content
      */
-    private function generate3MFModel() {
+    private function generate3MFModel()
+    {
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $xml .= '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">' . "\n";
         $xml .= '  <resources>' . "\n";
@@ -204,7 +213,8 @@ class STLConverter {
     /**
      * Generate Content_Types XML
      */
-    private function generateContentTypes() {
+    private function generateContentTypes()
+    {
         return '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' . "\n" .
                '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />' . "\n" .
@@ -215,7 +225,8 @@ class STLConverter {
     /**
      * Generate relationships XML
      */
-    private function generateRels() {
+    private function generateRels()
+    {
         return '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' . "\n" .
                '  <Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" />' . "\n" .
@@ -228,7 +239,8 @@ class STLConverter {
      * @param string $outputPath Path for output 3MF file (optional)
      * @return array Result with success status and file info
      */
-    public function convertTo3MF($stlPath, $outputPath = null) {
+    public function convertTo3MF($stlPath, $outputPath = null)
+    {
         if (!is_file($stlPath)) {
             throw new Exception('STL file not found: ' . $stlPath);
         }
@@ -281,7 +293,8 @@ class STLConverter {
      * @param string $stlPath Path to STL file
      * @return array Estimated sizes and savings
      */
-    public function estimateConversion($stlPath) {
+    public function estimateConversion($stlPath)
+    {
         if (!is_file($stlPath)) {
             throw new Exception('STL file not found');
         }
@@ -318,7 +331,8 @@ class STLConverter {
 /**
  * Helper function to convert a model part
  */
-function convertPartTo3MF($partId) {
+function convertPartTo3MF($partId)
+{
     $db = getDB();
 
     // Get part details
@@ -416,7 +430,8 @@ function convertPartTo3MF($partId) {
 /**
  * Estimate conversion savings for a part
  */
-function estimatePartConversion($partId) {
+function estimatePartConversion($partId)
+{
     $db = getDB();
 
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Background Job Queue
  *
@@ -10,21 +11,24 @@
  * - Failed jobs can be retried
  */
 
-class JobQueue {
+class JobQueue
+{
     private static ?self $instance = null;
     private PDO $db;
     private string $table = 'jobs';
     private int $maxAttempts = 3;
     private int $retryDelay = 60; // seconds
 
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->db = getDB();
         $this->ensureTable();
     }
@@ -32,7 +36,8 @@ class JobQueue {
     /**
      * Ensure jobs table exists
      */
-    private function ensureTable(): void {
+    private function ensureTable(): void
+    {
         $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
 
         if ($driver === 'sqlite') {
@@ -73,7 +78,8 @@ class JobQueue {
     /**
      * Push a job onto the queue
      */
-    public function push(string $jobClass, array $data = [], string $queue = 'default', int $delay = 0): int {
+    public function push(string $jobClass, array $data = [], string $queue = 'default', int $delay = 0): int
+    {
         $payload = json_encode([
             'class' => $jobClass,
             'data' => $data,
@@ -101,14 +107,16 @@ class JobQueue {
     /**
      * Push a job to run later
      */
-    public function later(int $delay, string $jobClass, array $data = [], string $queue = 'default'): int {
+    public function later(int $delay, string $jobClass, array $data = [], string $queue = 'default'): int
+    {
         return $this->push($jobClass, $data, $queue, $delay);
     }
 
     /**
      * Get the next available job
      */
-    public function pop(string $queue = 'default'): ?array {
+    public function pop(string $queue = 'default'): ?array
+    {
         $now = time();
 
         // Start transaction
@@ -156,7 +164,6 @@ class JobQueue {
 
             $job['payload'] = json_decode($job['payload'], true);
             return $job;
-
         } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
@@ -166,7 +173,8 @@ class JobQueue {
     /**
      * Mark a job as complete
      */
-    public function complete(int $jobId): bool {
+    public function complete(int $jobId): bool
+    {
         $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = :id");
         return $stmt->execute([':id' => $jobId]);
     }
@@ -174,7 +182,8 @@ class JobQueue {
     /**
      * Mark a job as failed
      */
-    public function fail(int $jobId, string $error): bool {
+    public function fail(int $jobId, string $error): bool
+    {
         $job = $this->getJob($jobId);
 
         if ($job && $job['attempts'] < $this->maxAttempts) {
@@ -211,7 +220,8 @@ class JobQueue {
     /**
      * Release a reserved job back to the queue
      */
-    public function release(int $jobId, int $delay = 0): bool {
+    public function release(int $jobId, int $delay = 0): bool
+    {
         $stmt = $this->db->prepare("
             UPDATE {$this->table}
             SET reserved_at = NULL, available_at = :available_at
@@ -227,7 +237,8 @@ class JobQueue {
     /**
      * Get a job by ID
      */
-    public function getJob(int $jobId): ?array {
+    public function getJob(int $jobId): ?array
+    {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id");
         $stmt->execute([':id' => $jobId]);
         $job = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -242,7 +253,8 @@ class JobQueue {
     /**
      * Get queue statistics
      */
-    public function stats(string $queue = 'default'): array {
+    public function stats(string $queue = 'default'): array
+    {
         $now = time();
 
         $pending = $this->db->prepare("
@@ -273,7 +285,8 @@ class JobQueue {
     /**
      * Clear failed jobs
      */
-    public function clearFailed(string $queue = 'default'): int {
+    public function clearFailed(string $queue = 'default'): int
+    {
         $stmt = $this->db->prepare("
             DELETE FROM {$this->table}
             WHERE queue = :queue AND failed_at IS NOT NULL
@@ -285,7 +298,8 @@ class JobQueue {
     /**
      * Retry failed jobs
      */
-    public function retryFailed(string $queue = 'default'): int {
+    public function retryFailed(string $queue = 'default'): int
+    {
         $stmt = $this->db->prepare("
             UPDATE {$this->table}
             SET failed_at = NULL, attempts = 0, reserved_at = NULL, available_at = :now
@@ -298,7 +312,8 @@ class JobQueue {
     /**
      * Release stale reserved jobs (stuck workers)
      */
-    public function releaseStale(int $timeout = 300): int {
+    public function releaseStale(int $timeout = 300): int
+    {
         $stmt = $this->db->prepare("
             UPDATE {$this->table}
             SET reserved_at = NULL
@@ -315,10 +330,12 @@ class JobQueue {
 // Base Job Class
 // ========================================
 
-abstract class BaseJob {
+abstract class BaseJob
+{
     protected array $data = [];
 
-    public function __construct(array $data = []) {
+    public function __construct(array $data = [])
+    {
         $this->data = $data;
     }
 
@@ -330,7 +347,8 @@ abstract class BaseJob {
     /**
      * Handle job failure
      */
-    public function failed(Exception $e): void {
+    public function failed(Exception $e): void
+    {
         logError('Job failed: ' . static::class, [
             'error' => $e->getMessage(),
             'data' => $this->data,
@@ -342,10 +360,14 @@ abstract class BaseJob {
 // Example Jobs
 // ========================================
 
-class GenerateThumbnailJob extends BaseJob {
-    public function handle(): void {
+class GenerateThumbnailJob extends BaseJob
+{
+    public function handle(): void
+    {
         $modelId = $this->data['model_id'] ?? null;
-        if (!$modelId) return;
+        if (!$modelId) {
+            return;
+        }
 
         // Generate thumbnail
         if (class_exists('ThumbnailGenerator') && function_exists('getDB')) {
@@ -364,10 +386,14 @@ class GenerateThumbnailJob extends BaseJob {
     }
 }
 
-class AnalyzeMeshJob extends BaseJob {
-    public function handle(): void {
+class AnalyzeMeshJob extends BaseJob
+{
+    public function handle(): void
+    {
         $modelId = $this->data['model_id'] ?? null;
-        if (!$modelId) return;
+        if (!$modelId) {
+            return;
+        }
 
         // Analyze mesh
         if (class_exists('MeshAnalyzer')) {
@@ -377,10 +403,14 @@ class AnalyzeMeshJob extends BaseJob {
     }
 }
 
-class OptimizeImageJob extends BaseJob {
-    public function handle(): void {
+class OptimizeImageJob extends BaseJob
+{
+    public function handle(): void
+    {
         $path = $this->data['path'] ?? null;
-        if (!$path) return;
+        if (!$path) {
+            return;
+        }
 
         // Convert to WebP
         if (class_exists('ImageOptimizer')) {
@@ -397,7 +427,8 @@ class OptimizeImageJob extends BaseJob {
  * Dispatch a job to the queue
  */
 if (!function_exists('dispatch')) {
-    function dispatch(string $jobClass, array $data = [], string $queue = 'default'): int {
+    function dispatch(string $jobClass, array $data = [], string $queue = 'default'): int
+    {
         return JobQueue::getInstance()->push($jobClass, $data, $queue);
     }
 }
@@ -406,7 +437,8 @@ if (!function_exists('dispatch')) {
  * Dispatch a job to run later
  */
 if (!function_exists('dispatch_later')) {
-    function dispatch_later(int $delay, string $jobClass, array $data = [], string $queue = 'default'): int {
+    function dispatch_later(int $delay, string $jobClass, array $data = [], string $queue = 'default'): int
+    {
         return JobQueue::getInstance()->later($delay, $jobClass, $data, $queue);
     }
 }

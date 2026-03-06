@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Signed URLs for Silo
  *
@@ -6,7 +7,8 @@
  * Useful for download links, share links, password reset links, etc.
  */
 
-class SignedUrl {
+class SignedUrl
+{
     private const HASH_ALGO = 'sha256';
     private const SIGNATURE_PARAM = 'signature';
     private const EXPIRES_PARAM = 'expires';
@@ -14,7 +16,8 @@ class SignedUrl {
     /**
      * Get the signing key
      */
-    private static function getKey(): string {
+    private static function getKey(): string
+    {
         // Use app secret if defined, otherwise generate from database path
         if (defined('APP_SECRET')) {
             return APP_SECRET;
@@ -46,7 +49,8 @@ class SignedUrl {
      * SignedUrl::create('/download/123', time() + 3600);  // Expires in 1 hour
      * SignedUrl::create('/share/abc', time() + 86400);    // Expires in 24 hours
      */
-    public static function create(string $url, ?int $expiresAt = null, array $additionalParams = []): string {
+    public static function create(string $url, ?int $expiresAt = null, array $additionalParams = []): string
+    {
         // Parse the URL
         $parsed = parse_url($url);
         $path = $parsed['path'] ?? $url;
@@ -101,7 +105,8 @@ class SignedUrl {
      * @example
      * SignedUrl::route('download', ['id' => 123], time() + 3600);
      */
-    public static function route(string $routeName, array $routeParams = [], ?int $expiresAt = null, array $queryParams = []): string {
+    public static function route(string $routeName, array $routeParams = [], ?int $expiresAt = null, array $queryParams = []): string
+    {
         $url = Router::url($routeName, $routeParams, []);
         return self::create($url, $expiresAt, $queryParams);
     }
@@ -112,7 +117,8 @@ class SignedUrl {
      * @param string|null $url URL to verify (null = current request URL)
      * @return bool True if signature is valid and not expired
      */
-    public static function verify(?string $url = null): bool {
+    public static function verify(?string $url = null): bool
+    {
         if ($url === null) {
             // Use current request
             $url = $_SERVER['REQUEST_URI'] ?? '';
@@ -164,7 +170,8 @@ class SignedUrl {
      * Verify current request has a valid signature
      * Aborts with 403 if invalid
      */
-    public static function verifyOrFail(): void {
+    public static function verifyOrFail(): void
+    {
         if (!self::verify()) {
             http_response_code(403);
 
@@ -195,7 +202,8 @@ class SignedUrl {
     /**
      * Check if the current URL signature is expired
      */
-    public static function isExpired(): bool {
+    public static function isExpired(): bool
+    {
         $expiresAt = $_GET[self::EXPIRES_PARAM] ?? null;
         if ($expiresAt === null) {
             return false;
@@ -206,7 +214,8 @@ class SignedUrl {
     /**
      * Get expiration timestamp from current URL
      */
-    public static function getExpiration(): ?int {
+    public static function getExpiration(): ?int
+    {
         $expiresAt = $_GET[self::EXPIRES_PARAM] ?? null;
         return $expiresAt !== null ? (int)$expiresAt : null;
     }
@@ -214,7 +223,8 @@ class SignedUrl {
     /**
      * Generate HMAC signature
      */
-    private static function generateSignature(string $data): string {
+    private static function generateSignature(string $data): string
+    {
         $signature = hash_hmac(self::HASH_ALGO, $data, self::getKey(), true);
         return rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
     }
@@ -226,7 +236,8 @@ class SignedUrl {
      * @param int $ttlSeconds Time to live in seconds (default: 1 hour)
      * @return string Signed download URL
      */
-    public static function downloadLink(int $fileId, int $ttlSeconds = 3600): string {
+    public static function downloadLink(int $fileId, int $ttlSeconds = 3600): string
+    {
         return self::route('download', ['id' => $fileId], time() + $ttlSeconds);
     }
 
@@ -237,7 +248,8 @@ class SignedUrl {
      * @param int $ttlSeconds Time to live in seconds (default: 7 days)
      * @return string Signed share URL
      */
-    public static function shareLink(string $token, int $ttlSeconds = 604800): string {
+    public static function shareLink(string $token, int $ttlSeconds = 604800): string
+    {
         return self::route('share.view', ['token' => $token], time() + $ttlSeconds);
     }
 
@@ -249,7 +261,8 @@ class SignedUrl {
      * @param array $tracking Additional tracking params
      * @return string Signed URL
      */
-    public static function modelLink(int $modelId, ?int $expiresAt = null, array $tracking = []): string {
+    public static function modelLink(int $modelId, ?int $expiresAt = null, array $tracking = []): string
+    {
         return self::route('model.show', ['id' => $modelId], $expiresAt, $tracking);
     }
 }
@@ -257,8 +270,10 @@ class SignedUrl {
 /**
  * Middleware to verify signed URLs
  */
-class SignedUrlMiddleware implements MiddlewareInterface {
-    public function handle(array $params): bool {
+class SignedUrlMiddleware implements MiddlewareInterface
+{
+    public function handle(array $params): bool
+    {
         if (!SignedUrl::verify()) {
             http_response_code(403);
 
@@ -280,20 +295,23 @@ class SignedUrlMiddleware implements MiddlewareInterface {
 /**
  * Generate a signed URL
  */
-function signedUrl(string $url, ?int $expiresAt = null): string {
+function signedUrl(string $url, ?int $expiresAt = null): string
+{
     return SignedUrl::create($url, $expiresAt);
 }
 
 /**
  * Generate a signed route URL
  */
-function signedRoute(string $name, array $params = [], ?int $expiresAt = null): string {
+function signedRoute(string $name, array $params = [], ?int $expiresAt = null): string
+{
     return SignedUrl::route($name, $params, $expiresAt);
 }
 
 /**
  * Generate a temporary download link
  */
-function temporaryDownloadLink(int $fileId, int $ttlSeconds = 3600): string {
+function temporaryDownloadLink(int $fileId, int $ttlSeconds = 3600): string
+{
     return SignedUrl::downloadLink($fileId, $ttlSeconds);
 }

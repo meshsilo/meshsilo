@@ -1,18 +1,21 @@
 <?php
+
 /**
  * Rate Limiter
  *
  * Enterprise-grade rate limiting with configurable tiers and per-key limits
  */
 
-class RateLimiter {
+class RateLimiter
+{
     private static $db;
     private static $tiers = null;
 
     /**
      * Initialize database connection
      */
-    private static function init() {
+    private static function init()
+    {
         if (!self::$db) {
             self::$db = getDB();
         }
@@ -21,7 +24,8 @@ class RateLimiter {
     /**
      * Get rate limit tiers
      */
-    public static function getTiers() {
+    public static function getTiers()
+    {
         if (self::$tiers === null) {
             $tiersJson = getSetting('rate_limit_tiers', '');
             if ($tiersJson) {
@@ -62,7 +66,8 @@ class RateLimiter {
     /**
      * Save rate limit tiers
      */
-    public static function saveTiers($tiers) {
+    public static function saveTiers($tiers)
+    {
         setSetting('rate_limit_tiers', json_encode($tiers));
         self::$tiers = $tiers;
     }
@@ -75,17 +80,20 @@ class RateLimiter {
      * @param string $endpoint Optional endpoint-specific limiting
      * @return array ['allowed' => bool, 'remaining' => int, 'reset' => timestamp, 'tier' => string]
      */
-    public static function check($identifier, $tier = 'anonymous', $endpoint = 'default') {
+    public static function check($identifier, $tier = 'anonymous', $endpoint = 'default')
+    {
         self::init();
 
         $tiers = self::getTiers();
         $tierConfig = $tiers[$tier] ?? $tiers['anonymous'];
 
         // Unlimited tier bypasses checks
-        if ($tier === 'unlimited' ||
+        if (
+            $tier === 'unlimited' ||
             ($tierConfig['requests_per_minute'] == 0 &&
              $tierConfig['requests_per_hour'] == 0 &&
-             $tierConfig['requests_per_day'] == 0)) {
+             $tierConfig['requests_per_day'] == 0)
+        ) {
             return [
                 'allowed' => true,
                 'remaining' => -1,
@@ -132,7 +140,9 @@ class RateLimiter {
             $hourRemaining = $tierConfig['requests_per_hour'] - $hourCount;
             if ($hourRemaining <= 0) {
                 $allowed = false;
-                if (!$reset) $reset = $now + 3600;
+                if (!$reset) {
+                    $reset = $now + 3600;
+                }
             }
             $remaining = min($remaining, max(0, $hourRemaining));
         }
@@ -141,7 +151,9 @@ class RateLimiter {
             $dayRemaining = $tierConfig['requests_per_day'] - $dayCount;
             if ($dayRemaining <= 0) {
                 $allowed = false;
-                if (!$reset) $reset = $now + 86400;
+                if (!$reset) {
+                    $reset = $now + 86400;
+                }
             }
             $remaining = min($remaining, max(0, $dayRemaining));
         }
@@ -167,7 +179,8 @@ class RateLimiter {
     /**
      * Get request count since timestamp
      */
-    private static function getCount($key, $since) {
+    private static function getCount($key, $since)
+    {
         $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limits WHERE key_hash = :key AND `timestamp` >= :since');
         $stmt->bindValue(':key', $key, PDO::PARAM_STR);
         $stmt->bindValue(':since', $since, PDO::PARAM_INT);
@@ -179,7 +192,8 @@ class RateLimiter {
     /**
      * Record a request
      */
-    private static function record($key) {
+    private static function record($key)
+    {
         $stmt = self::$db->prepare('INSERT INTO rate_limits (key_hash, `timestamp`) VALUES (:key, :ts)');
         $stmt->bindValue(':key', $key, PDO::PARAM_STR);
         $stmt->bindValue(':ts', time(), PDO::PARAM_INT);
@@ -189,7 +203,8 @@ class RateLimiter {
     /**
      * Ensure rate_limits table exists
      */
-    private static function ensureTable() {
+    private static function ensureTable()
+    {
         try {
             /** @phpstan-ignore booleanAnd.alwaysFalse, identical.alwaysFalse */
             if (defined('DB_TYPE') && DB_TYPE === 'mysql') {
@@ -238,7 +253,8 @@ class RateLimiter {
     /**
      * Get tier for user/API key
      */
-    public static function getTierForUser($userId = null, $apiKey = null) {
+    public static function getTierForUser($userId = null, $apiKey = null)
+    {
         self::init();
 
         // Check API key tier (rate_limit_tier column may not exist if migrations haven't run)
@@ -278,7 +294,8 @@ class RateLimiter {
     /**
      * Set rate limit headers on response
      */
-    public static function setHeaders($result) {
+    public static function setHeaders($result)
+    {
         header('X-RateLimit-Limit: ' . ($result['limits']['minute']['limit'] ?? 0));
         header('X-RateLimit-Remaining: ' . max(0, $result['remaining']));
         if ($result['reset']) {
@@ -294,7 +311,8 @@ class RateLimiter {
     /**
      * Get rate limit statistics
      */
-    public static function getStats() {
+    public static function getStats()
+    {
         self::init();
         self::ensureTable();
 
@@ -335,7 +353,8 @@ class RateLimiter {
     /**
      * Get top consumers
      */
-    public static function getTopConsumers($limit = 10, $period = 3600) {
+    public static function getTopConsumers($limit = 10, $period = 3600)
+    {
         self::init();
         self::ensureTable();
 
@@ -362,7 +381,8 @@ class RateLimiter {
     /**
      * Reset rate limits for identifier
      */
-    public static function reset($identifier, $endpoint = 'default') {
+    public static function reset($identifier, $endpoint = 'default')
+    {
         self::init();
         self::ensureTable();
 
@@ -375,7 +395,8 @@ class RateLimiter {
     /**
      * Cleanup old rate limit records
      */
-    public static function cleanup($olderThan = 86400) {
+    public static function cleanup($olderThan = 86400)
+    {
         self::init();
         self::ensureTable();
 

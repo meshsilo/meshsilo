@@ -1,4 +1,5 @@
 <?php
+
 /**
  * SQL Query Builder
  *
@@ -7,7 +8,8 @@
  * Supports both SQLite and MySQL.
  */
 
-class QueryBuilder {
+class QueryBuilder
+{
     private $db;
     private string $table = '';
     private array $select = ['*'];
@@ -25,14 +27,16 @@ class QueryBuilder {
     /**
      * Create a new query builder instance
      */
-    public function __construct($db = null) {
+    public function __construct($db = null)
+    {
         $this->db = $db ?? (function_exists('getDB') ? getDB() : null);
     }
 
     /**
      * Validate an identifier (table/column name) to prevent SQL injection
      */
-    private static function validateIdentifier(string $identifier): string {
+    private static function validateIdentifier(string $identifier): string
+    {
         // Allow: word chars, dots (table.column), and backtick-quoted identifiers
         // Strip any backticks and re-validate the bare name
         $bare = str_replace('`', '', $identifier);
@@ -45,7 +49,8 @@ class QueryBuilder {
     /**
      * Static factory
      */
-    public static function table(string $table): self {
+    public static function table(string $table): self
+    {
         $builder = new self();
         $builder->table = self::validateIdentifier($table);
         return $builder;
@@ -54,7 +59,8 @@ class QueryBuilder {
     /**
      * Set the table
      */
-    public function from(string $table): self {
+    public function from(string $table): self
+    {
         $this->table = self::validateIdentifier($table);
         return $this;
     }
@@ -62,7 +68,8 @@ class QueryBuilder {
     /**
      * Select columns
      */
-    public function select(...$columns): self {
+    public function select(...$columns): self
+    {
         $this->select = [];
         foreach ($columns as $col) {
             if (is_array($col)) {
@@ -77,7 +84,8 @@ class QueryBuilder {
     /**
      * Add columns to select
      */
-    public function addSelect(...$columns): self {
+    public function addSelect(...$columns): self
+    {
         foreach ($columns as $col) {
             if (is_array($col)) {
                 $this->select = array_merge($this->select, $col);
@@ -91,7 +99,8 @@ class QueryBuilder {
     /**
      * Select distinct
      */
-    public function distinct(): self {
+    public function distinct(): self
+    {
         $this->distinct = true;
         return $this;
     }
@@ -99,7 +108,8 @@ class QueryBuilder {
     /**
      * Add a where clause
      */
-    public function where($column, $operator = null, $value = null): self {
+    public function where($column, $operator = null, $value = null): self
+    {
         // Handle array of conditions
         if (is_array($column)) {
             foreach ($column as $key => $val) {
@@ -137,7 +147,8 @@ class QueryBuilder {
     /**
      * Add an OR where clause
      */
-    public function orWhere($column, $operator = null, $value = null): self {
+    public function orWhere($column, $operator = null, $value = null): self
+    {
         if ($value === null && $operator !== null) {
             $value = $operator;
             $operator = '=';
@@ -156,7 +167,8 @@ class QueryBuilder {
     /**
      * Where column is NULL
      */
-    public function whereNull(string $column): self {
+    public function whereNull(string $column): self
+    {
         $this->wheres[] = ['type' => 'null', 'column' => self::validateIdentifier($column)];
         return $this;
     }
@@ -164,7 +176,8 @@ class QueryBuilder {
     /**
      * Where column is NOT NULL
      */
-    public function whereNotNull(string $column): self {
+    public function whereNotNull(string $column): self
+    {
         $this->wheres[] = ['type' => 'notNull', 'column' => self::validateIdentifier($column)];
         return $this;
     }
@@ -172,7 +185,8 @@ class QueryBuilder {
     /**
      * Where column IN array
      */
-    public function whereIn(string $column, array $values): self {
+    public function whereIn(string $column, array $values): self
+    {
         $this->wheres[] = ['type' => 'in', 'column' => self::validateIdentifier($column), 'values' => $values];
         return $this;
     }
@@ -180,7 +194,8 @@ class QueryBuilder {
     /**
      * Where column NOT IN array
      */
-    public function whereNotIn(string $column, array $values): self {
+    public function whereNotIn(string $column, array $values): self
+    {
         $this->wheres[] = ['type' => 'notIn', 'column' => self::validateIdentifier($column), 'values' => $values];
         return $this;
     }
@@ -188,7 +203,8 @@ class QueryBuilder {
     /**
      * Where column BETWEEN values
      */
-    public function whereBetween(string $column, $min, $max): self {
+    public function whereBetween(string $column, $min, $max): self
+    {
         $this->wheres[] = ['type' => 'between', 'column' => self::validateIdentifier($column), 'min' => $min, 'max' => $max];
         return $this;
     }
@@ -196,7 +212,8 @@ class QueryBuilder {
     /**
      * Where column LIKE pattern
      */
-    public function whereLike(string $column, string $pattern): self {
+    public function whereLike(string $column, string $pattern): self
+    {
         $this->wheres[] = ['type' => 'basic', 'column' => self::validateIdentifier($column), 'operator' => 'LIKE', 'value' => $pattern];
         return $this;
     }
@@ -204,7 +221,8 @@ class QueryBuilder {
     /**
      * Where raw SQL
      */
-    public function whereRaw(string $sql, array $bindings = []): self {
+    public function whereRaw(string $sql, array $bindings = []): self
+    {
         $this->wheres[] = ['type' => 'raw', 'sql' => $sql, 'bindings' => $bindings];
         return $this;
     }
@@ -212,7 +230,8 @@ class QueryBuilder {
     /**
      * Join another table
      */
-    public function join(string $table, string $first, string $operator, string $second): self {
+    public function join(string $table, string $first, string $operator, string $second): self
+    {
         $this->joins[] = [
             'type' => 'INNER',
             'table' => self::validateIdentifier($table),
@@ -226,7 +245,8 @@ class QueryBuilder {
     /**
      * Left join another table
      */
-    public function leftJoin(string $table, string $first, string $operator, string $second): self {
+    public function leftJoin(string $table, string $first, string $operator, string $second): self
+    {
         $this->joins[] = [
             'type' => 'LEFT',
             'table' => self::validateIdentifier($table),
@@ -240,7 +260,8 @@ class QueryBuilder {
     /**
      * Order by column
      */
-    public function orderBy(string $column, string $direction = 'ASC'): self {
+    public function orderBy(string $column, string $direction = 'ASC'): self
+    {
         $this->orderBy[] = [
             'column' => self::validateIdentifier($column),
             'direction' => strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC'
@@ -251,28 +272,32 @@ class QueryBuilder {
     /**
      * Order by descending
      */
-    public function orderByDesc(string $column): self {
+    public function orderByDesc(string $column): self
+    {
         return $this->orderBy($column, 'DESC');
     }
 
     /**
      * Order by latest (created_at DESC)
      */
-    public function latest(string $column = 'created_at'): self {
+    public function latest(string $column = 'created_at'): self
+    {
         return $this->orderBy($column, 'DESC');
     }
 
     /**
      * Order by oldest (created_at ASC)
      */
-    public function oldest(string $column = 'created_at'): self {
+    public function oldest(string $column = 'created_at'): self
+    {
         return $this->orderBy($column, 'ASC');
     }
 
     /**
      * Group by columns
      */
-    public function groupBy(...$columns): self {
+    public function groupBy(...$columns): self
+    {
         foreach ($columns as $col) {
             $this->groupBy[] = self::validateIdentifier($col);
         }
@@ -282,7 +307,8 @@ class QueryBuilder {
     /**
      * Limit results
      */
-    public function limit(int $limit): self {
+    public function limit(int $limit): self
+    {
         $this->limit = $limit;
         return $this;
     }
@@ -290,14 +316,16 @@ class QueryBuilder {
     /**
      * Alias for limit
      */
-    public function take(int $count): self {
+    public function take(int $count): self
+    {
         return $this->limit($count);
     }
 
     /**
      * Offset results
      */
-    public function offset(int $offset): self {
+    public function offset(int $offset): self
+    {
         $this->offset = $offset;
         return $this;
     }
@@ -305,21 +333,24 @@ class QueryBuilder {
     /**
      * Alias for offset
      */
-    public function skip(int $count): self {
+    public function skip(int $count): self
+    {
         return $this->offset($count);
     }
 
     /**
      * Paginate results
      */
-    public function forPage(int $page, int $perPage = 15): self {
+    public function forPage(int $page, int $perPage = 15): self
+    {
         return $this->offset(($page - 1) * $perPage)->limit($perPage);
     }
 
     /**
      * Build SELECT query
      */
-    public function toSql(): string {
+    public function toSql(): string
+    {
         $this->bindings = [];
         $sql = 'SELECT ';
 
@@ -369,7 +400,8 @@ class QueryBuilder {
     /**
      * Build WHERE clause
      */
-    private function buildWheres(): string {
+    private function buildWheres(): string
+    {
         $parts = [];
 
         foreach ($this->wheres as $where) {
@@ -389,7 +421,8 @@ class QueryBuilder {
     /**
      * Build single WHERE condition
      */
-    private function buildWhere(array $where): string {
+    private function buildWhere(array $where): string
+    {
         switch ($where['type']) {
             case 'basic':
                 $placeholder = $this->addBinding($where['value']);
@@ -440,7 +473,8 @@ class QueryBuilder {
     /**
      * Add a binding and return placeholder
      */
-    private function addBinding($value): string {
+    private function addBinding($value): string
+    {
         $key = ':p' . count($this->bindings);
         $this->bindings[$key] = $value;
         return $key;
@@ -449,14 +483,16 @@ class QueryBuilder {
     /**
      * Get bindings
      */
-    public function getBindings(): array {
+    public function getBindings(): array
+    {
         return $this->bindings;
     }
 
     /**
      * Execute query and return all results
      */
-    public function get(): array {
+    public function get(): array
+    {
         $sql = $this->toSql();
         $stmt = $this->db->prepare($sql);
 
@@ -477,7 +513,8 @@ class QueryBuilder {
     /**
      * Get first result
      */
-    public function first(): ?array {
+    public function first(): ?array
+    {
         $this->limit(1);
         $results = $this->get();
         return $results[0] ?? null;
@@ -486,7 +523,8 @@ class QueryBuilder {
     /**
      * Get first result or throw exception
      */
-    public function firstOrFail(): array {
+    public function firstOrFail(): array
+    {
         $result = $this->first();
         if ($result === null) {
             throw new RuntimeException("No records found in {$this->table}");
@@ -497,14 +535,16 @@ class QueryBuilder {
     /**
      * Find by ID
      */
-    public function find(int $id): ?array {
+    public function find(int $id): ?array
+    {
         return $this->where('id', $id)->first();
     }
 
     /**
      * Get single column values
      */
-    public function pluck(string $column, ?string $key = null): array {
+    public function pluck(string $column, ?string $key = null): array
+    {
         $this->select($column);
         if ($key) {
             $this->addSelect($key);
@@ -527,7 +567,8 @@ class QueryBuilder {
     /**
      * Get count of results
      */
-    public function count(): int {
+    public function count(): int
+    {
         $this->select = ['COUNT(*) as count'];
         $result = $this->first();
         return (int)($result['count'] ?? 0);
@@ -536,7 +577,8 @@ class QueryBuilder {
     /**
      * Get sum of column
      */
-    public function sum(string $column): float {
+    public function sum(string $column): float
+    {
         self::validateIdentifier($column);
         $this->select = ["SUM($column) as sum"];
         $result = $this->first();
@@ -546,7 +588,8 @@ class QueryBuilder {
     /**
      * Get average of column
      */
-    public function avg(string $column): float {
+    public function avg(string $column): float
+    {
         self::validateIdentifier($column);
         $this->select = ["AVG($column) as avg"];
         $result = $this->first();
@@ -556,7 +599,8 @@ class QueryBuilder {
     /**
      * Get max of column
      */
-    public function max(string $column) {
+    public function max(string $column)
+    {
         self::validateIdentifier($column);
         $this->select = ["MAX($column) as max"];
         $result = $this->first();
@@ -566,7 +610,8 @@ class QueryBuilder {
     /**
      * Get min of column
      */
-    public function min(string $column) {
+    public function min(string $column)
+    {
         self::validateIdentifier($column);
         $this->select = ["MIN($column) as min"];
         $result = $this->first();
@@ -576,21 +621,24 @@ class QueryBuilder {
     /**
      * Check if any records exist
      */
-    public function exists(): bool {
+    public function exists(): bool
+    {
         return $this->count() > 0;
     }
 
     /**
      * Check if no records exist
      */
-    public function doesntExist(): bool {
+    public function doesntExist(): bool
+    {
         return !$this->exists();
     }
 
     /**
      * Insert a record
      */
-    public function insert(array $data): int {
+    public function insert(array $data): int
+    {
         $columns = array_map([self::class, 'validateIdentifier'], array_keys($data));
         $placeholders = [];
         $this->bindings = [];
@@ -615,8 +663,11 @@ class QueryBuilder {
     /**
      * Insert multiple records
      */
-    public function insertMany(array $records): bool {
-        if (empty($records)) return true;
+    public function insertMany(array $records): bool
+    {
+        if (empty($records)) {
+            return true;
+        }
 
         $columns = array_map([self::class, 'validateIdentifier'], array_keys($records[0]));
 
@@ -645,7 +696,8 @@ class QueryBuilder {
     /**
      * Update records
      */
-    public function update(array $data): int {
+    public function update(array $data): int
+    {
         $sets = [];
         $this->bindings = [];
 
@@ -676,7 +728,8 @@ class QueryBuilder {
     /**
      * Delete records
      */
-    public function delete(): int {
+    public function delete(): int
+    {
         $sql = "DELETE FROM {$this->table}";
 
         $this->bindings = [];
@@ -699,7 +752,8 @@ class QueryBuilder {
     /**
      * Increment a column
      */
-    public function increment(string $column, int $amount = 1): int {
+    public function increment(string $column, int $amount = 1): int
+    {
         self::validateIdentifier($column);
         $sql = "UPDATE {$this->table} SET $column = $column + :amount";
 
@@ -711,7 +765,7 @@ class QueryBuilder {
 
         $stmt = $this->db->prepare($sql);
         foreach ($this->bindings as $key => $value) {
-            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR; // @phpstan-ignore ternary.elseUnreachable
             $stmt->bindValue($key, $value, $type);
         }
 
@@ -722,14 +776,16 @@ class QueryBuilder {
     /**
      * Decrement a column
      */
-    public function decrement(string $column, int $amount = 1): int {
+    public function decrement(string $column, int $amount = 1): int
+    {
         return $this->increment($column, -$amount);
     }
 
     /**
      * Paginate results
      */
-    public function paginate(int $perPage = 15, int $page = 1): array {
+    public function paginate(int $perPage = 15, int $page = 1): array
+    {
         // Get total count
         $countBuilder = clone $this;
         $total = $countBuilder->count();
@@ -754,7 +810,8 @@ class QueryBuilder {
     /**
      * Clone for subqueries
      */
-    public function __clone() {
+    public function __clone()
+    {
         // Deep clone arrays
     }
 }
@@ -762,7 +819,8 @@ class QueryBuilder {
 /**
  * Helper function
  */
-function db(string $table = ''): QueryBuilder {
+function db(string $table = ''): QueryBuilder
+{
     $builder = new QueryBuilder();
     if ($table) {
         $builder->from($table);

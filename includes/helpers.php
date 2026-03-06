@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper Functions for Silo
  *
@@ -16,7 +17,8 @@
  * @example route('model.show', ['id' => 123])
  * @example route('browse', [], ['category' => 5, 'sort' => 'newest'])
  */
-function route(string $name, array $params = [], array $query = []): string {
+function route(string $name, array $params = [], array $query = []): string
+{
     return Router::url($name, $params, $query);
 }
 
@@ -29,7 +31,8 @@ function route(string $name, array $params = [], array $query = []): string {
  *
  * @example url('/browse', ['category' => 5])
  */
-function url(string $path = '', array $query = []): string {
+function url(string $path = '', array $query = []): string
+{
     $baseUrl = defined('SITE_URL') ? rtrim(SITE_URL, '/') : '';
     $path = '/' . ltrim($path, '/');
 
@@ -49,7 +52,8 @@ function url(string $path = '', array $query = []): string {
  * @example currentUrl(['page' => 2]) // Add or update page param
  * @example currentUrl(['filter' => null]) // Remove filter param
  */
-function currentUrl(array $modify = []): string {
+function currentUrl(array $modify = []): string
+{
     $current = $_GET;
 
     // Remove internal router parameters
@@ -83,7 +87,8 @@ function currentUrl(array $modify = []): string {
  *
  * @example if (routeIs('model.show')) { ... }
  */
-function routeIs(string $name): bool {
+function routeIs(string $name): bool
+{
     return Router::is($name);
 }
 
@@ -95,7 +100,8 @@ function routeIs(string $name): bool {
  *
  * @example if (routeStartsWith('admin.')) { ... }
  */
-function routeStartsWith(string $prefix): bool {
+function routeStartsWith(string $prefix): bool
+{
     $currentRoute = $_SERVER['ROUTE_NAME'] ?? '';
     return strpos($currentRoute, $prefix) === 0;
 }
@@ -109,7 +115,8 @@ function routeStartsWith(string $prefix): bool {
  *
  * @example $id = routeParam('id', 0);
  */
-function routeParam(string $name, mixed $default = null): mixed {
+function routeParam(string $name, mixed $default = null): mixed
+{
     return Router::param($name, $default);
 }
 
@@ -118,7 +125,8 @@ function routeParam(string $name, mixed $default = null): mixed {
  *
  * @return array All route parameters
  */
-function routeParams(): array {
+function routeParams(): array
+{
     return Router::params();
 }
 
@@ -131,7 +139,8 @@ function routeParams(): array {
  * @example asset('css/style.css')  // Returns /public/css/style.css
  * @example asset('js/main.js')     // Returns /public/js/main.js
  */
-function asset(string $path): string {
+function asset(string $path): string
+{
     $baseUrl = defined('SITE_URL') ? rtrim(SITE_URL, '/') : '';
     // Prepend 'public/' if it's a known asset type
     if (preg_match('#^(css|js|images)/#', $path)) {
@@ -147,7 +156,8 @@ function asset(string $path): string {
  * @param array $params Route parameters
  * @param int $status HTTP status code (default 302)
  */
-function redirectToRoute(string $name, array $params = [], int $status = 302): never {
+function redirectToRoute(string $name, array $params = [], int $status = 302): never
+{
     $url = route($name, $params);
     header('Location: ' . $url, true, $status);
     exit;
@@ -159,7 +169,8 @@ function redirectToRoute(string $name, array $params = [], int $status = 302): n
  * @param string $url URL to redirect to
  * @param int $status HTTP status code (default 302)
  */
-function redirect(string $url, int $status = 302): never {
+function redirect(string $url, int $status = 302): never
+{
     header('Location: ' . $url, true, $status);
     exit;
 }
@@ -170,7 +181,8 @@ function redirect(string $url, int $status = 302): never {
  * @param string $fallback Fallback URL if no referrer
  * @param int $status HTTP status code (default 302)
  */
-function back(string $fallback = '/', int $status = 302): never {
+function back(string $fallback = '/', int $status = 302): never
+{
     $url = $_SERVER['HTTP_REFERER'] ?? $fallback;
     // Prevent open redirect: only allow local paths
     $parsed = parse_url($url);
@@ -197,7 +209,8 @@ function back(string $fallback = '/', int $status = 302): never {
  * @example convertToBytes('128M')  // Returns 134217728
  * @example convertToBytes('2G')    // Returns 2147483648
  */
-function convertToBytes(string $size): int {
+function convertToBytes(string $size): int
+{
     $size = trim($size);
     if (empty($size)) {
         return 0;
@@ -229,7 +242,8 @@ function convertToBytes(string $size): int {
  * @example formatBytes(1536)      // Returns "1.5 KB"
  * @example formatBytes(1048576)   // Returns "1 MB"
  */
-function formatBytes(int $bytes, int $precision = 2): string {
+function formatBytes(int $bytes, int $precision = 2): string
+{
     $units = ['B', 'KB', 'MB', 'GB', 'TB'];
     $bytes = max($bytes, 0);
     $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
@@ -243,7 +257,8 @@ function formatBytes(int $bytes, int $precision = 2): string {
  *
  * @return string HTML input field with CSRF token
  */
-function csrfField(): string {
+function csrfField(): string
+{
     if (class_exists('Csrf')) {
         return Csrf::field();
     }
@@ -259,7 +274,8 @@ function csrfField(): string {
  * @param string $method HTTP method (PUT, DELETE, PATCH)
  * @return string HTML input field
  */
-function methodField(string $method): string {
+function methodField(string $method): string
+{
     return '<input type="hidden" name="_method" value="' . htmlspecialchars(strtoupper($method)) . '">';
 }
 
@@ -272,7 +288,8 @@ function methodField(string $method): string {
  * @example <li class="<?= activeNav('home') ?>">
  * @example <li class="<?= activeNav(['admin.settings', 'admin.users']) ?>">
  */
-function activeNav(string|array $routes): string {
+function activeNav(string|array $routes): string
+{
     $currentRoute = $_SERVER['ROUTE_NAME'] ?? '';
 
     if (is_string($routes)) {
@@ -301,7 +318,8 @@ function activeNav(string|array $routes): string {
  * @param array $queryParams Additional query parameters to preserve
  * @return array Array of pagination link data
  */
-function paginationLinks(int $currentPage, int $totalPages, array $queryParams = []): array {
+function paginationLinks(int $currentPage, int $totalPages, array $queryParams = []): array
+{
     $links = [];
 
     // Previous link
@@ -377,7 +395,8 @@ function paginationLinks(int $currentPage, int $totalPages, array $queryParams =
  * @param string $string Input string
  * @return string URL-safe slug
  */
-function slugify(string $string): string {
+function slugify(string $string): string
+{
     // Convert to lowercase
     $string = strtolower($string);
 
@@ -398,7 +417,8 @@ if (!function_exists('array_get')) {
     /**
      * Get an item from an array using "dot" notation
      */
-    function array_get(array $array, string $key, $default = null) {
+    function array_get(array $array, string $key, $default = null)
+    {
         if (isset($array[$key])) {
             return $array[$key];
         }
@@ -418,7 +438,8 @@ if (!function_exists('array_only')) {
     /**
      * Get a subset of the items from the given array
      */
-    function array_only(array $array, array $keys): array {
+    function array_only(array $array, array $keys): array
+    {
         return array_intersect_key($array, array_flip($keys));
     }
 }
@@ -427,7 +448,8 @@ if (!function_exists('array_except')) {
     /**
      * Get all of the given array except for a specified array of keys
      */
-    function array_except(array $array, array $keys): array {
+    function array_except(array $array, array $keys): array
+    {
         return array_diff_key($array, array_flip($keys));
     }
 }
@@ -436,7 +458,8 @@ if (!function_exists('array_first')) {
     /**
      * Return the first element in an array passing a given truth test
      */
-    function array_first(array $array, ?callable $callback = null, $default = null) {
+    function array_first(array $array, ?callable $callback = null, $default = null)
+    {
         if (is_null($callback)) {
             return empty($array) ? $default : reset($array);
         }
@@ -455,7 +478,8 @@ if (!function_exists('array_flatten')) {
     /**
      * Flatten a multi-dimensional array into a single level
      */
-    function array_flatten(array $array, int $depth = PHP_INT_MAX): array {
+    function array_flatten(array $array, int $depth = PHP_INT_MAX): array
+    {
         $result = [];
 
         foreach ($array as $item) {
@@ -480,7 +504,8 @@ if (!function_exists('str_limit')) {
     /**
      * Limit the number of characters in a string
      */
-    function str_limit(string $value, int $limit = 100, string $end = '...'): string {
+    function str_limit(string $value, int $limit = 100, string $end = '...'): string
+    {
         if (mb_strlen($value) <= $limit) {
             return $value;
         }
@@ -493,7 +518,8 @@ if (!function_exists('str_random')) {
     /**
      * Generate a random string of the specified length
      */
-    function str_random(int $length = 16): string {
+    function str_random(int $length = 16): string
+    {
         $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $result = '';
 
@@ -509,7 +535,8 @@ if (!function_exists('str_uuid')) {
     /**
      * Generate a UUID v4
      */
-    function str_uuid(): string {
+    function str_uuid(): string
+    {
         $data = random_bytes(16);
         $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
         $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
@@ -526,7 +553,8 @@ if (!function_exists('base_path')) {
     /**
      * Get the path to the base of the install
      */
-    function base_path(string $path = ''): string {
+    function base_path(string $path = ''): string
+    {
         $basePath = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__);
         return $basePath . ($path ? DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR) : '');
     }
@@ -536,7 +564,8 @@ if (!function_exists('storage_path')) {
     /**
      * Get the path to the storage folder
      */
-    function storage_path(string $path = ''): string {
+    function storage_path(string $path = ''): string
+    {
         return base_path('assets' . ($path ? DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR) : ''));
     }
 }
@@ -545,7 +574,8 @@ if (!function_exists('cache_path')) {
     /**
      * Get the path to the cache folder
      */
-    function cache_path(string $path = ''): string {
+    function cache_path(string $path = ''): string
+    {
         return base_path('cache' . ($path ? DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR) : ''));
     }
 }
@@ -558,7 +588,8 @@ if (!function_exists('response_json')) {
     /**
      * Return a JSON response
      */
-    function response_json($data, int $status = 200): never {
+    function response_json($data, int $status = 200): never
+    {
         http_response_code($status);
         header('Content-Type: application/json');
         echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -574,7 +605,8 @@ if (!function_exists('request_method')) {
     /**
      * Get the request method
      */
-    function request_method(): string {
+    function request_method(): string
+    {
         return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
     }
 }
@@ -583,7 +615,8 @@ if (!function_exists('request_is')) {
     /**
      * Check if request method matches
      */
-    function request_is(string $method): bool {
+    function request_is(string $method): bool
+    {
         return request_method() === strtoupper($method);
     }
 }
@@ -592,7 +625,8 @@ if (!function_exists('request_ajax')) {
     /**
      * Check if request is AJAX
      */
-    function request_ajax(): bool {
+    function request_ajax(): bool
+    {
         return isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
@@ -602,7 +636,8 @@ if (!function_exists('request_json')) {
     /**
      * Get JSON body from request
      */
-    function request_json(): array {
+    function request_json(): array
+    {
         $body = file_get_contents('php://input');
         return json_decode($body, true) ?: [];
     }
@@ -612,7 +647,8 @@ if (!function_exists('request_ip')) {
     /**
      * Get the client IP address
      */
-    function request_ip(): string {
+    function request_ip(): string
+    {
         // Only trust proxy headers if TRUSTED_PROXIES is configured
         $trustedProxies = defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : [];
         $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -653,7 +689,8 @@ if (!function_exists('e')) {
     /**
      * Escape HTML special characters
      */
-    function e(?string $value): string {
+    function e(?string $value): string
+    {
         return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8', false);
     }
 }
@@ -662,7 +699,8 @@ if (!function_exists('csrf_token')) {
     /**
      * Get the CSRF token
      */
-    function csrf_token(): string {
+    function csrf_token(): string
+    {
         if (class_exists('Csrf')) {
             return Csrf::getToken();
         }
@@ -679,7 +717,8 @@ if (!function_exists('csrf_field')) {
     /**
      * Generate a CSRF token hidden input field
      */
-    function csrf_field(): string {
+    function csrf_field(): string
+    {
         if (class_exists('Csrf')) {
             return Csrf::field();
         }
@@ -695,7 +734,8 @@ if (!function_exists('env')) {
     /**
      * Get an environment variable
      */
-    function env(string $key, $default = null) {
+    function env(string $key, $default = null)
+    {
         $value = $_ENV[$key] ?? getenv($key);
 
         if ($value === false) {
@@ -722,7 +762,8 @@ if (!function_exists('now')) {
     /**
      * Get current datetime
      */
-    function now(string $format = 'Y-m-d H:i:s'): string {
+    function now(string $format = 'Y-m-d H:i:s'): string
+    {
         return date($format);
     }
 }
@@ -731,7 +772,8 @@ if (!function_exists('retry')) {
     /**
      * Retry an operation a given number of times
      */
-    function retry(int $times, callable $callback, int $sleep = 0) {
+    function retry(int $times, callable $callback, int $sleep = 0)
+    {
         $attempts = 0;
         $exception = null;
 
@@ -756,7 +798,8 @@ if (!function_exists('dump')) {
     /**
      * Dump variables for debugging (only works when DEBUG mode is enabled)
      */
-    function dump(...$vars): void {
+    function dump(...$vars): void
+    {
         // Only output in CLI or when DEBUG is explicitly enabled
         $debugEnabled = (defined('DEBUG') && DEBUG === true) || php_sapi_name() === 'cli';
         if (!$debugEnabled) {
@@ -781,7 +824,8 @@ if (!function_exists('dd')) {
     /**
      * Dump and die (only outputs when DEBUG mode is enabled)
      */
-    function dd(...$vars): never {
+    function dd(...$vars): never
+    {
         dump(...$vars);
         exit(1);
     }

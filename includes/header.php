@@ -95,22 +95,22 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             });
         }
     </script>
-    <?php if (isLoggedIn()): ?>
-    <?= Csrf::metaTag() ?>
-    <?= Csrf::ajaxSetupScript() ?>
+    <?php if (isLoggedIn()) : ?>
+        <?= Csrf::metaTag() ?>
+        <?= Csrf::ajaxSetupScript() ?>
     <?php endif; ?>
-<?php if (class_exists('PluginManager')): ?>
-<?= PluginManager::getInstance()->renderStyles() ?>
+<?php if (class_exists('PluginManager')) : ?>
+    <?= PluginManager::getInstance()->renderStyles() ?>
 <?php endif; ?>
-<?php if (class_exists('PluginManager')): ?>
-<?= PluginManager::applyFilter('head_tags', '') ?>
+<?php if (class_exists('PluginManager')) : ?>
+    <?= PluginManager::applyFilter('head_tags', '') ?>
 <?php endif; ?>
 </head>
 <body>
     <header class="site-header">
         <div class="header-content">
             <a href="<?= route('home') ?>" class="logo">
-                <?php $logoPath = getSetting('logo_path', ''); if ($logoPath): ?>
+                <?php $logoPath = getSetting('logo_path', ''); if ($logoPath) : ?>
                 <img src="<?= rtrim(defined('SITE_URL') ? SITE_URL : '', '/') ?>/assets/<?= htmlspecialchars($logoPath) ?>" alt="<?= htmlspecialchars(SITE_NAME) ?>" class="logo-img">
                 <?php endif; ?>
                 <span class="logo-text"><?= htmlspecialchars(SITE_NAME) ?></span>
@@ -120,42 +120,45 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             </button>
             <nav class="main-nav">
                 <a href="<?= route('browse') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
-                <?php if (isFeatureEnabled('categories')): ?>
+                <?php if (isFeatureEnabled('categories')) : ?>
                 <a href="<?= route('categories') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
                 <?php endif; ?>
-                <?php if (isFeatureEnabled('collections')): ?>
+                <?php if (isFeatureEnabled('collections')) : ?>
                 <a href="<?= route('collections') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
                 <?php endif; ?>
-                <?php if (isFeatureEnabled('tags')): ?>
+                <?php if (isFeatureEnabled('tags')) : ?>
                 <a href="<?= route('tags') ?>" <?= ($activePage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
                 <?php endif; ?>
-                <?php if (canUpload()): ?>
+                <?php if (canUpload()) : ?>
                 <a href="<?= route('upload') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
                 <?php endif; ?>
-<?php if (class_exists('PluginManager')):
+<?php if (class_exists('PluginManager')) :
     $pluginNavItems = PluginManager::applyFilter('nav_items', []);
-    foreach ($pluginNavItems as $navItem): ?>
+    foreach ($pluginNavItems as $navItem) : ?>
     <a href="<?= htmlspecialchars($navItem['url'] ?? '#') ?>" <?= !empty($navItem['active']) ? 'class="active"' : '' ?>>
-        <?php if (!empty($navItem['icon'])): ?><i data-feather="<?= htmlspecialchars($navItem['icon']) ?>"></i> <?php endif; ?>
+        <?php if (!empty($navItem['icon'])) :
+            ?><i data-feather="<?= htmlspecialchars($navItem['icon']) ?>"></i> <?php
+        endif; ?>
         <?= htmlspecialchars($navItem['label'] ?? '') ?>
     </a>
-<?php endforeach; endif; ?>
+    <?php endforeach;
+endif; ?>
             </nav>
             <div class="header-actions">
                 <form action="<?= route('browse') ?>" method="get" style="display: contents;">
                     <input type="search" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
                 </form>
-                <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme): ?>
+                <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme) : ?>
                 <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
                     <span id="theme-icon"><?= $currentTheme === 'light' ? '&#9790;' : '&#9728;' ?></span>
                 </button>
                 <?php endif; ?>
-                <?php if (isLoggedIn()): ?>
+                <?php if (isLoggedIn()) : ?>
                     <?php $user = getCurrentUser(); ?>
-                    <?php if (isFeatureEnabled('favorites')): ?>
+                    <?php if (isFeatureEnabled('favorites')) : ?>
                     <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
                     <?php endif; ?>
-                    <?php if ($user['is_admin']): ?>
+                    <?php if ($user['is_admin']) : ?>
                         <a href="<?= route('admin.settings') ?>" class="btn btn-secondary">Admin</a>
                     <?php endif; ?>
                     <div class="user-dropdown">
@@ -165,14 +168,14 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                         </button>
                         <div class="user-dropdown-menu">
                             <a href="<?= route('settings') ?>">&#9881; Settings</a>
-                            <?php if (isFeatureEnabled('favorites')): ?>
+                            <?php if (isFeatureEnabled('favorites')) : ?>
                             <a href="<?= route('favorites') ?>">&#9829; Favorites</a>
                             <?php endif; ?>
                             <div class="dropdown-divider"></div>
                             <a href="<?= route('logout') ?>">&#10140; Log Out</a>
                         </div>
                     </div>
-                <?php else: ?>
+                <?php else : ?>
                     <a href="<?= route('login') ?>" class="btn btn-primary">Log In</a>
                 <?php endif; ?>
             </div>

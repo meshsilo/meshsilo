@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Model Dimensions Parser
  * Extracts bounding box dimensions from STL and 3MF files
@@ -10,7 +11,8 @@
  * @param string $fileType File type (stl or 3mf)
  * @return array|null Array with dim_x, dim_y, dim_z, dim_unit or null on failure
  */
-function parseModelDimensions($filePath, $fileType) {
+function parseModelDimensions($filePath, $fileType)
+{
     if (!file_exists($filePath)) {
         return null;
     }
@@ -29,9 +31,12 @@ function parseModelDimensions($filePath, $fileType) {
 /**
  * Parse dimensions from a binary or ASCII STL file
  */
-function parseSTLDimensions($filePath) {
+function parseSTLDimensions($filePath)
+{
     $handle = fopen($filePath, 'rb');
-    if (!$handle) return null;
+    if (!$handle) {
+        return null;
+    }
 
     // Read first 80 bytes (header)
     $header = fread($handle, 80);
@@ -64,7 +69,9 @@ function parseSTLDimensions($filePath) {
     // = 50 bytes per triangle
     for ($i = 0; $i < $triangleCount; $i++) {
         $triangleData = fread($handle, 50);
-        if (strlen($triangleData) < 50) break;
+        if (strlen($triangleData) < 50) {
+            break;
+        }
 
         // Skip normal (3 floats = 12 bytes), read 3 vertices
         $vertices = unpack('f12', $triangleData);
@@ -86,7 +93,9 @@ function parseSTLDimensions($filePath) {
 
     fclose($handle);
 
-    if ($minX === PHP_FLOAT_MAX) return null;
+    if ($minX === PHP_FLOAT_MAX) {
+        return null;
+    }
 
     return [
         'dim_x' => round($maxX - $minX, 2),
@@ -99,9 +108,12 @@ function parseSTLDimensions($filePath) {
 /**
  * Parse dimensions from an ASCII STL file
  */
-function parseASCIISTL($filePath) {
+function parseASCIISTL($filePath)
+{
     $content = file_get_contents($filePath);
-    if (!$content) return null;
+    if (!$content) {
+        return null;
+    }
 
     $minX = $minY = $minZ = PHP_FLOAT_MAX;
     $maxX = $maxY = $maxZ = -PHP_FLOAT_MAX;
@@ -109,7 +121,9 @@ function parseASCIISTL($filePath) {
     // Match all vertex lines
     preg_match_all('/vertex\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)/i', $content, $matches, PREG_SET_ORDER);
 
-    if (empty($matches)) return null;
+    if (empty($matches)) {
+        return null;
+    }
 
     foreach ($matches as $match) {
         $x = (float)$match[1];
@@ -124,7 +138,9 @@ function parseASCIISTL($filePath) {
         $maxZ = max($maxZ, $z);
     }
 
-    if ($minX === PHP_FLOAT_MAX) return null;
+    if ($minX === PHP_FLOAT_MAX) {
+        return null;
+    }
 
     return [
         'dim_x' => round($maxX - $minX, 2),
@@ -138,7 +154,8 @@ function parseASCIISTL($filePath) {
  * Parse dimensions from a 3MF file
  * 3MF files are ZIP archives containing XML model data
  */
-function parse3MFDimensions($filePath) {
+function parse3MFDimensions($filePath)
+{
     $zip = new ZipArchive();
     if ($zip->open($filePath) !== true) {
         return null;
@@ -156,7 +173,9 @@ function parse3MFDimensions($filePath) {
 
     $zip->close();
 
-    if (!$modelContent) return null;
+    if (!$modelContent) {
+        return null;
+    }
 
     // Parse XML to extract vertices
     $minX = $minY = $minZ = PHP_FLOAT_MAX;
@@ -165,7 +184,9 @@ function parse3MFDimensions($filePath) {
     // Match all vertex definitions in the 3MF XML
     preg_match_all('/x="([+-]?\d*\.?\d+)"\s+y="([+-]?\d*\.?\d+)"\s+z="([+-]?\d*\.?\d+)"/i', $modelContent, $matches, PREG_SET_ORDER);
 
-    if (empty($matches)) return null;
+    if (empty($matches)) {
+        return null;
+    }
 
     foreach ($matches as $match) {
         $x = (float)$match[1];
@@ -180,7 +201,9 @@ function parse3MFDimensions($filePath) {
         $maxZ = max($maxZ, $z);
     }
 
-    if ($minX === PHP_FLOAT_MAX) return null;
+    if ($minX === PHP_FLOAT_MAX) {
+        return null;
+    }
 
     // 3MF uses millimeters by default
     return [
@@ -194,7 +217,8 @@ function parse3MFDimensions($filePath) {
 /**
  * Format dimensions for display
  */
-function formatDimensions($dimX, $dimY, $dimZ, $unit = 'mm') {
+function formatDimensions($dimX, $dimY, $dimZ, $unit = 'mm')
+{
     if ($dimX === null || $dimY === null || $dimZ === null) {
         return null;
     }
@@ -204,7 +228,8 @@ function formatDimensions($dimX, $dimY, $dimZ, $unit = 'mm') {
 /**
  * Parse and store dimensions for a model
  */
-function calculateAndStoreDimensions($modelId) {
+function calculateAndStoreDimensions($modelId)
+{
     require_once __DIR__ . '/dedup.php';
 
     $db = getDB();
@@ -213,13 +238,19 @@ function calculateAndStoreDimensions($modelId) {
     $result = $stmt->execute();
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
-    if (!$model) return false;
+    if (!$model) {
+        return false;
+    }
 
     $filePath = getAbsoluteFilePath($model);
-    if (!$filePath || !file_exists($filePath)) return false;
+    if (!$filePath || !file_exists($filePath)) {
+        return false;
+    }
 
     $dimensions = parseModelDimensions($filePath, $model['file_type']);
-    if (!$dimensions) return false;
+    if (!$dimensions) {
+        return false;
+    }
 
     return updateModelDimensions($modelId, $dimensions['dim_x'], $dimensions['dim_y'], $dimensions['dim_z'], $dimensions['dim_unit']);
 }

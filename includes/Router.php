@@ -1,4 +1,5 @@
 <?php
+
 /**
  * URL Router for Silo
  *
@@ -6,7 +7,8 @@
  * and backward compatibility with file-based routing.
  */
 
-class Router {
+class Router
+{
     private array $routes = [];
     private array $namedRoutes = [];
     private array $currentGroupOptions = [];
@@ -16,7 +18,8 @@ class Router {
     /**
      * Get singleton instance
      */
-    public static function getInstance(): Router {
+    public static function getInstance(): Router
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
@@ -26,42 +29,48 @@ class Router {
     /**
      * Reset instance (useful for testing)
      */
-    public static function resetInstance(): void {
+    public static function resetInstance(): void
+    {
         self::$instance = null;
     }
 
     /**
      * Register a GET route
      */
-    public function get(string $pattern, array|callable $handler, ?string $name = null): self {
+    public function get(string $pattern, array|callable $handler, ?string $name = null): self
+    {
         return $this->addRoute('GET', $pattern, $handler, $name);
     }
 
     /**
      * Register a POST route
      */
-    public function post(string $pattern, array|callable $handler, ?string $name = null): self {
+    public function post(string $pattern, array|callable $handler, ?string $name = null): self
+    {
         return $this->addRoute('POST', $pattern, $handler, $name);
     }
 
     /**
      * Register a PUT route
      */
-    public function put(string $pattern, array|callable $handler, ?string $name = null): self {
+    public function put(string $pattern, array|callable $handler, ?string $name = null): self
+    {
         return $this->addRoute('PUT', $pattern, $handler, $name);
     }
 
     /**
      * Register a DELETE route
      */
-    public function delete(string $pattern, array|callable $handler, ?string $name = null): self {
+    public function delete(string $pattern, array|callable $handler, ?string $name = null): self
+    {
         return $this->addRoute('DELETE', $pattern, $handler, $name);
     }
 
     /**
      * Register a route for any HTTP method
      */
-    public function any(string $pattern, array|callable $handler, ?string $name = null): self {
+    public function any(string $pattern, array|callable $handler, ?string $name = null): self
+    {
         foreach (['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as $method) {
             $this->addRoute($method, $pattern, $handler, $name ? "{$name}.{$method}" : null);
         }
@@ -71,7 +80,8 @@ class Router {
     /**
      * Register routes for multiple methods
      */
-    public function match(array $methods, string $pattern, array|callable $handler, ?string $name = null): self {
+    public function match(array $methods, string $pattern, array|callable $handler, ?string $name = null): self
+    {
         foreach ($methods as $method) {
             $this->addRoute(strtoupper($method), $pattern, $handler, $name);
         }
@@ -81,7 +91,8 @@ class Router {
     /**
      * Create a route group with shared options
      */
-    public function group(array $options, callable $callback): self {
+    public function group(array $options, callable $callback): self
+    {
         $previousOptions = $this->currentGroupOptions;
 
         // Merge group options
@@ -103,7 +114,8 @@ class Router {
     /**
      * Register middleware aliases
      */
-    public function aliasMiddleware(string $alias, string|callable $middleware): self {
+    public function aliasMiddleware(string $alias, string|callable $middleware): self
+    {
         $this->middlewareAliases[$alias] = $middleware;
         return $this;
     }
@@ -111,7 +123,8 @@ class Router {
     /**
      * Add a route to the collection
      */
-    private function addRoute(string $method, string $pattern, array|callable $handler, ?string $name): self {
+    private function addRoute(string $method, string $pattern, array|callable $handler, ?string $name): self
+    {
         // Apply group prefix
         $prefix = $this->currentGroupOptions['prefix'] ?? '';
         if ($prefix) {
@@ -145,7 +158,8 @@ class Router {
     /**
      * Add middleware to the last registered route
      */
-    public function middleware(string|array $middleware): self {
+    public function middleware(string|array $middleware): self
+    {
         if (empty($this->routes)) {
             return $this;
         }
@@ -164,7 +178,8 @@ class Router {
     /**
      * Dispatch the current request
      */
-    public function dispatch(): bool {
+    public function dispatch(): bool
+    {
         $method = $_SERVER['REQUEST_METHOD'];
 
         // Handle method override for PUT/DELETE via POST
@@ -216,7 +231,8 @@ class Router {
     /**
      * Handle a matched route
      */
-    private function handleRoute(array $route, array $params): bool {
+    private function handleRoute(array $route, array $params): bool
+    {
         // Run middleware chain
         if (!$this->runMiddleware($route['middleware'], $params)) {
             return true; // Middleware handled the response
@@ -257,7 +273,8 @@ class Router {
     /**
      * Handle a file-based route
      */
-    private function handleFileRoute(array $handler, array $params): bool {
+    private function handleFileRoute(array $handler, array $params): bool
+    {
         $file = $handler['file'];
 
         // Resolve file path
@@ -292,7 +309,8 @@ class Router {
     /**
      * Run middleware chain
      */
-    private function runMiddleware(array $middlewares, array $params): bool {
+    private function runMiddleware(array $middlewares, array $params): bool
+    {
         foreach ($middlewares as $middleware) {
             $result = $this->executeMiddleware($middleware, $params);
             if ($result === false) {
@@ -305,7 +323,8 @@ class Router {
     /**
      * Execute a single middleware
      */
-    private function executeMiddleware(string|callable $middleware, array $params): bool {
+    private function executeMiddleware(string|callable $middleware, array $params): bool
+    {
         // Parse middleware with parameters (e.g., "permission:edit")
         $middlewareParams = [];
         if (is_string($middleware) && strpos($middleware, ':') !== false) {
@@ -428,7 +447,8 @@ class Router {
     /**
      * Convert route pattern to regex
      */
-    private function patternToRegex(string $pattern): string {
+    private function patternToRegex(string $pattern): string
+    {
         // Escape regex special characters except our placeholders
         $regex = preg_quote($pattern, '#');
 
@@ -439,7 +459,7 @@ class Router {
 
         $regex = preg_replace_callback(
             '/\\\\{([a-zA-Z_][a-zA-Z0-9_]*)(?:\\\\:([^}]+))?(\\\\\?)?\\\\}/',
-            function($matches) {
+            function ($matches) {
                 $name = $matches[1];
                 $constraint = isset($matches[2]) ? stripslashes($matches[2]) : '[^/]+';
                 $optional = !empty($matches[3]);
@@ -458,7 +478,8 @@ class Router {
     /**
      * Generate URL for a named route
      */
-    public static function url(string $name, array $params = [], array $query = []): string {
+    public static function url(string $name, array $params = [], array $query = []): string
+    {
         $router = self::getInstance();
 
         if (!isset($router->namedRoutes[$name])) {
@@ -470,7 +491,7 @@ class Router {
             // Replace parameters in pattern
             $url = preg_replace_callback(
                 '/\{([a-zA-Z_][a-zA-Z0-9_]*)(?::[^}]+)?(\?)?\}/',
-                function($m) use ($params) {
+                function ($m) use ($params) {
                     $paramName = $m[1];
                     $optional = !empty($m[2]);
 
@@ -505,42 +526,48 @@ class Router {
     /**
      * Check if a named route exists
      */
-    public function hasRoute(string $name): bool {
+    public function hasRoute(string $name): bool
+    {
         return isset($this->namedRoutes[$name]);
     }
 
     /**
      * Get all registered routes (for debugging)
      */
-    public function getRoutes(): array {
+    public function getRoutes(): array
+    {
         return $this->routes;
     }
 
     /**
      * Get all named routes (for debugging)
      */
-    public function getNamedRoutes(): array {
+    public function getNamedRoutes(): array
+    {
         return $this->namedRoutes;
     }
 
     /**
      * Check if current route matches a name
      */
-    public static function is(string $name): bool {
+    public static function is(string $name): bool
+    {
         return ($_SERVER['ROUTE_NAME'] ?? '') === $name;
     }
 
     /**
      * Get current route parameters
      */
-    public static function params(): array {
+    public static function params(): array
+    {
         return $_SERVER['ROUTE_PARAMS'] ?? [];
     }
 
     /**
      * Get a specific route parameter
      */
-    public static function param(string $name, mixed $default = null): mixed {
+    public static function param(string $name, mixed $default = null): mixed
+    {
         return $_SERVER['ROUTE_PARAMS'][$name] ?? $default;
     }
 
@@ -556,7 +583,8 @@ class Router {
      *
      * @return bool True if cache was loaded successfully
      */
-    public function loadFromCache(): bool {
+    public function loadFromCache(): bool
+    {
         $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
 
         if (!file_exists($cacheFile)) {
@@ -590,7 +618,8 @@ class Router {
      *
      * @return bool True if cache was saved successfully
      */
-    public function saveToCache(): bool {
+    public function saveToCache(): bool
+    {
         $cacheDir = self::CACHE_DIR;
 
         if (!is_dir($cacheDir)) {
@@ -602,7 +631,7 @@ class Router {
         $cacheFile = $cacheDir . '/' . self::CACHE_FILE;
 
         // Filter out non-serializable handlers (closures)
-        $cacheableRoutes = array_filter($this->routes, function($route) {
+        $cacheableRoutes = array_filter($this->routes, function ($route) {
             return !is_callable($route['handler']) || is_array($route['handler']);
         });
 
@@ -622,7 +651,8 @@ class Router {
      *
      * @return bool True if cache was cleared
      */
-    public static function clearCache(): bool {
+    public static function clearCache(): bool
+    {
         $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
 
         if (file_exists($cacheFile)) {
@@ -637,7 +667,8 @@ class Router {
      *
      * @return bool True if cache is valid
      */
-    public static function isCacheValid(): bool {
+    public static function isCacheValid(): bool
+    {
         $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
 
         if (!file_exists($cacheFile)) {
@@ -657,7 +688,8 @@ class Router {
      *
      * @return array Cache information
      */
-    public static function getCacheStats(): array {
+    public static function getCacheStats(): array
+    {
         $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
 
         if (!file_exists($cacheFile)) {
@@ -688,7 +720,8 @@ class Router {
      * @param bool $forceRefresh Force cache regeneration
      * @return Router The router instance
      */
-    public static function cached(bool $forceRefresh = false): Router {
+    public static function cached(bool $forceRefresh = false): Router
+    {
         $router = self::getInstance();
 
         // Try to load from cache first (unless forced refresh)

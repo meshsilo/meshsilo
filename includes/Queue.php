@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Background Job Queue
  *
@@ -11,7 +12,8 @@
  *   Queue::later('+5 minutes', 'CleanupTempFiles', []);
  */
 
-class Queue {
+class Queue
+{
     private static $db = null;
 
     // Job statuses
@@ -26,7 +28,8 @@ class Queue {
     /**
      * Get database connection
      */
-    private static function db() {
+    private static function db()
+    {
         if (self::$db === null) {
             self::$db = function_exists('getDB') ? getDB() : null;
             self::ensureTable();
@@ -37,9 +40,12 @@ class Queue {
     /**
      * Ensure jobs table exists
      */
-    private static function ensureTable(): void {
+    private static function ensureTable(): void
+    {
         $db = self::$db;
-        if (!$db) return;
+        if (!$db) {
+            return;
+        }
 
         $db->exec("
             CREATE TABLE IF NOT EXISTS jobs (
@@ -64,14 +70,16 @@ class Queue {
     /**
      * Push a job onto the queue
      */
-    public static function push(string $jobClass, array $data = [], string $queue = self::DEFAULT_QUEUE): int {
+    public static function push(string $jobClass, array $data = [], string $queue = self::DEFAULT_QUEUE): int
+    {
         return self::pushAt(date('Y-m-d H:i:s'), $jobClass, $data, $queue);
     }
 
     /**
      * Push a job to run later
      */
-    public static function later($delay, string $jobClass, array $data = [], string $queue = self::DEFAULT_QUEUE): int {
+    public static function later($delay, string $jobClass, array $data = [], string $queue = self::DEFAULT_QUEUE): int
+    {
         if (is_string($delay)) {
             $delay = strtotime($delay);
         } elseif (is_int($delay)) {
@@ -84,9 +92,12 @@ class Queue {
     /**
      * Push a job at a specific time
      */
-    private static function pushAt(string $availableAt, string $jobClass, array $data, string $queue): int {
+    private static function pushAt(string $availableAt, string $jobClass, array $data, string $queue): int
+    {
         $db = self::db();
-        if (!$db) return 0;
+        if (!$db) {
+            return 0;
+        }
 
         $stmt = $db->prepare("
             INSERT INTO jobs (queue, job_class, payload, available_at, status)
@@ -106,9 +117,12 @@ class Queue {
     /**
      * Get the next available job from a queue
      */
-    public static function pop(string $queue = self::DEFAULT_QUEUE, int $maxRetries = 3): ?array {
+    public static function pop(string $queue = self::DEFAULT_QUEUE, int $maxRetries = 3): ?array
+    {
         $db = self::db();
-        if (!$db) return null;
+        if (!$db) {
+            return null;
+        }
 
         for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
             $now = date('Y-m-d H:i:s');
@@ -130,7 +144,9 @@ class Queue {
             $result = $stmt->execute();
             $job = $result->fetchArray(PDO::FETCH_ASSOC);
 
-            if (!$job) return null;
+            if (!$job) {
+                return null;
+            }
 
             // Reserve the job
             $stmt = $db->prepare("
@@ -160,9 +176,12 @@ class Queue {
     /**
      * Mark a job as completed
      */
-    public static function complete(int $jobId): bool {
+    public static function complete(int $jobId): bool
+    {
         $db = self::db();
-        if (!$db) return false;
+        if (!$db) {
+            return false;
+        }
 
         $stmt = $db->prepare("
             UPDATE jobs
@@ -180,16 +199,21 @@ class Queue {
     /**
      * Mark a job as failed
      */
-    public static function fail(int $jobId, string $error): bool {
+    public static function fail(int $jobId, string $error): bool
+    {
         $db = self::db();
-        if (!$db) return false;
+        if (!$db) {
+            return false;
+        }
 
         // Get job to check attempts
         $stmt = $db->prepare("SELECT attempts, max_attempts FROM jobs WHERE id = :id");
         $stmt->bindValue(':id', $jobId, PDO::PARAM_INT);
         $job = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
-        if (!$job) return false;
+        if (!$job) {
+            return false;
+        }
 
         // If we haven't exceeded max attempts, put back in queue
         if ($job['attempts'] < $job['max_attempts']) {
@@ -228,9 +252,12 @@ class Queue {
     /**
      * Delete a job
      */
-    public static function delete(int $jobId): bool {
+    public static function delete(int $jobId): bool
+    {
         $db = self::db();
-        if (!$db) return false;
+        if (!$db) {
+            return false;
+        }
 
         $stmt = $db->prepare("DELETE FROM jobs WHERE id = :id");
         $stmt->bindValue(':id', $jobId, PDO::PARAM_INT);
@@ -241,9 +268,12 @@ class Queue {
     /**
      * Get queue statistics
      */
-    public static function stats(?string $queue = null): array {
+    public static function stats(?string $queue = null): array
+    {
         $db = self::db();
-        if (!$db) return [];
+        if (!$db) {
+            return [];
+        }
 
         $where = $queue ? "WHERE queue = :queue" : "";
 
@@ -278,9 +308,12 @@ class Queue {
     /**
      * Clear completed jobs older than X hours
      */
-    public static function prune(int $hours = 24): int {
+    public static function prune(int $hours = 24): int
+    {
         $db = self::db();
-        if (!$db) return 0;
+        if (!$db) {
+            return 0;
+        }
 
         $cutoff = date('Y-m-d H:i:s', time() - ($hours * 3600));
 
@@ -300,9 +333,12 @@ class Queue {
     /**
      * Retry all failed jobs
      */
-    public static function retryFailed(string $queue = self::DEFAULT_QUEUE): int {
+    public static function retryFailed(string $queue = self::DEFAULT_QUEUE): int
+    {
         $db = self::db();
-        if (!$db) return 0;
+        if (!$db) {
+            return 0;
+        }
 
         $stmt = $db->prepare("
             UPDATE jobs
@@ -322,9 +358,12 @@ class Queue {
     /**
      * Get failed jobs
      */
-    public static function failed(int $limit = 50): array {
+    public static function failed(int $limit = 50): array
+    {
         $db = self::db();
-        if (!$db) return [];
+        if (!$db) {
+            return [];
+        }
 
         $stmt = $db->prepare("
             SELECT * FROM jobs
@@ -350,7 +389,8 @@ class Queue {
     /**
      * Process a job (used by worker)
      */
-    public static function process(array $job): bool {
+    public static function process(array $job): bool
+    {
         $class = $job['job_class'];
         $data = $job['payload'];
 
@@ -376,7 +416,6 @@ class Queue {
 
             $instance->handle($data);
             return true;
-
         } catch (\Throwable $e) {
             throw $e;
         }
@@ -386,13 +425,15 @@ class Queue {
 /**
  * Base Job Class
  */
-abstract class Job {
+abstract class Job
+{
     public int $maxAttempts = 3;
     public int $timeout = 300; // 5 minutes
 
     abstract public function handle(array $data): void;
 
-    public function failed(array $data, \Throwable $e): void {
+    public function failed(array $data, \Throwable $e): void
+    {
         // Override in subclass to handle failures
     }
 }
@@ -404,13 +445,15 @@ abstract class Job {
 /**
  * Push a job onto the queue
  */
-function dispatch(string $jobClass, array $data = [], string $queue = 'default'): int {
+function dispatch(string $jobClass, array $data = [], string $queue = 'default'): int
+{
     return Queue::push($jobClass, $data, $queue);
 }
 
 /**
  * Dispatch a job to run later
  */
-function dispatch_later($delay, string $jobClass, array $data = [], string $queue = 'default'): int {
+function dispatch_later($delay, string $jobClass, array $data = [], string $queue = 'default'): int
+{
     return Queue::later($delay, $jobClass, $data, $queue);
 }

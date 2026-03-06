@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Query Batcher
  *
@@ -16,17 +17,20 @@
  *   $results = $batcher->execute();
  */
 
-class QueryBatcher {
+class QueryBatcher
+{
     private static ?QueryBatcher $instance = null;
     private $db;
     private array $batches = [];
     private array $results = [];
 
-    private function __construct($db = null) {
+    private function __construct($db = null)
+    {
         $this->db = $db ?? (function_exists('getDB') ? getDB() : null);
     }
 
-    public static function getInstance($db = null): self {
+    public static function getInstance($db = null): self
+    {
         if (self::$instance === null) {
             self::$instance = new self($db);
         }
@@ -42,7 +46,8 @@ class QueryBatcher {
      * @param string $idColumn Column name for the ID (default: 'id')
      * @return self
      */
-    public function batch(string $key, string $table, array $ids, string $idColumn = 'id'): self {
+    public function batch(string $key, string $table, array $ids, string $idColumn = 'id'): self
+    {
         if (empty($ids)) {
             return $this;
         }
@@ -67,7 +72,8 @@ class QueryBatcher {
     /**
      * Add a raw SQL query to the batch
      */
-    public function batchRaw(string $key, string $sql, array $bindings = []): self {
+    public function batchRaw(string $key, string $sql, array $bindings = []): self
+    {
         $this->batches[$key] = [
             'sql' => $sql,
             'bindings' => $bindings,
@@ -79,7 +85,8 @@ class QueryBatcher {
     /**
      * Execute all batched queries
      */
-    public function execute(): array {
+    public function execute(): array
+    {
         if (empty($this->db)) {
             throw new RuntimeException('Database connection not available');
         }
@@ -107,7 +114,8 @@ class QueryBatcher {
     /**
      * Execute a batch lookup query
      */
-    private function executeBatch(string $table, array $ids, string $idColumn): array {
+    private function executeBatch(string $table, array $ids, string $idColumn): array
+    {
         if (empty($ids)) {
             return [];
         }
@@ -130,7 +138,8 @@ class QueryBatcher {
     /**
      * Execute a raw SQL query
      */
-    private function executeRaw(string $sql, array $bindings): array {
+    private function executeRaw(string $sql, array $bindings): array
+    {
         $stmt = $this->db->prepare($sql);
 
         foreach ($bindings as $key => $value) {
@@ -155,7 +164,8 @@ class QueryBatcher {
     /**
      * Get results for a specific batch key
      */
-    public function get(string $key): ?array {
+    public function get(string $key): ?array
+    {
         // Auto-execute if not yet executed
         if (!isset($this->results[$key]) && isset($this->batches[$key])) {
             $this->execute();
@@ -167,7 +177,8 @@ class QueryBatcher {
     /**
      * Get a single item from batch results
      */
-    public function getOne(string $key, $id) {
+    public function getOne(string $key, $id)
+    {
         $results = $this->get($key);
         return $results[$id] ?? null;
     }
@@ -175,14 +186,16 @@ class QueryBatcher {
     /**
      * Check if batch has pending queries
      */
-    public function hasPending(): bool {
+    public function hasPending(): bool
+    {
         return !empty($this->batches);
     }
 
     /**
      * Clear all batches and results
      */
-    public function clear(): void {
+    public function clear(): void
+    {
         $this->batches = [];
         $this->results = [];
     }
@@ -190,11 +203,12 @@ class QueryBatcher {
     /**
      * Get batch statistics
      */
-    public function stats(): array {
+    public function stats(): array
+    {
         return [
             'pending_batches' => count($this->batches),
             'cached_results' => count($this->results),
-            'total_ids' => array_sum(array_map(function($batch) {
+            'total_ids' => array_sum(array_map(function ($batch) {
                 return isset($batch['ids']) ? count($batch['ids']) : 0;
             }, $this->batches))
         ];
@@ -206,7 +220,8 @@ class QueryBatcher {
  *
  * Collects lookups during iteration and executes them in one batch.
  */
-class DeferredLoader {
+class DeferredLoader
+{
     private QueryBatcher $batcher;
     private string $table;
     private string $idColumn;
@@ -214,7 +229,8 @@ class DeferredLoader {
     private array $pendingIds = [];
     private bool $executed = false;
 
-    public function __construct(string $table, string $idColumn = 'id') {
+    public function __construct(string $table, string $idColumn = 'id')
+    {
         $this->batcher = QueryBatcher::getInstance();
         $this->table = $table;
         $this->idColumn = $idColumn;
@@ -224,7 +240,8 @@ class DeferredLoader {
     /**
      * Register an ID to be loaded
      */
-    public function defer($id): self {
+    public function defer($id): self
+    {
         $this->pendingIds[] = $id;
         return $this;
     }
@@ -232,7 +249,8 @@ class DeferredLoader {
     /**
      * Register multiple IDs to be loaded
      */
-    public function deferMany(array $ids): self {
+    public function deferMany(array $ids): self
+    {
         $this->pendingIds = array_merge($this->pendingIds, $ids);
         return $this;
     }
@@ -240,7 +258,8 @@ class DeferredLoader {
     /**
      * Load all deferred items and return results
      */
-    public function load(): array {
+    public function load(): array
+    {
         if (!$this->executed && !empty($this->pendingIds)) {
             $this->batcher->batch($this->key, $this->table, $this->pendingIds, $this->idColumn);
             $this->batcher->execute();
@@ -253,7 +272,8 @@ class DeferredLoader {
     /**
      * Get a single loaded item
      */
-    public function get($id) {
+    public function get($id)
+    {
         $results = $this->load();
         return $results[$id] ?? null;
     }
@@ -262,6 +282,7 @@ class DeferredLoader {
 /**
  * Helper function to create a deferred loader
  */
-function deferLoad(string $table, string $idColumn = 'id'): DeferredLoader {
+function deferLoad(string $table, string $idColumn = 'id'): DeferredLoader
+{
     return new DeferredLoader($table, $idColumn);
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * PHP OPcache Preloading Script
  *

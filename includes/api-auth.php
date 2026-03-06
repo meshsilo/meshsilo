@@ -1,4 +1,5 @@
 <?php
+
 /**
  * API Authentication System
  */
@@ -13,7 +14,8 @@ define('API_PERM_ADMIN', 'admin');
  * Authenticate an API request
  * Returns the API key record with user info, or null if invalid
  */
-function authenticateApiRequest() {
+function authenticateApiRequest()
+{
     // Get API key from header only (never query params - they leak in logs/referrer)
     $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
     // Strip "Bearer " prefix if using Authorization header
@@ -40,7 +42,8 @@ function authenticateApiRequest() {
 /**
  * Validate an API key and return its record
  */
-function validateApiKey($key) {
+function validateApiKey($key)
+{
     $db = getDB();
 
     // Hash the key for lookup
@@ -67,7 +70,8 @@ function validateApiKey($key) {
 /**
  * Check if API key has a specific permission
  */
-function apiHasPermission($apiUser, $permission) {
+function apiHasPermission($apiUser, $permission)
+{
     // Admin API keys have all permissions
     if (in_array(API_PERM_ADMIN, $apiUser['permissions_array'])) {
         return true;
@@ -84,7 +88,8 @@ function apiHasPermission($apiUser, $permission) {
 /**
  * Require an API permission or return error
  */
-function requireApiPermission($apiUser, $permission) {
+function requireApiPermission($apiUser, $permission)
+{
     if (!apiHasPermission($apiUser, $permission)) {
         apiError('Permission denied. This API key does not have ' . $permission . ' access.', 403);
     }
@@ -93,7 +98,8 @@ function requireApiPermission($apiUser, $permission) {
 /**
  * Generate a new API key
  */
-function generateApiKey($userId, $name, $permissions = [API_PERM_READ], $expiresAt = null) {
+function generateApiKey($userId, $name, $permissions = [API_PERM_READ], $expiresAt = null)
+{
     $db = getDB();
 
     // Generate a secure random key
@@ -132,7 +138,8 @@ function generateApiKey($userId, $name, $permissions = [API_PERM_READ], $expires
 /**
  * Revoke an API key
  */
-function revokeApiKey($keyId, $userId = null) {
+function revokeApiKey($keyId, $userId = null)
+{
     $db = getDB();
 
     $sql = 'UPDATE api_keys SET is_active = 0 WHERE id = :id';
@@ -155,7 +162,8 @@ function revokeApiKey($keyId, $userId = null) {
 /**
  * Update API key last used timestamp
  */
-function updateApiKeyLastUsed($keyId) {
+function updateApiKeyLastUsed($keyId)
+{
     $db = getDB();
     $type = $db->getType();
 
@@ -170,7 +178,8 @@ function updateApiKeyLastUsed($keyId) {
 /**
  * Get all API keys for a user
  */
-function getUserApiKeys($userId) {
+function getUserApiKeys($userId)
+{
     $db = getDB();
     $stmt = $db->prepare('
         SELECT id, name, key_prefix, permissions, is_active, expires_at, last_used_at, request_count, created_at
@@ -191,7 +200,8 @@ function getUserApiKeys($userId) {
 /**
  * Get all API keys (admin)
  */
-function getAllApiKeys() {
+function getAllApiKeys()
+{
     $db = getDB();
     $result = $db->query('
         SELECT ak.id, ak.name, ak.key_prefix, ak.permissions, ak.is_active,
@@ -213,7 +223,8 @@ function getAllApiKeys() {
 /**
  * Log an API request
  */
-function logApiRequest($apiKeyId, $method, $endpoint) {
+function logApiRequest($apiKeyId, $method, $endpoint)
+{
     $db = getDB();
 
     $stmt = $db->prepare('
@@ -232,7 +243,8 @@ function logApiRequest($apiKeyId, $method, $endpoint) {
 /**
  * Get API request statistics
  */
-function getApiRequestStats($apiKeyId = null, $days = 30) {
+function getApiRequestStats($apiKeyId = null, $days = 30)
+{
     $db = getDB();
     $type = $db->getType();
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Error Handler
  *
@@ -6,7 +7,8 @@
  * Displays detailed errors in development, friendly pages in production.
  */
 
-class ErrorHandler {
+class ErrorHandler
+{
     private static bool $debug = false;
     private static ?string $logPath = null;
     private static bool $registered = false;
@@ -14,7 +16,8 @@ class ErrorHandler {
     /**
      * Initialize error handler
      */
-    public static function init(bool $debug = false): void {
+    public static function init(bool $debug = false): void
+    {
         self::$debug = $debug;
         self::$logPath = dirname(__DIR__) . '/storage/logs/';
 
@@ -29,14 +32,16 @@ class ErrorHandler {
     /**
      * Set debug mode
      */
-    public static function setDebug(bool $debug): void {
+    public static function setDebug(bool $debug): void
+    {
         self::$debug = $debug;
     }
 
     /**
      * Handle PHP errors
      */
-    public static function handleError(int $severity, string $message, string $file, int $line): bool {
+    public static function handleError(int $severity, string $message, string $file, int $line): bool
+    {
         // Don't throw exceptions for deprecation notices - just log them
         // PHP 8.1+ triggers E_DEPRECATED for many previously-silent operations
         // (e.g., htmlspecialchars(null), strlen(null)) which would cause 500 errors
@@ -57,7 +62,8 @@ class ErrorHandler {
     /**
      * Handle uncaught exceptions
      */
-    public static function handleException(\Throwable $e): void {
+    public static function handleException(\Throwable $e): void
+    {
         // Log the error
         self::logError($e);
 
@@ -80,7 +86,8 @@ class ErrorHandler {
     /**
      * Handle fatal errors on shutdown
      */
-    public static function handleShutdown(): void {
+    public static function handleShutdown(): void
+    {
         $error = error_get_last();
         if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
             $e = new ErrorException($error['message'], 0, $error['type'], $error['file'], $error['line']);
@@ -91,7 +98,8 @@ class ErrorHandler {
     /**
      * Get HTTP status code for exception
      */
-    private static function getStatusCode(\Throwable $e): int {
+    private static function getStatusCode(\Throwable $e): int
+    {
         $code = is_numeric($e->getCode()) ? (int)$e->getCode() : 0;
 
         // Map exception types to HTTP codes
@@ -116,7 +124,8 @@ class ErrorHandler {
     /**
      * Check if request is an API request
      */
-    private static function isApiRequest(): bool {
+    private static function isApiRequest(): bool
+    {
         $uri = $_SERVER['REQUEST_URI'] ?? '';
         $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
 
@@ -128,7 +137,8 @@ class ErrorHandler {
     /**
      * Log error to file
      */
-    private static function logError(\Throwable $e): void {
+    private static function logError(\Throwable $e): void
+    {
         if (function_exists('logException')) {
             logException($e);
             return;
@@ -152,7 +162,8 @@ class ErrorHandler {
     /**
      * Render JSON error response
      */
-    private static function renderJsonError(\Throwable $e, int $code): void {
+    private static function renderJsonError(\Throwable $e, int $code): void
+    {
         header('Content-Type: application/json');
 
         $response = [
@@ -180,7 +191,8 @@ class ErrorHandler {
     /**
      * Render HTML error page
      */
-    private static function renderHtmlError(\Throwable $e, int $code): void {
+    private static function renderHtmlError(\Throwable $e, int $code): void
+    {
         $title = self::getErrorTitle($code);
         $message = self::$debug ? $e->getMessage() : self::getFriendlyMessage($code);
         $showDetails = self::$debug;
@@ -199,7 +211,8 @@ class ErrorHandler {
     /**
      * Render default error page
      */
-    private static function renderDefaultErrorPage(\Throwable $e, int $code, string $title, string $message, bool $showDetails): void {
+    private static function renderDefaultErrorPage(\Throwable $e, int $code, string $title, string $message, bool $showDetails): void
+    {
         $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
         ?>
 <!DOCTYPE html>
@@ -306,7 +319,7 @@ class ErrorHandler {
             <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
         </div>
 
-        <?php if ($showDetails): ?>
+        <?php if ($showDetails) : ?>
         <div class="error-details">
             <h4><?= htmlspecialchars(get_class($e)) ?></h4>
             <p class="file-info"><?= htmlspecialchars($e->getFile()) ?>:<?= $e->getLine() ?></p>
@@ -322,7 +335,8 @@ class ErrorHandler {
     /**
      * Get error title for status code
      */
-    private static function getErrorTitle(int $code): string {
+    private static function getErrorTitle(int $code): string
+    {
         $titles = [
             400 => 'Bad Request',
             401 => 'Unauthorized',
@@ -344,7 +358,8 @@ class ErrorHandler {
     /**
      * Get friendly message for status code
      */
-    private static function getFriendlyMessage(int $code): string {
+    private static function getFriendlyMessage(int $code): string
+    {
         $messages = [
             400 => 'The request could not be understood. Please check your input and try again.',
             401 => 'You need to log in to access this page.',
@@ -364,14 +379,16 @@ class ErrorHandler {
     /**
      * Abort with error
      */
-    public static function abort(int $code, ?string $message = null): void {
+    public static function abort(int $code, ?string $message = null): void
+    {
         throw new \Exception($message ?? self::getFriendlyMessage($code), $code);
     }
 
     /**
      * Abort if condition is true
      */
-    public static function abortIf(bool $condition, int $code, ?string $message = null): void {
+    public static function abortIf(bool $condition, int $code, ?string $message = null): void
+    {
         if ($condition) {
             self::abort($code, $message);
         }
@@ -380,7 +397,8 @@ class ErrorHandler {
     /**
      * Abort unless condition is true
      */
-    public static function abortUnless(bool $condition, int $code, ?string $message = null): void {
+    public static function abortUnless(bool $condition, int $code, ?string $message = null): void
+    {
         if (!$condition) {
             self::abort($code, $message);
         }
@@ -394,28 +412,32 @@ class ErrorHandler {
 /**
  * Abort with error code
  */
-function abort(int $code, ?string $message = null): void {
+function abort(int $code, ?string $message = null): void
+{
     ErrorHandler::abort($code, $message);
 }
 
 /**
  * Abort if condition
  */
-function abort_if(bool $condition, int $code, ?string $message = null): void {
+function abort_if(bool $condition, int $code, ?string $message = null): void
+{
     ErrorHandler::abortIf($condition, $code, $message);
 }
 
 /**
  * Abort unless condition
  */
-function abort_unless(bool $condition, int $code, ?string $message = null): void {
+function abort_unless(bool $condition, int $code, ?string $message = null): void
+{
     ErrorHandler::abortUnless($condition, $code, $message);
 }
 
 /**
  * Return a JSON success response
  */
-function json_success(array $data = [], string $message = 'Success', int $code = 200): void {
+function json_success(array $data = [], string $message = 'Success', int $code = 200): void
+{
     http_response_code($code);
     header('Content-Type: application/json');
     echo json_encode([
@@ -429,7 +451,8 @@ function json_success(array $data = [], string $message = 'Success', int $code =
 /**
  * Return a JSON error response
  */
-function json_error(string $message, int $code = 400, array $errors = []): void {
+function json_error(string $message, int $code = 400, array $errors = []): void
+{
     http_response_code($code);
     header('Content-Type: application/json');
     $response = [
@@ -448,42 +471,48 @@ function json_error(string $message, int $code = 400, array $errors = []): void 
 /**
  * Return a JSON response for feature not enabled
  */
-function json_feature_disabled(string $feature): void {
+function json_feature_disabled(string $feature): void
+{
     json_error("This feature ({$feature}) is not enabled.", 403);
 }
 
 /**
  * Return a JSON response for unauthorized access
  */
-function json_unauthorized(string $message = 'Unauthorized'): void {
+function json_unauthorized(string $message = 'Unauthorized'): void
+{
     json_error($message, 401);
 }
 
 /**
  * Return a JSON response for forbidden access
  */
-function json_forbidden(string $message = 'You do not have permission to perform this action.'): void {
+function json_forbidden(string $message = 'You do not have permission to perform this action.'): void
+{
     json_error($message, 403);
 }
 
 /**
  * Return a JSON response for not found
  */
-function json_not_found(string $message = 'Resource not found.'): void {
+function json_not_found(string $message = 'Resource not found.'): void
+{
     json_error($message, 404);
 }
 
 /**
  * Return a JSON response for validation errors
  */
-function json_validation_error(array $errors, string $message = 'Validation failed.'): void {
+function json_validation_error(array $errors, string $message = 'Validation failed.'): void
+{
     json_error($message, 422, $errors);
 }
 
 /**
  * Require feature or return JSON error
  */
-function require_feature_json(string $feature): void {
+function require_feature_json(string $feature): void
+{
     if (function_exists('isFeatureEnabled') && !isFeatureEnabled($feature)) {
         json_feature_disabled($feature);
     }
@@ -492,7 +521,8 @@ function require_feature_json(string $feature): void {
 /**
  * Require authentication or return JSON error
  */
-function require_auth_json(): void {
+function require_auth_json(): void
+{
     if (function_exists('isLoggedIn') && !isLoggedIn()) {
         json_unauthorized('You must be logged in to perform this action.');
     }
@@ -501,7 +531,8 @@ function require_auth_json(): void {
 /**
  * Require admin or return JSON error
  */
-function require_admin_json(): void {
+function require_admin_json(): void
+{
     require_auth_json();
     if (function_exists('isAdmin') && !isAdmin()) {
         json_forbidden('Admin access required.');
@@ -511,7 +542,8 @@ function require_admin_json(): void {
 /**
  * Setup error handler
  */
-function setupErrorHandler(bool $debug = false): void {
+function setupErrorHandler(bool $debug = false): void
+{
     // Allow enabling debug via database setting or .debug file
     if (!$debug) {
         // Check for .debug file in project root (easiest toggle for server admin)

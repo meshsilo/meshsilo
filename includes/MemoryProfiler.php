@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Memory Profiler
  *
@@ -12,7 +13,8 @@
  * Enable with: MemoryProfiler::enable();
  */
 
-class MemoryProfiler {
+class MemoryProfiler
+{
     private static ?self $instance = null;
     private bool $enabled = false;
     private array $snapshots = [];
@@ -22,14 +24,16 @@ class MemoryProfiler {
     private int $warningThreshold = 50 * 1024 * 1024; // 50MB
     private int $criticalThreshold = 100 * 1024 * 1024; // 100MB
 
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    private function __construct() {
+    private function __construct()
+    {
         $this->startMemory = memory_get_usage(true);
         $this->startTime = microtime(true);
         $this->logFile = dirname(__DIR__) . '/storage/logs/memory.log';
@@ -41,22 +45,27 @@ class MemoryProfiler {
     /**
      * Enable memory profiling
      */
-    public static function enable(): void {
+    public static function enable(): void
+    {
         self::getInstance()->enabled = true;
     }
 
     /**
      * Disable memory profiling
      */
-    public static function disable(): void {
+    public static function disable(): void
+    {
         self::getInstance()->enabled = false;
     }
 
     /**
      * Take a memory snapshot
      */
-    public function snapshot(string $label): void {
-        if (!$this->enabled && $label !== 'init') return;
+    public function snapshot(string $label): void
+    {
+        if (!$this->enabled && $label !== 'init') {
+            return;
+        }
 
         $this->snapshots[] = [
             'label' => $label,
@@ -72,14 +81,16 @@ class MemoryProfiler {
     /**
      * Get all snapshots
      */
-    public function getSnapshots(): array {
+    public function getSnapshots(): array
+    {
         return $this->snapshots;
     }
 
     /**
      * Get memory statistics
      */
-    public function getStats(): array {
+    public function getStats(): array
+    {
         $currentMemory = memory_get_usage(true);
         $peakMemory = memory_get_peak_usage(true);
         $memoryLimit = $this->getMemoryLimit();
@@ -118,7 +129,8 @@ class MemoryProfiler {
     /**
      * Get memory status
      */
-    private function getMemoryStatus(int $memory): string {
+    private function getMemoryStatus(int $memory): string
+    {
         if ($memory >= $this->criticalThreshold) {
             return 'critical';
         }
@@ -131,7 +143,8 @@ class MemoryProfiler {
     /**
      * Get memory limit in bytes
      */
-    private function getMemoryLimit(): int {
+    private function getMemoryLimit(): int
+    {
         $limit = ini_get('memory_limit');
 
         if ($limit === '-1') {
@@ -156,7 +169,8 @@ class MemoryProfiler {
     /**
      * Analyze memory growth
      */
-    public function analyzeGrowth(): array {
+    public function analyzeGrowth(): array
+    {
         $growth = [];
 
         for ($i = 1; $i < count($this->snapshots); $i++) {
@@ -185,7 +199,8 @@ class MemoryProfiler {
     /**
      * Check for potential memory leaks
      */
-    public function checkForLeaks(): array {
+    public function checkForLeaks(): array
+    {
         $issues = [];
 
         // Check if memory grew significantly
@@ -225,7 +240,8 @@ class MemoryProfiler {
     /**
      * Export to log file
      */
-    public function exportToLog(): void {
+    public function exportToLog(): void
+    {
         $stats = $this->getStats();
         $growth = $this->analyzeGrowth();
         $issues = $this->checkForLeaks();
@@ -265,11 +281,12 @@ class MemoryProfiler {
     /**
      * Get summary for debug output
      */
-    public function getSummary(): string {
+    public function getSummary(): string
+    {
         $stats = $this->getStats();
         $status = $stats['status'];
 
-        $statusIcon = match($status) {
+        $statusIcon = match ($status) {
             'critical' => '🔴',
             'warning' => '🟡',
             default => '🟢',
@@ -281,7 +298,8 @@ class MemoryProfiler {
     /**
      * Render debug bar HTML
      */
-    public function renderDebugBar(): string {
+    public function renderDebugBar(): string
+    {
         if (!$this->enabled) {
             return '';
         }
@@ -290,7 +308,7 @@ class MemoryProfiler {
         $growth = $this->analyzeGrowth();
         $issues = $this->checkForLeaks();
 
-        $statusColor = match($stats['status']) {
+        $statusColor = match ($stats['status']) {
             'critical' => '#f87171',
             'warning' => '#fbbf24',
             default => '#4ade80',
@@ -334,7 +352,8 @@ class MemoryProfiler {
         return $html;
     }
 
-    private function getCallerLocation(): string {
+    private function getCallerLocation(): string
+    {
         $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5);
 
         foreach ($trace as $frame) {
@@ -347,7 +366,8 @@ class MemoryProfiler {
         return 'unknown';
     }
 
-    private function formatBytes(int $bytes): string {
+    private function formatBytes(int $bytes): string
+    {
         $negative = $bytes < 0;
         $bytes = abs($bytes);
         $units = ['B', 'KB', 'MB', 'GB'];
@@ -363,10 +383,12 @@ class MemoryProfiler {
 }
 
 // Helper functions
-function memory_snapshot(string $label): void {
+function memory_snapshot(string $label): void
+{
     MemoryProfiler::getInstance()->snapshot($label);
 }
 
-function memory_stats(): array {
+function memory_stats(): array
+{
     return MemoryProfiler::getInstance()->getStats();
 }

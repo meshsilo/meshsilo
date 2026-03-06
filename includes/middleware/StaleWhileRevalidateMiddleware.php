@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Stale-While-Revalidate Middleware
  *
@@ -8,13 +9,15 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
+class StaleWhileRevalidateMiddleware implements MiddlewareInterface
+{
     private string $cacheDir;
     private int $maxAge;
     private int $staleWhileRevalidate;
     private array $excludePatterns;
 
-    public function __construct(array $options = []) {
+    public function __construct(array $options = [])
+    {
         $this->cacheDir = $options['cache_dir'] ?? dirname(__DIR__, 2) . '/storage/cache/swr';
         $this->maxAge = $options['max_age'] ?? 60; // 1 minute fresh
         $this->staleWhileRevalidate = $options['stale_while_revalidate'] ?? 300; // 5 minutes stale
@@ -25,7 +28,8 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
         }
     }
 
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         // Only cache GET requests
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             return true;
@@ -75,13 +79,15 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
         return true;
     }
 
-    private function getCacheKey(): string {
+    private function getCacheKey(): string
+    {
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         $query = $_SERVER['QUERY_STRING'] ?? '';
         return md5($uri . '?' . $query);
     }
 
-    private function getFromCache(string $key): ?array {
+    private function getFromCache(string $key): ?array
+    {
         $file = $this->cacheDir . '/' . $key . '.cache';
         if (!file_exists($file)) {
             return null;
@@ -95,7 +101,8 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
         return $data;
     }
 
-    private function saveToCache(string $key, string $content, array $headers): void {
+    private function saveToCache(string $key, string $content, array $headers): void
+    {
         $file = $this->cacheDir . '/' . $key . '.cache';
         $data = [
             'content' => $content,
@@ -105,7 +112,8 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
         file_put_contents($file, json_encode($data));
     }
 
-    private function serveCached(array $cached, int $age, bool $stale = false): void {
+    private function serveCached(array $cached, int $age, bool $stale = false): void
+    {
         // Send cache headers
         $maxAge = $stale ? 0 : ($this->maxAge - $age);
         $swr = $this->staleWhileRevalidate;
@@ -125,8 +133,9 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
         echo $cached['content'];
     }
 
-    private function startOutputBuffering(string $cacheKey): void {
-        ob_start(function($content) use ($cacheKey) {
+    private function startOutputBuffering(string $cacheKey): void
+    {
+        ob_start(function ($content) use ($cacheKey) {
             // Capture current headers
             $headers = [];
             foreach (headers_list() as $header) {
@@ -148,10 +157,11 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
         });
     }
 
-    private function scheduleRevalidation(string $cacheKey): void {
+    private function scheduleRevalidation(string $cacheKey): void
+    {
         // In a real production environment, this would trigger a background job
         // For now, we just mark the need for revalidation
-        register_shutdown_function(function() {
+        register_shutdown_function(function () {
             // The next request will fetch fresh content
             // This could be enhanced with a job queue
         });
@@ -160,7 +170,8 @@ class StaleWhileRevalidateMiddleware implements MiddlewareInterface {
     /**
      * Clear expired cache entries
      */
-    public function cleanup(): int {
+    public function cleanup(): int
+    {
         $cleared = 0;
         $maxAge = $this->maxAge + $this->staleWhileRevalidate + 3600; // Extra hour buffer
 

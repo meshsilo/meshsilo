@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Early Hints Middleware (HTTP 103)
  *
@@ -11,14 +12,16 @@
  * Note: Requires nginx proxy_early_hints on; or Apache with mod_http2
  */
 
-class EarlyHintsMiddleware {
+class EarlyHintsMiddleware
+{
     private array $hints = [];
     private bool $enabled = true;
 
     /**
      * Add a preload hint
      */
-    public function preload(string $url, string $as, array $options = []): self {
+    public function preload(string $url, string $as, array $options = []): self
+    {
         $hint = [
             'url' => $url,
             'as' => $as,
@@ -33,7 +36,8 @@ class EarlyHintsMiddleware {
     /**
      * Add a preconnect hint
      */
-    public function preconnect(string $origin, bool $crossorigin = true): self {
+    public function preconnect(string $origin, bool $crossorigin = true): self
+    {
         $this->hints[] = [
             'url' => $origin,
             'rel' => 'preconnect',
@@ -45,7 +49,8 @@ class EarlyHintsMiddleware {
     /**
      * Send early hints
      */
-    public function send(): void {
+    public function send(): void
+    {
         if (!$this->enabled || empty($this->hints) || headers_sent()) {
             return;
         }
@@ -78,7 +83,8 @@ class EarlyHintsMiddleware {
     /**
      * Send hints as regular Link headers (fallback)
      */
-    private function sendAsLinkHeaders(): void {
+    private function sendAsLinkHeaders(): void
+    {
         foreach ($this->hints as $hint) {
             header('Link: ' . $this->buildLinkValue($hint), false);
         }
@@ -87,7 +93,8 @@ class EarlyHintsMiddleware {
     /**
      * Build a Link header value
      */
-    private function buildLinkValue(array $hint): string {
+    private function buildLinkValue(array $hint): string
+    {
         $parts = ['<' . $hint['url'] . '>'];
 
         if (isset($hint['rel'])) {
@@ -114,7 +121,8 @@ class EarlyHintsMiddleware {
     /**
      * Check if early hints can be sent
      */
-    private function canSendEarlyHints(): bool {
+    private function canSendEarlyHints(): bool
+    {
         // Check for HTTP/2 or HTTP/3
         $protocol = $_SERVER['SERVER_PROTOCOL'] ?? '';
         if (strpos($protocol, 'HTTP/2') === false && strpos($protocol, 'HTTP/3') === false) {
@@ -133,7 +141,8 @@ class EarlyHintsMiddleware {
     /**
      * Get default hints for MeshSilo pages
      */
-    public static function getDefaultHints(bool $needsViewer = false): self {
+    public static function getDefaultHints(bool $needsViewer = false): self
+    {
         $middleware = new self();
 
         // Preconnect to CDNs
@@ -159,6 +168,7 @@ class EarlyHintsMiddleware {
 /**
  * Send early hints for the current page
  */
-function sendEarlyHints(bool $needsViewer = false): void {
+function sendEarlyHints(bool $needsViewer = false): void
+{
     EarlyHintsMiddleware::getDefaultHints($needsViewer)->send();
 }

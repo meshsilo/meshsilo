@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Environment Configuration Loader
  *
@@ -11,7 +12,8 @@
  * - Type casting
  */
 
-class Env {
+class Env
+{
     private static bool $loaded = false;
     private static array $variables = [];
     private static string $path;
@@ -19,7 +21,8 @@ class Env {
     /**
      * Load environment variables from .env file
      */
-    public static function load(?string $path = null): void {
+    public static function load(?string $path = null): void
+    {
         if (self::$loaded && $path === null) {
             return;
         }
@@ -78,13 +81,13 @@ class Env {
                 putenv("$name=$value");
             }
         }
-
     }
 
     /**
      * Process a value (handle quotes, interpolation, etc.)
      */
-    private static function processValue(string $value): string {
+    private static function processValue(string $value): string
+    {
         // Handle quoted strings
         if (preg_match('/^"(.*)\"$/', $value, $matches)) {
             $value = $matches[1];
@@ -101,7 +104,7 @@ class Env {
         }
 
         // Variable interpolation
-        $value = preg_replace_callback('/\${([A-Za-z_][A-Za-z0-9_]*)}/', function($matches) {
+        $value = preg_replace_callback('/\${([A-Za-z_][A-Za-z0-9_]*)}/', function ($matches) {
             return self::get($matches[1], '');
         }, $value);
 
@@ -111,7 +114,8 @@ class Env {
     /**
      * Get an environment variable
      */
-    public static function get(string $key, $default = null) {
+    public static function get(string $key, $default = null)
+    {
         // Load if not loaded
         if (!self::$loaded) {
             self::load();
@@ -139,7 +143,8 @@ class Env {
     /**
      * Cast value to appropriate type
      */
-    private static function cast(string $value) {
+    private static function cast(string $value)
+    {
         $lower = strtolower($value);
 
         // Boolean
@@ -171,7 +176,8 @@ class Env {
     /**
      * Check if an environment variable exists
      */
-    public static function has(string $key): bool {
+    public static function has(string $key): bool
+    {
         if (!self::$loaded) {
             self::load();
         }
@@ -184,7 +190,8 @@ class Env {
     /**
      * Set an environment variable at runtime
      */
-    public static function set(string $key, $value): void {
+    public static function set(string $key, $value): void
+    {
         $stringValue = is_bool($value) ? ($value ? 'true' : 'false') : (string)$value;
 
         self::$variables[$key] = $stringValue;
@@ -195,7 +202,8 @@ class Env {
     /**
      * Get all loaded variables
      */
-    public static function all(): array {
+    public static function all(): array
+    {
         if (!self::$loaded) {
             self::load();
         }
@@ -206,7 +214,8 @@ class Env {
     /**
      * Require an environment variable (throws if not set)
      */
-    public static function require(string $key) {
+    public static function require(string $key)
+    {
         $value = self::get($key);
 
         if ($value === null) {
@@ -219,7 +228,8 @@ class Env {
     /**
      * Get string value
      */
-    public static function string(string $key, string $default = ''): string {
+    public static function string(string $key, string $default = ''): string
+    {
         $value = self::get($key, $default);
         return is_string($value) ? $value : (string)$value;
     }
@@ -227,7 +237,8 @@ class Env {
     /**
      * Get integer value
      */
-    public static function int(string $key, int $default = 0): int {
+    public static function int(string $key, int $default = 0): int
+    {
         $value = self::get($key, $default);
         return is_int($value) ? $value : (int)$value;
     }
@@ -235,7 +246,8 @@ class Env {
     /**
      * Get float value
      */
-    public static function float(string $key, float $default = 0.0): float {
+    public static function float(string $key, float $default = 0.0): float
+    {
         $value = self::get($key, $default);
         return is_float($value) ? $value : (float)$value;
     }
@@ -243,7 +255,8 @@ class Env {
     /**
      * Get boolean value
      */
-    public static function bool(string $key, bool $default = false): bool {
+    public static function bool(string $key, bool $default = false): bool
+    {
         $value = self::get($key, $default);
 
         if (is_bool($value)) {
@@ -260,7 +273,8 @@ class Env {
     /**
      * Get array value (comma-separated)
      */
-    public static function array(string $key, array $default = []): array {
+    public static function array(string $key, array $default = []): array
+    {
         $value = self::get($key);
 
         if ($value === null) {
@@ -277,7 +291,8 @@ class Env {
     /**
      * Get JSON value
      */
-    public static function json(string $key, array $default = []): array {
+    public static function json(string $key, array $default = []): array
+    {
         $value = self::get($key);
 
         if ($value === null) {
@@ -292,14 +307,16 @@ class Env {
     /**
      * Check if running in production
      */
-    public static function isProduction(): bool {
+    public static function isProduction(): bool
+    {
         return self::get('APP_ENV', 'production') === 'production';
     }
 
     /**
      * Check if running in development
      */
-    public static function isDevelopment(): bool {
+    public static function isDevelopment(): bool
+    {
         $env = self::get('APP_ENV', 'production');
         return in_array($env, ['development', 'dev', 'local']);
     }
@@ -307,14 +324,16 @@ class Env {
     /**
      * Check if debug mode is enabled
      */
-    public static function isDebug(): bool {
+    public static function isDebug(): bool
+    {
         return self::bool('APP_DEBUG', false);
     }
 
     /**
      * Create a .env file from example
      */
-    public static function createFromExample(array $values = []): bool {
+    public static function createFromExample(array $values = []): bool
+    {
         $examplePath = dirname(__DIR__) . '/.env.example';
         $envPath = dirname(__DIR__) . '/.env';
 
@@ -347,7 +366,8 @@ if (!function_exists('env')) {
     /**
      * Get an environment variable
      */
-    function env(string $key, $default = null) {
+    function env(string $key, $default = null)
+    {
         return Env::get($key, $default);
     }
 }

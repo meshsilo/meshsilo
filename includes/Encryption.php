@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Encryption at Rest Manager
  * Provides AES-256-GCM encryption for files and data
  */
 
-class Encryption {
+class Encryption
+{
     private const CIPHER = 'aes-256-gcm';
     private const KEY_LENGTH = 32; // 256 bits
     private const IV_LENGTH = 12;  // 96 bits for GCM
@@ -15,7 +17,8 @@ class Encryption {
     /**
      * Initialize encryption with master key
      */
-    public static function init(): void {
+    public static function init(): void
+    {
         if (self::$masterKey !== null) {
             return;
         }
@@ -47,7 +50,8 @@ class Encryption {
     /**
      * Check if encryption is enabled and configured
      */
-    public static function isEnabled(): bool {
+    public static function isEnabled(): bool
+    {
         self::init();
         return self::$masterKey !== null && strlen(self::$masterKey) === self::KEY_LENGTH;
     }
@@ -55,7 +59,8 @@ class Encryption {
     /**
      * Generate a new master encryption key
      */
-    public static function generateKey(): string {
+    public static function generateKey(): string
+    {
         $key = random_bytes(self::KEY_LENGTH);
         return base64_encode($key);
     }
@@ -63,7 +68,8 @@ class Encryption {
     /**
      * Set the master key (for setup/rotation)
      */
-    public static function setMasterKey(string $key): bool {
+    public static function setMasterKey(string $key): bool
+    {
         // Decode if base64
         if (strlen($key) === 44) {
             $decoded = base64_decode($key, true);
@@ -94,7 +100,8 @@ class Encryption {
     /**
      * Derive a key for a specific purpose (e.g., file encryption, data encryption)
      */
-    private static function deriveKey(string $purpose): string {
+    private static function deriveKey(string $purpose): string
+    {
         self::init();
 
         if (!self::$masterKey) {
@@ -108,7 +115,8 @@ class Encryption {
     /**
      * Encrypt data
      */
-    public static function encrypt(string $plaintext, string $purpose = 'data'): string {
+    public static function encrypt(string $plaintext, string $purpose = 'data'): string
+    {
         $key = self::deriveKey($purpose);
         $iv = random_bytes(self::IV_LENGTH);
 
@@ -134,7 +142,8 @@ class Encryption {
     /**
      * Decrypt data
      */
-    public static function decrypt(string $encrypted, string $purpose = 'data'): string {
+    public static function decrypt(string $encrypted, string $purpose = 'data'): string
+    {
         if (strlen($encrypted) < 1 + self::IV_LENGTH + self::TAG_LENGTH + 1) {
             throw new Exception('Invalid encrypted data');
         }
@@ -171,7 +180,8 @@ class Encryption {
      * Format: version (1 byte) + chunk_count (4 bytes) + [iv (12) + tag (16) + ciphertext]...
      * Each chunk is independently encrypted with AES-256-GCM using a unique IV.
      */
-    public static function encryptFile(string $sourcePath, string $destPath): bool {
+    public static function encryptFile(string $sourcePath, string $destPath): bool
+    {
         if (!file_exists($sourcePath)) {
             throw new Exception('Source file not found');
         }
@@ -197,7 +207,9 @@ class Encryption {
 
             while (!feof($sourceHandle)) {
                 $chunk = fread($sourceHandle, $chunkSize);
-                if ($chunk === false || $chunk === '') break;
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
 
                 $iv = random_bytes(self::IV_LENGTH);
                 $ciphertext = openssl_encrypt(
@@ -239,7 +251,8 @@ class Encryption {
      *
      * Supports both v1 (legacy CBC+HMAC) and v2 (GCM chunked) formats.
      */
-    public static function decryptFile(string $sourcePath, string $destPath): bool {
+    public static function decryptFile(string $sourcePath, string $destPath): bool
+    {
         if (!file_exists($sourcePath)) {
             throw new Exception('Source file not found');
         }
@@ -333,7 +346,8 @@ class Encryption {
     /**
      * Encrypt a file in-place (replaces original)
      */
-    public static function encryptFileInPlace(string $path): bool {
+    public static function encryptFileInPlace(string $path): bool
+    {
         $tempPath = $path . '.enc.tmp';
 
         try {
@@ -352,7 +366,8 @@ class Encryption {
     /**
      * Decrypt a file in-place (replaces encrypted)
      */
-    public static function decryptFileInPlace(string $path): bool {
+    public static function decryptFileInPlace(string $path): bool
+    {
         $tempPath = $path . '.dec.tmp';
 
         try {
@@ -371,7 +386,8 @@ class Encryption {
     /**
      * Check if a file is encrypted
      */
-    public static function isFileEncrypted(string $path): bool {
+    public static function isFileEncrypted(string $path): bool
+    {
         if (!file_exists($path)) {
             return false;
         }
@@ -390,7 +406,8 @@ class Encryption {
     /**
      * Get a stream filter for transparent encryption/decryption
      */
-    public static function getDecryptedStream(string $encryptedPath) {
+    public static function getDecryptedStream(string $encryptedPath)
+    {
         if (!self::isFileEncrypted($encryptedPath)) {
             // Not encrypted, return normal stream
             return fopen($encryptedPath, 'rb');
@@ -404,7 +421,7 @@ class Encryption {
         $stream = fopen($tempPath, 'rb');
 
         // Clean up temp file when stream closes
-        register_shutdown_function(function() use ($tempPath) {
+        register_shutdown_function(function () use ($tempPath) {
             if (file_exists($tempPath)) {
                 unlink($tempPath);
             }
@@ -416,7 +433,8 @@ class Encryption {
     /**
      * Encrypt all files in storage (migration)
      */
-    public static function encryptAllFiles(string $basePath, ?callable $progressCallback = null): array {
+    public static function encryptAllFiles(string $basePath, ?callable $progressCallback = null): array
+    {
         if (!self::isEnabled()) {
             throw new Exception('Encryption not configured');
         }
@@ -464,7 +482,8 @@ class Encryption {
     /**
      * Decrypt all files in storage (migration/export)
      */
-    public static function decryptAllFiles(string $basePath, ?callable $progressCallback = null): array {
+    public static function decryptAllFiles(string $basePath, ?callable $progressCallback = null): array
+    {
         if (!self::isEnabled()) {
             throw new Exception('Encryption not configured');
         }
@@ -513,7 +532,8 @@ class Encryption {
      * Rotate encryption key
      * Re-encrypts all files with new key
      */
-    public static function rotateKey(string $newKey, string $basePath): array {
+    public static function rotateKey(string $newKey, string $basePath): array
+    {
         // First decrypt everything with current key
         $decryptResults = self::decryptAllFiles($basePath);
 
@@ -551,7 +571,8 @@ class Encryption {
     /**
      * Get encryption status for admin panel
      */
-    public static function getStatus(): array {
+    public static function getStatus(): array
+    {
         self::init();
 
         return [
@@ -568,24 +589,28 @@ class Encryption {
  * Encrypted storage wrapper
  * Drop-in replacement for file storage with transparent encryption
  */
-class EncryptedStorage implements StorageInterface {
+class EncryptedStorage implements StorageInterface
+{
     private StorageInterface $storage;
     private bool $encryptionEnabled;
 
-    public function __construct(StorageInterface $storage) {
+    public function __construct(StorageInterface $storage)
+    {
         $this->storage = $storage;
         $this->encryptionEnabled = Encryption::isEnabled() &&
             (function_exists('getSetting') ? getSetting('encryption_at_rest', '0') === '1' : false);
     }
 
-    public function put($path, $content) {
+    public function put($path, $content)
+    {
         if ($this->encryptionEnabled) {
             $content = Encryption::encrypt($content, 'storage');
         }
         return $this->storage->put($path, $content);
     }
 
-    public function putFile($path, $localFile) {
+    public function putFile($path, $localFile)
+    {
         if ($this->encryptionEnabled) {
             $tempPath = sys_get_temp_dir() . '/silo_enc_' . uniqid();
             Encryption::encryptFile($localFile, $tempPath);
@@ -596,7 +621,8 @@ class EncryptedStorage implements StorageInterface {
         return $this->storage->putFile($path, $localFile);
     }
 
-    public function get($path) {
+    public function get($path)
+    {
         $content = $this->storage->get($path);
         if ($content === null) {
             return null;
@@ -615,15 +641,18 @@ class EncryptedStorage implements StorageInterface {
         return $content;
     }
 
-    public function delete($path) {
+    public function delete($path)
+    {
         return $this->storage->delete($path);
     }
 
-    public function exists($path) {
+    public function exists($path)
+    {
         return $this->storage->exists($path);
     }
 
-    public function url($path, $expiry = 3600) {
+    public function url($path, $expiry = 3600)
+    {
         // For encrypted files, we can't provide direct URLs
         // Need to serve through PHP
         if ($this->encryptionEnabled) {
@@ -632,19 +661,23 @@ class EncryptedStorage implements StorageInterface {
         return $this->storage->url($path, $expiry);
     }
 
-    public function size($path) {
+    public function size($path)
+    {
         return $this->storage->size($path);
     }
 
-    public function copy($from, $to) {
+    public function copy($from, $to)
+    {
         return $this->storage->copy($from, $to);
     }
 
-    public function move($from, $to) {
+    public function move($from, $to)
+    {
         return $this->storage->move($from, $to);
     }
 
-    public function listFiles($prefix = '') {
+    public function listFiles($prefix = '')
+    {
         return $this->storage->listFiles($prefix);
     }
 }

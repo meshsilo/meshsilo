@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Cursor-based Pagination
  *
@@ -10,7 +11,8 @@
  * - Perfect for infinite scroll implementations
  */
 
-class CursorPagination {
+class CursorPagination
+{
     private $db;
     private string $table;
     private string $orderColumn = 'id';
@@ -26,7 +28,8 @@ class CursorPagination {
     /**
      * Create a new cursor paginator
      */
-    public function __construct(string $table, $db = null) {
+    public function __construct(string $table, $db = null)
+    {
         if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
             throw new \InvalidArgumentException("Invalid table name: $table");
         }
@@ -37,7 +40,8 @@ class CursorPagination {
     /**
      * Validate that a column name is safe for SQL interpolation
      */
-    private static function validateColumnName(string $column): void {
+    private static function validateColumnName(string $column): void
+    {
         // Allow qualified names like "table.column" and simple names
         if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $column)) {
             throw new \InvalidArgumentException("Invalid column name: $column");
@@ -47,7 +51,8 @@ class CursorPagination {
     /**
      * Set columns to select
      */
-    public function select(array $columns): self {
+    public function select(array $columns): self
+    {
         foreach ($columns as $col) {
             if ($col !== '*') {
                 self::validateColumnName($col);
@@ -60,7 +65,8 @@ class CursorPagination {
     /**
      * Set ordering column and direction
      */
-    public function orderBy(string $column, string $direction = 'DESC'): self {
+    public function orderBy(string $column, string $direction = 'DESC'): self
+    {
         self::validateColumnName($column);
         $this->orderColumn = $column;
         $this->orderDirection = strtoupper($direction) === 'ASC' ? 'ASC' : 'DESC';
@@ -70,7 +76,8 @@ class CursorPagination {
     /**
      * Set items per page
      */
-    public function limit(int $limit): self {
+    public function limit(int $limit): self
+    {
         $this->limit = max(1, min(100, $limit));
         return $this;
     }
@@ -78,7 +85,8 @@ class CursorPagination {
     /**
      * Add a WHERE condition
      */
-    public function where(string $column, $value, string $operator = '='): self {
+    public function where(string $column, $value, string $operator = '='): self
+    {
         self::validateColumnName($column);
         $operatorUpper = strtoupper(trim($operator));
         if (!in_array($operatorUpper, self::ALLOWED_OPERATORS, true)) {
@@ -93,7 +101,8 @@ class CursorPagination {
     /**
      * Add a raw WHERE condition
      */
-    public function whereRaw(string $condition, array $params = []): self {
+    public function whereRaw(string $condition, array $params = []): self
+    {
         $this->conditions[] = $condition;
         foreach ($params as $key => $value) {
             $this->params[$key] = $value;
@@ -107,7 +116,8 @@ class CursorPagination {
      * @param string|null $cursor The cursor value (typically the last item's ID or order column value)
      * @return array{items: array, next_cursor: string|null, prev_cursor: string|null, has_more: bool}
      */
-    public function paginate(?string $cursor = null): array {
+    public function paginate(?string $cursor = null): array
+    {
         $columns = implode(', ', $this->selectColumns);
         $conditions = $this->conditions;
         $params = $this->params;
@@ -167,7 +177,8 @@ class CursorPagination {
     /**
      * Get previous page (for backward navigation)
      */
-    public function paginateBackward(string $cursor): array {
+    public function paginateBackward(string $cursor): array
+    {
         $cursorData = $this->decodeCursor($cursor);
         if (!$cursorData) {
             return $this->paginate();
@@ -231,7 +242,8 @@ class CursorPagination {
     /**
      * Encode a cursor value
      */
-    private function encodeCursor($value, string $direction = 'next'): string {
+    private function encodeCursor($value, string $direction = 'next'): string
+    {
         return base64_encode(json_encode([
             'v' => $value,
             'd' => $direction,
@@ -242,7 +254,8 @@ class CursorPagination {
     /**
      * Decode a cursor value
      */
-    private function decodeCursor(string $cursor): ?array {
+    private function decodeCursor(string $cursor): ?array
+    {
         try {
             $decoded = json_decode(base64_decode($cursor), true);
             if (is_array($decoded) && isset($decoded['v'])) {
@@ -266,14 +279,16 @@ class CursorPagination {
 /**
  * Create a cursor paginator for a table
  */
-function cursorPaginate(string $table): CursorPagination {
+function cursorPaginate(string $table): CursorPagination
+{
     return new CursorPagination($table);
 }
 
 /**
  * Paginate models with cursor
  */
-function paginateModels(array $options = []): array {
+function paginateModels(array $options = []): array
+{
     $cursor = $options['cursor'] ?? null;
     $limit = $options['limit'] ?? 20;
     $orderBy = $options['order_by'] ?? 'created_at';
@@ -304,7 +319,8 @@ function paginateModels(array $options = []): array {
 /**
  * Generate cursor pagination links
  */
-function cursorPaginationLinks(array $result, string $baseUrl): array {
+function cursorPaginationLinks(array $result, string $baseUrl): array
+{
     $links = [];
 
     if ($result['prev_cursor']) {

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Asset Pipeline
  *
@@ -9,7 +10,8 @@
  * - Inline critical CSS support
  */
 
-class Asset {
+class Asset
+{
     private static ?self $instance = null;
     private string $basePath;
     private string $baseUrl;
@@ -26,7 +28,8 @@ class Asset {
     /**
      * Get singleton instance
      */
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
@@ -36,7 +39,8 @@ class Asset {
     /**
      * Constructor
      */
-    private function __construct() {
+    private function __construct()
+    {
         $this->basePath = dirname(__DIR__) . '/';
         $this->baseUrl = '/';
         $this->cachePath = dirname(__DIR__) . '/storage/cache/assets/';
@@ -68,7 +72,8 @@ class Asset {
     /**
      * Configure the asset manager
      */
-    public function configure(array $options): self {
+    public function configure(array $options): self
+    {
         if (isset($options['base_path'])) {
             $this->basePath = rtrim($options['base_path'], '/') . '/';
         }
@@ -96,7 +101,8 @@ class Asset {
     /**
      * Set CDN URL
      */
-    public function setCdnUrl(string $url): self {
+    public function setCdnUrl(string $url): self
+    {
         $this->cdnUrl = !empty($url) ? rtrim($url, '/') . '/' : '';
         return $this;
     }
@@ -104,21 +110,24 @@ class Asset {
     /**
      * Get current CDN URL
      */
-    public function getCdnUrl(): string {
+    public function getCdnUrl(): string
+    {
         return $this->cdnUrl;
     }
 
     /**
      * Check if CDN is enabled
      */
-    public function isCdnEnabled(): bool {
+    public function isCdnEnabled(): bool
+    {
         return !empty($this->cdnUrl);
     }
 
     /**
      * Get versioned URL for an asset
      */
-    public function url(string $path): string {
+    public function url(string $path): string
+    {
         // Remove leading slash
         $path = ltrim($path, '/');
 
@@ -156,7 +165,8 @@ class Asset {
     /**
      * Get URL without CDN (for local references)
      */
-    public function localUrl(string $path): string {
+    public function localUrl(string $path): string
+    {
         $path = ltrim($path, '/');
         $fullPath = $this->basePath . $path;
 
@@ -172,7 +182,8 @@ class Asset {
     /**
      * Get versioned URL using file modification time
      */
-    public function urlMtime(string $path): string {
+    public function urlMtime(string $path): string
+    {
         $path = ltrim($path, '/');
         $fullPath = $this->basePath . $path;
 
@@ -188,7 +199,8 @@ class Asset {
     /**
      * Register a CSS file
      */
-    public function css(string $path, array $attributes = [], string $group = 'default'): self {
+    public function css(string $path, array $attributes = [], string $group = 'default'): self
+    {
         $this->registered['css'][$group][] = [
             'path' => $path,
             'attributes' => $attributes
@@ -199,7 +211,8 @@ class Asset {
     /**
      * Register a JS file
      */
-    public function js(string $path, array $attributes = [], string $group = 'default'): self {
+    public function js(string $path, array $attributes = [], string $group = 'default'): self
+    {
         $this->registered['js'][$group][] = [
             'path' => $path,
             'attributes' => $attributes
@@ -210,7 +223,8 @@ class Asset {
     /**
      * Add inline CSS
      */
-    public function inlineCss(string $css, string $group = 'default'): self {
+    public function inlineCss(string $css, string $group = 'default'): self
+    {
         $this->inline['css'][$group][] = $css;
         return $this;
     }
@@ -218,7 +232,8 @@ class Asset {
     /**
      * Add inline JS
      */
-    public function inlineJs(string $js, string $group = 'default'): self {
+    public function inlineJs(string $js, string $group = 'default'): self
+    {
         $this->inline['js'][$group][] = $js;
         return $this;
     }
@@ -226,7 +241,8 @@ class Asset {
     /**
      * Render CSS tags
      */
-    public function renderCss(string $group = 'default'): string {
+    public function renderCss(string $group = 'default'): string
+    {
         $html = '';
 
         // Render inline CSS first (critical CSS)
@@ -249,7 +265,8 @@ class Asset {
     /**
      * Render JS tags
      */
-    public function renderJs(string $group = 'default'): string {
+    public function renderJs(string $group = 'default'): string
+    {
         $html = '';
 
         // Render linked JS
@@ -272,7 +289,8 @@ class Asset {
     /**
      * Build HTML attributes string
      */
-    private function buildAttributes(array $attributes): string {
+    private function buildAttributes(array $attributes): string
+    {
         $html = '';
         foreach ($attributes as $key => $value) {
             if ($value === true) {
@@ -287,8 +305,11 @@ class Asset {
     /**
      * Minify CSS
      */
-    public function minifyCss(string $css): string {
-        if (!$this->minify) return $css;
+    public function minifyCss(string $css): string
+    {
+        if (!$this->minify) {
+            return $css;
+        }
 
         // Remove comments
         $css = preg_replace('/\/\*[\s\S]*?\*\//', '', $css);
@@ -311,8 +332,11 @@ class Asset {
     /**
      * Minify JS (basic - removes comments and extra whitespace)
      */
-    public function minifyJs(string $js): string {
-        if (!$this->minify) return $js;
+    public function minifyJs(string $js): string
+    {
+        if (!$this->minify) {
+            return $js;
+        }
 
         // Remove single-line comments (but not URLs)
         $js = preg_replace('#(?<!:)//(?!/).*$#m', '', $js);
@@ -335,7 +359,8 @@ class Asset {
     /**
      * Combine multiple CSS files
      */
-    public function combineCss(array $files, string $output): bool {
+    public function combineCss(array $files, string $output): bool
+    {
         $combined = '';
         foreach ($files as $file) {
             $path = $this->basePath . ltrim($file, '/');
@@ -346,7 +371,7 @@ class Asset {
                 $dir = dirname($file);
                 $content = preg_replace_callback(
                     '/url\([\'"]?(?!data:|https?:|\/)([^\'")]+)[\'"]?\)/',
-                    function($matches) use ($dir) {
+                    function ($matches) use ($dir) {
                         return 'url(' . $dir . '/' . $matches[1] . ')';
                     },
                     $content
@@ -376,7 +401,8 @@ class Asset {
     /**
      * Combine multiple JS files
      */
-    public function combineJs(array $files, string $output): bool {
+    public function combineJs(array $files, string $output): bool
+    {
         $combined = '';
         foreach ($files as $file) {
             $path = $this->basePath . ltrim($file, '/');
@@ -406,14 +432,16 @@ class Asset {
     /**
      * Save manifest file
      */
-    private function saveManifest(): void {
+    private function saveManifest(): void
+    {
         file_put_contents($this->manifestFile, json_encode($this->manifest, JSON_PRETTY_PRINT));
     }
 
     /**
      * Clear asset cache
      */
-    public function clearCache(): bool {
+    public function clearCache(): bool
+    {
         $files = glob($this->cachePath . '*');
         foreach ($files as $file) {
             if (is_file($file)) {
@@ -427,7 +455,8 @@ class Asset {
     /**
      * Preload a critical asset
      */
-    public function preload(string $path, string $as = 'style'): string {
+    public function preload(string $path, string $as = 'style'): string
+    {
         $url = $this->url($path);
         return '<link rel="preload" href="' . htmlspecialchars($url) . '" as="' . htmlspecialchars($as) . '">';
     }
@@ -435,7 +464,8 @@ class Asset {
     /**
      * Generate integrity hash for subresource integrity
      */
-    public function integrity(string $path): ?string {
+    public function integrity(string $path): ?string
+    {
         $fullPath = $this->basePath . ltrim($path, '/');
         if (!file_exists($fullPath)) {
             return null;
@@ -447,7 +477,8 @@ class Asset {
     /**
      * Generate a data URI for small assets
      */
-    public function dataUri(string $path): ?string {
+    public function dataUri(string $path): ?string
+    {
         $fullPath = $this->basePath . ltrim($path, '/');
         if (!file_exists($fullPath)) {
             return null;
@@ -462,14 +493,16 @@ class Asset {
     /**
      * Check if asset exists
      */
-    public function exists(string $path): bool {
+    public function exists(string $path): bool
+    {
         return file_exists($this->basePath . ltrim($path, '/'));
     }
 
     /**
      * Get asset file size
      */
-    public function size(string $path): ?int {
+    public function size(string $path): ?int
+    {
         $fullPath = $this->basePath . ltrim($path, '/');
         return file_exists($fullPath) ? filesize($fullPath) : null;
     }
@@ -483,7 +516,8 @@ class Asset {
  * Get asset URL with versioning
  */
 if (!function_exists('asset')) {
-    function asset(string $path): string {
+    function asset(string $path): string
+    {
         return Asset::getInstance()->url($path);
     }
 }
@@ -492,7 +526,8 @@ if (!function_exists('asset')) {
  * Get asset URL with mtime versioning
  */
 if (!function_exists('asset_mtime')) {
-    function asset_mtime(string $path): string {
+    function asset_mtime(string $path): string
+    {
         return Asset::getInstance()->urlMtime($path);
     }
 }
@@ -501,7 +536,8 @@ if (!function_exists('asset_mtime')) {
  * Register and render CSS
  */
 if (!function_exists('asset_css')) {
-    function asset_css(string $path, array $attributes = []): string {
+    function asset_css(string $path, array $attributes = []): string
+    {
         $url = Asset::getInstance()->url($path);
         $attrs = '';
         foreach ($attributes as $key => $value) {
@@ -515,7 +551,8 @@ if (!function_exists('asset_css')) {
  * Register and render JS
  */
 if (!function_exists('asset_js')) {
-    function asset_js(string $path, array $attributes = []): string {
+    function asset_js(string $path, array $attributes = []): string
+    {
         $url = Asset::getInstance()->url($path);
         $attrs = '';
         foreach ($attributes as $key => $value) {
@@ -533,7 +570,8 @@ if (!function_exists('asset_js')) {
  * Get CDN URL for an asset (falls back to local if CDN not configured)
  */
 if (!function_exists('cdn_asset')) {
-    function cdn_asset(string $path): string {
+    function cdn_asset(string $path): string
+    {
         return Asset::getInstance()->url($path);
     }
 }
@@ -542,7 +580,8 @@ if (!function_exists('cdn_asset')) {
  * Get local URL for an asset (never uses CDN)
  */
 if (!function_exists('local_asset')) {
-    function local_asset(string $path): string {
+    function local_asset(string $path): string
+    {
         return Asset::getInstance()->localUrl($path);
     }
 }
@@ -551,7 +590,8 @@ if (!function_exists('local_asset')) {
  * Check if CDN is enabled
  */
 if (!function_exists('is_cdn_enabled')) {
-    function is_cdn_enabled(): bool {
+    function is_cdn_enabled(): bool
+    {
         return Asset::getInstance()->isCdnEnabled();
     }
 }
@@ -560,7 +600,8 @@ if (!function_exists('is_cdn_enabled')) {
  * Configure CDN URL
  */
 if (!function_exists('set_cdn_url')) {
-    function set_cdn_url(string $url): void {
+    function set_cdn_url(string $url): void
+    {
         Asset::getInstance()->setCdnUrl($url);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Admin Middleware
  *
@@ -7,11 +8,13 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class AdminMiddleware implements MiddlewareInterface {
+class AdminMiddleware implements MiddlewareInterface
+{
     /**
      * Handle the middleware
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         // First check if logged in
         if (!function_exists('isLoggedIn') || !isLoggedIn()) {
             // Sanitize URI to prevent open redirect

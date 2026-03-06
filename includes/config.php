@@ -1,4 +1,5 @@
 <?php
+
 // MeshSilo Version
 define('MESHSILO_VERSION', '1.0.0');
 
@@ -15,18 +16,31 @@ if (file_exists(__DIR__ . '/../storage/db/config.local.php')) {
 }
 
 // Database Configuration (defaults to SQLite)
-if (!defined('DB_TYPE')) define('DB_TYPE', 'sqlite');
-if (!defined('DB_PATH')) define('DB_PATH', __DIR__ . '/../storage/db/meshsilo.db');
+if (!defined('DB_TYPE')) {
+    define('DB_TYPE', 'sqlite');
+}
+if (!defined('DB_PATH')) {
+    define('DB_PATH', __DIR__ . '/../storage/db/meshsilo.db');
+}
 
 // Upload Configuration (defaults, can be overridden in config.local.php or database)
-if (!defined('UPLOAD_PATH')) define('UPLOAD_PATH', __DIR__ . '/../storage/assets/');
+if (!defined('UPLOAD_PATH')) {
+    define('UPLOAD_PATH', __DIR__ . '/../storage/assets/');
+}
 // MAX_FILE_SIZE is defined later after database settings are loaded
-if (!defined('MAX_UPLOAD_SIZE')) define('MAX_UPLOAD_SIZE', 100 * 1024 * 1024); // 100MB (alias)
-if (!defined('MODEL_EXTENSIONS')) define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d']);
-if (!defined('ALLOWED_EXTENSIONS')) define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip']);
+if (!defined('MAX_UPLOAD_SIZE')) {
+    define('MAX_UPLOAD_SIZE', 100 * 1024 * 1024); // 100MB (alias)
+}
+if (!defined('MODEL_EXTENSIONS')) {
+    define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d']);
+}
+if (!defined('ALLOWED_EXTENSIONS')) {
+    define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip']);
+}
 
 // Helper function to get base path for public assets
-function basePath($path = '') {
+function basePath($path = '')
+{
     // Always use absolute paths from root for assets
     // This ensures CSS/JS work regardless of the current URL path
     if (preg_match('#^(css|js|images)/#', $path)) {

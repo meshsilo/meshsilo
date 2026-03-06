@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Two-Factor Authentication (2FA) for Silo
  *
@@ -15,7 +16,8 @@
  *   $valid = TwoFactor::verify($secret, $code);
  */
 
-class TwoFactor {
+class TwoFactor
+{
     // TOTP settings
     private const CODE_LENGTH = 6;
     private const TIME_STEP = 30; // seconds
@@ -29,7 +31,8 @@ class TwoFactor {
     /**
      * Generate a new secret key
      */
-    public static function generateSecret(): string {
+    public static function generateSecret(): string
+    {
         $bytes = random_bytes(self::SECRET_LENGTH);
         return self::base32Encode($bytes);
     }
@@ -37,7 +40,8 @@ class TwoFactor {
     /**
      * Generate a TOTP code
      */
-    public static function generateCode(string $secret, ?int $timestamp = null): string {
+    public static function generateCode(string $secret, ?int $timestamp = null): string
+    {
         $timestamp = $timestamp ?? time();
         $timeSlice = floor($timestamp / self::TIME_STEP);
 
@@ -65,7 +69,8 @@ class TwoFactor {
      * @param int $window Number of time steps to check before/after current time
      * @return bool True if code is valid
      */
-    public static function verify(string $secret, string $code, int $window = 1): bool {
+    public static function verify(string $secret, string $code, int $window = 1): bool
+    {
         $code = trim($code);
 
         if (strlen($code) !== self::CODE_LENGTH || !ctype_digit($code)) {
@@ -95,7 +100,8 @@ class TwoFactor {
      * @param string|null $issuer Application name (default: SITE_NAME)
      * @return string URL for QR code image
      */
-    public static function getQRCodeUrl(string $secret, string $account, ?string $issuer = null): string {
+    public static function getQRCodeUrl(string $secret, string $account, ?string $issuer = null): string
+    {
         $issuer = $issuer ?? (defined('SITE_NAME') ? SITE_NAME : 'Silo');
         $otpUrl = self::getOTPAuthUrl($secret, $account, $issuer);
 
@@ -106,7 +112,8 @@ class TwoFactor {
     /**
      * Get otpauth:// URL for manual entry
      */
-    public static function getOTPAuthUrl(string $secret, string $account, ?string $issuer = null): string {
+    public static function getOTPAuthUrl(string $secret, string $account, ?string $issuer = null): string
+    {
         $issuer = $issuer ?? (defined('SITE_NAME') ? SITE_NAME : 'Silo');
 
         $params = [
@@ -130,7 +137,8 @@ class TwoFactor {
      *
      * @return array Array of backup codes
      */
-    public static function generateBackupCodes(): array {
+    public static function generateBackupCodes(): array
+    {
         $codes = [];
 
         for ($i = 0; $i < self::BACKUP_CODE_COUNT; $i++) {
@@ -151,8 +159,9 @@ class TwoFactor {
      * @param array $codes Plain backup codes
      * @return array Hashed backup codes
      */
-    public static function hashBackupCodes(array $codes): array {
-        return array_map(function($code) {
+    public static function hashBackupCodes(array $codes): array
+    {
+        return array_map(function ($code) {
             // Remove formatting
             $code = str_replace('-', '', $code);
             return password_hash($code, PASSWORD_DEFAULT);
@@ -166,7 +175,8 @@ class TwoFactor {
      * @param array $hashedCodes Array of hashed backup codes
      * @return int|false Index of matched code or false
      */
-    public static function verifyBackupCode(string $code, array $hashedCodes): int|false {
+    public static function verifyBackupCode(string $code, array $hashedCodes): int|false
+    {
         // Remove formatting
         $code = str_replace('-', '', trim($code));
 
@@ -187,7 +197,8 @@ class TwoFactor {
      * @param array $backupCodes Plain backup codes (will be hashed)
      * @return bool Success
      */
-    public static function enable(int $userId, string $secret, array $backupCodes): bool {
+    public static function enable(int $userId, string $secret, array $backupCodes): bool
+    {
         if (!function_exists('getDB')) {
             return false;
         }
@@ -221,7 +232,8 @@ class TwoFactor {
     /**
      * Disable 2FA for a user
      */
-    public static function disable(int $userId): bool {
+    public static function disable(int $userId): bool
+    {
         if (!function_exists('getDB')) {
             return false;
         }
@@ -250,7 +262,8 @@ class TwoFactor {
     /**
      * Check if 2FA is enabled for a user
      */
-    public static function isEnabled(int $userId): bool {
+    public static function isEnabled(int $userId): bool
+    {
         if (!function_exists('getDB')) {
             return false;
         }
@@ -267,7 +280,8 @@ class TwoFactor {
     /**
      * Get user's 2FA secret
      */
-    public static function getSecret(int $userId): ?string {
+    public static function getSecret(int $userId): ?string
+    {
         if (!function_exists('getDB')) {
             return null;
         }
@@ -288,7 +302,8 @@ class TwoFactor {
      * @param string $code Code to verify
      * @return bool True if valid
      */
-    public static function verifyForUser(int $userId, string $code): bool {
+    public static function verifyForUser(int $userId, string $code): bool
+    {
         if (!function_exists('getDB')) {
             return false;
         }
@@ -344,7 +359,8 @@ class TwoFactor {
     /**
      * Get remaining backup codes count
      */
-    public static function getRemainingBackupCodes(int $userId): int {
+    public static function getRemainingBackupCodes(int $userId): int
+    {
         if (!function_exists('getDB')) {
             return 0;
         }
@@ -362,7 +378,8 @@ class TwoFactor {
     /**
      * Regenerate backup codes for a user
      */
-    public static function regenerateBackupCodes(int $userId): array {
+    public static function regenerateBackupCodes(int $userId): array
+    {
         $codes = self::generateBackupCodes();
 
         if (function_exists('getDB')) {
@@ -383,7 +400,8 @@ class TwoFactor {
     /**
      * Base32 encode
      */
-    private static function base32Encode(string $data): string {
+    private static function base32Encode(string $data): string
+    {
         $binary = '';
         foreach (str_split($data) as $char) {
             $binary .= str_pad(decbin(ord($char)), 8, '0', STR_PAD_LEFT);
@@ -402,7 +420,8 @@ class TwoFactor {
     /**
      * Base32 decode
      */
-    private static function base32Decode(string $data): string {
+    private static function base32Decode(string $data): string
+    {
         $data = strtoupper($data);
         $binary = '';
 
@@ -427,7 +446,8 @@ class TwoFactor {
     /**
      * Generate QR code as SVG (no external service needed)
      */
-    public static function generateQRCodeSVG(string $secret, string $account, ?string $issuer = null): string {
+    public static function generateQRCodeSVG(string $secret, string $account, ?string $issuer = null): string
+    {
         $url = self::getOTPAuthUrl($secret, $account, $issuer);
 
         // Simple QR code generation - for production, use a proper library
@@ -441,8 +461,10 @@ class TwoFactor {
  *
  * Requires 2FA verification for users with 2FA enabled
  */
-class TwoFactorMiddleware implements MiddlewareInterface {
-    public function handle(array $params): bool {
+class TwoFactorMiddleware implements MiddlewareInterface
+{
+    public function handle(array $params): bool
+    {
         // Check if user is logged in
         if (!function_exists('isLoggedIn') || !isLoggedIn()) {
             return true; // Let auth middleware handle this

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * SEO Redirect Middleware
  *
@@ -8,7 +9,8 @@
 
 require_once __DIR__ . '/MiddlewareInterface.php';
 
-class SeoRedirectMiddleware implements MiddlewareInterface {
+class SeoRedirectMiddleware implements MiddlewareInterface
+{
     /**
      * URL mapping from old patterns to new route names
      */
@@ -51,7 +53,8 @@ class SeoRedirectMiddleware implements MiddlewareInterface {
     /**
      * Handle the middleware - check for old URL patterns and redirect
      */
-    public function handle(array $params): bool {
+    public function handle(array $params): bool
+    {
         // Only process if SEO redirects are enabled
         if (function_exists('getSetting') && getSetting('seo_redirects', '1') !== '1') {
             return true;
@@ -119,14 +122,16 @@ class SeoRedirectMiddleware implements MiddlewareInterface {
     /**
      * Register custom URL mappings
      */
-    public static function addMapping(string $oldPath, string $routeName, array $paramMappings = []): void {
+    public static function addMapping(string $oldPath, string $routeName, array $paramMappings = []): void
+    {
         self::$urlMappings[$oldPath] = [$routeName, $paramMappings];
     }
 
     /**
      * Get all registered mappings (for debugging)
      */
-    public static function getMappings(): array {
+    public static function getMappings(): array
+    {
         return self::$urlMappings;
     }
 }
@@ -135,7 +140,8 @@ class SeoRedirectMiddleware implements MiddlewareInterface {
  * Global function to check and redirect old URLs
  * Can be called at the top of individual PHP files for per-file redirects
  */
-function redirectToCleanUrl(string $routeName, array $paramMappings = []): void {
+function redirectToCleanUrl(string $routeName, array $paramMappings = []): void
+{
     // Check if SEO redirects are enabled
     if (function_exists('getSetting') && getSetting('seo_redirects', '1') !== '1') {
         return;

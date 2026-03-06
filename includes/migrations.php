@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Database Migrations
  *
@@ -9,7 +10,8 @@
 /**
  * Convert a MySQL column definition to SQLite syntax via regex.
  */
-function mysqlToSqlite(string $colDef): string {
+function mysqlToSqlite(string $colDef): string
+{
     $replacements = [
         '/BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT/i' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
         '/INT\s+AUTO_INCREMENT\s+PRIMARY\s+KEY/i'      => 'INTEGER PRIMARY KEY AUTOINCREMENT',
@@ -55,7 +57,7 @@ function createTableMigration(
         'name' => $name,
         'description' => $desc,
         'check' => fn($db) => tableExists($db, $table),
-        'apply' => function($db) use ($table, $columns, $constraints, $indexes, $options) {
+        'apply' => function ($db) use ($table, $columns, $constraints, $indexes, $options) {
             $type = $db->getType();
             $uniqueKeys = $options['uniqueKeys'] ?? [];
             $mysqlInlineIndexes = $options['mysqlInlineIndexes'] ?? [];
@@ -142,7 +144,7 @@ function addColumnsMigration(
         'name' => $name,
         'description' => $desc,
         'check' => fn($db) => columnExists($db, $table, $checkCol),
-        'apply' => function($db) use ($table, $columns, $indexes) {
+        'apply' => function ($db) use ($table, $columns, $indexes) {
             $type = $db->getType();
             foreach ($columns as $col) {
                 $def = ($type === 'mysql') ? $col : mysqlToSqlite($col);
@@ -155,7 +157,8 @@ function addColumnsMigration(
     ];
 }
 
-function getMigrationList() {
+function getMigrationList()
+{
     return [
         // Core tables
         createTableMigration('Tags table', 'Stores tag names and colors for model organization', 'tags', [
@@ -339,7 +342,7 @@ function getMigrationList() {
             'name' => 'Users: storage limit columns',
             'description' => 'Per-user storage and model limits',
             'check' => fn($db) => columnExists($db, 'users', 'storage_limit_mb'),
-            'apply' => function($db) {
+            'apply' => function ($db) {
                 $db->exec('ALTER TABLE users ADD COLUMN storage_limit_mb INTEGER DEFAULT 0');
                 $db->exec('ALTER TABLE users ADD COLUMN model_limit INTEGER DEFAULT 0');
             }
@@ -583,13 +586,13 @@ function getMigrationList() {
         [
             'name' => 'Remove license settings',
             'description' => 'Clean up license_email, license_key, license_cache, license_last_sync from settings',
-            'check' => function($db) {
+            'check' => function ($db) {
                 $type = $db->getType();
                 $keyCol = $type === 'mysql' ? '`key`' : 'key';
                 $result = $db->querySingle("SELECT COUNT(*) FROM settings WHERE $keyCol IN ('license_email','license_key','license_cache','license_last_sync')");
                 return (int)$result === 0;
             },
-            'apply' => function($db) {
+            'apply' => function ($db) {
                 $type = $db->getType();
                 $keyCol = $type === 'mysql' ? '`key`' : 'key';
                 $db->exec("DELETE FROM settings WHERE $keyCol IN ('license_email','license_key','license_cache','license_last_sync')");
@@ -628,7 +631,7 @@ function getMigrationList() {
         [
             'name' => 'Fix rate_limits table schema',
             'description' => 'Update rate_limits table to match RateLimitMiddleware requirements',
-            'check' => function($db) {
+            'check' => function ($db) {
                 if (!tableExists($db, 'rate_limits')) {
                     return true; // Will be created by earlier migration
                 }
@@ -636,7 +639,7 @@ function getMigrationList() {
                 return columnExists($db, 'rate_limits', 'key_name') &&
                        columnExists($db, 'rate_limits', 'expires_at');
             },
-            'apply' => function($db) {
+            'apply' => function ($db) {
                 $type = $db->getType();
 
                 // Drop old table and create new one with correct schema
@@ -665,10 +668,10 @@ function getMigrationList() {
         [
             'name' => 'Performance indexes',
             'description' => 'Add indexes on frequently queried columns for faster lookups',
-            'check' => function($db) {
+            'check' => function ($db) {
                 return indexExists($db, 'models', 'idx_models_parent_id');
             },
-            'apply' => function($db) {
+            'apply' => function ($db) {
                 $type = $db->getType();
 
                 // Index on models.parent_id (used in multi-part queries)
@@ -752,13 +755,13 @@ function getMigrationList() {
         [
             'name' => 'Sessions table expires_at column',
             'description' => 'Add expires_at column to sessions table if missing',
-            'check' => function($db) {
+            'check' => function ($db) {
                 if (!tableExists($db, 'sessions')) {
                     return true;
                 }
                 return columnExists($db, 'sessions', 'expires_at');
             },
-            'apply' => function($db) {
+            'apply' => function ($db) {
                 if (!tableExists($db, 'sessions')) {
                     return;
                 }
@@ -804,7 +807,7 @@ function getMigrationList() {
         [
             'name' => 'Performance indexes for models table',
             'description' => 'Add indexes for download_count, name, and is_archived columns used in sorting and filtering',
-            'check' => function($db) {
+            'check' => function ($db) {
                 $type = $db->getType();
                 if ($type === 'mysql') {
                     $stmt = $db->prepare("SHOW INDEX FROM models WHERE Key_name = 'idx_models_download_count'");
@@ -816,11 +819,17 @@ function getMigrationList() {
                     return $result->fetchArray() !== false;
                 }
             },
-            'apply' => function($db) {
+            'apply' => function ($db) {
                 $db->exec('CREATE INDEX idx_models_download_count ON models(download_count)');
                 $db->exec('CREATE INDEX idx_models_name ON models(name)');
-                try { $db->exec('CREATE INDEX idx_models_is_archived ON models(is_archived)'); } catch (Exception $e) {}
-                try { $db->exec('CREATE INDEX idx_model_categories_composite ON model_categories(category_id, model_id)'); } catch (Exception $e) {}
+                try {
+                    $db->exec('CREATE INDEX idx_models_is_archived ON models(is_archived)');
+                } catch (Exception $e) {
+                }
+                try {
+                    $db->exec('CREATE INDEX idx_model_categories_composite ON model_categories(category_id, model_id)');
+                } catch (Exception $e) {
+                }
             }
         ],
     ];

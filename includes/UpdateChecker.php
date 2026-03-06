@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Update Checker
  *
@@ -6,7 +7,8 @@
  * Caches results to avoid excessive API calls.
  */
 
-class UpdateChecker {
+class UpdateChecker
+{
     private const GITHUB_REPO = 'Azurith93/silo';
     private const CACHE_KEY = 'update_check';
     private const CACHE_TTL = 3600; // 1 hour
@@ -19,7 +21,8 @@ class UpdateChecker {
      * @param bool $force Force check, ignoring cache
      * @return array Update info with keys: available, current, latest, url, published, changelog
      */
-    public static function check(bool $force = false): array {
+    public static function check(bool $force = false): array
+    {
         // Return cached result if available
         if (self::$cachedResult !== null && !$force) {
             return self::$cachedResult;
@@ -77,7 +80,8 @@ class UpdateChecker {
     /**
      * Fetch latest release from GitHub API
      */
-    private static function fetchLatestRelease(): ?array {
+    private static function fetchLatestRelease(): ?array
+    {
         $url = 'https://api.github.com/repos/' . self::GITHUB_REPO . '/releases/latest';
 
         $context = stream_context_create([
@@ -125,7 +129,8 @@ class UpdateChecker {
      * @param int $limit Number of releases to fetch
      * @return array List of releases
      */
-    public static function getReleases(int $limit = 10): array {
+    public static function getReleases(int $limit = 10): array
+    {
         $url = 'https://api.github.com/repos/' . self::GITHUB_REPO . '/releases?per_page=' . $limit;
 
         $context = stream_context_create([
@@ -157,7 +162,8 @@ class UpdateChecker {
     /**
      * Clear the update check cache
      */
-    public static function clearCache(): void {
+    public static function clearCache(): void
+    {
         self::$cachedResult = null;
         if (class_exists('Cache')) {
             Cache::getInstance()->forget(self::CACHE_KEY);
@@ -167,7 +173,8 @@ class UpdateChecker {
     /**
      * Check if update check is enabled
      */
-    public static function isEnabled(): bool {
+    public static function isEnabled(): bool
+    {
         if (function_exists('getSetting')) {
             return getSetting('update_check_enabled', '1') === '1';
         }
@@ -177,7 +184,8 @@ class UpdateChecker {
     /**
      * Get time until next check
      */
-    public static function getNextCheckTime(): ?int {
+    public static function getNextCheckTime(): ?int
+    {
         if (class_exists('Cache')) {
             $cached = Cache::getInstance()->get(self::CACHE_KEY);
             if ($cached && isset($cached['checked_at'])) {

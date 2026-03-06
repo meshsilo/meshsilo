@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Caching System
  *
@@ -9,7 +10,8 @@
  * - Memory (request-scoped, for expensive repeated calls)
  */
 
-class Cache {
+class Cache
+{
     private static ?self $instance = null;
     private string $driver = 'file';
     private string $path;
@@ -21,7 +23,8 @@ class Cache {
     /**
      * Get singleton instance
      */
-    public static function getInstance(): self {
+    public static function getInstance(): self
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
@@ -31,7 +34,8 @@ class Cache {
     /**
      * Constructor
      */
-    private function __construct() {
+    private function __construct()
+    {
         $this->path = dirname(__DIR__) . '/storage/cache/';
 
         // Auto-detect best available driver (priority: redis > apcu > file)
@@ -50,7 +54,8 @@ class Cache {
     /**
      * Try to connect to Redis
      */
-    private function connectRedis(): bool {
+    private function connectRedis(): bool
+    {
         if (!extension_loaded('redis')) {
             return false;
         }
@@ -86,7 +91,8 @@ class Cache {
     /**
      * Configure the cache
      */
-    public function configure(array $options): self {
+    public function configure(array $options): self
+    {
         if (isset($options['driver'])) {
             $this->driver = $options['driver'];
         }
@@ -105,7 +111,8 @@ class Cache {
     /**
      * Get a cached value
      */
-    public function get(string $key, $default = null) {
+    public function get(string $key, $default = null)
+    {
         $prefixedKey = $this->prefix . $key;
 
         // Check memory cache first
@@ -130,7 +137,9 @@ class Cache {
             case 'apcu':
                 $success = false;
                 $value = apcu_fetch($prefixedKey, $success);
-                if (!$success) return $default;
+                if (!$success) {
+                    return $default;
+                }
                 $unserialized = @unserialize($value);
                 return $unserialized !== false ? $unserialized : $default;
 
@@ -148,7 +157,8 @@ class Cache {
     /**
      * Store a value in cache
      */
-    public function set(string $key, $value, ?int $ttl = null): bool {
+    public function set(string $key, $value, ?int $ttl = null): bool
+    {
         $prefixedKey = $this->prefix . $key;
         $ttl = $ttl ?? $this->defaultTtl;
         $expires = $ttl > 0 ? time() + $ttl : 0;
@@ -186,21 +196,24 @@ class Cache {
     /**
      * Store a value forever
      */
-    public function forever(string $key, $value): bool {
+    public function forever(string $key, $value): bool
+    {
         return $this->set($key, $value, 0);
     }
 
     /**
      * Check if key exists
      */
-    public function has(string $key): bool {
+    public function has(string $key): bool
+    {
         return $this->get($key, $this) !== $this;
     }
 
     /**
      * Delete a cached value
      */
-    public function forget(string $key): bool {
+    public function forget(string $key): bool
+    {
         $prefixedKey = $this->prefix . $key;
 
         unset($this->memory[$prefixedKey]);
@@ -230,7 +243,8 @@ class Cache {
     /**
      * Delete multiple keys by pattern
      */
-    public function forgetPattern(string $pattern): int {
+    public function forgetPattern(string $pattern): int
+    {
         $count = 0;
         $fullPattern = $this->prefix . $pattern;
 
@@ -267,7 +281,8 @@ class Cache {
     /**
      * Clear all cache
      */
-    public function flush(): bool {
+    public function flush(): bool
+    {
         $this->memory = [];
 
         switch ($this->driver) {
@@ -299,7 +314,8 @@ class Cache {
     /**
      * Get or set - return cached value or store result of callback
      */
-    public function remember(string $key, $ttl, callable $callback) {
+    public function remember(string $key, $ttl, callable $callback)
+    {
         $value = $this->get($key);
 
         if ($value !== null) {
@@ -315,14 +331,16 @@ class Cache {
     /**
      * Get or set forever
      */
-    public function rememberForever(string $key, callable $callback) {
+    public function rememberForever(string $key, callable $callback)
+    {
         return $this->remember($key, 0, $callback);
     }
 
     /**
      * Pull - get and forget
      */
-    public function pull(string $key, $default = null) {
+    public function pull(string $key, $default = null)
+    {
         $value = $this->get($key, $default);
         $this->forget($key);
         return $value;
@@ -331,7 +349,8 @@ class Cache {
     /**
      * Increment a numeric value
      */
-    public function increment(string $key, int $amount = 1): int {
+    public function increment(string $key, int $amount = 1): int
+    {
         $prefixedKey = $this->prefix . $key;
 
         $value = (int)$this->get($key, 0) + $amount;
@@ -342,14 +361,16 @@ class Cache {
     /**
      * Decrement a numeric value
      */
-    public function decrement(string $key, int $amount = 1): int {
+    public function decrement(string $key, int $amount = 1): int
+    {
         return $this->increment($key, -$amount);
     }
 
     /**
      * Get multiple values
      */
-    public function many(array $keys): array {
+    public function many(array $keys): array
+    {
         $result = [];
         foreach ($keys as $key) {
             $result[$key] = $this->get($key);
@@ -360,7 +381,8 @@ class Cache {
     /**
      * Set multiple values
      */
-    public function setMany(array $values, ?int $ttl = null): bool {
+    public function setMany(array $values, ?int $ttl = null): bool
+    {
         foreach ($values as $key => $value) {
             $this->set($key, $value, $ttl);
         }
@@ -370,7 +392,8 @@ class Cache {
     /**
      * Get cache statistics
      */
-    public function stats(): array {
+    public function stats(): array
+    {
         $stats = [
             'driver' => $this->driver,
             'memory_items' => count($this->memory),
@@ -412,14 +435,16 @@ class Cache {
     /**
      * Get cache file path
      */
-    private function getCacheFile(string $key): string {
+    private function getCacheFile(string $key): string
+    {
         return $this->path . md5($key) . '.cache';
     }
 
     /**
      * Get value from file cache
      */
-    private function getFromFile(string $key, $default) {
+    private function getFromFile(string $key, $default)
+    {
         $file = $this->getCacheFile($key);
 
         if (!file_exists($file)) {
@@ -449,7 +474,8 @@ class Cache {
     /**
      * Store value to file cache
      */
-    private function setToFile(string $key, $value, int $expires): bool {
+    private function setToFile(string $key, $value, int $expires): bool
+    {
         $file = $this->getCacheFile($key);
 
         $data = serialize([
@@ -463,7 +489,8 @@ class Cache {
     /**
      * Clean expired file cache entries
      */
-    public function gc(): int {
+    public function gc(): int
+    {
         if ($this->driver !== 'file') {
             return 0;
         }
@@ -495,7 +522,8 @@ class Cache {
 /**
  * Get cache instance
  */
-function cache(?string $key = null, $default = null) {
+function cache(?string $key = null, $default = null)
+{
     $cache = Cache::getInstance();
 
     if ($key === null) {
@@ -508,20 +536,23 @@ function cache(?string $key = null, $default = null) {
 /**
  * Cache a value
  */
-function cache_set(string $key, $value, ?int $ttl = null): bool {
+function cache_set(string $key, $value, ?int $ttl = null): bool
+{
     return Cache::getInstance()->set($key, $value, $ttl);
 }
 
 /**
  * Remember a value
  */
-function cache_remember(string $key, int $ttl, callable $callback) {
+function cache_remember(string $key, int $ttl, callable $callback)
+{
     return Cache::getInstance()->remember($key, $ttl, $callback);
 }
 
 /**
  * Forget a cached value
  */
-function cache_forget(string $key): bool {
+function cache_forget(string $key): bool
+{
     return Cache::getInstance()->forget($key);
 }

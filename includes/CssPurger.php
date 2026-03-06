@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CSS Purger
  *
@@ -13,14 +14,16 @@
  *   php cli/purge-css.php --purge      Generate purged CSS
  */
 
-class CssPurger {
+class CssPurger
+{
     private array $usedSelectors = [];
     private array $allSelectors = [];
     private string $cssPath;
     private string $outputPath;
     private array $safelist = [];
 
-    public function __construct() {
+    public function __construct()
+    {
         $basePath = dirname(__DIR__);
         $this->cssPath = $basePath . '/public/css/style.css';
         $this->outputPath = $basePath . '/public/css/style.purged.css';
@@ -81,7 +84,8 @@ class CssPurger {
     /**
      * Analyze templates and find used selectors
      */
-    public function analyze(): array {
+    public function analyze(): array
+    {
         $basePath = dirname(__DIR__);
 
         // Directories to scan for templates
@@ -96,7 +100,9 @@ class CssPurger {
         $this->usedSelectors = [];
 
         foreach ($templateDirs as $dir) {
-            if (!is_dir($dir)) continue;
+            if (!is_dir($dir)) {
+                continue;
+            }
             $this->scanDirectory($dir);
         }
 
@@ -123,7 +129,8 @@ class CssPurger {
     /**
      * Generate purged CSS
      */
-    public function purge(): array {
+    public function purge(): array
+    {
         $analysis = $this->analyze();
 
         $css = file_get_contents($this->cssPath);
@@ -152,14 +159,17 @@ class CssPurger {
     /**
      * Scan directory for templates
      */
-    private function scanDirectory(string $dir): void {
+    private function scanDirectory(string $dir): void
+    {
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
         );
 
         foreach ($iterator as $file) {
             $ext = $file->getExtension();
-            if (!in_array($ext, ['php', 'html', 'js'])) continue;
+            if (!in_array($ext, ['php', 'html', 'js'])) {
+                continue;
+            }
 
             $content = file_get_contents($file->getPathname());
             $this->extractSelectors($content);
@@ -169,7 +179,8 @@ class CssPurger {
     /**
      * Extract potential CSS selectors from content
      */
-    private function extractSelectors(string $content): void {
+    private function extractSelectors(string $content): void
+    {
         // Extract class names from class="..." attributes
         preg_match_all('/class\s*=\s*["\']([^"\']+)["\']/', $content, $matches);
         foreach ($matches[1] as $classString) {
@@ -213,7 +224,8 @@ class CssPurger {
     /**
      * Parse CSS and extract all selectors
      */
-    private function parseCssSelectors(): array {
+    private function parseCssSelectors(): array
+    {
         $css = file_get_contents($this->cssPath);
         $selectors = [];
 
@@ -240,13 +252,16 @@ class CssPurger {
     /**
      * Check if selector is used
      */
-    private function isSelectorUsed(string $selector): bool {
+    private function isSelectorUsed(string $selector): bool
+    {
         // Extract the main class/id/element from the selector
         $parts = preg_split('/[\s>+~\[:]+/', $selector);
 
         foreach ($parts as $part) {
             $part = trim($part);
-            if (empty($part)) continue;
+            if (empty($part)) {
+                continue;
+            }
 
             // Check for class
             if (preg_match('/^\.([a-zA-Z_-][a-zA-Z0-9_-]*)/', $part, $m)) {
@@ -276,7 +291,8 @@ class CssPurger {
     /**
      * Check if selector is in safelist
      */
-    private function isInSafelist(string $selector): bool {
+    private function isInSafelist(string $selector): bool
+    {
         foreach ($this->safelist as $pattern) {
             if (preg_match($pattern, $selector)) {
                 return true;
@@ -288,7 +304,8 @@ class CssPurger {
     /**
      * Remove unused CSS rules
      */
-    private function removeUnusedRules(string $css, array $unusedSelectors): string {
+    private function removeUnusedRules(string $css, array $unusedSelectors): string
+    {
         foreach ($unusedSelectors as $selector) {
             // Escape special regex characters
             $escaped = preg_quote($selector, '/');
@@ -307,7 +324,8 @@ class CssPurger {
     /**
      * Minify CSS
      */
-    private function minify(string $css): string {
+    private function minify(string $css): string
+    {
         // Remove comments
         $css = preg_replace('/\/\*[\s\S]*?\*\//', '', $css);
 
@@ -329,7 +347,8 @@ class CssPurger {
     /**
      * Estimate size savings
      */
-    private function estimateSavings(array $unusedSelectors): string {
+    private function estimateSavings(array $unusedSelectors): string
+    {
         $css = file_get_contents($this->cssPath);
         $totalSize = strlen($css);
 
@@ -348,12 +367,14 @@ class CssPurger {
     /**
      * Add to safelist
      */
-    public function addToSafelist(string $pattern): self {
+    public function addToSafelist(string $pattern): self
+    {
         $this->safelist[] = $pattern;
         return $this;
     }
 
-    private function formatBytes(int $bytes): string {
+    private function formatBytes(int $bytes): string
+    {
         $units = ['B', 'KB', 'MB'];
         $i = 0;
         while ($bytes >= 1024 && $i < count($units) - 1) {

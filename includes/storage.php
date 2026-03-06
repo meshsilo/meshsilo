@@ -1,10 +1,12 @@
 <?php
+
 /**
  * Storage Abstraction Layer
  * Supports local filesystem and S3-compatible object storage
  */
 
-interface StorageInterface {
+interface StorageInterface
+{
     public function put($path, $content);
     public function putFile($path, $localFile);
     public function get($path);
@@ -20,16 +22,19 @@ interface StorageInterface {
 /**
  * Local Filesystem Storage
  */
-class LocalStorage implements StorageInterface {
+class LocalStorage implements StorageInterface
+{
     private $basePath;
     private $baseUrl;
 
-    public function __construct($basePath, $baseUrl = '') {
+    public function __construct($basePath, $baseUrl = '')
+    {
         $this->basePath = rtrim($basePath, '/');
         $this->baseUrl = rtrim($baseUrl, '/');
     }
 
-    public function put($path, $content) {
+    public function put($path, $content)
+    {
         $fullPath = $this->fullPath($path);
         $dir = dirname($fullPath);
         if (!is_dir($dir)) {
@@ -38,7 +43,8 @@ class LocalStorage implements StorageInterface {
         return file_put_contents($fullPath, $content) !== false;
     }
 
-    public function putFile($path, $localFile) {
+    public function putFile($path, $localFile)
+    {
         $fullPath = $this->fullPath($path);
         $dir = dirname($fullPath);
         if (!is_dir($dir)) {
@@ -47,12 +53,14 @@ class LocalStorage implements StorageInterface {
         return copy($localFile, $fullPath);
     }
 
-    public function get($path) {
+    public function get($path)
+    {
         $fullPath = $this->fullPath($path);
         return file_exists($fullPath) ? file_get_contents($fullPath) : null;
     }
 
-    public function delete($path) {
+    public function delete($path)
+    {
         $fullPath = $this->fullPath($path);
         if (file_exists($fullPath)) {
             return unlink($fullPath);
@@ -60,29 +68,35 @@ class LocalStorage implements StorageInterface {
         return true;
     }
 
-    public function exists($path) {
+    public function exists($path)
+    {
         return file_exists($this->fullPath($path));
     }
 
-    public function url($path, $expiry = 3600) {
+    public function url($path, $expiry = 3600)
+    {
         // Local storage returns direct URL
         return $this->baseUrl . '/' . ltrim($path, '/');
     }
 
-    public function size($path) {
+    public function size($path)
+    {
         $fullPath = $this->fullPath($path);
         return file_exists($fullPath) ? filesize($fullPath) : 0;
     }
 
-    public function copy($from, $to) {
+    public function copy($from, $to)
+    {
         return copy($this->fullPath($from), $this->fullPath($to));
     }
 
-    public function move($from, $to) {
+    public function move($from, $to)
+    {
         return rename($this->fullPath($from), $this->fullPath($to));
     }
 
-    public function listFiles($prefix = '') {
+    public function listFiles($prefix = '')
+    {
         $files = [];
         $dir = $this->fullPath($prefix);
         if (is_dir($dir)) {
@@ -98,11 +112,13 @@ class LocalStorage implements StorageInterface {
         return $files;
     }
 
-    private function fullPath($path) {
+    private function fullPath($path)
+    {
         return $this->basePath . '/' . ltrim($path, '/');
     }
 
-    public function getBasePath() {
+    public function getBasePath()
+    {
         return $this->basePath;
     }
 }
@@ -110,7 +126,8 @@ class LocalStorage implements StorageInterface {
 /**
  * S3-Compatible Object Storage
  */
-class S3Storage implements StorageInterface {
+class S3Storage implements StorageInterface
+{
     private $endpoint;
     private $bucket;
     private $accessKey;
@@ -118,7 +135,8 @@ class S3Storage implements StorageInterface {
     private $usePathStyle;
     private $publicUrl;
 
-    public function __construct($config) {
+    public function __construct($config)
+    {
         $this->endpoint = rtrim($config['endpoint'] ?? '', '/');
         $this->bucket = $config['bucket'] ?? '';
         $this->accessKey = $config['access_key'] ?? '';
@@ -127,32 +145,38 @@ class S3Storage implements StorageInterface {
         $this->publicUrl = rtrim($config['public_url'] ?? '', '/');
     }
 
-    public function put($path, $content) {
+    public function put($path, $content)
+    {
         return $this->putObject($path, $content, 'application/octet-stream');
     }
 
-    public function putFile($path, $localFile) {
+    public function putFile($path, $localFile)
+    {
         $content = file_get_contents($localFile);
         $contentType = mime_content_type($localFile) ?: 'application/octet-stream';
         return $this->putObject($path, $content, $contentType);
     }
 
-    public function get($path) {
+    public function get($path)
+    {
         $response = $this->request('GET', $path);
         return $response['success'] ? $response['body'] : null;
     }
 
-    public function delete($path) {
+    public function delete($path)
+    {
         $response = $this->request('DELETE', $path);
         return $response['success'] || $response['http_code'] === 404;
     }
 
-    public function exists($path) {
+    public function exists($path)
+    {
         $response = $this->request('HEAD', $path);
         return $response['http_code'] === 200;
     }
 
-    public function url($path, $expiry = 3600) {
+    public function url($path, $expiry = 3600)
+    {
         // If public URL is configured, return it
         if ($this->publicUrl) {
             return $this->publicUrl . '/' . ltrim($path, '/');
@@ -162,7 +186,8 @@ class S3Storage implements StorageInterface {
         return $this->getPresignedUrl($path, $expiry);
     }
 
-    public function size($path) {
+    public function size($path)
+    {
         $response = $this->request('HEAD', $path);
         if ($response['success'] && isset($response['headers']['content-length'])) {
             return (int)$response['headers']['content-length'];
@@ -170,7 +195,8 @@ class S3Storage implements StorageInterface {
         return 0;
     }
 
-    public function copy($from, $to) {
+    public function copy($from, $to)
+    {
         $content = $this->get($from);
         if ($content === null) {
             return false;
@@ -178,14 +204,16 @@ class S3Storage implements StorageInterface {
         return $this->put($to, $content);
     }
 
-    public function move($from, $to) {
+    public function move($from, $to)
+    {
         if ($this->copy($from, $to)) {
             return $this->delete($from);
         }
         return false;
     }
 
-    public function listFiles($prefix = '') {
+    public function listFiles($prefix = '')
+    {
         $files = [];
         $marker = '';
 
@@ -216,7 +244,8 @@ class S3Storage implements StorageInterface {
         return $files;
     }
 
-    private function putObject($path, $content, $contentType) {
+    private function putObject($path, $content, $contentType)
+    {
         $response = $this->request('PUT', $path, [], $content, [
             'Content-Type' => $contentType,
             'Content-Length' => strlen($content)
@@ -224,7 +253,8 @@ class S3Storage implements StorageInterface {
         return $response['success'];
     }
 
-    private function request($method, $path, $query = [], $body = '', $extraHeaders = []) {
+    private function request($method, $path, $query = [], $body = '', $extraHeaders = [])
+    {
         $path = '/' . ltrim($path, '/');
         $date = gmdate('D, d M Y H:i:s T');
 
@@ -262,7 +292,7 @@ class S3Storage implements StorageInterface {
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER => true,
-            CURLOPT_HTTPHEADER => array_map(function($k, $v) {
+            CURLOPT_HTTPHEADER => array_map(function ($k, $v) {
                 return "$k: $v";
             }, array_keys($headers), $headers),
             CURLOPT_TIMEOUT => 300,
@@ -289,7 +319,8 @@ class S3Storage implements StorageInterface {
         ];
     }
 
-    private function parseHeaders($headerString) {
+    private function parseHeaders($headerString)
+    {
         $headers = [];
         foreach (explode("\r\n", $headerString) as $line) {
             if (strpos($line, ':') !== false) {
@@ -300,7 +331,8 @@ class S3Storage implements StorageInterface {
         return $headers;
     }
 
-    private function getPresignedUrl($path, $expiry) {
+    private function getPresignedUrl($path, $expiry)
+    {
         $expires = time() + $expiry;
         $path = '/' . ltrim($path, '/');
 
@@ -321,7 +353,8 @@ class S3Storage implements StorageInterface {
 /**
  * Get the storage instance based on configuration
  */
-function getStorage() {
+function getStorage()
+{
     static $storage = null;
 
     if ($storage === null) {
@@ -349,42 +382,48 @@ function getStorage() {
 /**
  * Store a file in the configured storage
  */
-function storeFile($path, $localFile) {
+function storeFile($path, $localFile)
+{
     return getStorage()->putFile($path, $localFile);
 }
 
 /**
  * Get a file from storage
  */
-function getFile($path) {
+function getFile($path)
+{
     return getStorage()->get($path);
 }
 
 /**
  * Delete a file from storage
  */
-function deleteFile($path) {
+function deleteFile($path)
+{
     return getStorage()->delete($path);
 }
 
 /**
  * Check if file exists in storage
  */
-function fileExists($path) {
+function fileExists($path)
+{
     return getStorage()->exists($path);
 }
 
 /**
  * Get URL for a file (may be pre-signed for S3)
  */
-function getFileUrl($path, $expiry = 3600) {
+function getFileUrl($path, $expiry = 3600)
+{
     return getStorage()->url($path, $expiry);
 }
 
 /**
  * Migrate files from local to S3 storage
  */
-function migrateToS3($progressCallback = null) {
+function migrateToS3($progressCallback = null)
+{
     $localStorage = new LocalStorage(UPLOAD_PATH);
     $s3Storage = new S3Storage([
         'endpoint' => getSetting('s3_endpoint', ''),
@@ -432,7 +471,8 @@ function migrateToS3($progressCallback = null) {
 /**
  * Test S3 connection
  */
-function testS3Connection($config) {
+function testS3Connection($config)
+{
     try {
         $s3 = new S3Storage($config);
 
