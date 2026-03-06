@@ -416,7 +416,7 @@ class Encryption {
     /**
      * Encrypt all files in storage (migration)
      */
-    public static function encryptAllFiles(string $basePath, callable $progressCallback = null): array {
+    public static function encryptAllFiles(string $basePath, ?callable $progressCallback = null): array {
         if (!self::isEnabled()) {
             throw new Exception('Encryption not configured');
         }
@@ -464,7 +464,7 @@ class Encryption {
     /**
      * Decrypt all files in storage (migration/export)
      */
-    public static function decryptAllFiles(string $basePath, callable $progressCallback = null): array {
+    public static function decryptAllFiles(string $basePath, ?callable $progressCallback = null): array {
         if (!self::isEnabled()) {
             throw new Exception('Encryption not configured');
         }

@@ -320,6 +320,7 @@ class QueryBuilder {
      * Build SELECT query
      */
     public function toSql(): string {
+        $this->bindings = [];
         $sql = 'SELECT ';
 
         if ($this->distinct) {
@@ -369,7 +370,6 @@ class QueryBuilder {
      * Build WHERE clause
      */
     private function buildWheres(): string {
-        $this->bindings = [];
         $parts = [];
 
         foreach ($this->wheres as $where) {
@@ -421,8 +421,8 @@ class QueryBuilder {
                 return "{$where['column']} BETWEEN $min AND $max";
 
             case 'raw':
-                foreach ($where['bindings'] as $value) {
-                    $this->addBinding($value);
+                foreach ($where['bindings'] as $key => $value) {
+                    $this->bindings[$key] = $value;
                 }
                 return $where['sql'];
 
@@ -711,7 +711,8 @@ class QueryBuilder {
 
         $stmt = $this->db->prepare($sql);
         foreach ($this->bindings as $key => $value) {
-            $stmt->bindValue($key, $value, PDO::PARAM_INT);
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($key, $value, $type);
         }
 
         $stmt->execute();
