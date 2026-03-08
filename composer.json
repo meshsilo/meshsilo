@@ -3,7 +3,7 @@
     "description": "Digital Asset Manager for 3D Print Files",
     "version": "1.0.0",
     "type": "project",
-    "license": "MIT",
+    "license": "AGPL-3.0-or-later",
     "keywords": [
         "3d-printing",
         "stl",

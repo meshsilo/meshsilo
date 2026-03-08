@@ -586,7 +586,7 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+This project is licensed under the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html) (AGPL-3.0).
 
 ## Support
 

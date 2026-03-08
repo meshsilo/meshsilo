@@ -24,7 +24,6 @@ storage/logs/*
 # Documentation (not needed in container)
 *.md
 !README.md
-LICENSE
 todo.txt
 
 # Development files
