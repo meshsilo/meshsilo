@@ -58,6 +58,10 @@ if [ -f "$CONFIG_FILE" ]; then
         done
     fi
 
+    # Run database migrations
+    echo "Running database migrations..."
+    su -s /bin/bash www-data -c "php /var/www/meshsilo/cli/migrate.php" || true
+
     # Initialize settings from environment variables
     if [ -f "/var/www/meshsilo/cli/init-settings.php" ]; then
         echo "Initializing database settings from environment variables..."
