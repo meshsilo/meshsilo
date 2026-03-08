@@ -43,11 +43,13 @@ COPY --chown=www-data:www-data . /var/www/meshsilo/
 RUN mkdir -p /var/www/meshsilo/storage/assets \
     /var/www/meshsilo/storage/logs \
     /var/www/meshsilo/storage/db \
+    /var/www/meshsilo/storage/cache \
     && chown -R www-data:www-data /var/www/meshsilo \
     && chmod -R 755 /var/www/meshsilo \
     && chmod -R 775 /var/www/meshsilo/storage/assets \
     /var/www/meshsilo/storage/logs \
-    /var/www/meshsilo/storage/db
+    /var/www/meshsilo/storage/db \
+    /var/www/meshsilo/storage/cache
 
 # Copy nginx configuration (writable by www-data for admin UI upload size sync)
 COPY docker/nginx.conf /etc/nginx/sites-available/default
