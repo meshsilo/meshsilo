@@ -304,13 +304,13 @@ class RateLimiter
         $stats = [];
 
         // Requests in last hour
-        $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limits WHERE `timestamp` >= :since');
+        $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limit_hits WHERE `timestamp` >= :since');
         $stmt->bindValue(':since', $now - 3600, PDO::PARAM_INT);
         $result = $stmt->execute();
         $stats['requests_hour'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
 
         // Unique identifiers in last hour
-        $stmt = self::$db->prepare('SELECT COUNT(DISTINCT key_hash) as count FROM rate_limits WHERE `timestamp` >= :since');
+        $stmt = self::$db->prepare('SELECT COUNT(DISTINCT key_hash) as count FROM rate_limit_hits WHERE `timestamp` >= :since');
         $stmt->bindValue(':since', $now - 3600, PDO::PARAM_INT);
         $result = $stmt->execute();
         $stats['unique_keys_hour'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
@@ -318,7 +318,7 @@ class RateLimiter
         // Rate limited requests (approximate - those who hit limits)
         $stmt = self::$db->prepare('
             SELECT key_hash, COUNT(*) as count
-            FROM rate_limits
+            FROM rate_limit_hits
             WHERE `timestamp` >= :since
             GROUP BY key_hash
             HAVING count > 60
@@ -345,7 +345,7 @@ class RateLimiter
         $consumers = [];
         $stmt = self::$db->prepare('
             SELECT key_hash, COUNT(*) as request_count
-            FROM rate_limits
+            FROM rate_limit_hits
             WHERE `timestamp` >= :since
             GROUP BY key_hash
             ORDER BY request_count DESC
@@ -371,7 +371,7 @@ class RateLimiter
         self::ensureTable();
 
         $key = hash('sha256', $identifier . ':' . $endpoint);
-        $stmt = self::$db->prepare('DELETE FROM rate_limits WHERE key_hash = :key');
+        $stmt = self::$db->prepare('DELETE FROM rate_limit_hits WHERE key_hash = :key');
         $stmt->bindValue(':key', $key, PDO::PARAM_STR);
         $stmt->execute();
     }
@@ -384,7 +384,7 @@ class RateLimiter
         self::init();
         self::ensureTable();
 
-        $stmt = self::$db->prepare('DELETE FROM rate_limits WHERE `timestamp` < :cutoff');
+        $stmt = self::$db->prepare('DELETE FROM rate_limit_hits WHERE `timestamp` < :cutoff');
         $stmt->bindValue(':cutoff', time() - $olderThan, PDO::PARAM_INT);
         $stmt->execute();
 
