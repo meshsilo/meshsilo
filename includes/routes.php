@@ -277,6 +277,10 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($rou
     $router->get('/collections', ['file' => 'app/admin/collections.php'], 'admin.collections');
     $router->post('/collections', ['file' => 'app/admin/collections.php'], 'admin.collections.save');
 
+    // Tags
+    $router->get('/tags', ['file' => 'app/admin/tags.php'], 'admin.tags');
+    $router->post('/tags', ['file' => 'app/admin/tags.php'], 'admin.tags.save');
+
     // Models management
     $router->get('/models', ['file' => 'app/admin/models.php'], 'admin.models');
     $router->post('/models', ['file' => 'app/admin/models.php'], 'admin.models.save');
