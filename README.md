@@ -123,11 +123,9 @@ Multi-architecture images are available for `amd64` and `arm64`.
 1. Create a `docker-compose.yml` file:
 
 ```yaml
-version: '3.8'
-
 services:
   meshsilo:
-    image: ghcr.io/azurith93/meshsilo:latest
+    image: ghcr.io/meshsilo/meshsilo:latest
     container_name: meshsilo
     ports:
       - "8080:80"
@@ -183,7 +181,7 @@ docker run -d \
   -e MESHSILO_SITE_NAME=MeshSilo \
   -e MESHSILO_SITE_DESCRIPTION="3D Model Library" \
   --restart unless-stopped \
-  ghcr.io/azurith93/meshsilo:latest
+  ghcr.io/meshsilo/meshsilo:latest
 ```
 
 #### Using MySQL Instead of SQLite
@@ -306,7 +304,7 @@ Set `MESHSILO_SITE_URL=https://models.example.com` in your environment.
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Azurith93/MeshSilo.git
+   git clone https://github.com/meshsilo/meshsilo.git
    cd MeshSilo
    ```
 
@@ -592,8 +590,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/Azurith93/MeshSilo/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Azurith93/MeshSilo/discussions)
+- **Issues**: [GitHub Issues](https://github.com/meshsilo/meshsilo/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/meshsilo/meshsilo/discussions)
 
 ## Acknowledgments
 

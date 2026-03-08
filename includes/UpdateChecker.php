@@ -9,7 +9,7 @@
 
 class UpdateChecker
 {
-    private const GITHUB_REPO = 'Azurith93/silo';
+    private const GITHUB_REPO = 'meshsilo/meshsilo';
     private const CACHE_KEY = 'update_check';
     private const CACHE_TTL = 3600; // 1 hour
 

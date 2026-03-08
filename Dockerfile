@@ -3,7 +3,7 @@
 
 FROM ubuntu:24.04
 
-LABEL maintainer="Azurith93"
+LABEL maintainer="MeshSilo"
 LABEL description="MeshSilo - Digital Asset Manager for 3D model files"
 
 # Prevent interactive prompts during package installation
