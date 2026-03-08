@@ -10,20 +10,7 @@ services:
       - meshsilo_assets:/var/www/meshsilo/storage/assets
       - meshsilo_db:/var/www/meshsilo/storage/db
       - meshsilo_logs:/var/www/meshsilo/storage/logs
-      # Optional: Mount custom config file
-      # - ./config.local.php:/var/www/meshsilo/config.local.php:ro
-      # Optional: Mount seed models for demo mode (place .stl/.3mf files here)
-      # - ./demo-seed:/var/www/meshsilo/storage/demo-seed:ro
     environment:
-      # Database Configuration (sqlite or mysql)
-      # - MESHSILO_DB_TYPE=sqlite
-      # For MySQL, uncomment and configure:
-      # - MESHSILO_DB_TYPE=mysql
-      # - MESHSILO_DB_HOST=db
-      # - MESHSILO_DB_NAME=meshsilo
-      # - MESHSILO_DB_USER=meshsilo
-      # - MESHSILO_DB_PASS=your_password
-
       # Site Configuration
       - MESHSILO_SITE_NAME=MeshSilo
       - MESHSILO_SITE_DESCRIPTION=3D Model Asset Manager

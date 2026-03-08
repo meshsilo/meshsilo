@@ -56,6 +56,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated documentation to reflect current feature set
 
 ### Technical Changes
+- **License**: Changed from MIT to AGPL-3.0
+- **GitHub**: Migrated repository to `meshsilo/meshsilo` organization
+- **Docker**: Container now shows install wizard on first boot instead of auto-configuring
+- **Docker**: `docker-compose.yml` uses GHCR image (`ghcr.io/meshsilo/meshsilo`) instead of local build
+- **Docker**: Added `storage/cache` directory creation to Dockerfile
+- **Docker**: Removed deprecated `version` key from `docker-compose.yml`
+- **CI**: Docker build workflow triggers on `dev` branch pushes
+- **CI**: Upgraded cosign-installer to v3 for keyless signing
+- Removed `autoload-dev` classmap referencing gitignored `tests/` directory
 - Added CI workflow (`.github/workflows/ci.yml`)
 - Added `.gitattributes` and `.htaccess`
 - Added comprehensive test suite (migration, permissions, router, upload validation, mail)

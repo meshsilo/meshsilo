@@ -134,25 +134,15 @@ services:
       - meshsilo_db:/var/www/meshsilo/storage/db
       - meshsilo_logs:/var/www/meshsilo/storage/logs
     environment:
-      # Database Configuration
-      MESHSILO_DB_TYPE: sqlite
-
       # Site Configuration
       MESHSILO_SITE_NAME: MeshSilo
       MESHSILO_SITE_DESCRIPTION: 3D Model Library
 
-      # Upload Limits
-      MESHSILO_MAX_UPLOAD_SIZE: 104857600  # 100MB in bytes
-      MESHSILO_ALLOWED_EXTENSIONS: stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d
-
-      # Features
-      MESHSILO_DEDUP_ENABLED: true
+      # Upload Limits (in bytes, default 100MB)
+      MESHSILO_MAX_UPLOAD_SIZE: 104857600
 
       # Optional: External URL for reverse proxy
       # MESHSILO_SITE_URL: https://models.example.com
-
-      # Optional: Enable query stats (development only)
-      # MESHSILO_ENABLE_QUERY_STATS: true
     restart: unless-stopped
 
 volumes:
@@ -177,9 +167,6 @@ docker run -d \
   -v meshsilo_assets:/var/www/meshsilo/storage/assets \
   -v meshsilo_db:/var/www/meshsilo/storage/db \
   -v meshsilo_logs:/var/www/meshsilo/storage/logs \
-  -e MESHSILO_DB_TYPE=sqlite \
-  -e MESHSILO_SITE_NAME=MeshSilo \
-  -e MESHSILO_SITE_DESCRIPTION="3D Model Library" \
   --restart unless-stopped \
   ghcr.io/meshsilo/meshsilo:latest
 ```
