@@ -1,8 +1,7 @@
 <?php
 require_once 'includes/config.php';
-require_once 'includes/converter.php';
 require_once 'includes/dedup.php';
-require_once 'includes/ThumbnailGenerator.php';
+require_once 'includes/Queue.php';
 
 // Check upload permission
 requirePermission(PERM_UPLOAD);
@@ -105,26 +104,12 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
 
             logInfo('Model uploaded successfully', ['model_id' => $modelId, 'name' => $name, 'file' => $filename, 'folder' => $folderId, 'parent_id' => $parentId]);
 
-            // Auto-convert STL to 3MF if enabled
+            // Queue auto-conversion and thumbnail generation for background processing
             if ($extension === 'stl' && getSetting('auto_convert_stl', '0') === '1') {
-                $convertResult = convertPartTo3MF($modelId);
-                if ($convertResult['success']) {
-                    logInfo('Auto-converted STL to 3MF', [
-                        'model_id' => $modelId,
-                        'original_size' => $convertResult['original_size'],
-                        'new_size' => $convertResult['new_size'],
-                        'savings' => $convertResult['savings']
-                    ]);
-                }
+                Queue::push('ConvertStlTo3mf', ['model_id' => $modelId]);
             }
-
-            // Generate thumbnail for 3MF and STL files
             if (in_array($extension, ['3mf', 'stl'])) {
-                $model = ['id' => $modelId, 'file_path' => 'assets/' . $folderId . '/' . $filename, 'file_type' => $extension];
-                $thumbnail = ThumbnailGenerator::generateThumbnail($model);
-                if ($thumbnail) {
-                    logInfo('Generated thumbnail', ['model_id' => $modelId, 'thumbnail' => $thumbnail]);
-                }
+                Queue::push('GenerateThumbnail', ['model_id' => $modelId]);
             }
 
             return $modelId;
@@ -353,16 +338,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $parentId = createParentModel($db, $name, $description, $creator, $collection, $source_url, $selectedCategories, $totalSize, $folderId);
 
                         if ($parentId) {
-                            // Save each file as a child of the parent, all in the same folder
-                            foreach ($modelFiles as $modelFile) {
-                                $partName = pathinfo($modelFile['filename'], PATHINFO_FILENAME);
-                                if (saveModelFile($db, $modelFile['path'], $modelFile['filename'], $partName, '', '', '', '', [], $parentId, $modelFile['relative_path'], $folderId)) {
-                                    $uploadedCount++;
+                            // Save all parts in a single transaction for speed
+                            $db->exec('BEGIN TRANSACTION');
+                            try {
+                                foreach ($modelFiles as $modelFile) {
+                                    $partName = pathinfo($modelFile['filename'], PATHINFO_FILENAME);
+                                    if (saveModelFile($db, $modelFile['path'], $modelFile['filename'], $partName, '', '', '', '', [], $parentId, $modelFile['relative_path'], $folderId)) {
+                                        $uploadedCount++;
+                                    }
                                 }
-                            }
 
-                            // Update parent with final part count
-                            updateParentModel($db, $parentId, $uploadedCount, $totalSize);
+                                // Update parent with final part count
+                                updateParentModel($db, $parentId, $uploadedCount, $totalSize);
+                                $db->exec('COMMIT');
+                            } catch (Exception $e) {
+                                $db->exec('ROLLBACK');
+                                throw $e;
+                            }
 
                             // Save first image from ZIP as model thumbnail
                             if (!empty($imageFiles)) {
