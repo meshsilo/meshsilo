@@ -111,7 +111,7 @@ class RateLimiter
         self::ensureTable();
 
         // Clean old entries
-        $stmt = self::$db->prepare('DELETE FROM rate_limits WHERE `timestamp` < :cutoff');
+        $stmt = self::$db->prepare('DELETE FROM rate_limit_hits WHERE `timestamp` < :cutoff');
         $stmt->bindValue(':cutoff', $dayWindow, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -181,7 +181,7 @@ class RateLimiter
      */
     private static function getCount($key, $since)
     {
-        $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limits WHERE key_hash = :key AND `timestamp` >= :since');
+        $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limit_hits WHERE key_hash = :key AND `timestamp` >= :since');
         $stmt->bindValue(':key', $key, PDO::PARAM_STR);
         $stmt->bindValue(':since', $since, PDO::PARAM_INT);
         $result = $stmt->execute();
@@ -194,7 +194,7 @@ class RateLimiter
      */
     private static function record($key)
     {
-        $stmt = self::$db->prepare('INSERT INTO rate_limits (key_hash, `timestamp`) VALUES (:key, :ts)');
+        $stmt = self::$db->prepare('INSERT INTO rate_limit_hits (key_hash, `timestamp`) VALUES (:key, :ts)');
         $stmt->bindValue(':key', $key, PDO::PARAM_STR);
         $stmt->bindValue(':ts', time(), PDO::PARAM_INT);
         $stmt->execute();
@@ -209,43 +209,27 @@ class RateLimiter
             /** @phpstan-ignore booleanAnd.alwaysFalse, identical.alwaysFalse */
             if (defined('DB_TYPE') && DB_TYPE === 'mysql') {
                 self::$db->exec('
-                    CREATE TABLE IF NOT EXISTS rate_limits (
+                    CREATE TABLE IF NOT EXISTS rate_limit_hits (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         key_hash VARCHAR(64) NOT NULL,
                         `timestamp` INT NOT NULL,
-                        INDEX idx_rate_limits_key (key_hash, `timestamp`)
+                        INDEX idx_rate_limit_hits_key (key_hash, `timestamp`)
                     )
                 ');
-                // Verify the table has the expected columns; if not, recreate
-                try {
-                    $stmt = self::$db->prepare('SELECT `timestamp` FROM rate_limits LIMIT 1');
-                    $stmt->execute();
-                } catch (Exception $e) {
-                    // Table exists but with wrong schema - drop and recreate
-                    self::$db->exec('DROP TABLE IF EXISTS rate_limits');
-                    self::$db->exec('
-                        CREATE TABLE rate_limits (
-                            id INT AUTO_INCREMENT PRIMARY KEY,
-                            key_hash VARCHAR(64) NOT NULL,
-                            `timestamp` INT NOT NULL,
-                            INDEX idx_rate_limits_key (key_hash, `timestamp`)
-                        )
-                    ');
-                }
             } else {
                 self::$db->exec('
-                    CREATE TABLE IF NOT EXISTS rate_limits (
+                    CREATE TABLE IF NOT EXISTS rate_limit_hits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         key_hash TEXT NOT NULL,
                         timestamp INTEGER NOT NULL
                     )
                 ');
-                self::$db->exec('CREATE INDEX IF NOT EXISTS idx_rate_limits_key ON rate_limits (key_hash, timestamp)');
+                self::$db->exec('CREATE INDEX IF NOT EXISTS idx_rate_limit_hits_key ON rate_limit_hits (key_hash, timestamp)');
             }
         } catch (Exception $e) {
             // Log but don't fail - rate limiting is non-critical
             if (function_exists('logWarning')) {
-                logWarning('Failed to ensure rate_limits table: ' . $e->getMessage());
+                logWarning('Failed to ensure rate_limit_hits table: ' . $e->getMessage());
             }
         }
     }
