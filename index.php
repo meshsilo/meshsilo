@@ -10,11 +10,18 @@
 // Increase memory limit for large operations
 ini_set('memory_limit', '512M');
 
-// Redirect to installer if not yet installed
+// Redirect to installer if not yet installed (skip for health checks)
+$requestRoute = $_GET['route'] ?? '';
 if (!file_exists(__DIR__ . '/storage/db/config.local.php')
     && !file_exists(__DIR__ . '/db/config.local.php')
     && !file_exists(__DIR__ . '/config.local.php')
 ) {
+    if (trim($requestRoute, '/') === 'health') {
+        header('Content-Type: application/json');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        echo json_encode(['status' => 'ok', 'timestamp' => time(), 'installed' => false]);
+        exit;
+    }
     if (file_exists(__DIR__ . '/install.php')) {
         header('Location: /install.php');
         exit;

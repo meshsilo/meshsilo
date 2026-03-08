@@ -113,8 +113,8 @@ RUN mkdir -p /run/php && chown www-data:www-data /run/php
 EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
 
 # Volume for persistent data
 VOLUME ["/var/www/meshsilo/storage/assets", "/var/www/meshsilo/storage/db", "/var/www/meshsilo/storage/logs"]
