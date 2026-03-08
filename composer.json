@@ -45,12 +45,7 @@
             "includes/helpers.php"
         ]
     },
-    "autoload-dev": {
-        "classmap": [
-            "tests/"
-        ]
-    },
-    "scripts": {
+"scripts": {
         "test": "phpunit",
         "test:coverage": "phpunit --coverage-html coverage",
         "analyse": "phpstan analyse includes --level=5",
