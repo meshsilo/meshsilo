@@ -126,6 +126,7 @@ require_once __DIR__ . '/Search.php';
 require_once __DIR__ . '/Asset.php';
 require_once __DIR__ . '/HttpCache.php';
 require_once __DIR__ . '/ErrorHandler.php';
+require_once __DIR__ . '/RateLimiter.php';
 
 // Load plugin system
 require_once __DIR__ . '/PluginManager.php';
