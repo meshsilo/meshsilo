@@ -61,11 +61,10 @@ COPY docker/php-fpm.conf /etc/php/8.1/fpm/pool.d/www.conf
 # Copy supervisor configuration
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Copy entrypoint and demo cron scripts
+# Copy entrypoint and reload scripts
 COPY docker/entrypoint.sh /entrypoint.sh
-COPY docker/demo-cron.sh /demo-cron.sh
 COPY docker/reload-services.sh /usr/local/bin/meshsilo-reload
-RUN chmod +x /entrypoint.sh /demo-cron.sh /usr/local/bin/meshsilo-reload
+RUN chmod +x /entrypoint.sh /usr/local/bin/meshsilo-reload
 
 # Allow www-data to reload services via admin UI without password
 RUN echo "www-data ALL=(ALL) NOPASSWD: /usr/local/bin/meshsilo-reload" > /etc/sudoers.d/meshsilo \
