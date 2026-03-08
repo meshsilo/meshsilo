@@ -7,9 +7,9 @@
 // Don't require authentication for this page
 define('PUBLIC_PAGE', true);
 
-require_once __DIR__ . '/includes/logger.php';
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/Csrf.php';
+require_once __DIR__ . '/../../includes/logger.php';
+require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/Csrf.php';
 
 $token = $_GET['t'] ?? '';
 $error = '';

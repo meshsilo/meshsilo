@@ -9,15 +9,13 @@
  *   { "query": "{ models(limit: 10) { id name } }", "variables": {} }
  */
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/GraphQL.php';
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/GraphQL.php';
 
 header('Content-Type: application/json');
 
 // Handle CORS using configurable settings
-require_once __DIR__ . '/../includes/middleware/CorsMiddleware.php';
+require_once __DIR__ . '/../../includes/middleware/CorsMiddleware.php';
 $cors = CorsMiddleware::api();
 if (!$cors->handle([])) {
     exit; // Preflight request handled
