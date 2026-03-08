@@ -81,10 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
     $content = $_POST['phpini_content'] ?? '';
 
     // Determine paths based on environment
+    // In Docker, write to storage (within open_basedir) and let the reload script apply it
     if ($isDocker) {
-        $phpIniPath = '/etc/php/8.1/fpm/conf.d/99-meshsilo.ini';
-        $phpIniCliPath = '/etc/php/8.1/cli/conf.d/99-meshsilo.ini';
-        $nginxConfPath = '/etc/nginx/sites-available/default';
+        $phpIniPath = __DIR__ . '/../../storage/cache/php-meshsilo.ini';
     } else {
         $phpIniPath = __DIR__ . '/../php.ini';
     }
@@ -115,21 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
         if (is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)))) {
             if (file_put_contents($phpIniPath, $content) !== false) {
                 if ($isDocker) {
-                    // Also write to CLI config
-                    @file_put_contents($phpIniCliPath, $content);
-
-                    // Update nginx client_max_body_size if upload size changed
-                    if ($uploadSize !== null && file_exists($nginxConfPath)) {
-                        $nginxConf = file_get_contents($nginxConfPath);
-                        $nginxConf = preg_replace(
-                            '/client_max_body_size\s+[^;]+;/',
-                            'client_max_body_size ' . $uploadSize . ';',
-                            $nginxConf
-                        );
-                        file_put_contents($nginxConfPath, $nginxConf);
-                    }
-
-                    // Reload PHP-FPM and nginx via helper script
+                    // Reload script copies from storage to /etc/php and /etc/nginx, then restarts services
                     exec('sudo /usr/local/bin/meshsilo-reload 2>&1', $reloadOutput, $reloadResult);
 
                     if ($reloadResult === 0) {
@@ -514,7 +499,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php
                 $isDockerEnv = getenv('MESHSILO_DOCKER') === 'true';
                 if ($isDockerEnv) {
-                    $phpIniPath = '/etc/php/8.1/fpm/conf.d/99-meshsilo.ini';
+                    $phpIniPath = __DIR__ . '/../../storage/cache/php-meshsilo.ini';
                 } else {
                     $phpIniPath = __DIR__ . '/../php.ini';
                 }
