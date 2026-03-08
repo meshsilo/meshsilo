@@ -1,9 +1,6 @@
 services:
   meshsilo:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: meshsilo:latest
+    image: ghcr.io/meshsilo/meshsilo:latest
     container_name: meshsilo
     restart: unless-stopped
     ports:
