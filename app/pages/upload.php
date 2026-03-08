@@ -293,11 +293,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             continue;
                         }
 
-                        // Extract the file
-                        $content = $zip->getFromIndex($i);
-                        if ($content !== false) {
-                            file_put_contents($realTargetPath, $content);
-                            $extractedCount++;
+                        // Extract the file using streams to avoid memory exhaustion on large files
+                        $stream = $zip->getStream($filename);
+                        if ($stream !== false) {
+                            $outFile = fopen($realTargetPath, 'w');
+                            if ($outFile !== false) {
+                                stream_copy_to_stream($stream, $outFile);
+                                fclose($outFile);
+                                $extractedCount++;
+                            }
+                            fclose($stream);
                         }
                     }
                     $zip->close();

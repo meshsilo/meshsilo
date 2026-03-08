@@ -316,8 +316,15 @@ function importLibrary() {
             continue;
         }
 
-        $content = $zip->getFromIndex($i);
-        if ($content !== false) file_put_contents($realTargetPath, $content);
+        $stream = $zip->getStream($filename);
+        if ($stream !== false) {
+            $outFile = fopen($realTargetPath, 'w');
+            if ($outFile !== false) {
+                stream_copy_to_stream($stream, $outFile);
+                fclose($outFile);
+            }
+            fclose($stream);
+        }
     }
     $zip->close();
 
