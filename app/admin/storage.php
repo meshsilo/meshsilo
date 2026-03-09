@@ -63,6 +63,19 @@ $usageByUser = getStorageUsageByUser();
 $totalUsage = getTotalStorageUsage();
 $dedupSavings = getDedupStorageSavings();
 
+// Calculate 3MF conversion savings
+$conversionStats = $db->query('
+    SELECT COUNT(*) as converted_count,
+           COALESCE(SUM(original_size), 0) as original_total,
+           COALESCE(SUM(file_size), 0) as current_total
+    FROM models
+    WHERE original_size IS NOT NULL AND original_size > 0 AND file_type = \'3mf\'
+')->fetchArray(PDO::FETCH_ASSOC);
+$conversionSaved = ($conversionStats['original_total'] ?? 0) - ($conversionStats['current_total'] ?? 0);
+$conversionPercent = ($conversionStats['original_total'] ?? 0) > 0
+    ? round($conversionSaved / $conversionStats['original_total'] * 100)
+    : 0;
+
 // Handle actions
 $message = '';
 $error = '';
@@ -181,6 +194,12 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="stat-label">Saved by Dedup (<?= $dedupSavings['saved_percent'] ?>%)</div>
                             </div>
                             <?php endif; ?>
+                            <?php if ($conversionSaved > 0): ?>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-value"><?= formatBytes($conversionSaved) ?></div>
+                                <div class="stat-label">Saved by STL→3MF (<?= $conversionPercent ?>%)</div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </details>
 
@@ -229,6 +248,34 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div class="stat-card stat-card-success">
                                 <div class="stat-value"><?= $dedupSavings['saved_percent'] ?>%</div>
                                 <div class="stat-label">Savings Rate</div>
+                            </div>
+                        </div>
+                    </details>
+                    <?php endif; ?>
+
+                    <?php if ($conversionSaved > 0): ?>
+                    <details class="settings-section" open>
+                        <summary><h2>STL→3MF Conversion Savings</h2></summary>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value"><?= $conversionStats['converted_count'] ?></div>
+                                <div class="stat-label">Files Converted</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value"><?= formatBytes($conversionStats['original_total']) ?></div>
+                                <div class="stat-label">Original Size (STL)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value"><?= formatBytes($conversionStats['current_total']) ?></div>
+                                <div class="stat-label">Current Size (3MF)</div>
+                            </div>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-value"><?= formatBytes($conversionSaved) ?></div>
+                                <div class="stat-label">Total Space Saved</div>
+                            </div>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-value"><?= $conversionPercent ?>%</div>
+                                <div class="stat-label">Compression Rate</div>
                             </div>
                         </div>
                     </details>
