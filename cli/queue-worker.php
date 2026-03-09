@@ -64,6 +64,22 @@ $maxJobs = isset($options['max-jobs']) ? (int)$options['max-jobs'] : null;
 $maxTime = isset($options['max-time']) ? (int)$options['max-time'] : null;
 $verbose = isset($options['verbose']);
 
+function getMemoryLimitBytes(): int
+{
+    $limit = ini_get('memory_limit');
+    if ($limit === '-1') {
+        return 2 * 1024 * 1024 * 1024;
+    }
+    $value = (int)$limit;
+    $unit = strtolower(substr(trim($limit), -1));
+    return match ($unit) {
+        'g' => $value * 1024 * 1024 * 1024,
+        'm' => $value * 1024 * 1024,
+        'k' => $value * 1024,
+        default => $value,
+    };
+}
+
 $startTime = time();
 $jobsProcessed = 0;
 
@@ -175,9 +191,13 @@ while (!$shouldStop) {
         gc_collect_cycles();
     }
 
-    // Safety valve: exit if memory usage exceeds 128MB (supervisor will restart)
-    if (memory_get_usage(true) > 128 * 1024 * 1024) {
-        echo "Memory limit reached (" . round(memory_get_usage(true) / 1024 / 1024) . "MB), restarting.\n";
+    // Safety valve: exit at 80% of PHP memory limit (supervisor will restart)
+    $memLimit = getMemoryLimitBytes();
+    if (memory_get_usage(true) > $memLimit * 0.8) {
+        echo sprintf("Memory usage %dMB exceeds 80%% of %dMB limit, restarting.\n",
+            round(memory_get_usage(true) / 1024 / 1024),
+            round($memLimit / 1024 / 1024)
+        );
         break;
     }
 
