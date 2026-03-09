@@ -17,6 +17,13 @@ class STLConverter
      */
     public function isBinarySTL($filePath)
     {
+        $actualSize = filesize($filePath);
+
+        // Too small to be a valid binary STL (84-byte header minimum)
+        if ($actualSize < 84) {
+            return false;
+        }
+
         $handle = fopen($filePath, 'rb');
         if (!$handle) {
             return false;
@@ -32,22 +39,64 @@ class STLConverter
         }
 
         $triangleCount = unpack('V', $triangleCountData)[1];
+        fclose($handle);
+
+        // A triangle count of 0 is invalid for binary
+        if ($triangleCount === 0) {
+            return false;
+        }
 
         // Binary STL: 80 byte header + 4 byte count + (50 bytes * triangles)
         $expectedSize = 84 + ($triangleCount * 50);
-        $actualSize = filesize($filePath);
-
-        fclose($handle);
 
         // If file size matches expected binary size (within tolerance), it's binary
         return abs($actualSize - $expectedSize) < 100;
     }
 
     /**
-     * Maximum triangle count we'll attempt to convert.
-     * ~2M triangles requires ~400MB for vertex map + arrays + XML generation.
+     * Estimate bytes per triangle during conversion:
+     * ~500 bytes for vertex map entries, arrays, and XML string building.
      */
-    private const MAX_TRIANGLES = 2_000_000;
+    private const BYTES_PER_TRIANGLE = 500;
+
+    /**
+     * Calculate max triangles based on available PHP memory.
+     * Uses 60% of remaining memory to leave headroom for XML generation.
+     */
+    private function getMaxTriangles(): int
+    {
+        $memoryLimit = $this->getMemoryLimitBytes();
+        $currentUsage = memory_get_usage(true);
+        $available = $memoryLimit - $currentUsage;
+
+        // Use 60% of remaining memory for triangle data
+        $usable = (int)($available * 0.6);
+        $maxTriangles = (int)($usable / self::BYTES_PER_TRIANGLE);
+
+        // Clamp between 50K and 5M as safety bounds
+        return max(50_000, min($maxTriangles, 5_000_000));
+    }
+
+    /**
+     * Parse PHP memory_limit into bytes.
+     */
+    private function getMemoryLimitBytes(): int
+    {
+        $limit = ini_get('memory_limit');
+        if ($limit === '-1') {
+            return 2 * 1024 * 1024 * 1024; // Treat unlimited as 2G
+        }
+
+        $value = (int)$limit;
+        $unit = strtolower(substr(trim($limit), -1));
+
+        return match ($unit) {
+            'g' => $value * 1024 * 1024 * 1024,
+            'm' => $value * 1024 * 1024,
+            'k' => $value * 1024,
+            default => $value,
+        };
+    }
 
     /**
      * Parse a binary STL file
@@ -69,12 +118,13 @@ class STLConverter
         $triangleCountData = fread($handle, 4);
         $triangleCount = unpack('V', $triangleCountData)[1];
 
-        if ($triangleCount > self::MAX_TRIANGLES) {
+        $maxTriangles = $this->getMaxTriangles();
+        if ($triangleCount > $maxTriangles) {
             fclose($handle);
             throw new Exception(sprintf(
-                'STL file too large for conversion (%s triangles, max %s)',
+                'STL file too large for conversion (%s triangles, max %s with current memory)',
                 number_format($triangleCount),
-                number_format(self::MAX_TRIANGLES)
+                number_format($maxTriangles)
             ));
         }
 
@@ -148,6 +198,7 @@ class STLConverter
         $vertexMap = [];
         $vertexIndex = 0;
         $triIndices = [];
+        $maxTriangles = $this->getMaxTriangles();
 
         while (($line = fgets($handle)) !== false) {
             $line = trim($line);
@@ -171,11 +222,11 @@ class STLConverter
             } elseif (stripos($line, 'endloop') === 0) {
                 if (count($triIndices) === 3) {
                     $this->triangles[] = $triIndices;
-                    if (count($this->triangles) > self::MAX_TRIANGLES) {
+                    if (count($this->triangles) > $maxTriangles) {
                         fclose($handle);
                         throw new Exception(sprintf(
-                            'STL file too large for conversion (exceeded %s triangles)',
-                            number_format(self::MAX_TRIANGLES)
+                            'STL file too large for conversion (exceeded %s triangles with current memory)',
+                            number_format($maxTriangles)
                         ));
                     }
                 }
