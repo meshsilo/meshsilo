@@ -7,9 +7,6 @@
  * homepage is displayed.
  */
 
-// Increase memory limit for large operations
-ini_set('memory_limit', '512M');
-
 // Redirect to installer if not yet installed (skip for health checks)
 $requestRoute = $_GET['route'] ?? '';
 if (!file_exists(__DIR__ . '/storage/db/config.local.php')

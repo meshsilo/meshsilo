@@ -82,10 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
 
     // Determine paths based on environment
     // In Docker, write to storage (within open_basedir) and let the reload script apply it
+    // Outside Docker, write to .user.ini which PHP-FPM/CGI reads from the docroot
     if ($isDocker) {
         $phpIniPath = __DIR__ . '/../../storage/cache/php-meshsilo.ini';
     } else {
-        $phpIniPath = __DIR__ . '/../php.ini';
+        $phpIniPath = __DIR__ . '/../.user.ini';
     }
 
     // Basic validation - check for valid ini format
@@ -123,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
                         $message = 'PHP configuration saved. Services could not be reloaded automatically — restart the container for changes to take effect.';
                     }
                 } else {
-                    $message = 'PHP configuration saved successfully. Restart the web server for changes to take effect.';
+                    $message = 'PHP configuration saved successfully. Changes take effect within 5 minutes (or restart the web server for immediate effect).';
                 }
                 logInfo('php.ini updated', ['by' => getCurrentUser()['username'], 'docker' => $isDocker]);
             } else {
@@ -501,9 +502,9 @@ require_once __DIR__ . '/../../includes/header.php';
                 if ($isDockerEnv) {
                     $phpIniPath = __DIR__ . '/../../storage/cache/php-meshsilo.ini';
                 } else {
-                    $phpIniPath = __DIR__ . '/../php.ini';
+                    $phpIniPath = __DIR__ . '/../.user.ini';
                 }
-                $phpIniContent = file_exists($phpIniPath) ? file_get_contents($phpIniPath) : "; Silo PHP Configuration\nupload_max_filesize = 100M\npost_max_size = 105M\nmax_execution_time = 300\nmemory_limit = 256M\n";
+                $phpIniContent = file_exists($phpIniPath) ? file_get_contents($phpIniPath) : "; Silo PHP Configuration\nupload_max_filesize = 100M\npost_max_size = 105M\nmax_execution_time = 300\nmemory_limit = 1G\n";
                 $phpIniWritable = is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)));
                 ?>
 
@@ -516,8 +517,8 @@ require_once __DIR__ . '/../../includes/header.php';
                             Edit PHP-FPM configuration for upload limits, memory, and execution time.
                             Changes will automatically reload PHP-FPM and nginx. The <code>upload_max_filesize</code> value is synced with nginx's <code>client_max_body_size</code>.
                             <?php else: ?>
-                            Edit the php.ini file to configure PHP settings like upload limits and memory.
-                            Changes require a web server restart to take effect.
+                            Edit PHP settings like upload limits and memory.
+                            Changes take effect within 5 minutes, or restart the web server for immediate effect.
                             <?php endif; ?>
                         </p>
 
