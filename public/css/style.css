@@ -163,8 +163,10 @@ a {
 /* Buttons */
 .btn {
     padding: 0.5rem 1rem;
+    border: none;
     border-radius: var(--radius);
     font-weight: 500;
+    cursor: pointer;
     transition: background-color 0.2s;
 }
 
