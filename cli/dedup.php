@@ -57,23 +57,11 @@ if ($hashResult['calculated'] > 0) {
     echo "[" . date('Y-m-d H:i:s') . "] Calculated {$hashResult['calculated']} missing hashes ({$hashResult['errors']} errors)\n";
 }
 
-// Find duplicate files
+// Find duplicate files (not yet deduplicated)
 echo "[" . date('Y-m-d H:i:s') . "] Finding duplicate files...\n";
-$dupeResult = $db->query('
-    SELECT file_hash, COUNT(*) as count, SUM(file_size) as total_size
-    FROM models
-    WHERE file_hash IS NOT NULL
-      AND dedup_path IS NULL
-    GROUP BY file_hash
-    HAVING COUNT(*) > 1
-');
+$duplicates = findDuplicateHashes();
 
-$duplicateSets = [];
-while ($row = $dupeResult->fetchArray(PDO::FETCH_ASSOC)) {
-    $duplicateSets[] = $row;
-}
-
-if (empty($duplicateSets)) {
+if (empty($duplicates)) {
     echo "[" . date('Y-m-d H:i:s') . "] No duplicate files found.\n";
     if (!$dryRun) {
         setSetting('last_deduplication', date('Y-m-d H:i:s'));
@@ -81,99 +69,49 @@ if (empty($duplicateSets)) {
     exit(0);
 }
 
-$totalDupes = array_sum(array_column($duplicateSets, 'count'));
-$potentialSavings = 0;
-$filesDeduped = 0;
+$totalDupes = array_sum(array_column($duplicates, 'count'));
+$totalSaved = 0;
+$totalDeleted = 0;
 $errors = 0;
 
-echo "[" . date('Y-m-d H:i:s') . "] Found " . count($duplicateSets) . " duplicate sets ({$totalDupes} total files)\n";
+echo "[" . date('Y-m-d H:i:s') . "] Found " . count($duplicates) . " duplicate sets ({$totalDupes} total files)\n";
 
-foreach ($duplicateSets as $set) {
-    $hash = $set['file_hash'];
+foreach ($duplicates as $dup) {
+    $hash = $dup['file_hash'];
 
-    // Get all files with this hash
-    $stmt = $db->prepare('
-        SELECT id, file_path, file_size, dedup_path
-        FROM models
-        WHERE file_hash = :hash
-          AND dedup_path IS NULL
-        ORDER BY id ASC
-    ');
-    $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
-    $result = $stmt->execute();
-
-    $files = [];
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $files[] = $row;
-    }
-
-    if (count($files) < 2) {
-        continue;
-    }
-
-    // First file becomes the canonical copy
-    $canonical = $files[0];
-    $canonicalPath = UPLOAD_PATH . $canonical['file_path'];
-
-    if (!file_exists($canonicalPath)) {
-        echo "[" . date('Y-m-d H:i:s') . "] Warning: Canonical file missing: {$canonical['file_path']}\n";
-        $errors++;
-        continue;
-    }
-
-    // Deduplicate remaining files
-    for ($i = 1; $i < count($files); $i++) {
-        $dupe = $files[$i];
-        $dupePath = UPLOAD_PATH . $dupe['file_path'];
-
-        if (!file_exists($dupePath)) {
-            continue;
-        }
-
-        if ($dryRun) {
-            echo "[" . date('Y-m-d H:i:s') . "] Would deduplicate: {$dupe['file_path']} -> {$canonical['file_path']}\n";
-            $potentialSavings += $dupe['file_size'];
-            $filesDeduped++;
+    if ($dryRun) {
+        // Estimate savings: (count - 1) * average file size
+        $avgSize = $dup['total_size'] / $dup['count'];
+        $savings = (int)(($dup['count'] - 1) * $avgSize);
+        echo "[" . date('Y-m-d H:i:s') . "] Would deduplicate hash {$hash}: {$dup['count']} files, ~" . formatBytes($savings) . " savings\n";
+        $totalSaved += $savings;
+        $totalDeleted += $dup['count'] - 1;
+    } else {
+        $result = deduplicateByHash($hash);
+        if ($result['success']) {
+            $totalSaved += $result['space_saved'];
+            $totalDeleted += $result['files_deleted'];
+            echo "[" . date('Y-m-d H:i:s') . "] Deduplicated hash {$hash}: {$result['files_deleted']} files, " . formatBytes($result['space_saved']) . " saved\n";
         } else {
-            // Update database to point to canonical file
-            $updateStmt = $db->prepare('UPDATE models SET dedup_path = :dedup_path WHERE id = :id');
-            $updateStmt->bindValue(':dedup_path', $canonical['file_path'], PDO::PARAM_STR);
-            $updateStmt->bindValue(':id', $dupe['id'], PDO::PARAM_INT);
-
-            if ($updateStmt->execute()) {
-                // Delete the duplicate file
-                if (unlink($dupePath)) {
-                    $potentialSavings += $dupe['file_size'];
-                    $filesDeduped++;
-
-                    // Try to remove empty directories
-                    $dir = dirname($dupePath);
-                    if (is_dir($dir) && count(scandir($dir)) == 2) {
-                        rmdir($dir);
-                    }
-                } else {
-                    echo "[" . date('Y-m-d H:i:s') . "] Error: Could not delete {$dupe['file_path']}\n";
-                    $errors++;
-                }
-            } else {
-                echo "[" . date('Y-m-d H:i:s') . "] Error: Database update failed for {$dupe['file_path']}\n";
-                $errors++;
-            }
+            echo "[" . date('Y-m-d H:i:s') . "] Error for hash {$hash}: {$result['error']}\n";
+            $errors++;
         }
     }
 }
 
-// formatBytes is defined in includes/helpers.php
-
 echo "[" . date('Y-m-d H:i:s') . "] Deduplication complete.\n";
-echo "[" . date('Y-m-d H:i:s') . "] Files " . ($dryRun ? "that would be" : "") . " deduplicated: {$filesDeduped}\n";
-echo "[" . date('Y-m-d H:i:s') . "] Space " . ($dryRun ? "that would be" : "") . " saved: " . formatBytes($potentialSavings) . "\n";
+echo "[" . date('Y-m-d H:i:s') . "] Files " . ($dryRun ? "that would be " : "") . "deduplicated: {$totalDeleted}\n";
+echo "[" . date('Y-m-d H:i:s') . "] Space " . ($dryRun ? "that would be " : "") . "saved: " . formatBytes($totalSaved) . "\n";
 if ($errors > 0) {
     echo "[" . date('Y-m-d H:i:s') . "] Errors: {$errors}\n";
 }
 
-// Update last run time
+// Run cleanup - migrate back any files with only one reference
 if (!$dryRun) {
+    $cleanup = runDedupCleanupScan();
+    if ($cleanup['migrated'] > 0) {
+        echo "[" . date('Y-m-d H:i:s') . "] Cleaned up {$cleanup['migrated']} single-reference dedup files\n";
+    }
     setSetting('last_deduplication', date('Y-m-d H:i:s'));
 }
 

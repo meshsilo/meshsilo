@@ -341,9 +341,7 @@ class CardEffects {
         card.style.setProperty('--mouse-y', `${y}px`);
     }
 
-    handleMouseLeave(e) {
-        // Reset on leave if needed
-    }
+    handleMouseLeave(e) {}
 }
 
 // =====================

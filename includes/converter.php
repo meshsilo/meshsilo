@@ -63,26 +63,36 @@ class STLConverter
         $triangleCountData = fread($handle, 4);
         $triangleCount = unpack('V', $triangleCountData)[1];
 
+        // Read all triangle data at once (50 bytes per triangle)
+        $dataSize = $triangleCount * 50;
+        $data = fread($handle, $dataSize);
+        fclose($handle);
+
+        if (strlen($data) < $dataSize) {
+            throw new Exception('Incomplete STL file');
+        }
+
         $vertexMap = [];
         $vertexIndex = 0;
+        $offset = 0;
 
         for ($i = 0; $i < $triangleCount; $i++) {
             // Skip normal vector (12 bytes)
-            fseek($handle, 12, SEEK_CUR);
+            $offset += 12;
 
             $triIndices = [];
 
             // Read 3 vertices (each 12 bytes: 3 floats)
             for ($v = 0; $v < 3; $v++) {
-                $vertexData = fread($handle, 12);
-                $coords = unpack('f3', $vertexData);
+                $coords = unpack('f3', $data, $offset);
+                $offset += 12;
+
                 $vertex = [
                     round($coords[1], 6),
                     round($coords[2], 6),
                     round($coords[3], 6)
                 ];
 
-                // Create unique key for vertex deduplication
                 $key = implode(',', $vertex);
 
                 if (!isset($vertexMap[$key])) {
@@ -97,10 +107,8 @@ class STLConverter
             $this->triangles[] = $triIndices;
 
             // Skip attribute byte count (2 bytes)
-            fseek($handle, 2, SEEK_CUR);
+            $offset += 2;
         }
-
-        fclose($handle);
 
         return [
             'vertices' => count($this->vertices),
@@ -110,34 +118,30 @@ class STLConverter
 
     /**
      * Parse an ASCII STL file
+     * Uses line-by-line reading to avoid loading entire file into memory
      */
     public function parseASCIISTL($filePath)
     {
         $this->vertices = [];
         $this->triangles = [];
 
-        $content = file_get_contents($filePath);
-        if ($content === false) {
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
             throw new Exception('Cannot read STL file');
         }
 
         $vertexMap = [];
         $vertexIndex = 0;
+        $triIndices = [];
 
-        // Match all facets
-        preg_match_all('/facet\s+normal\s+[\d.eE+-]+\s+[\d.eE+-]+\s+[\d.eE+-]+\s+outer\s+loop\s+(vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s*){3}\s*endloop\s+endfacet/i', $content, $matches, PREG_SET_ORDER);
+        while (($line = fgets($handle)) !== false) {
+            $line = trim($line);
 
-        foreach ($matches as $match) {
-            // Extract vertices from this facet
-            preg_match_all('/vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/i', $match[0], $vertexMatches, PREG_SET_ORDER);
-
-            $triIndices = [];
-
-            foreach ($vertexMatches as $vm) {
+            if (preg_match('/^vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/i', $line, $m)) {
                 $vertex = [
-                    round((float)$vm[1], 6),
-                    round((float)$vm[2], 6),
-                    round((float)$vm[3], 6)
+                    round((float)$m[1], 6),
+                    round((float)$m[2], 6),
+                    round((float)$m[3], 6)
                 ];
 
                 $key = implode(',', $vertex);
@@ -149,12 +153,15 @@ class STLConverter
                 }
 
                 $triIndices[] = $vertexMap[$key];
-            }
-
-            if (count($triIndices) === 3) {
-                $this->triangles[] = $triIndices;
+            } elseif (stripos($line, 'endloop') === 0) {
+                if (count($triIndices) === 3) {
+                    $this->triangles[] = $triIndices;
+                }
+                $triIndices = [];
             }
         }
+
+        fclose($handle);
 
         return [
             'vertices' => count($this->vertices),
@@ -179,35 +186,36 @@ class STLConverter
      */
     private function generate3MFModel()
     {
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">' . "\n";
-        $xml .= '  <resources>' . "\n";
-        $xml .= '    <object id="1" type="model">' . "\n";
-        $xml .= '      <mesh>' . "\n";
+        $lines = [];
+        $lines[] = '<?xml version="1.0" encoding="UTF-8"?>';
+        $lines[] = '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">';
+        $lines[] = '  <resources>';
+        $lines[] = '    <object id="1" type="model">';
+        $lines[] = '      <mesh>';
 
         // Vertices
-        $xml .= '        <vertices>' . "\n";
+        $lines[] = '        <vertices>';
         foreach ($this->vertices as $v) {
-            $xml .= sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />' . "\n", $v[0], $v[1], $v[2]);
+            $lines[] = sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />', $v[0], $v[1], $v[2]);
         }
-        $xml .= '        </vertices>' . "\n";
+        $lines[] = '        </vertices>';
 
         // Triangles
-        $xml .= '        <triangles>' . "\n";
+        $lines[] = '        <triangles>';
         foreach ($this->triangles as $t) {
-            $xml .= sprintf('          <triangle v1="%d" v2="%d" v3="%d" />' . "\n", $t[0], $t[1], $t[2]);
+            $lines[] = sprintf('          <triangle v1="%d" v2="%d" v3="%d" />', $t[0], $t[1], $t[2]);
         }
-        $xml .= '        </triangles>' . "\n";
+        $lines[] = '        </triangles>';
 
-        $xml .= '      </mesh>' . "\n";
-        $xml .= '    </object>' . "\n";
-        $xml .= '  </resources>' . "\n";
-        $xml .= '  <build>' . "\n";
-        $xml .= '    <item objectid="1" />' . "\n";
-        $xml .= '  </build>' . "\n";
-        $xml .= '</model>';
+        $lines[] = '      </mesh>';
+        $lines[] = '    </object>';
+        $lines[] = '  </resources>';
+        $lines[] = '  <build>';
+        $lines[] = '    <item objectid="1" />';
+        $lines[] = '  </build>';
+        $lines[] = '</model>';
 
-        return $xml;
+        return implode("\n", $lines);
     }
 
     /**
@@ -290,6 +298,7 @@ class STLConverter
 
     /**
      * Estimate 3MF size without actually converting
+     * For binary STL, reads only the header to get triangle count
      * @param string $stlPath Path to STL file
      * @return array Estimated sizes and savings
      */
@@ -301,14 +310,26 @@ class STLConverter
 
         $originalSize = filesize($stlPath);
 
-        // Parse the STL to get vertex/triangle counts
-        $parseResult = $this->parseSTL($stlPath);
+        if ($this->isBinarySTL($stlPath)) {
+            // Binary STL: triangle count is in bytes 80-84, no full parse needed
+            $handle = fopen($stlPath, 'rb');
+            fseek($handle, 80);
+            $triangleCount = unpack('V', fread($handle, 4))[1];
+            fclose($handle);
+
+            // Binary STL has 3 vertices per triangle, but shared vertices reduce count
+            // Estimate ~50% vertex sharing for typical models
+            $estimatedVertices = (int)($triangleCount * 3 * 0.5);
+        } else {
+            // ASCII STL: must parse to count (but still cheaper than full conversion)
+            $parseResult = $this->parseASCIISTL($stlPath);
+            $triangleCount = $parseResult['triangles'];
+            $estimatedVertices = $parseResult['vertices'];
+        }
 
         // Estimate 3MF size based on XML structure
-        // Each vertex line is approximately 60 bytes
-        // Each triangle line is approximately 50 bytes
-        // Plus overhead for XML structure (~500 bytes)
-        $xmlSize = 500 + (count($this->vertices) * 60) + (count($this->triangles) * 50);
+        // Each vertex line ~60 bytes, each triangle line ~50 bytes, ~500 bytes overhead
+        $xmlSize = 500 + ($estimatedVertices * 60) + ($triangleCount * 50);
 
         // ZIP compression typically achieves 60-80% compression on XML
         $estimatedSize = (int)($xmlSize * 0.35);
@@ -321,8 +342,8 @@ class STLConverter
             'estimated_size' => $estimatedSize,
             'estimated_savings' => $savings,
             'estimated_savings_percent' => $savingsPercent,
-            'vertices' => $parseResult['vertices'],
-            'triangles' => $parseResult['triangles'],
+            'vertices' => $estimatedVertices,
+            'triangles' => $triangleCount,
             'worth_converting' => $savings > 0
         ];
     }
@@ -397,8 +418,21 @@ function convertPartTo3MF($partId)
             $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
             $stmt->execute();
 
-            // Delete original STL file
-            unlink($stlPath);
+            // Delete original STL file only if not shared via dedup
+            if (!empty($part['dedup_path'])) {
+                // Check if other models still reference this dedup file
+                $refStmt = $db->prepare('SELECT COUNT(*) as cnt FROM models WHERE dedup_path = :dedup_path AND id != :id');
+                $refStmt->bindValue(':dedup_path', $part['dedup_path'], PDO::PARAM_STR);
+                $refStmt->bindValue(':id', $partId, PDO::PARAM_INT);
+                $refResult = $refStmt->execute();
+                $refCount = $refResult->fetchArray(PDO::FETCH_ASSOC)['cnt'];
+
+                if ($refCount == 0) {
+                    unlink($stlPath);
+                }
+            } else {
+                unlink($stlPath);
+            }
 
             logInfo('Part converted to 3MF', [
                 'part_id' => $partId,

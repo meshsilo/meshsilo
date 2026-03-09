@@ -228,7 +228,7 @@ switch ($action) {
                     if (!empty($part['dedup_path'])) {
                         $dedupFilesToCheck[$part['dedup_path']] = true;
                     } elseif ($part['file_path']) {
-                        $filesToDelete[] = __DIR__ . '/../../' . $part['file_path'];
+                        $filesToDelete[] = getAbsoluteFilePath($part);
                     }
                 }
 
@@ -236,7 +236,7 @@ switch ($action) {
                 if (!empty($model['dedup_path'])) {
                     $dedupFilesToCheck[$model['dedup_path']] = true;
                 } elseif ($model['file_path']) {
-                    $filesToDelete[] = __DIR__ . '/../../' . $model['file_path'];
+                    $filesToDelete[] = getAbsoluteFilePath($model);
                 }
 
                 // Delete from database first (cascade handles children)
@@ -262,7 +262,7 @@ switch ($action) {
                     // Delete dedup files only if no other models reference them
                     foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
                         if (canDeleteDedupFile($dedupPath)) {
-                            $fullPath = __DIR__ . '/../../' . $dedupPath;
+                            $fullPath = getAbsoluteFilePath(['file_path' => null, 'dedup_path' => $dedupPath]);
                             if (file_exists($fullPath)) {
                                 unlink($fullPath);
                             }

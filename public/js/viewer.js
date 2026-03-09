@@ -8,8 +8,6 @@ class ModelViewer {
             autoRotate: options.autoRotate ?? true,
             interactive: options.interactive ?? false,
             progressiveLoading: options.progressiveLoading ?? true,
-            lodEnabled: options.lodEnabled ?? true,
-            lodDistances: options.lodDistances ?? [0, 50, 150],
             ...options
         };
 
@@ -19,7 +17,7 @@ class ModelViewer {
         this.controls = null;
         this.model = null;
         this.pivot = null;
-        this.lodGroup = null;
+
         this.animationId = null;
         this.isReady = false;
         this.loadProgress = 0;
@@ -790,9 +788,6 @@ class ModelViewer {
             this.controls.update();
         }
 
-        // Update LOD based on camera distance
-        this.updateLOD();
-
         this.renderer.render(this.scene, this.camera);
     }
 
@@ -882,12 +877,6 @@ class ModelViewer {
                 });
 
                 this.model = new THREE.Mesh(geometry, material);
-
-                // Apply LOD if enabled
-                if (this.options.lodEnabled) {
-                    this.createLOD(geometry);
-                }
-
                 this.centerAndScaleModel();
                 this.startAnimation();
                 resolve(this.model);
@@ -927,308 +916,5 @@ class ModelViewer {
         }
     }
 
-    // =====================
-    // Level of Detail (LOD)
-    // =====================
-
-    /**
-     * Create LOD group with multiple detail levels
-     */
-    createLOD(geometry) {
-        if (!this.options.lodEnabled || !geometry) return;
-
-        this.lodGroup = new THREE.LOD();
-
-        // High detail (original)
-        const highMaterial = new THREE.MeshPhongMaterial({
-            color: 0x888888,
-            specular: 0x222222,
-            shininess: 20
-        });
-        const highMesh = new THREE.Mesh(geometry, highMaterial);
-        this.lodGroup.addLevel(highMesh, this.options.lodDistances[0]);
-
-        // Medium detail (simplified)
-        const mediumGeometry = this.simplifyGeometry(geometry, 0.5);
-        if (mediumGeometry) {
-            const mediumMesh = new THREE.Mesh(mediumGeometry, highMaterial.clone());
-            this.lodGroup.addLevel(mediumMesh, this.options.lodDistances[1]);
-        }
-
-        // Low detail (very simplified)
-        const lowGeometry = this.simplifyGeometry(geometry, 0.2);
-        if (lowGeometry) {
-            const lowMesh = new THREE.Mesh(lowGeometry, highMaterial.clone());
-            this.lodGroup.addLevel(lowMesh, this.options.lodDistances[2]);
-        }
-
-        // Replace model with LOD group
-        if (this.model) {
-            this.scene.remove(this.model);
-        }
-        this.model = this.lodGroup;
-    }
-
-    /**
-     * Simplify geometry by reducing vertices
-     * Simple decimation - keep every Nth vertex
-     */
-    simplifyGeometry(geometry, ratio) {
-        if (!geometry || !geometry.attributes.position) return null;
-
-        const positions = geometry.attributes.position.array;
-        const vertexCount = positions.length / 3;
-
-        // Only simplify if we have enough vertices
-        if (vertexCount < 1000) return null;
-
-        const step = Math.max(1, Math.floor(1 / ratio));
-        const newPositions = [];
-
-        for (let i = 0; i < vertexCount; i += step) {
-            const idx = i * 3;
-            newPositions.push(positions[idx], positions[idx + 1], positions[idx + 2]);
-        }
-
-        const simplified = new THREE.BufferGeometry();
-        simplified.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
-        simplified.computeVertexNormals();
-
-        return simplified;
-    }
-
-    /**
-     * Update LOD based on camera distance
-     */
-    updateLOD() {
-        if (this.lodGroup && this.camera) {
-            this.lodGroup.update(this.camera);
-        }
-    }
 }
 
-// Initialize thumbnail viewers on page load
-function initThumbnailViewers() {
-    const thumbnails = document.querySelectorAll('.model-thumbnail[data-model-url], .model-detail-thumbnail[data-model-url]');
-
-    thumbnails.forEach(thumbnail => {
-        const url = thumbnail.dataset.modelUrl;
-        const fileType = thumbnail.dataset.fileType;
-
-        if (!url || !fileType) return;
-
-        // Create viewer container
-        const viewerContainer = document.createElement('div');
-        viewerContainer.className = 'thumbnail-viewer';
-        viewerContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%;';
-        thumbnail.appendChild(viewerContainer);
-
-        // Initialize viewer
-        const viewer = new ModelViewer(viewerContainer, {
-            autoRotate: true,
-            interactive: false,
-            backgroundColor: 0x1e293b
-        });
-
-        // Load model
-        viewer.loadModel(url, fileType)
-            .then(() => {
-                // Add class to hide file type badge when 3D viewer is active
-                thumbnail.classList.add('has-viewer');
-            })
-            .catch(err => {
-                console.warn('Failed to load thumbnail model:', err);
-                viewerContainer.remove();
-            });
-    });
-}
-
-// Initialize detail viewer
-function initDetailViewer(containerId, url, fileType) {
-    const container = document.getElementById(containerId);
-    if (!container) return null;
-
-    const viewer = new ModelViewer(container, {
-        autoRotate: true,
-        interactive: true,
-        backgroundColor: 0x1e293b
-    });
-
-    viewer.loadModel(url, fileType).catch(err => {
-        console.error('Failed to load model:', err);
-    });
-
-    return viewer;
-}
-
-// =====================
-// Texture Atlas Manager
-// =====================
-class TextureAtlasManager {
-    constructor(options = {}) {
-        this.atlasSize = options.atlasSize || 2048;
-        this.padding = options.padding || 2;
-        this.atlases = new Map();
-        this.texturePositions = new Map();
-        this.currentAtlas = null;
-        this.currentPosition = { x: 0, y: 0, rowHeight: 0 };
-    }
-
-    /**
-     * Create a new atlas canvas
-     */
-    createAtlas() {
-        const canvas = document.createElement('canvas');
-        canvas.width = this.atlasSize;
-        canvas.height = this.atlasSize;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#808080';
-        ctx.fillRect(0, 0, this.atlasSize, this.atlasSize);
-
-        const atlasId = 'atlas_' + this.atlases.size;
-        this.atlases.set(atlasId, {
-            canvas,
-            ctx,
-            texture: null
-        });
-
-        this.currentAtlas = atlasId;
-        this.currentPosition = { x: 0, y: 0, rowHeight: 0 };
-
-        return atlasId;
-    }
-
-    /**
-     * Add a texture to the atlas
-     * Returns UV coordinates for the texture in the atlas
-     */
-    async addTexture(textureUrl, width, height) {
-        if (!this.currentAtlas) {
-            this.createAtlas();
-        }
-
-        const atlas = this.atlases.get(this.currentAtlas);
-
-        // Check if we need to start a new row
-        if (this.currentPosition.x + width + this.padding > this.atlasSize) {
-            this.currentPosition.x = 0;
-            this.currentPosition.y += this.currentPosition.rowHeight + this.padding;
-            this.currentPosition.rowHeight = 0;
-        }
-
-        // Check if we need a new atlas
-        if (this.currentPosition.y + height > this.atlasSize) {
-            this.createAtlas();
-            return this.addTexture(textureUrl, width, height);
-        }
-
-        // Load and draw the texture
-        const img = await this.loadImage(textureUrl);
-
-        atlas.ctx.drawImage(
-            img,
-            this.currentPosition.x,
-            this.currentPosition.y,
-            width,
-            height
-        );
-
-        // Calculate UV coordinates
-        const uv = {
-            u1: this.currentPosition.x / this.atlasSize,
-            v1: this.currentPosition.y / this.atlasSize,
-            u2: (this.currentPosition.x + width) / this.atlasSize,
-            v2: (this.currentPosition.y + height) / this.atlasSize
-        };
-
-        this.texturePositions.set(textureUrl, {
-            atlasId: this.currentAtlas,
-            uv
-        });
-
-        // Update position
-        this.currentPosition.x += width + this.padding;
-        this.currentPosition.rowHeight = Math.max(this.currentPosition.rowHeight, height);
-
-        // Invalidate texture cache
-        atlas.texture = null;
-
-        return { atlasId: this.currentAtlas, uv };
-    }
-
-    /**
-     * Load an image
-     */
-    loadImage(url) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = url;
-        });
-    }
-
-    /**
-     * Get Three.js texture for an atlas
-     */
-    getAtlasTexture(atlasId) {
-        const atlas = this.atlases.get(atlasId);
-        if (!atlas) return null;
-
-        if (!atlas.texture) {
-            atlas.texture = new THREE.CanvasTexture(atlas.canvas);
-            atlas.texture.wrapS = THREE.ClampToEdgeWrapping;
-            atlas.texture.wrapT = THREE.ClampToEdgeWrapping;
-            atlas.texture.minFilter = THREE.LinearMipMapLinearFilter;
-            atlas.texture.magFilter = THREE.LinearFilter;
-        }
-
-        return atlas.texture;
-    }
-
-    /**
-     * Get UV coordinates for a texture
-     */
-    getTextureUV(textureUrl) {
-        return this.texturePositions.get(textureUrl);
-    }
-
-    /**
-     * Transform geometry UVs for atlas
-     */
-    transformUVs(geometry, textureUrl) {
-        const position = this.texturePositions.get(textureUrl);
-        if (!position || !geometry.attributes.uv) return;
-
-        const uvs = geometry.attributes.uv.array;
-        const { u1, v1, u2, v2 } = position.uv;
-
-        for (let i = 0; i < uvs.length; i += 2) {
-            uvs[i] = u1 + uvs[i] * (u2 - u1);
-            uvs[i + 1] = v1 + uvs[i + 1] * (v2 - v1);
-        }
-
-        geometry.attributes.uv.needsUpdate = true;
-    }
-
-    /**
-     * Clear all atlases
-     */
-    dispose() {
-        for (const [id, atlas] of this.atlases) {
-            if (atlas.texture) {
-                atlas.texture.dispose();
-            }
-        }
-        this.atlases.clear();
-        this.texturePositions.clear();
-        this.currentAtlas = null;
-    }
-}
-
-// Global texture atlas manager
-window.textureAtlasManager = new TextureAtlasManager();
-
-// Auto-init is handled by LazyModelLoader in main.js for better performance
-// The lazy loader uses IntersectionObserver to only load visible thumbnails

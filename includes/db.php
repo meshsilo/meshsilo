@@ -31,10 +31,14 @@ class DatabaseStatement
     private $params = [];
     private $paramTypes = [];
     private ?DatabaseResult $lastResult = null;
+    private ?string $sql = null;
+    private ?Database $db = null;
 
-    public function __construct($stmt)
+    public function __construct($stmt, ?string $sql = null, ?Database $db = null)
     {
         $this->stmt = $stmt;
+        $this->sql = $sql;
+        $this->db = $db;
     }
 
     public function bindValue($param, $value, $type = null)
@@ -48,12 +52,12 @@ class DatabaseStatement
 
     public function execute($params = null)
     {
+        // Bind parameters before execution
         if ($params !== null) {
             // Use type-aware binding instead of PDOStatement::execute($params)
             // PDO::execute() binds ALL values as strings, which breaks
             // LIMIT/OFFSET in MySQL (requires integer binding)
             $this->bindTypedParams($params);
-            $this->stmt->execute();
         } else {
             $execParams = $this->params;
             $execTypes = $this->paramTypes;
@@ -65,11 +69,22 @@ class DatabaseStatement
                 }
                 // Keys from bindValue() are already PDO-ready (1-based positional or named)
                 $this->bindTypedParams($execParams, $execTypes, false);
-                $this->stmt->execute();
-            } else {
-                $this->stmt->execute();
             }
         }
+
+        // Profile the actual execution (not just prepare)
+        Database::incrementQueryCount();
+        $start = microtime(true);
+        $this->stmt->execute();
+        $time = microtime(true) - $start;
+        Database::addQueryTime($time);
+
+        if ($this->sql !== null && function_exists('logQuery')) {
+            logQuery($this->sql, [], $time);
+        } elseif ($time > 0.1 && function_exists('logWarning')) {
+            logWarning('Slow query detected', ['time_seconds' => round($time, 3)]);
+        }
+
         $this->params = [];
         $this->paramTypes = [];
         $this->lastResult = new DatabaseResult($this->stmt);
@@ -253,6 +268,16 @@ class Database
         self::$queryTime = 0;
     }
 
+    public static function incrementQueryCount(): void
+    {
+        self::$queryCount++;
+    }
+
+    public static function addQueryTime(float $time): void
+    {
+        self::$queryTime += $time;
+    }
+
     private function profileQuery(callable $callback, $sql = null)
     {
         self::$queryCount++;
@@ -318,10 +343,7 @@ class Database
     public function prepare($sql)
     {
         $sql = $this->normalizeSql($sql);
-        // Return wrapped statement for SQLite3 API compatibility with profiling
-        return $this->profileQuery(function () use ($sql) {
-            return new DatabaseStatement($this->pdo->prepare($sql));
-        }, $sql);
+        return new DatabaseStatement($this->pdo->prepare($sql), $sql, $this);
     }
 
     public function query($sql)
@@ -2075,11 +2097,12 @@ function getAllowedExtensions()
     return $allowedExtensions;
 }
 
-// Get model extensions (non-zip file types that can be 3D rendered)
+// Get model extensions (3D model and slicer file types, not containers or attachments)
 function getModelExtensions()
 {
     $allowed = getAllowedExtensions();
-    return array_filter($allowed, fn($ext) => $ext !== 'zip');
+    $exclude = array_merge(['zip'], defined('ATTACHMENT_EXTENSIONS') ? ATTACHMENT_EXTENSIONS : []);
+    return array_values(array_filter($allowed, fn($ext) => !in_array($ext, $exclude)));
 }
 
 // Check if an extension is allowed
@@ -2088,10 +2111,17 @@ function isExtensionAllowed($extension)
     return in_array(strtolower($extension), getAllowedExtensions());
 }
 
-// Check if an extension is a model format (not a container like zip)
+// Check if an extension is a model format (not a container or attachment)
 function isModelExtension($extension)
 {
     return in_array(strtolower($extension), getModelExtensions());
+}
+
+// Check if an extension is an attachment type (image, document, text)
+function isAttachmentExtension($extension)
+{
+    $attachmentExts = defined('ATTACHMENT_EXTENSIONS') ? ATTACHMENT_EXTENSIONS : ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md'];
+    return in_array(strtolower($extension), $attachmentExts);
 }
 
 // =====================

@@ -189,6 +189,9 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->get('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share.get');
     $router->post('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share');
 
+    // Queue status
+    $router->get('/queue-status', ['file' => 'app/actions/queue-status.php'], 'actions.queue.status');
+
     // Notifications
     $router->get('/notification', ['file' => 'app/actions/notification.php'], 'actions.notification');
     $router->post('/notification', ['file' => 'app/actions/notification.php'], 'actions.notification.post');

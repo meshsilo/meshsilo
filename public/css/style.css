@@ -1403,6 +1403,112 @@ section.settings-section h2 {
     margin: 0.25rem 0;
 }
 
+/* Queue Indicator */
+.queue-indicator {
+    position: relative;
+    display: inline-block;
+}
+
+.queue-btn {
+    position: relative;
+    font-size: 1rem;
+}
+
+.queue-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: var(--color-primary);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    border-radius: 8px;
+    text-align: center;
+    padding: 0 4px;
+}
+
+.queue-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 280px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-0.5rem);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+    z-index: 1000;
+}
+
+.queue-indicator.open .queue-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.queue-dropdown-header {
+    padding: 0.625rem 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.queue-dropdown-body {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.queue-empty {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.queue-job {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.85rem;
+}
+
+.queue-job:last-child {
+    border-bottom: none;
+}
+
+.queue-job-status {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+}
+
+.queue-job-processing .queue-job-status {
+    color: var(--color-primary);
+}
+
+.queue-job-pending .queue-job-status {
+    color: var(--color-text-muted);
+}
+
+.queue-job-name {
+    flex: 1;
+    color: var(--color-text);
+}
+
+.queue-job-time {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+}
+
 /* Admin Tables */
 .admin-table {
     width: 100%;

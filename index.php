@@ -228,36 +228,18 @@ unset($rv);
 // Get popular tags (cached for 5 minutes to reduce load)
 $popularTags = [];
 if (isFeatureEnabled('tags')) {
-    $cacheKey = 'popular_tags_10';
-    $cacheFile = __DIR__ . '/cache/popular_tags.json';
-    $cacheValid = false;
-
-    // Check if cache exists and is fresh (5 minutes)
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 300) {
-        $cached = json_decode(file_get_contents($cacheFile), true);
-        if ($cached) {
-            $popularTags = $cached;
-            $cacheValid = true;
-        }
-    }
-
-    // Regenerate cache if needed
-    if (!$cacheValid) {
+    $popularTags = Cache::getInstance()->remember('popular_tags_10', 300, function () use ($db) {
+        $tags = [];
         try {
             $tagResult = $db->query('SELECT t.id, t.name, t.color, COUNT(mt.model_id) as model_count FROM tags t JOIN model_tags mt ON t.id = mt.tag_id GROUP BY t.id ORDER BY model_count DESC LIMIT 10');
             while ($row = $tagResult->fetchArray(PDO::FETCH_ASSOC)) {
-                $popularTags[] = $row;
+                $tags[] = $row;
             }
         } catch (Throwable $e) {
             logException($e, ['action' => 'homepage_popular_tags']);
         }
-
-        // Save to cache
-        if (!is_dir(__DIR__ . '/cache')) {
-            @mkdir(__DIR__ . '/cache', 0755, true);
-        }
-        @file_put_contents($cacheFile, json_encode($popularTags));
-    }
+        return $tags;
+    });
 }
 
 require_once 'includes/header.php';

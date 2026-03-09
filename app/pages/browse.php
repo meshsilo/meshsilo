@@ -502,7 +502,7 @@ require_once 'includes/header.php';
                 }
             } else {
                 // Normal mode, navigate to model
-                window.location = 'model.php?id=' + modelId;
+                window.location = '/model/' + modelId;
             }
         }
 

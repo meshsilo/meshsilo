@@ -356,6 +356,62 @@ class Queue
     }
 
     /**
+     * Get active (pending + processing) jobs
+     */
+    public static function active(int $limit = 20): array
+    {
+        $db = self::db();
+        if (!$db) {
+            return [];
+        }
+
+        $stmt = $db->prepare("
+            SELECT * FROM jobs
+            WHERE status IN (:pending, :processing)
+            ORDER BY created_at DESC
+            LIMIT :limit
+        ");
+
+        $stmt->bindValue(':pending', self::STATUS_PENDING, PDO::PARAM_STR);
+        $stmt->bindValue(':processing', self::STATUS_PROCESSING, PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+
+        $result = $stmt->execute();
+        $jobs = [];
+
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            $row['payload'] = json_decode($row['payload'], true);
+            $jobs[] = $row;
+        }
+
+        return $jobs;
+    }
+
+    /**
+     * Get count of active (pending + processing) jobs
+     */
+    public static function activeCount(): int
+    {
+        $db = self::db();
+        if (!$db) {
+            return 0;
+        }
+
+        $stmt = $db->prepare("
+            SELECT COUNT(*) as cnt FROM jobs
+            WHERE status IN (:pending, :processing)
+        ");
+
+        $stmt->bindValue(':pending', self::STATUS_PENDING, PDO::PARAM_STR);
+        $stmt->bindValue(':processing', self::STATUS_PROCESSING, PDO::PARAM_STR);
+
+        $result = $stmt->execute();
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
+
+        return (int)($row['cnt'] ?? 0);
+    }
+
+    /**
      * Get failed jobs
      */
     public static function failed(int $limit = 50): array
@@ -436,24 +492,4 @@ abstract class Job
     {
         // Override in subclass to handle failures
     }
-}
-
-// ========================================
-// Helper Functions
-// ========================================
-
-/**
- * Push a job onto the queue
- */
-function dispatch(string $jobClass, array $data = [], string $queue = 'default'): int
-{
-    return Queue::push($jobClass, $data, $queue);
-}
-
-/**
- * Dispatch a job to run later
- */
-function dispatch_later($delay, string $jobClass, array $data = [], string $queue = 'default'): int
-{
-    return Queue::later($delay, $jobClass, $data, $queue);
 }

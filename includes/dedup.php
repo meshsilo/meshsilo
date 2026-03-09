@@ -49,7 +49,7 @@ function findDuplicateHashes()
         FROM models
         WHERE file_hash IS NOT NULL
           AND file_hash != ""
-          AND parent_id IS NOT NULL
+          AND file_path IS NOT NULL
         GROUP BY file_hash
         HAVING COUNT(*) > 1
         ORDER BY count DESC
@@ -99,8 +99,8 @@ function deduplicateByHash($hash)
         return ['success' => false, 'error' => 'Not enough duplicates to deduplicate'];
     }
 
-    // Ensure dedup folder exists
-    $dedupFolder = __DIR__ . '/../' . DEDUP_FOLDER;
+    // Ensure dedup folder exists (storage/assets/_dedup/)
+    $dedupFolder = __DIR__ . '/../storage/' . DEDUP_FOLDER;
     if (!file_exists($dedupFolder)) {
         mkdir($dedupFolder, 0755, true);
     }
@@ -110,7 +110,7 @@ function deduplicateByHash($hash)
     $masterFilePath = null;
 
     foreach ($parts as $part) {
-        $filePath = __DIR__ . '/../' . getRealFilePath($part);
+        $filePath = getAbsoluteFilePath($part);
         if (file_exists($filePath)) {
             $masterPart = $part;
             $masterFilePath = $filePath;
@@ -126,7 +126,7 @@ function deduplicateByHash($hash)
     $extension = pathinfo($masterPart['filename'], PATHINFO_EXTENSION);
     $dedupFilename = $hash . '.' . $extension;
     $dedupPath = DEDUP_FOLDER . $dedupFilename;
-    $dedupFullPath = __DIR__ . '/../' . $dedupPath;
+    $dedupFullPath = __DIR__ . '/../storage/' . $dedupPath;
 
     // Copy file to dedup folder if not already there
     if (!file_exists($dedupFullPath)) {
@@ -140,7 +140,7 @@ function deduplicateByHash($hash)
     $spaceSaved = 0;
 
     foreach ($parts as $part) {
-        $originalPath = __DIR__ . '/../' . $part['file_path'];
+        $originalPath = getAbsoluteFilePath(['file_path' => $part['file_path'], 'dedup_path' => null]);
 
         // Update database to point to dedup file
         $stmt = $db->prepare('UPDATE models SET dedup_path = :dedup_path WHERE id = :id');
@@ -260,8 +260,8 @@ function migrateDedupBack($modelId)
         return ['success' => false, 'error' => 'Model not found or not deduplicated'];
     }
 
-    $dedupPath = __DIR__ . '/../' . $model['dedup_path'];
-    $originalPath = __DIR__ . '/../' . $model['file_path'];
+    $dedupPath = getAbsoluteFilePath($model);
+    $originalPath = getAbsoluteFilePath(['file_path' => $model['file_path'], 'dedup_path' => null]);
 
     // Check if this is the only reference
     if (getDedupReferenceCount($model['dedup_path']) > 1) {
@@ -346,7 +346,7 @@ function getDeduplicationStats()
     $virtualSize = $result->fetchArray(PDO::FETCH_ASSOC)['total'] ?? 0;
 
     // Get actual size of dedup folder
-    $dedupFolder = __DIR__ . '/../' . DEDUP_FOLDER;
+    $dedupFolder = __DIR__ . '/../storage/' . DEDUP_FOLDER;
     $actualSize = 0;
     if (is_dir($dedupFolder)) {
         $iterator = new DirectoryIterator($dedupFolder);
@@ -469,23 +469,28 @@ function calculateMissingHashes()
     ');
 
     $updated = 0;
+    $errors = 0;
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $filePath = __DIR__ . '/../' . getRealFilePath($row);
+        $filePath = getAbsoluteFilePath($row);
 
         if (file_exists($filePath) && is_file($filePath)) {
-            $hash = calculateContentHash($filePath);
-            if ($hash) {
-                $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
-                $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
-                $stmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
-                $stmt->execute();
-                $updated++;
+            try {
+                $hash = calculateContentHash($filePath);
+                if ($hash) {
+                    $stmt = $db->prepare('UPDATE models SET file_hash = :hash WHERE id = :id');
+                    $stmt->bindValue(':hash', $hash, PDO::PARAM_STR);
+                    $stmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
+                    $stmt->execute();
+                    $updated++;
+                }
+            } catch (Exception $e) {
+                $errors++;
             }
         }
     }
 
-    logInfo('Calculated missing hashes', ['count' => $updated]);
-    return $updated;
+    logInfo('Calculated missing hashes', ['count' => $updated, 'errors' => $errors]);
+    return ['calculated' => $updated, 'errors' => $errors];
 }
 
 /**
@@ -505,7 +510,7 @@ function recalculate3mfHashes()
 
     $updated = 0;
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $filePath = __DIR__ . '/../' . getRealFilePath($row);
+        $filePath = getAbsoluteFilePath($row);
 
         if (file_exists($filePath) && is_file($filePath)) {
             $hash = calculateContentHash($filePath);

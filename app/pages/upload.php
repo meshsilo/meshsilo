@@ -299,10 +299,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $zip->close();
 
-                    // First pass: collect all model files and images with their paths
+                    // First pass: collect all model files, images, and text files with their paths
                     $modelFiles = [];
                     $imageFiles = [];
+                    $attachmentFiles = [];
                     $imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+                    $textExtensions = ['txt', 'md'];
+                    $pdfExtensions = ['pdf'];
                     $iterator = new RecursiveIteratorIterator(
                         new RecursiveDirectoryIterator($extractDir, RecursiveDirectoryIterator::SKIP_DOTS)
                     );
@@ -324,6 +327,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'path' => $fileInfo->getPathname(),
                                     'filename' => $fileInfo->getFilename(),
                                     'extension' => $fileExt
+                                ];
+                                $attachmentFiles[] = [
+                                    'path' => $fileInfo->getPathname(),
+                                    'filename' => $fileInfo->getFilename(),
+                                    'extension' => $fileExt,
+                                    'type' => 'image'
+                                ];
+                            } elseif (in_array($fileExt, array_merge($textExtensions, $pdfExtensions))) {
+                                $attachmentFiles[] = [
+                                    'path' => $fileInfo->getPathname(),
+                                    'filename' => $fileInfo->getFilename(),
+                                    'extension' => $fileExt,
+                                    'type' => in_array($fileExt, $textExtensions) ? 'text' : 'pdf'
                                 ];
                             }
                         }
@@ -383,6 +399,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
+                            // Save images, text files, and PDFs from ZIP as attachments
+                            if (!empty($attachmentFiles) && isFeatureEnabled('attachments')) {
+                                $modelHash = substr(md5($name . $parentId), 0, 12);
+                                $attachDir = UPLOAD_PATH . $modelHash . '/attachments';
+                                if (!is_dir($attachDir)) {
+                                    mkdir($attachDir, 0755, true);
+                                }
+                                foreach ($attachmentFiles as $attFile) {
+                                    $attFilename = $attFile['type'] . '_' . $parentId . '_' . time() . '_' . mt_rand(100, 999) . '.' . $attFile['extension'];
+                                    $attDest = $attachDir . '/' . $attFilename;
+                                    if (copy($attFile['path'], $attDest)) {
+                                        $attRelative = $modelHash . '/attachments/' . $attFilename;
+                                        $mimeMap = [
+                                            'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+                                            'gif' => 'image/gif', 'webp' => 'image/webp', 'pdf' => 'application/pdf',
+                                            'txt' => 'text/plain', 'md' => 'text/markdown'
+                                        ];
+                                        $attMime = $mimeMap[$attFile['extension']] ?? 'application/octet-stream';
+                                        $stmt = $db->prepare('INSERT INTO model_attachments (model_id, filename, file_path, file_type, mime_type, file_size, original_filename, display_order)
+                                                              VALUES (:model_id, :filename, :file_path, :file_type, :mime_type, :file_size, :original_filename,
+                                                                      (SELECT COALESCE(MAX(display_order), 0) + 1 FROM model_attachments WHERE model_id = :model_id2))');
+                                        $stmt->bindValue(':model_id', $parentId, PDO::PARAM_INT);
+                                        $stmt->bindValue(':model_id2', $parentId, PDO::PARAM_INT);
+                                        $stmt->bindValue(':filename', $attFilename, PDO::PARAM_STR);
+                                        $stmt->bindValue(':file_path', $attRelative, PDO::PARAM_STR);
+                                        $stmt->bindValue(':file_type', $attFile['type'], PDO::PARAM_STR);
+                                        $stmt->bindValue(':mime_type', $attMime, PDO::PARAM_STR);
+                                        $stmt->bindValue(':file_size', filesize($attDest), PDO::PARAM_INT);
+                                        $stmt->bindValue(':original_filename', $attFile['filename'], PDO::PARAM_STR);
+                                        $stmt->execute();
+                                    }
+                                }
+                                logInfo('Saved attachments from ZIP', ['parent_id' => $parentId, 'count' => count($attachmentFiles)]);
+                            }
+
                             logInfo('ZIP extraction complete', ['file' => $originalName, 'parent_id' => $parentId, 'parts' => $uploadedCount, 'folder' => $folderId]);
 
                             if (class_exists('PluginManager')) {
@@ -416,13 +467,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     rmdir($extractDir);
 
                     if ($uploadedCount === 0 && empty($error)) {
-                        $error = 'No valid model files (.stl, .3mf, .gcode) found in the ZIP archive.';
+                        $error = 'No valid 3D model or slicer files found in the ZIP archive.';
                         logWarning('No valid models in ZIP', ['file' => $originalName]);
                     }
                 } else {
                     $error = 'Failed to open ZIP file.';
                     logError('Failed to open ZIP file', ['file' => $originalName]);
                 }
+            } elseif (isAttachmentExtension($extension)) {
+                // Attachment files (images, text, PDFs) can't be uploaded standalone
+                $error = 'Images, text files, and PDFs are added as attachments from the model page, or included in a ZIP with model files.';
+                logInfo('Attachment file uploaded standalone', ['file' => $originalName, 'extension' => $extension]);
             } else {
                 // Handle single model file - create parent with child part (like ZIP)
                 $fileSize = filesize($tmpPath);
@@ -513,15 +568,15 @@ require_once 'includes/header.php';
                         <div class="upload-buttons">
                             <label class="btn btn-primary file-select-btn">
                                 Browse Files
-                                <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.gcode,.zip" hidden>
+                                <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.zip,.lys,.ctb,.pwmo,.sl1" hidden>
                             </label>
                             <label class="btn btn-secondary file-select-btn mobile-only">
                                 Take Photo
                                 <input type="file" name="photo_file" id="photo_file" accept="image/*" capture="environment" hidden>
                             </label>
                         </div>
-                        <p class="dropzone-hint">Supported: .stl, .3mf, .gcode, .zip (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
-                        <p class="dropzone-hint">ZIP files will be unpacked and all model files imported</p>
+                        <p class="dropzone-hint">Supported: 3D models, slicer files (.lys, .ctb, .sl1), and ZIP archives (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
+                        <p class="dropzone-hint">ZIP files will be unpacked — models imported as parts, images &amp; text files added as attachments</p>
                         <p class="file-name-display" id="file-name-display"></p>
                     </div>
                 </div>

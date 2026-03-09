@@ -82,6 +82,64 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             }
         });
 
+        // Queue indicator
+        function toggleQueueDropdown() {
+            var dropdown = document.getElementById('queue-dropdown');
+            var indicator = document.getElementById('queue-indicator');
+            if (dropdown && indicator) {
+                indicator.classList.toggle('open');
+            }
+        }
+
+        function refreshQueueStatus() {
+            fetch('/queue-status', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var badge = document.getElementById('queue-badge');
+                var body = document.getElementById('queue-dropdown-body');
+                if (!badge || !body) return;
+
+                if (data.active > 0) {
+                    badge.textContent = data.active;
+                    badge.style.display = '';
+                    var html = '';
+                    data.jobs.forEach(function(job) {
+                        var statusClass = job.status === 'processing' ? 'queue-job-processing' : 'queue-job-pending';
+                        var statusIcon = job.status === 'processing' ? '&#9654;' : '&#9679;';
+                        var ago = timeAgo(job.created_at);
+                        html += '<div class="queue-job ' + statusClass + '">' +
+                            '<span class="queue-job-status">' + statusIcon + '</span>' +
+                            '<span class="queue-job-name">' + escapeHtml(job.name) + '</span>' +
+                            '<span class="queue-job-time">' + ago + '</span>' +
+                            '</div>';
+                    });
+                    body.innerHTML = html;
+                } else {
+                    badge.style.display = 'none';
+                    body.innerHTML = '<div class="queue-empty">No active tasks</div>';
+                }
+            })
+            .catch(function() {});
+        }
+
+        function timeAgo(dateStr) {
+            var now = new Date();
+            var then = new Date(dateStr.replace(' ', 'T') + 'Z');
+            var diff = Math.floor((now - then) / 1000);
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+            return Math.floor(diff / 86400) + 'd ago';
+        }
+
+        function escapeHtml(str) {
+            var d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
@@ -98,6 +156,18 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <?php if (isLoggedIn()) : ?>
         <?= Csrf::metaTag() ?>
         <?= Csrf::ajaxSetupScript() ?>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                refreshQueueStatus();
+                setInterval(refreshQueueStatus, 15000);
+            });
+            document.addEventListener('click', function(e) {
+                var indicator = document.getElementById('queue-indicator');
+                if (indicator && indicator.classList.contains('open') && !indicator.contains(e.target)) {
+                    indicator.classList.remove('open');
+                }
+            });
+        </script>
     <?php endif; ?>
 <?php if (class_exists('PluginManager')) : ?>
     <?= PluginManager::getInstance()->renderStyles() ?>
@@ -158,6 +228,17 @@ endif; ?>
                     <?php if (isFeatureEnabled('favorites')) : ?>
                     <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
                     <?php endif; ?>
+                    <div class="queue-indicator" id="queue-indicator" title="Background Tasks">
+                        <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()">
+                            &#9881;<span class="queue-badge" id="queue-badge" style="display:none;">0</span>
+                        </button>
+                        <div class="queue-dropdown" id="queue-dropdown">
+                            <div class="queue-dropdown-header">Background Tasks</div>
+                            <div class="queue-dropdown-body" id="queue-dropdown-body">
+                                <div class="queue-empty">No active tasks</div>
+                            </div>
+                        </div>
+                    </div>
                     <?php if ($user['is_admin']) : ?>
                         <a href="<?= route('admin.settings') ?>" class="btn btn-secondary">Admin</a>
                     <?php endif; ?>

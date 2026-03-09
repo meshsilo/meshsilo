@@ -11,19 +11,17 @@ require_once __DIR__ . '/../../includes/dedup.php';
  * @return void
  */
 function deleteModelFile(?string $filePath, ?string $dedupPath): void {
-    $baseDir = __DIR__ . '/../../';
-
     if (!empty($dedupPath)) {
         // File is deduplicated - only delete if no other parts reference it
         if (canDeleteDedupFile($dedupPath)) {
-            $fullPath = $baseDir . $dedupPath;
+            $fullPath = getAbsoluteFilePath(['file_path' => $filePath, 'dedup_path' => $dedupPath]);
             if (file_exists($fullPath)) {
                 unlink($fullPath);
             }
         }
     } elseif (!empty($filePath)) {
         // Non-deduplicated file
-        $fullPath = $baseDir . $filePath;
+        $fullPath = getAbsoluteFilePath(['file_path' => $filePath, 'dedup_path' => null]);
         if (file_exists($fullPath)) {
             unlink($fullPath);
 
@@ -44,7 +42,6 @@ function deleteModelFile(?string $filePath, ?string $dedupPath): void {
  * @return void
  */
 function cleanupModelFiles(array $filesToDelete, array $dedupFilesToCheck): void {
-    $baseDir = __DIR__ . '/../../';
     $foldersToCheck = [];
 
     // Delete non-deduplicated files
@@ -61,7 +58,7 @@ function cleanupModelFiles(array $filesToDelete, array $dedupFilesToCheck): void
     // Delete deduplicated files only if no other parts reference them
     foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
         if (canDeleteDedupFile($dedupPath)) {
-            $fullPath = $baseDir . $dedupPath;
+            $fullPath = getAbsoluteFilePath(['file_path' => null, 'dedup_path' => $dedupPath]);
             if (file_exists($fullPath)) {
                 unlink($fullPath);
             }
@@ -191,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                     if (!empty($row['dedup_path'])) {
                         $dedupFilesToCheck[$row['dedup_path']] = true;
                     } elseif ($row['file_path']) {
-                        $filesToDelete[] = __DIR__ . '/../../' . $row['file_path'];
+                        $filesToDelete[] = getAbsoluteFilePath($row);
                     }
                 }
 
@@ -204,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                 if (!empty($model['dedup_path'])) {
                     $dedupFilesToCheck[$model['dedup_path']] = true;
                 } elseif ($model['file_path']) {
-                    $filesToDelete[] = __DIR__ . '/../../' . $model['file_path'];
+                    $filesToDelete[] = getAbsoluteFilePath($model);
                 }
             }
 

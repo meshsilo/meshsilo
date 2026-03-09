@@ -243,7 +243,7 @@ try {
     // model_links table may not exist yet
 }
 
-// Get model attachments (images and PDFs)
+// Get model attachments (images, PDFs, text files)
 $attachments = ['images' => [], 'documents' => []];
 try {
     $stmt = $db->prepare('SELECT * FROM model_attachments WHERE model_id = :model_id ORDER BY display_order, created_at');
@@ -295,7 +295,7 @@ require_once 'includes/header.php';
                         <?php if ($model['part_count'] > 0): ?>
                         <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                         <?php endif; ?>
-                        <span class="file-type-badge file-type-badge-large">.<?= htmlspecialchars($previewType ?? $model['file_type'] ?? 'stl') ?></span>
+
                     </div>
                     <div class="model-detail-info">
                         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;">
@@ -454,7 +454,7 @@ require_once 'includes/header.php';
                                 <div class="attachment-documents" id="attachment-documents">
                                     <?php foreach ($attachments['documents'] as $att): ?>
                                     <div class="attachment-document" data-attachment-id="<?= $att['id'] ?>">
-                                        <span class="file-type-badge">.pdf</span>
+                                        <span class="file-type-badge">.<?= htmlspecialchars(pathinfo($att['original_filename'], PATHINFO_EXTENSION) ?: $att['file_type']) ?></span>
                                         <a href="/storage/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" class="attachment-doc-name">
                                             <?= htmlspecialchars($att['original_filename']) ?>
                                         </a>
@@ -474,9 +474,9 @@ require_once 'includes/header.php';
 
                             <?php if (canEdit()): ?>
                             <div class="attachment-upload">
-                                <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" multiple style="display:none" onchange="uploadAttachments(this.files)">
+                                <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" multiple style="display:none" onchange="uploadAttachments(this.files)">
                                 <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('attachment-file-input').click()">Add Attachment</button>
-                                <span class="attachment-hint">Images (JPG, PNG, GIF, WebP) &amp; PDFs</span>
+                                <span class="attachment-hint">Images, PDFs &amp; Text Files</span>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -678,7 +678,7 @@ require_once 'includes/header.php';
                         <a href="<?= route('actions.download.all', [], ['id' => $model['id']]) ?>" class="btn btn-primary">Download All Parts</a>
                         <?php if (canUpload()): ?>
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
-                        <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
+                        <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1" multiple hidden onchange="uploadParts(this.files)">
                         <?php endif; ?>
                     </div>
                 </div>
@@ -686,7 +686,7 @@ require_once 'includes/header.php';
                 <div class="model-download">
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
-                    <input type="file" id="add-part-file" accept=".stl,.3mf,.gcode" multiple hidden onchange="uploadParts(this.files)">
+                    <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1" multiple hidden onchange="uploadParts(this.files)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
@@ -2111,11 +2111,13 @@ require_once 'includes/header.php';
         async function uploadAttachments(files) {
             if (!files.length) return;
 
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'text/markdown'];
+            const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.txt', '.md'];
 
             for (const file of files) {
-                if (!allowedTypes.includes(file.type)) {
-                    alert(`Invalid file type: ${file.name}. Allowed: JPG, PNG, GIF, WebP, PDF`);
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+                    alert(`Invalid file type: ${file.name}. Allowed: Images, PDFs, TXT, MD`);
                     continue;
                 }
 
@@ -2214,7 +2216,8 @@ require_once 'includes/header.php';
 
             const badge = document.createElement('span');
             badge.className = 'file-type-badge';
-            badge.textContent = '.pdf';
+            const docExt = att.original_filename.split('.').pop().toLowerCase();
+            badge.textContent = '.' + docExt;
 
             const link = document.createElement('a');
             link.href = '/storage/assets/' + att.file_path;

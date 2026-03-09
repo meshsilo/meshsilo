@@ -221,7 +221,7 @@ volumes:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `MESHSILO_MAX_UPLOAD_SIZE` | Max upload size in bytes | `104857600` (100MB) |
-| `MESHSILO_ALLOWED_EXTENSIONS` | Comma-separated file extensions | `stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip` |
+| `MESHSILO_ALLOWED_EXTENSIONS` | Comma-separated file extensions | `stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip,lys,ctb,pwmo,sl1,jpg,jpeg,png,gif,webp,pdf,txt,md` |
 | `MESHSILO_DEDUP_ENABLED` | Enable file deduplication | `true` |
 
 ##### Development & Debugging

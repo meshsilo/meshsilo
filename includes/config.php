@@ -32,10 +32,14 @@ if (!defined('MAX_UPLOAD_SIZE')) {
     define('MAX_UPLOAD_SIZE', 100 * 1024 * 1024); // 100MB (alias)
 }
 if (!defined('MODEL_EXTENSIONS')) {
-    define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d']);
+    define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'lys', 'ctb', 'pwmo', 'sl1']);
 }
 if (!defined('ALLOWED_EXTENSIONS')) {
-    define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip']);
+    define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip', 'lys', 'ctb', 'pwmo', 'sl1', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md']);
+}
+// Extensions that are attachments (images, documents) rather than 3D models
+if (!defined('ATTACHMENT_EXTENSIONS')) {
+    define('ATTACHMENT_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md']);
 }
 
 // Helper function to get base path for public assets
@@ -54,6 +58,11 @@ require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/Debug.php';
 Debug::init();
 require_once __DIR__ . '/db.php';
+
+// Register autoloader for lazy-loaded classes (SignedUrl, Events, TwoFactor,
+// Integrity, Scheduler, AuditLogger, Mail, Queue, Validator, QueryBuilder,
+// Search, HttpCache, Asset, Cache, Csrf, RateLimiter, Encryption, etc.)
+require_once __DIR__ . '/Autoloader.php';
 
 // Load site configuration from database (batch load for performance)
 // All settings are stored in the database, not in config files
@@ -94,11 +103,9 @@ if (!defined('SITE_NAME') || !defined('SITE_DESCRIPTION') || !defined('SITE_URL'
     }
 }
 
-// Include authentication, permissions, mail and licensing
+// Include authentication, permissions, and core helpers (required on every request)
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/permissions.php';
-require_once __DIR__ . '/Queue.php';
-require_once __DIR__ . '/Mail.php';
 // Include router and helpers (if not already loaded by front controller)
 if (!class_exists('Router')) {
     require_once __DIR__ . '/Router.php';
@@ -110,23 +117,14 @@ require_once __DIR__ . '/features.php';
 if (!interface_exists('MiddlewareInterface')) {
     require_once __DIR__ . '/middleware/MiddlewareInterface.php';
 }
-require_once __DIR__ . '/SignedUrl.php';
-require_once __DIR__ . '/Events.php';
-require_once __DIR__ . '/TwoFactor.php';
-require_once __DIR__ . '/Integrity.php';
-require_once __DIR__ . '/Scheduler.php';
-require_once __DIR__ . '/AuditLogger.php';
 
-// Load infrastructure components
-require_once __DIR__ . '/Csrf.php';
-require_once __DIR__ . '/Validator.php';
-require_once __DIR__ . '/QueryBuilder.php';
-require_once __DIR__ . '/Cache.php';
-require_once __DIR__ . '/Search.php';
-require_once __DIR__ . '/Asset.php';
-require_once __DIR__ . '/HttpCache.php';
+// ErrorHandler has a standalone function called below, so load eagerly
 require_once __DIR__ . '/ErrorHandler.php';
-require_once __DIR__ . '/RateLimiter.php';
+
+// All other classes (Queue, Mail, SignedUrl, Events, TwoFactor, Integrity,
+// Scheduler, AuditLogger, Csrf, Validator, QueryBuilder, Cache, Search,
+// Asset, HttpCache, RateLimiter, Encryption) are autoloaded on first use
+// via the Autoloader registered above.
 
 // Load plugin system
 require_once __DIR__ . '/PluginManager.php';

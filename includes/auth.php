@@ -72,21 +72,10 @@ if (php_sapi_name() !== 'cli' && isset($_SESSION['user_id'])) {
 }
 
 // Check URL enforcement (must happen before any output)
-// First check config file, then database settings
+// SITE_URL and FORCE_SITE_URL constants are already loaded from the database
+// in config.php before auth.php is included, so use them directly.
 $siteUrl = defined('SITE_URL') ? SITE_URL : '';
 $forceSiteUrl = defined('FORCE_SITE_URL') ? FORCE_SITE_URL : false;
-
-// Try to get from database if available (for runtime changes)
-if (function_exists('getSetting')) {
-    $dbSiteUrl = getSetting('site_url', '');
-    $dbForceSiteUrl = getSetting('force_site_url', '0');
-    if (!empty($dbSiteUrl)) {
-        $siteUrl = $dbSiteUrl;
-    }
-    if ($dbForceSiteUrl === '1') {
-        $forceSiteUrl = true;
-    }
-}
 
 // Skip URL enforcement for CLI scripts
 if ($forceSiteUrl && !empty($siteUrl) && php_sapi_name() !== 'cli') {

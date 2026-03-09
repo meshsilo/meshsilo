@@ -76,9 +76,19 @@ function getMissingDependencies(string $feature): array
     return $missing;
 }
 
+/**
+ * Available features cache (per-request)
+ */
+$_availableFeaturesCache = null;
+
 // Define available features with metadata
 function getAvailableFeatures(): array
 {
+    global $_availableFeaturesCache;
+    if ($_availableFeaturesCache !== null) {
+        return $_availableFeaturesCache;
+    }
+
     $features = [
         'api_keys' => [
             'name' => 'API Keys',
@@ -218,7 +228,8 @@ function getAvailableFeatures(): array
     if (class_exists('PluginManager')) {
         $features = PluginManager::applyFilter('available_features', $features);
     }
-    return $features;
+    $_availableFeaturesCache = $features;
+    return $_availableFeaturesCache;
 }
 
 /**
@@ -253,8 +264,9 @@ function loadFeatureStates(): array
  */
 function clearFeatureStateCache(): void
 {
-    global $_featureStateCache;
+    global $_featureStateCache, $_availableFeaturesCache;
     $_featureStateCache = null;
+    $_availableFeaturesCache = null;
 }
 
 /**
@@ -470,102 +482,49 @@ function applyFeaturePreset(string $presetName): bool
 function getFeatureUsageStats(): array
 {
     $db = getDB();
-    $stats = [];
 
-    // API Keys count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM api_keys");
-        $stats['api_keys'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['api_keys'] = 0;
+    // Map feature keys to their table queries
+    $tableQueries = [
+        'api_keys' => 'api_keys',
+        'favorites' => 'favorites',
+        'model_ratings' => 'model_ratings',
+        'share_links' => 'share_links',
+        'activity_log' => 'activity_log',
+        'attachments' => 'model_attachments',
+        'tags' => 'tags',
+        'collections' => 'collections',
+        'categories' => 'categories',
+        'recently_viewed' => 'recently_viewed',
+        'external_links' => 'model_links',
+    ];
+
+    // Initialize all stats to 0
+    $stats = array_fill_keys(array_keys($tableQueries), 0);
+    $stats['two_factor_auth'] = 0;
+
+    // Build a single UNION ALL query for all table counts
+    $unionParts = [];
+    foreach ($tableQueries as $key => $table) {
+        if (tableExists($db, $table)) {
+            $unionParts[] = "SELECT '$key' as feature, COUNT(*) as cnt FROM $table";
+        }
     }
 
-    // Favorites count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM favorites");
-        $stats['favorites'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['favorites'] = 0;
+    // 2FA uses a WHERE clause, add separately
+    if (tableExists($db, 'users') && columnExists($db, 'users', 'two_factor_secret')) {
+        $unionParts[] = "SELECT 'two_factor_auth' as feature, COUNT(*) as cnt FROM users WHERE two_factor_secret IS NOT NULL";
     }
 
-    // Model ratings count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM model_ratings");
-        $stats['model_ratings'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['model_ratings'] = 0;
-    }
-
-    // Share links count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM share_links");
-        $stats['share_links'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['share_links'] = 0;
-    }
-
-    // Activity log count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM activity_log");
-        $stats['activity_log'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['activity_log'] = 0;
-    }
-
-    // 2FA users count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM users WHERE two_factor_secret IS NOT NULL");
-        $stats['two_factor_auth'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['two_factor_auth'] = 0;
-    }
-
-    // Attachments count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM model_attachments");
-        $stats['attachments'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['attachments'] = 0;
-    }
-
-    // Tags count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM tags");
-        $stats['tags'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['tags'] = 0;
-    }
-
-    // Collections count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM collections");
-        $stats['collections'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['collections'] = 0;
-    }
-
-    // Categories count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM categories");
-        $stats['categories'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['categories'] = 0;
-    }
-
-    // Recently viewed count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM recently_viewed");
-        $stats['recently_viewed'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['recently_viewed'] = 0;
-    }
-
-    // Model links (external links) count
-    try {
-        $result = $db->querySingle("SELECT COUNT(*) FROM model_links");
-        $stats['external_links'] = (int)$result;
-    } catch (Exception $e) {
-        $stats['external_links'] = 0;
+    if (!empty($unionParts)) {
+        try {
+            $sql = implode(' UNION ALL ', $unionParts);
+            $result = $db->query($sql);
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                $stats[$row['feature']] = (int)$row['cnt'];
+            }
+        } catch (Exception $e) {
+            // Individual table might not exist yet; stats stay at 0
+        }
     }
 
     return $stats;

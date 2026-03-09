@@ -70,18 +70,25 @@ function uploadAttachment() {
 
     $imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     $pdfTypes = ['application/pdf'];
-    $allowedTypes = array_merge($imageTypes, $pdfTypes);
+    $textTypes = ['text/plain', 'text/markdown', 'text/x-markdown'];
+    $allowedTypes = array_merge($imageTypes, $pdfTypes, $textTypes);
 
-    if (!in_array($mimeType, $allowedTypes)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP, PDF']);
+    // Also allow by extension for text files (MIME detection can be unreliable)
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $textExtensions = ['txt', 'md'];
+    $isTextByExt = in_array($ext, $textExtensions);
+
+    if (!in_array($mimeType, $allowedTypes) && !$isTextByExt) {
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP, PDF, TXT, MD']);
         return;
     }
 
     $isImage = in_array($mimeType, $imageTypes);
     $isPdf = in_array($mimeType, $pdfTypes);
+    $isText = in_array($mimeType, $textTypes) || $isTextByExt;
 
-    // Max file size: 5MB for images, 20MB for PDFs
-    $maxSize = $isImage ? 5 * 1024 * 1024 : 20 * 1024 * 1024;
+    // Max file size: 5MB for images, 20MB for PDFs, 1MB for text
+    $maxSize = $isImage ? 5 * 1024 * 1024 : ($isText ? 1 * 1024 * 1024 : 20 * 1024 * 1024);
     if ($file['size'] > $maxSize) {
         $maxMB = $maxSize / (1024 * 1024);
         echo json_encode(['success' => false, 'error' => "File too large (max {$maxMB}MB)"]);
@@ -115,13 +122,13 @@ function uploadAttachment() {
     }
 
     $originalFilename = $file['name'];
-    $fileType = $isImage ? 'image' : 'pdf';
+    $fileType = $isImage ? 'image' : ($isText ? 'text' : 'pdf');
     $ext = strtolower(pathinfo($originalFilename, PATHINFO_EXTENSION));
 
     // Whitelist allowed extensions (defense-in-depth)
-    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md'];
     if (!in_array($ext, $allowedExtensions)) {
-        $ext = $isImage ? 'png' : 'pdf'; // Fallback to safe extension
+        $ext = $isImage ? 'png' : ($isText ? 'txt' : 'pdf'); // Fallback to safe extension
     }
 
     // Generate unique filename
