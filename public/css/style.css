@@ -3015,6 +3015,10 @@ body.mobile-menu-open::before {
     border: 1px solid #22c55e;
 }
 
+.conversion-savings-total {
+    color: #22c55e;
+}
+
 .print-type-select {
     padding: 0.125rem 0.25rem;
     border-radius: var(--radius);

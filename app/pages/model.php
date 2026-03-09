@@ -95,9 +95,10 @@ if ($model['part_count'] > 0) {
     $previewType = $model['file_type'];
 }
 
-// Calculate total model size and potential 3MF conversion savings
+// Calculate total model size, conversion savings, and potential savings
 $totalModelSize = 0;
 $stlTotalSize = 0;
+$actualSaved = 0;
 
 if (!empty($parts)) {
     foreach ($parts as $part) {
@@ -105,11 +106,18 @@ if (!empty($parts)) {
         if (($part['file_type'] ?? '') === 'stl') {
             $stlTotalSize += ($part['file_size'] ?? 0);
         }
+        // Track actual savings from already-converted parts
+        if (!empty($part['original_size']) && $part['file_type'] === '3mf') {
+            $actualSaved += ($part['original_size'] - $part['file_size']);
+        }
     }
 } else {
     $totalModelSize = $model['file_size'] ?? 0;
     if (($model['file_type'] ?? '') === 'stl') {
         $stlTotalSize = $model['file_size'] ?? 0;
+    }
+    if (!empty($model['original_size']) && $model['file_type'] === '3mf') {
+        $actualSaved = $model['original_size'] - $model['file_size'];
     }
 }
 
@@ -326,6 +334,11 @@ require_once 'includes/header.php';
                             <span class="meta-item"<?php if ($estimatedSavings > 0): ?> title="<?= formatBytes($stlTotalSize) ?> in STL files — converting to 3MF could save ~<?= formatBytes($estimatedSavings) ?>"<?php endif; ?>>
                                 <strong>Size:</strong> <?= formatBytes($totalModelSize) ?>
                             </span>
+                            <?php if ($actualSaved > 0): ?>
+                            <span class="meta-item conversion-savings-total" title="<?= formatBytes($actualSaved) ?> saved by converting STL to 3MF (original: <?= formatBytes($totalModelSize + $actualSaved) ?>)">
+                                <strong>Saved:</strong> <?= formatBytes($actualSaved) ?> (<?= round($actualSaved / ($totalModelSize + $actualSaved) * 100) ?>%)
+                            </span>
+                            <?php endif; ?>
                             <?php if (!empty($model['collection'])): ?>
                             <span class="meta-item">
                                 <strong>Collection:</strong> <?= htmlspecialchars($model['collection']) ?>
