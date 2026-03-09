@@ -411,8 +411,6 @@ function calculate3mfContentHash($filePath)
         return hash_file('sha256', $filePath);
     }
 
-    $contentToHash = '';
-
     // Get list of all files in the archive, sorted for consistency
     $files = [];
     for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -420,7 +418,10 @@ function calculate3mfContentHash($filePath)
     }
     sort($files);
 
-    // Hash the content of each file (excluding metadata-only files)
+    // Stream each file's content into an incremental hash to avoid loading everything into memory
+    $ctx = hash_init('sha256');
+    $hasContent = false;
+
     foreach ($files as $fileName) {
         // Skip files that only contain metadata
         $lowerName = strtolower($fileName);
@@ -431,21 +432,26 @@ function calculate3mfContentHash($filePath)
             continue;
         }
 
-        $content = $zip->getFromName($fileName);
-        if ($content !== false) {
-            // Add filename and content to hash input for consistency
-            $contentToHash .= $fileName . ':' . strlen($content) . ':' . $content;
+        $stream = $zip->getStream($fileName);
+        if ($stream !== false) {
+            $stat = $zip->statName($fileName);
+            $size = $stat ? $stat['size'] : 0;
+            hash_update($ctx, $fileName . ':' . $size . ':');
+            while (!feof($stream)) {
+                hash_update($ctx, fread($stream, 65536));
+            }
+            fclose($stream);
+            $hasContent = true;
         }
     }
 
     $zip->close();
 
-    if (empty($contentToHash)) {
-        // Fallback if no content found
+    if (!$hasContent) {
         return hash_file('sha256', $filePath);
     }
 
-    return hash('sha256', $contentToHash);
+    return hash_final($ctx);
 }
 
 /**

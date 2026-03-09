@@ -71,8 +71,15 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
         mkdir($folderPath, 0755, true);
     }
 
-    // Copy file to assets folder
-    if (copy($tmpPath, $filePath)) {
+    // Move file to assets folder (rename is instant on same filesystem, falls back to copy)
+    $moved = @rename($tmpPath, $filePath);
+    if (!$moved) {
+        $moved = copy($tmpPath, $filePath);
+        if ($moved) {
+            @unlink($tmpPath);
+        }
+    }
+    if ($moved) {
         try {
             // Insert into database
             $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash, description, creator, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :file_hash, :description, :creator, :collection, :source_url, :parent_id, :original_path)');
