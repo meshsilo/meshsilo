@@ -161,13 +161,18 @@ a {
 }
 
 /* Buttons */
-.btn {
+.btn,
+button.btn {
     padding: 0.5rem 1rem;
     border: none;
+    outline: none;
     border-radius: var(--radius);
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
 .btn-primary {
