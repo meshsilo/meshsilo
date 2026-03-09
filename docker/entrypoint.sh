@@ -65,7 +65,7 @@ if [ -f "$CONFIG_FILE" ]; then
     # Initialize settings from environment variables
     if [ -f "/var/www/meshsilo/cli/init-settings.php" ]; then
         echo "Initializing database settings from environment variables..."
-        php /var/www/meshsilo/cli/init-settings.php || true
+        su -s /bin/bash www-data -c "php /var/www/meshsilo/cli/init-settings.php" || true
     fi
 fi
 

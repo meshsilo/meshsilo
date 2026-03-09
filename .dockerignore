@@ -28,7 +28,10 @@ todo.txt
 
 # Development files
 .claude
+.github
 *.log
+tests/
+phpunit.xml
 
 # Docker files (don't include in build context recursively)
 docker-compose*.yml
