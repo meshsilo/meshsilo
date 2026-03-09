@@ -92,7 +92,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
         }
 
         function refreshQueueStatus() {
-            fetch('/queue-status', {
+            fetch('/actions/queue-status', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(r) { return r.json(); })
