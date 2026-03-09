@@ -3280,15 +3280,15 @@ body.mobile-menu-open::before {
 /* Mass Actions */
 .parts-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.5rem;
     margin-bottom: 1rem;
 }
 
 .parts-header h2 {
     margin: 0;
+    margin-right: auto;
 }
 
 .mass-actions {
