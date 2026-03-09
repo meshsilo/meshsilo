@@ -44,6 +44,12 @@ class STLConverter
     }
 
     /**
+     * Maximum triangle count we'll attempt to convert.
+     * ~2M triangles requires ~400MB for vertex map + arrays + XML generation.
+     */
+    private const MAX_TRIANGLES = 2_000_000;
+
+    /**
      * Parse a binary STL file
      */
     public function parseBinarySTL($filePath)
@@ -62,6 +68,15 @@ class STLConverter
         // Read triangle count
         $triangleCountData = fread($handle, 4);
         $triangleCount = unpack('V', $triangleCountData)[1];
+
+        if ($triangleCount > self::MAX_TRIANGLES) {
+            fclose($handle);
+            throw new Exception(sprintf(
+                'STL file too large for conversion (%s triangles, max %s)',
+                number_format($triangleCount),
+                number_format(self::MAX_TRIANGLES)
+            ));
+        }
 
         // Read all triangle data at once (50 bytes per triangle)
         $dataSize = $triangleCount * 50;
@@ -156,6 +171,13 @@ class STLConverter
             } elseif (stripos($line, 'endloop') === 0) {
                 if (count($triIndices) === 3) {
                     $this->triangles[] = $triIndices;
+                    if (count($this->triangles) > self::MAX_TRIANGLES) {
+                        fclose($handle);
+                        throw new Exception(sprintf(
+                            'STL file too large for conversion (exceeded %s triangles)',
+                            number_format(self::MAX_TRIANGLES)
+                        ));
+                    }
                 }
                 $triIndices = [];
             }
