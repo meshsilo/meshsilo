@@ -1,7 +1,7 @@
 <?php
 
 // MeshSilo Version
-define('MESHSILO_VERSION', '1.0.0');
+define('MESHSILO_VERSION', '1.0.3');
 
 // Load local configuration if exists
 // Check persistent location first (storage/db/config.local.php for Docker)
