@@ -2133,7 +2133,7 @@ function getAllTags($useCache = true)
 
     // Try to get from cache first
     if ($useCache) {
-        $cached = cache($cacheKey);
+        $cached = Cache::getInstance()->get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -2148,7 +2148,7 @@ function getAllTags($useCache = true)
         }
 
         // Cache for 5 minutes
-        cache_set($cacheKey, $tags, 300);
+        Cache::getInstance()->set($cacheKey, $tags, 300);
         return $tags;
     } catch (Exception $e) {
         return [];
@@ -2162,7 +2162,7 @@ function getAllCategories($useCache = true)
 
     // Try to get from cache first
     if ($useCache) {
-        $cached = cache($cacheKey);
+        $cached = Cache::getInstance()->get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -2177,7 +2177,7 @@ function getAllCategories($useCache = true)
         }
 
         // Cache for 5 minutes
-        cache_set($cacheKey, $categories, 300);
+        Cache::getInstance()->set($cacheKey, $categories, 300);
         return $categories;
     } catch (Exception $e) {
         return [];
@@ -2187,13 +2187,13 @@ function getAllCategories($useCache = true)
 // Invalidate tags cache (call after adding/removing tags)
 function invalidateTagsCache()
 {
-    cache_forget('all_tags');
+    Cache::getInstance()->forget('all_tags');
 }
 
 // Invalidate categories cache (call after modifying categories)
 function invalidateCategoriesCache()
 {
-    cache_forget('all_categories');
+    Cache::getInstance()->forget('all_categories');
 }
 
 // Get tags for a model

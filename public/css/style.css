@@ -21,10 +21,12 @@
     --color-version-1: #3498db;
     --color-version-2: #e74c3c;
     --color-overlap: #9b59b6;
+    color-scheme: dark;
 }
 
 /* Light Theme */
 [data-theme="light"] {
+    color-scheme: light;
     --color-primary: #2563eb;
     --color-primary-hover: #1d4ed8;
     --color-bg: #f8fafc;
@@ -3016,9 +3018,14 @@ body.mobile-menu-open::before {
     border-radius: var(--radius);
     font-size: 0.75rem;
     border: 1px solid var(--color-border);
-    background: var(--color-surface);
+    background-color: var(--color-surface);
     color: var(--color-text);
     cursor: pointer;
+}
+
+.print-type-select option {
+    background-color: var(--color-surface);
+    color: var(--color-text);
 }
 
 .print-type-badge {

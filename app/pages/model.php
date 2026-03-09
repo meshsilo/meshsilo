@@ -1179,7 +1179,7 @@ require_once 'includes/header.php';
             const formData = new FormData();
             formData.append('part_id', partId);
             formData.append('print_type', printType);
-            formData.append('csrf_token', '<?= Csrf::token() ?>');
+            formData.append('csrf_token', '<?= Csrf::getToken() ?>');
             try {
                 const resp = await fetch('<?= route('actions.update.part') ?>', { method: 'POST', body: formData });
                 const data = await resp.json();

@@ -169,7 +169,7 @@ if (!empty($modelIds)) {
 }
 
 // Get categories for filter dropdown (cached for 5 minutes)
-$categories = cache_remember('browse_categories', 300, function() use ($db) {
+$categories = Cache::getInstance()->remember('browse_categories', 300, function() use ($db) {
     $cats = [];
     $catResult = $db->query('SELECT c.id, c.name, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
     while ($row = $catResult->fetchArray(PDO::FETCH_ASSOC)) {
