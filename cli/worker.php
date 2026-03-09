@@ -123,13 +123,22 @@ while ($running) {
         }
     }
 
-    if ($once) {
+    // Periodic memory cleanup
+    if ($processed % 10 === 0) {
+        if (class_exists('Cache', false)) {
+            Cache::getInstance()->clearMemory();
+        }
+        gc_collect_cycles();
+    }
+
+    // Safety valve: exit if memory usage exceeds 128MB
+    if (memory_get_usage(true) > 128 * 1024 * 1024) {
+        echo "Memory limit reached (" . round(memory_get_usage(true) / 1024 / 1024) . "MB), restarting.\n";
         break;
     }
 
-    // Prevent memory leaks
-    if ($processed % 100 === 0) {
-        gc_collect_cycles();
+    if ($once) {
+        break;
     }
 }
 

@@ -281,6 +281,15 @@ class Cache
     /**
      * Clear all cache
      */
+    /**
+     * Clear only the in-process memory cache.
+     * Use in long-running processes to prevent unbounded memory growth.
+     */
+    public function clearMemory(): void
+    {
+        $this->memory = [];
+    }
+
     public function flush(): bool
     {
         $this->memory = [];

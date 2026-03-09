@@ -166,6 +166,21 @@ while (!$shouldStop) {
         }
     }
 
+    // Periodic memory cleanup
+    if ($jobsProcessed % 10 === 0) {
+        // Clear in-memory cache to prevent unbounded growth
+        if (class_exists('Cache', false)) {
+            Cache::getInstance()->clearMemory();
+        }
+        gc_collect_cycles();
+    }
+
+    // Safety valve: exit if memory usage exceeds 128MB (supervisor will restart)
+    if (memory_get_usage(true) > 128 * 1024 * 1024) {
+        echo "Memory limit reached (" . round(memory_get_usage(true) / 1024 / 1024) . "MB), restarting.\n";
+        break;
+    }
+
     if ($once) {
         break;
     }
