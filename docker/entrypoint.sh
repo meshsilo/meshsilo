@@ -41,10 +41,12 @@ if [ -f "$CONFIG_FILE" ]; then
     if [ "$MESHSILO_DB_TYPE" = "mysql" ]; then
         echo "Waiting for MySQL to be ready..."
         for i in $(seq 1 30); do
-            if php -r "
-                \$dsn = 'mysql:host=${MESHSILO_DB_HOST:-localhost};dbname=${MESHSILO_DB_NAME:-meshsilo}';
+            if MYSQL_DSN="mysql:host=${MESHSILO_DB_HOST:-localhost};dbname=${MESHSILO_DB_NAME:-meshsilo}" \
+               MYSQL_USER="${MESHSILO_DB_USER:-meshsilo}" \
+               MYSQL_PASS="${MESHSILO_DB_PASS:-}" \
+               php -r "
                 try {
-                    new PDO(\$dsn, '${MESHSILO_DB_USER:-meshsilo}', '${MESHSILO_DB_PASS:-}');
+                    new PDO(getenv('MYSQL_DSN'), getenv('MYSQL_USER'), getenv('MYSQL_PASS'));
                     exit(0);
                 } catch (Exception \$e) {
                     exit(1);
@@ -73,10 +75,12 @@ fi
 if [ -n "$MESHSILO_MAX_UPLOAD_SIZE" ]; then
     # Convert to MB for PHP config
     UPLOAD_MB=$(($MESHSILO_MAX_UPLOAD_SIZE / 1048576))
+    POST_MB=$(($UPLOAD_MB + 5))
 
     # Update the custom config file to override defaults
+    # post_max_size must be larger than upload_max_filesize to account for form data
     sed -i "s/^upload_max_filesize = .*/upload_max_filesize = ${UPLOAD_MB}M/" /etc/php/8.1/fpm/conf.d/99-meshsilo.ini
-    sed -i "s/^post_max_size = .*/post_max_size = ${UPLOAD_MB}M/" /etc/php/8.1/fpm/conf.d/99-meshsilo.ini
+    sed -i "s/^post_max_size = .*/post_max_size = ${POST_MB}M/" /etc/php/8.1/fpm/conf.d/99-meshsilo.ini
 
     # Update nginx client_max_body_size
     sed -i "s/client_max_body_size .*/client_max_body_size ${UPLOAD_MB}M;/" /etc/nginx/sites-available/default

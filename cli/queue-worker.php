@@ -18,6 +18,15 @@
  */
 
 chdir(dirname(__DIR__));
+
+// Wait for the application to be installed before starting
+// On first run, there's no config or database yet
+$configFile = __DIR__ . '/../storage/db/config.local.php';
+$sleepArg = (int)(getopt('', ['sleep:'])['sleep'] ?? 3);
+while (!file_exists($configFile)) {
+    sleep($sleepArg);
+}
+
 require_once 'includes/config.php';
 require_once 'includes/Queue.php';
 
