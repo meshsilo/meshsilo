@@ -32,13 +32,11 @@ class DatabaseStatement
     private $paramTypes = [];
     private ?DatabaseResult $lastResult = null;
     private ?string $sql = null;
-    private ?Database $db = null;
 
-    public function __construct($stmt, ?string $sql = null, ?Database $db = null)
+    public function __construct($stmt, ?string $sql = null)
     {
         $this->stmt = $stmt;
         $this->sql = $sql;
-        $this->db = $db;
     }
 
     public function bindValue($param, $value, $type = null)
@@ -343,7 +341,7 @@ class Database
     public function prepare($sql)
     {
         $sql = $this->normalizeSql($sql);
-        return new DatabaseStatement($this->pdo->prepare($sql), $sql, $this);
+        return new DatabaseStatement($this->pdo->prepare($sql), $sql);
     }
 
     public function query($sql)
