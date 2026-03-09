@@ -6,13 +6,13 @@
     php_value upload_max_filesize 100M
     php_value post_max_size 105M
     php_value max_execution_time 300
-    php_value memory_limit 256M
+    php_value memory_limit 1G
 </IfModule>
 <IfModule mod_php8.c>
     php_value upload_max_filesize 100M
     php_value post_max_size 105M
     php_value max_execution_time 300
-    php_value memory_limit 256M
+    php_value memory_limit 1G
 </IfModule>
 
 <IfModule mod_rewrite.c>
@@ -39,6 +39,9 @@
     # Block any remaining direct access to app/ and storage/
     RewriteRule ^app/ - [F,L]
     RewriteRule ^storage/ - [F,L]
+
+    # Health check - direct to health.php, bypasses auth/router
+    RewriteRule ^health$ health.php [L,QSA]
 
     # Serve PWA files from public directory
     RewriteRule ^sw\.js$ public/sw.js [L]

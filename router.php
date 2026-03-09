@@ -23,6 +23,12 @@ if ($uri === '/install.php' || $uri === '/install') {
     return;
 }
 
+// Health check - direct to health.php, bypasses auth/router
+if ($uri === '/health') {
+    require __DIR__ . '/health.php';
+    return;
+}
+
 // Route all other requests through index.php with route parameter
 if ($uri !== '/' && $uri !== '/index.php') {
     $_GET['route'] = ltrim($uri, '/');
