@@ -45,7 +45,7 @@ require_once 'includes/header.php';
 
             <div class="categories-grid-large">
                 <?php foreach ($categories as $category): ?>
-                <a href="category.php?id=<?= $category['id'] ?>" class="category-card-large">
+                <a href="<?= route('category.show', ['id' => $category['id']]) ?>" class="category-card-large">
                     <div class="category-icon"><?= $category['icon'] ?></div>
                     <h2 class="category-name"><?= htmlspecialchars($category['name']) ?></h2>
                     <p class="category-count"><?= $category['count'] ?> models</p>
