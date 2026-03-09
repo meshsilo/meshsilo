@@ -175,6 +175,12 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="stat-value"><?= formatBytes($dbSize) ?></div>
                                 <div class="stat-label">Database Size</div>
                             </div>
+                            <?php if ($dedupSavings['saved_size'] > 0): ?>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-value"><?= formatBytes($dedupSavings['saved_size']) ?></div>
+                                <div class="stat-label">Saved by Dedup (<?= $dedupSavings['saved_percent'] ?>%)</div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </details>
 
