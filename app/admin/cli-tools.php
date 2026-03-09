@@ -127,7 +127,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Check for command-type options (radio buttons share same name)
                 $commandInput = "opt_{$toolKey}_command";
                 if (!empty($_POST[$commandInput])) {
-                    $args[] = $_POST[$commandInput];
+                    // Validate against allowed option values to prevent command injection
+                    $allowedCommands = [];
+                    foreach ($tool['options'] as $optKey => $opt) {
+                        if (($opt['type'] ?? '') === 'command') {
+                            $allowedCommands[] = $opt['value'] ?? "--{$optKey}";
+                        }
+                    }
+                    $submittedCmd = $_POST[$commandInput];
+                    if (empty($allowedCommands) || in_array($submittedCmd, $allowedCommands, true)) {
+                        $args[] = escapeshellarg($submittedCmd);
+                    }
                 }
 
                 // Check for flag-type options (checkboxes)
