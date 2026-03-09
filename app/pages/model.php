@@ -571,6 +571,9 @@ require_once 'includes/header.php';
                 <?php if (!empty($parts)): ?>
                 <div class="model-parts">
                     <div class="parts-header">
+                        <?php if (count($groupedParts) > 1): ?>
+                        <span class="collapse-all-toggle" onclick="toggleCollapseAllGroups(this)" title="Collapse/expand all groups">&#9660;</span>
+                        <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
                         <input type="checkbox" class="select-all-checkbox" id="select-all-parts" onclick="toggleSelectAllParts(this)" title="Select all parts">
                         <?php endif; ?>
@@ -625,6 +628,15 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                 </div>
                                 <div class="part-actions">
+                                    <?php if (canEdit()): ?>
+                                    <select class="print-type-select" data-part-id="<?= $part['id'] ?>" onchange="updatePrintType(this)" title="Print type">
+                                        <option value="">--</option>
+                                        <option value="fdm"<?= ($part['print_type'] ?? '') === 'fdm' ? ' selected' : '' ?>>FDM</option>
+                                        <option value="sla"<?= ($part['print_type'] ?? '') === 'sla' ? ' selected' : '' ?>>SLA</option>
+                                    </select>
+                                    <?php elseif (!empty($part['print_type'])): ?>
+                                    <span class="print-type-badge"><?= strtoupper($part['print_type']) ?></span>
+                                    <?php endif; ?>
                                     <span class="part-size"<?php if (($part['file_type'] ?? '') === 'stl'): ?> title="STL file — converting to 3MF could save ~<?= formatBytes(($part['file_size'] ?? 0) * 0.65) ?>"<?php endif; ?>><?= formatBytes($part['file_size'] ?? 0) ?></span>
                                     <?php if (!empty($part['original_size']) && $part['file_type'] === '3mf'): ?>
                                     <span class="conversion-savings" title="Saved by converting to 3MF">-<?= round((1 - $part['file_size'] / $part['original_size']) * 100) ?>%</span>
@@ -1160,6 +1172,27 @@ require_once 'includes/header.php';
             });
         }
 
+        // Update print type for a part
+        async function updatePrintType(selectEl) {
+            const partId = selectEl.dataset.partId;
+            const printType = selectEl.value;
+            const formData = new FormData();
+            formData.append('part_id', partId);
+            formData.append('print_type', printType);
+            formData.append('csrf_token', '<?= Csrf::token() ?>');
+            try {
+                const resp = await fetch('<?= route('actions.update.part') ?>', { method: 'POST', body: formData });
+                const data = await resp.json();
+                if (!data.success) {
+                    alert(data.error || 'Failed to update print type');
+                    selectEl.value = selectEl.dataset.prev || '';
+                }
+                selectEl.dataset.prev = selectEl.value;
+            } catch (e) {
+                alert('Failed to update print type');
+            }
+        }
+
         // Upload parts function
         async function uploadParts(files) {
             if (!files || files.length === 0) return;
@@ -1229,6 +1262,31 @@ require_once 'includes/header.php';
             const folder = groupEl.dataset.folder;
             const key = 'model_<?= $model['id'] ?>_folder_' + folder;
             sessionStorage.setItem(key, groupEl.classList.contains('collapsed') ? '1' : '0');
+            updateCollapseAllToggle();
+        }
+
+        function toggleCollapseAllGroups(toggleEl) {
+            const groups = document.querySelectorAll('.parts-group[data-folder]');
+            const allCollapsed = Array.from(groups).every(g => g.classList.contains('collapsed'));
+            groups.forEach(group => {
+                if (allCollapsed) {
+                    group.classList.remove('collapsed');
+                } else {
+                    group.classList.add('collapsed');
+                }
+                const folder = group.dataset.folder;
+                const key = 'model_<?= $model['id'] ?>_folder_' + folder;
+                sessionStorage.setItem(key, allCollapsed ? '0' : '1');
+            });
+            updateCollapseAllToggle();
+        }
+
+        function updateCollapseAllToggle() {
+            const toggle = document.querySelector('.collapse-all-toggle');
+            if (!toggle) return;
+            const groups = document.querySelectorAll('.parts-group[data-folder]');
+            const allCollapsed = Array.from(groups).every(g => g.classList.contains('collapsed'));
+            toggle.classList.toggle('all-collapsed', allCollapsed);
         }
 
         // Restore collapsed folder states on page load
@@ -1239,6 +1297,7 @@ require_once 'includes/header.php';
                 group.classList.add('collapsed');
             }
         });
+        updateCollapseAllToggle();
 
         function showCreateFolderModal() {
             document.getElementById('create-folder-modal').style.display = 'flex';
