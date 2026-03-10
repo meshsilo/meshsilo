@@ -1,7 +1,23 @@
 <?php
 
-// MeshSilo Version
-define('MESHSILO_VERSION', '1.0.5');
+// MeshSilo Version — resolved from VERSION file, git tag, or fallback
+$_versionFile = __DIR__ . '/../VERSION';
+if (file_exists($_versionFile)) {
+    define('MESHSILO_VERSION', trim(file_get_contents($_versionFile)));
+} else {
+    // Local dev: try git, cache result in storage/cache/VERSION
+    $_cachedVersion = __DIR__ . '/../storage/cache/VERSION';
+    if (file_exists($_cachedVersion) && (time() - filemtime($_cachedVersion)) < 3600) {
+        define('MESHSILO_VERSION', trim(file_get_contents($_cachedVersion)));
+    } else {
+        $_gitVersion = @exec('git -C ' . escapeshellarg(dirname(__DIR__)) . ' describe --tags --abbrev=0 2>/dev/null');
+        $_version = $_gitVersion ? ltrim($_gitVersion, 'v') : 'dev';
+        @file_put_contents($_cachedVersion, $_version);
+        define('MESHSILO_VERSION', $_version);
+    }
+    unset($_cachedVersion, $_gitVersion, $_version);
+}
+unset($_versionFile);
 
 // Load local configuration if exists
 // Check persistent location first (storage/db/config.local.php for Docker)

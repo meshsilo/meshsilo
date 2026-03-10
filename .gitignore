@@ -9,6 +9,9 @@ storage/cache/*
 storage/demo-seed/
 storage/.encryption_key
 
+# Generated version file (created by Docker build / git describe)
+VERSION
+
 # Local configuration
 config.local.php
 storage/db/config.local.php

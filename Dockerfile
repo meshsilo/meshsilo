@@ -36,8 +36,15 @@ RUN apt-get update && apt-get install -y software-properties-common && apt updat
 # Create application directory
 WORKDIR /var/www/meshsilo
 
+# Version — set via --build-arg or auto-detected from git
+ARG MESHSILO_VERSION=dev
+RUN echo "${MESHSILO_VERSION}" > /tmp/meshsilo-version
+
 # Copy application files
 COPY --chown=www-data:www-data . /var/www/meshsilo/
+
+# Write VERSION file into the image
+RUN mv /tmp/meshsilo-version /var/www/meshsilo/VERSION && chown www-data:www-data /var/www/meshsilo/VERSION
 
 # Create required directories with correct permissions
 RUN mkdir -p /var/www/meshsilo/storage/assets \
