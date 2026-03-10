@@ -75,6 +75,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PHPStan level-5 static analysis passes with zero errors
 - `storage/.encryption_key` added to `.gitignore` to prevent accidental key exposure
 
+## [1.0.5] - 2026-03-09
+
+### Added
+- **Queue-Based Conversions**: STL→3MF conversions now run as background jobs via the queue system with progress tracking in the header
+- **Conversion Progress UI**: Header badge shows conversion progress with completion count and toast notification on finish
+- **Loading Animations**: Spinner overlay on model cards and inline spinners next to parts during active conversion
+- **Folder Structure for Parts**: ZIP uploads preserve subdirectory structure on disk and in the database
+- **Nested Folders**: Part folders support nested paths (e.g. `Parts/Screws`) for deeper organization
+- **Physical File Moves**: Moving, renaming, or deleting part folders now moves the physical files on disk to match
+- **Folder Migration**: Database migration automatically restructures existing part files into subdirectories
+
+### Changed
+- **Converter Performance**: Chunked binary reading and streamed XML output drastically reduce RAM usage during conversion
+- **Converter Speed**: Batch unpack and binary vertex keys reduce CPU overhead
+- **Duplicate Prevention**: Single and batch conversions check for existing queued jobs before creating new ones
+- **Dropdown Visibility**: Increased shadow opacity on all dropdown menus for better contrast
+- **PHP-FPM Workers**: Increased max workers to 15 for 4GB RAM environments
+- **Folder Delete**: Deleting a folder moves parts up one level to the parent instead of always to root
+
 ## [1.0.0] - 2026-02-02
 
 ### Added
