@@ -29,6 +29,12 @@ class ConvertStlTo3mf extends Job
                 'new_size' => $convertResult['new_size'],
                 'savings' => $convertResult['savings']
             ]);
+        } elseif (($convertResult['error'] ?? '') === 'Conversion would not save space') {
+            // Not worth converting — complete the job silently
+            logInfo('STL to 3MF conversion skipped (no space savings)', ['model_id' => $modelId]);
+        } else {
+            // Real failure — throw so the queue worker retries with backoff
+            throw new \Exception($convertResult['error'] ?? 'Conversion failed');
         }
     }
 }

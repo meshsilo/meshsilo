@@ -508,11 +508,17 @@ function getSystemMemory(): ?array
 
 function convertPartTo3MF($partId)
 {
+    // Force garbage collection before memory check so previous conversion
+    // memory is properly released (PHP doesn't free immediately otherwise)
+    gc_collect_cycles();
+
     // Check system memory — throw so queue worker retries with backoff
+    // Use 90% threshold: in Docker, cgroup memory includes reclaimable page cache
+    // which inflates the "used" number. The kernel reclaims cache under pressure.
     $mem = getSystemMemory();
     if ($mem !== null) {
         $usedPercent = ($mem['used'] / $mem['total']) * 100;
-        if ($usedPercent >= 80) {
+        if ($usedPercent >= 90) {
             throw new Exception(sprintf(
                 'System memory too high for conversion (%.0f%% used)',
                 $usedPercent
