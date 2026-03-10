@@ -241,6 +241,7 @@ class Database
             ]);
             // SQLite-specific optimizations
             $this->pdo->exec('PRAGMA journal_mode = WAL'); // Write-Ahead Logging
+            $this->pdo->exec('PRAGMA busy_timeout = 5000'); // Wait up to 5s for locks
             $this->pdo->exec('PRAGMA synchronous = NORMAL'); // Faster writes
             $this->pdo->exec('PRAGMA cache_size = -131072'); // 128MB cache
             $this->pdo->exec('PRAGMA temp_store = MEMORY'); // Temp tables in memory
