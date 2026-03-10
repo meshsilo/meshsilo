@@ -860,9 +860,11 @@ function getMigrationList()
                         continue;
                     }
 
-                    // Physical file paths
-                    $oldDiskPath = $basePath . '/' . $currentFilePath;
-                    $newDiskDir = $basePath . '/' . $currentDir . '/' . $subDir;
+                    // Physical file paths — file_path stores "assets/..." but files
+                    // are physically in "storage/assets/..." on disk
+                    $storagePrefix = (strpos($currentFilePath, 'assets/') === 0) ? 'storage/' : '';
+                    $oldDiskPath = $basePath . '/' . $storagePrefix . $currentFilePath;
+                    $newDiskDir = $basePath . '/' . $storagePrefix . $currentDir . '/' . $subDir;
                     $newDiskPath = $newDiskDir . '/' . $currentFilename;
 
                     // Skip if source file doesn't exist
