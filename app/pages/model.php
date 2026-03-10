@@ -606,12 +606,13 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                     </div>
 
+                    <?php $autoCollapse = count($parts) > 50 && count($groupedParts) > 1; ?>
                     <?php foreach ($groupedParts as $dir => $dirData): ?>
                     <?php $displayName = $dirData['display']; $dirParts = $dirData['parts']; ?>
-                    <div class="parts-group" data-folder="<?= htmlspecialchars($dir) ?>">
+                    <div class="parts-group<?= $autoCollapse ? ' collapsed' : '' ?>" data-folder="<?= htmlspecialchars($dir) ?>">
                         <?php if (count($groupedParts) > 1): ?>
                         <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)">
-                            <span class="folder-toggle">&#9660;</span>
+                            <span class="folder-toggle"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
                             <input type="checkbox" class="folder-checkbox" onclick="event.stopPropagation(); selectFolderParts(this);" title="Select all parts in this folder">
                             <?php endif; ?>
@@ -625,9 +626,10 @@ require_once 'includes/header.php';
                             <?php endif; ?>
                         </h3>
                         <?php endif; ?>
+                        <?php $partLimit = 50; $partIndex = 0; ?>
                         <div class="parts-list">
-                            <?php foreach ($dirParts as $part): ?>
-                            <div class="part-item" data-part-id="<?= $part['id'] ?>" data-part-path="/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                            <?php foreach ($dirParts as $part): $partIndex++; ?>
+                            <div class="part-item<?= ($partIndex > $partLimit && count($dirParts) > $partLimit) ? ' part-hidden' : '' ?>" data-part-id="<?= $part['id'] ?>" data-part-path="/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
                                 <?php if (canEdit()): ?>
                                 <span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
                                 <?php endif; ?>
@@ -683,6 +685,11 @@ require_once 'includes/header.php';
                                 </div>
                             </div>
                             <?php endforeach; ?>
+                            <?php if (count($dirParts) > $partLimit): ?>
+                            <button type="button" class="btn btn-secondary btn-small show-more-parts" onclick="showMoreParts(this)" style="margin: 0.5rem auto; display: block;">
+                                Show <?= count($dirParts) - $partLimit ?> more parts
+                            </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -1270,6 +1277,14 @@ require_once 'includes/header.php';
         }
 
         // Folder management
+        function showMoreParts(btn) {
+            var list = btn.closest('.parts-list');
+            list.querySelectorAll('.part-hidden').forEach(function(el) {
+                el.classList.remove('part-hidden');
+            });
+            btn.remove();
+        }
+
         function toggleFolder(groupEl) {
             groupEl.classList.toggle('collapsed');
             const folder = groupEl.dataset.folder;

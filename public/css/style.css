@@ -3024,6 +3024,10 @@ body.mobile-menu-open::before {
     color: #22c55e;
 }
 
+.part-hidden {
+    display: none !important;
+}
+
 .print-type-select {
     padding: 0.125rem 0.25rem;
     border-radius: var(--radius);
