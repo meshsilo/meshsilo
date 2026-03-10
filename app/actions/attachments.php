@@ -97,7 +97,7 @@ function uploadAttachment() {
 
     // Get model to create attachment directory
     $db = getDB();
-    $stmt = $db->prepare('SELECT id, name, uploaded_by FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT id, name, user_id FROM models WHERE id = :id');
     $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
@@ -109,7 +109,7 @@ function uploadAttachment() {
 
     // Verify ownership - user must own the model or be an admin
     $user = getCurrentUser();
-    if (!$user['is_admin'] && (!empty($model['uploaded_by']) && $model['uploaded_by'] != $user['id'])) {
+    if (!$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
         echo json_encode(['success' => false, 'error' => 'Not authorized to modify this model']);
         return;
     }
@@ -221,13 +221,13 @@ function deleteAttachment() {
     }
 
     // Verify ownership - user must own the parent model or be an admin
-    $stmt = $db->prepare('SELECT uploaded_by FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
     $stmt->bindValue(':id', $attachment['model_id'], PDO::PARAM_INT);
     $result = $stmt->execute();
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     $user = getCurrentUser();
-    if ($model && !$user['is_admin'] && (!empty($model['uploaded_by']) && $model['uploaded_by'] != $user['id'])) {
+    if ($model && !$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
         echo json_encode(['success' => false, 'error' => 'Not authorized to modify this model']);
         return;
     }
