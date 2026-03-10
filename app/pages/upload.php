@@ -64,6 +64,15 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
     // Generate unique filename and store in folder
     $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
     $folderPath = UPLOAD_PATH . $folderId . '/';
+
+    // Preserve subdirectory structure from ZIP uploads to prevent name conflicts
+    $subDir = '';
+    if ($originalPath && dirname($originalPath) !== '.') {
+        $subDir = preg_replace('/[^a-zA-Z0-9._\/-]/', '_', dirname($originalPath));
+        $subDir = trim($subDir, '/') . '/';
+        $folderPath .= $subDir;
+    }
+
     $filePath = $folderPath . $filename;
 
     // Ensure folder exists
@@ -85,7 +94,7 @@ function saveModelFile($db, $tmpPath, $originalName, $name, $description, $creat
             $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash, description, creator, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :file_hash, :description, :creator, :collection, :source_url, :parent_id, :original_path)');
             $stmt->bindValue(':name', $name, PDO::PARAM_STR);
             $stmt->bindValue(':filename', $filename, PDO::PARAM_STR);
-            $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $filename, PDO::PARAM_STR);
+            $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $subDir . $filename, PDO::PARAM_STR);
             $stmt->bindValue(':file_size', $fileSize, PDO::PARAM_INT);
             $stmt->bindValue(':file_type', $extension, PDO::PARAM_STR);
             $stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);

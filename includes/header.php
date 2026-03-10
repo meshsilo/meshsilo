@@ -91,6 +91,8 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             }
         }
 
+        var _lastConversionRemaining = -1;
+
         function refreshQueueStatus() {
             fetch('/actions/queue-status', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -101,11 +103,27 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 var body = document.getElementById('queue-dropdown-body');
                 if (!badge || !body) return;
 
-                if (data.active > 0) {
+                var convRemaining = data.conversions ? data.conversions.remaining : 0;
+                var hasActivity = data.active > 0 || convRemaining > 0;
+
+                if (hasActivity) {
                     badge.textContent = data.active;
                     badge.style.display = '';
                     var html = '';
+
+                    // Show conversion progress if active
+                    if (data.conversions && convRemaining > 0) {
+                        var c = data.conversions;
+                        html += '<div class="queue-job queue-job-processing">' +
+                            '<span class="queue-job-status">&#9881;</span>' +
+                            '<span class="queue-job-name">Converting: ' + c.completed + '/' + c.total + ' completed</span>' +
+                            (c.failed > 0 ? '<span class="queue-job-time" style="color:var(--color-danger)">' + c.failed + ' failed</span>' : '') +
+                            '</div>';
+                    }
+
+                    // Show other jobs
                     data.jobs.forEach(function(job) {
+                        if (job.name === 'Convert Stl To3mf') return;
                         var statusClass = job.status === 'processing' ? 'queue-job-processing' : 'queue-job-pending';
                         var statusIcon = job.status === 'processing' ? '&#9654;' : '&#9679;';
                         var ago = timeAgo(job.created_at);
@@ -120,8 +138,49 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                     badge.style.display = 'none';
                     body.innerHTML = '<div class="queue-empty">No active tasks</div>';
                 }
+
+                // Detect conversion completion: was converting, now done
+                if (_lastConversionRemaining > 0 && convRemaining === 0) {
+                    showConversionToast('All conversions completed');
+                    // Auto-reload model pages so file types update
+                    if (document.querySelector('.parts-section')) {
+                        setTimeout(function() { location.reload(); }, 1500);
+                    }
+                }
+                _lastConversionRemaining = convRemaining;
+
+                // Apply/remove loading spinners on model cards and part items
+                updateConvertingIndicators(data.converting_model_ids || [], data.converting_part_ids || []);
             })
             .catch(function() {});
+        }
+
+        function updateConvertingIndicators(modelIds, partIds) {
+            // Model cards on browse/home/search/category/collection pages (grid and list views)
+            document.querySelectorAll('.model-card[data-model-id], .model-list-item[data-model-id]').forEach(function(card) {
+                var id = parseInt(card.dataset.modelId);
+                card.classList.toggle('converting', modelIds.indexOf(id) !== -1);
+            });
+
+            // Part items on model page
+            document.querySelectorAll('.part-item[data-part-id]').forEach(function(item) {
+                var id = parseInt(item.dataset.partId);
+                var nameEl = item.querySelector('.part-name');
+                if (partIds.indexOf(id) !== -1) {
+                    if (nameEl) nameEl.classList.add('part-converting');
+                } else {
+                    if (nameEl) nameEl.classList.remove('part-converting');
+                }
+            });
+        }
+
+        function showConversionToast(message) {
+            var toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--color-success,#22c55e);color:#fff;padding:0.75rem 1.5rem;border-radius:var(--radius,0.5rem);z-index:9999;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.5s;';
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.style.opacity = '0'; }, 2500);
+            setTimeout(function() { toast.remove(); }, 3000);
         }
 
         function timeAgo(dateStr) {

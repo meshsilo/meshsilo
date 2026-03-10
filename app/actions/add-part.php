@@ -102,18 +102,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         mkdir($modelDir, 0755, true);
     }
 
+    // Support optional folder for organizing parts
+    $targetFolder = trim($_POST['folder'] ?? '');
+    $targetFolder = preg_replace('/[^a-zA-Z0-9._\/ -]/', '_', $targetFolder);
+    $targetFolder = trim($targetFolder, '/');
+
+    // Build storage path with subfolder to prevent name conflicts
+    $subDir = '';
+    if ($targetFolder !== '' && $targetFolder !== 'Root') {
+        $subDir = $targetFolder . '/';
+        $storagePath = $modelDir . '/' . $subDir;
+        if (!file_exists($storagePath)) {
+            mkdir($storagePath, 0755, true);
+        }
+    }
+
     // Generate unique filename
     $filename = $file['name'];
     $baseName = pathinfo($filename, PATHINFO_FILENAME);
-    $destPath = $modelDir . '/' . $filename;
-    $relativePath = $relativeDir . '/' . $filename;
+    $destPath = $modelDir . '/' . $subDir . $filename;
+    $relativePath = $relativeDir . '/' . $subDir . $filename;
 
     // Handle filename collision
     $counter = 1;
     while (file_exists($destPath)) {
         $newFilename = $baseName . '_' . $counter . '.' . $extension;
-        $destPath = $modelDir . '/' . $newFilename;
-        $relativePath = $relativeDir . '/' . $newFilename;
+        $destPath = $modelDir . '/' . $subDir . $newFilename;
+        $relativePath = $relativeDir . '/' . $subDir . $newFilename;
         $counter++;
     }
 
@@ -132,12 +147,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         $fileHash = hash_file('sha256', $destPath);
     }
 
+    // Build original_path for folder grouping display
+    $originalPath = $subDir . $filename;
+
     // Insert part into database
     try {
         $now = date('Y-m-d H:i:s');
         $stmt = $db->prepare('
-            INSERT INTO models (name, filename, file_path, file_size, file_type, parent_id, file_hash, created_at)
-            VALUES (:name, :filename, :file_path, :file_size, :file_type, :parent_id, :file_hash, :created_at)
+            INSERT INTO models (name, filename, file_path, file_size, file_type, parent_id, file_hash, original_path, created_at)
+            VALUES (:name, :filename, :file_path, :file_size, :file_type, :parent_id, :file_hash, :original_path, :created_at)
         ');
         $stmt->bindValue(':name', pathinfo($filename, PATHINFO_FILENAME), PDO::PARAM_STR);
         $stmt->bindValue(':filename', $filename, PDO::PARAM_STR);
@@ -146,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         $stmt->bindValue(':file_type', $extension, PDO::PARAM_STR);
         $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
         $stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
+        $stmt->bindValue(':original_path', $originalPath, PDO::PARAM_STR);
         $stmt->bindValue(':created_at', $now, PDO::PARAM_STR);
         $stmt->execute();
 

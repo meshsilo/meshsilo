@@ -61,7 +61,7 @@ class STLConverter
 
     /**
      * Calculate max triangles based on available PHP memory.
-     * Uses 60% of remaining memory to leave headroom for XML generation.
+     * Uses 80% of remaining memory (XML is streamed to disk, not held in RAM).
      */
     private function getMaxTriangles(): int
     {
@@ -69,8 +69,8 @@ class STLConverter
         $currentUsage = memory_get_usage(true);
         $available = $memoryLimit - $currentUsage;
 
-        // Use 60% of remaining memory for triangle data
-        $usable = (int)($available * 0.6);
+        // Use 80% of remaining memory — XML generation streams to disk
+        $usable = (int)($available * 0.8);
         $maxTriangles = (int)($usable / self::BYTES_PER_TRIANGLE);
 
         // Clamp between 50K and 5M as safety bounds
@@ -128,52 +128,61 @@ class STLConverter
             ));
         }
 
-        // Read all triangle data at once (50 bytes per triangle)
-        $dataSize = $triangleCount * 50;
-        $data = fread($handle, $dataSize);
-        fclose($handle);
-
-        if (strlen($data) < $dataSize) {
-            throw new Exception('Incomplete STL file');
-        }
-
         $vertexMap = [];
         $vertexIndex = 0;
-        $offset = 0;
 
-        for ($i = 0; $i < $triangleCount; $i++) {
-            // Skip normal vector (12 bytes)
-            $offset += 12;
+        // Read in chunks of 1000 triangles (~50KB) instead of entire file at once
+        $chunkSize = 1000;
+        $remaining = $triangleCount;
 
-            $triIndices = [];
+        while ($remaining > 0) {
+            $batch = min($chunkSize, $remaining);
+            $data = fread($handle, $batch * 50);
 
-            // Read 3 vertices (each 12 bytes: 3 floats)
-            for ($v = 0; $v < 3; $v++) {
-                $coords = unpack('f3', $data, $offset);
-                $offset += 12;
-
-                $vertex = [
-                    round($coords[1], 6),
-                    round($coords[2], 6),
-                    round($coords[3], 6)
-                ];
-
-                $key = implode(',', $vertex);
-
-                if (!isset($vertexMap[$key])) {
-                    $vertexMap[$key] = $vertexIndex;
-                    $this->vertices[] = $vertex;
-                    $vertexIndex++;
-                }
-
-                $triIndices[] = $vertexMap[$key];
+            if (strlen($data) < $batch * 50) {
+                fclose($handle);
+                throw new Exception('Incomplete STL file');
             }
 
-            $this->triangles[] = $triIndices;
+            $offset = 0;
+            for ($i = 0; $i < $batch; $i++) {
+                // Unpack all 12 floats at once (normal[3] + v1[3] + v2[3] + v3[3])
+                $floats = unpack('f12', $data, $offset);
+                $offset += 48;
 
-            // Skip attribute byte count (2 bytes)
-            $offset += 2;
+                $triIndices = [];
+
+                // Process 3 vertices (skip normal at indices 1-3)
+                for ($v = 0; $v < 3; $v++) {
+                    $base = 4 + ($v * 3);
+                    $x = round($floats[$base], 6);
+                    $y = round($floats[$base + 1], 6);
+                    $z = round($floats[$base + 2], 6);
+
+                    // Binary key: 24 bytes vs ~30+ byte string from implode
+                    $key = pack('d3', $x, $y, $z);
+
+                    if (!isset($vertexMap[$key])) {
+                        $vertexMap[$key] = $vertexIndex;
+                        $this->vertices[] = [$x, $y, $z];
+                        $vertexIndex++;
+                    }
+
+                    $triIndices[] = $vertexMap[$key];
+                }
+
+                $this->triangles[] = $triIndices;
+
+                // Skip attribute byte count (2 bytes)
+                $offset += 2;
+            }
+
+            $remaining -= $batch;
+            unset($data);
         }
+
+        fclose($handle);
+        unset($vertexMap);
 
         return [
             'vertices' => count($this->vertices),
@@ -204,17 +213,15 @@ class STLConverter
             $line = trim($line);
 
             if (preg_match('/^vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/i', $line, $m)) {
-                $vertex = [
-                    round((float)$m[1], 6),
-                    round((float)$m[2], 6),
-                    round((float)$m[3], 6)
-                ];
+                $x = round((float)$m[1], 6);
+                $y = round((float)$m[2], 6);
+                $z = round((float)$m[3], 6);
 
-                $key = implode(',', $vertex);
+                $key = pack('d3', $x, $y, $z);
 
                 if (!isset($vertexMap[$key])) {
                     $vertexMap[$key] = $vertexIndex;
-                    $this->vertices[] = $vertex;
+                    $this->vertices[] = [$x, $y, $z];
                     $vertexIndex++;
                 }
 
@@ -235,6 +242,7 @@ class STLConverter
         }
 
         fclose($handle);
+        unset($vertexMap);
 
         return [
             'vertices' => count($this->vertices),
@@ -255,40 +263,67 @@ class STLConverter
     }
 
     /**
-     * Generate 3MF XML content
+     * Stream 3MF XML content directly to a file instead of building in memory.
+     * Frees vertex/triangle arrays as they are written.
      */
-    private function generate3MFModel()
+    private function write3MFModelToFile($filePath)
     {
-        $lines = [];
-        $lines[] = '<?xml version="1.0" encoding="UTF-8"?>';
-        $lines[] = '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">';
-        $lines[] = '  <resources>';
-        $lines[] = '    <object id="1" type="model">';
-        $lines[] = '      <mesh>';
-
-        // Vertices
-        $lines[] = '        <vertices>';
-        foreach ($this->vertices as $v) {
-            $lines[] = sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />', $v[0], $v[1], $v[2]);
+        $handle = fopen($filePath, 'w');
+        if (!$handle) {
+            throw new Exception('Cannot create temporary model file');
         }
-        $lines[] = '        </vertices>';
 
-        // Triangles
-        $lines[] = '        <triangles>';
-        foreach ($this->triangles as $t) {
-            $lines[] = sprintf('          <triangle v1="%d" v2="%d" v3="%d" />', $t[0], $t[1], $t[2]);
+        fwrite($handle, '<?xml version="1.0" encoding="UTF-8"?>' . "\n");
+        fwrite($handle, '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">' . "\n");
+        fwrite($handle, "  <resources>\n");
+        fwrite($handle, "    <object id=\"1\" type=\"model\">\n");
+        fwrite($handle, "      <mesh>\n");
+
+        // Stream vertices in batches of 1000 lines per fwrite
+        fwrite($handle, "        <vertices>\n");
+        $buffer = '';
+        $bufCount = 0;
+        foreach ($this->vertices as $i => $v) {
+            $buffer .= sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />' . "\n", $v[0], $v[1], $v[2]);
+            unset($this->vertices[$i]);
+            if (++$bufCount >= 1000) {
+                fwrite($handle, $buffer);
+                $buffer = '';
+                $bufCount = 0;
+            }
         }
-        $lines[] = '        </triangles>';
+        if ($buffer !== '') {
+            fwrite($handle, $buffer);
+        }
+        fwrite($handle, "        </vertices>\n");
 
-        $lines[] = '      </mesh>';
-        $lines[] = '    </object>';
-        $lines[] = '  </resources>';
-        $lines[] = '  <build>';
-        $lines[] = '    <item objectid="1" />';
-        $lines[] = '  </build>';
-        $lines[] = '</model>';
+        // Stream triangles in batches of 1000 lines per fwrite
+        fwrite($handle, "        <triangles>\n");
+        $buffer = '';
+        $bufCount = 0;
+        foreach ($this->triangles as $i => $t) {
+            $buffer .= sprintf('          <triangle v1="%d" v2="%d" v3="%d" />' . "\n", $t[0], $t[1], $t[2]);
+            unset($this->triangles[$i]);
+            if (++$bufCount >= 1000) {
+                fwrite($handle, $buffer);
+                $buffer = '';
+                $bufCount = 0;
+            }
+        }
+        if ($buffer !== '') {
+            fwrite($handle, $buffer);
+        }
+        fwrite($handle, "        </triangles>\n");
 
-        return implode("\n", $lines);
+        fwrite($handle, "      </mesh>\n");
+        fwrite($handle, "    </object>\n");
+        fwrite($handle, "  </resources>\n");
+        fwrite($handle, "  <build>\n");
+        fwrite($handle, "    <item objectid=\"1\" />\n");
+        fwrite($handle, "  </build>\n");
+        fwrite($handle, '</model>');
+
+        fclose($handle);
     }
 
     /**
@@ -340,18 +375,29 @@ class STLConverter
             $outputPath = preg_replace('/\.stl$/i', '.3mf', $stlPath);
         }
 
-        // Create 3MF (ZIP) file
-        $zip = new ZipArchive();
-        if ($zip->open($outputPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new Exception('Cannot create 3MF file');
+        // Write 3MF model XML to a temp file on the same filesystem as output
+        $cacheDir = __DIR__ . '/../storage/cache';
+        $tempModelFile = tempnam(is_writable($cacheDir) ? $cacheDir : sys_get_temp_dir(), 'silo3mf_');
+
+        try {
+            $this->write3MFModelToFile($tempModelFile);
+
+            // Create 3MF (ZIP) file
+            $zip = new ZipArchive();
+            if ($zip->open($outputPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new Exception('Cannot create 3MF file');
+            }
+
+            $zip->addFromString('[Content_Types].xml', $this->generateContentTypes());
+            $zip->addFromString('_rels/.rels', $this->generateRels());
+            $zip->addFile($tempModelFile, '3D/3dmodel.model');
+
+            $zip->close();
+        } finally {
+            if (is_file($tempModelFile)) {
+                unlink($tempModelFile);
+            }
         }
-
-        // Add required files to the archive
-        $zip->addFromString('[Content_Types].xml', $this->generateContentTypes());
-        $zip->addFromString('_rels/.rels', $this->generateRels());
-        $zip->addFromString('3D/3dmodel.model', $this->generate3MFModel());
-
-        $zip->close();
 
         $newSize = filesize($outputPath);
         $savings = $originalSize - $newSize;
@@ -423,10 +469,57 @@ class STLConverter
 }
 
 /**
- * Helper function to convert a model part
+ * Get system memory total and used bytes.
+ * Checks cgroup limits first (accurate in Docker), then /proc/meminfo.
  */
+function getSystemMemory(): ?array
+{
+    // cgroup v2 (modern Docker)
+    if (is_readable('/sys/fs/cgroup/memory.max') && is_readable('/sys/fs/cgroup/memory.current')) {
+        $max = trim(file_get_contents('/sys/fs/cgroup/memory.max'));
+        $current = (int)trim(file_get_contents('/sys/fs/cgroup/memory.current'));
+        if ($max !== 'max' && (int)$max > 0) {
+            return ['total' => (int)$max, 'used' => $current];
+        }
+    }
+
+    // cgroup v1
+    if (is_readable('/sys/fs/cgroup/memory/memory.limit_in_bytes') && is_readable('/sys/fs/cgroup/memory/memory.usage_in_bytes')) {
+        $limit = (int)trim(file_get_contents('/sys/fs/cgroup/memory/memory.limit_in_bytes'));
+        $usage = (int)trim(file_get_contents('/sys/fs/cgroup/memory/memory.usage_in_bytes'));
+        if ($limit > 0 && $limit < (PHP_INT_MAX / 2)) {
+            return ['total' => $limit, 'used' => $usage];
+        }
+    }
+
+    // /proc/meminfo (bare metal or host-level)
+    if (is_readable('/proc/meminfo')) {
+        $meminfo = file_get_contents('/proc/meminfo');
+        if (preg_match('/MemTotal:\s+(\d+)/', $meminfo, $totalMatch) &&
+            preg_match('/MemAvailable:\s+(\d+)/', $meminfo, $availMatch)) {
+            $total = (int)$totalMatch[1] * 1024;
+            $available = (int)$availMatch[1] * 1024;
+            return ['total' => $total, 'used' => $total - $available];
+        }
+    }
+
+    return null;
+}
+
 function convertPartTo3MF($partId)
 {
+    // Check system memory — throw so queue worker retries with backoff
+    $mem = getSystemMemory();
+    if ($mem !== null) {
+        $usedPercent = ($mem['used'] / $mem['total']) * 100;
+        if ($usedPercent >= 80) {
+            throw new Exception(sprintf(
+                'System memory too high for conversion (%.0f%% used)',
+                $usedPercent
+            ));
+        }
+    }
+
     $db = getDB();
 
     // Get part details

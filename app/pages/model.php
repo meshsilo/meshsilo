@@ -790,7 +790,7 @@ require_once 'includes/header.php';
                     <form id="create-folder-form" onsubmit="submitCreateFolder(event)">
                         <div class="form-group">
                             <label for="new-folder-name">Folder Name</label>
-                            <input type="text" id="new-folder-name" class="form-input" placeholder="Enter folder name" required>
+                            <input type="text" id="new-folder-name" class="form-input" placeholder="Enter folder name (e.g. Parts/Screws)" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Create</button>
                     </form>
@@ -1007,8 +1007,8 @@ require_once 'includes/header.php';
                         return;
                     }
 
-                    // Perform the conversion
-                    this.textContent = 'Converting...';
+                    // Queue the conversion as a background job
+                    this.textContent = 'Queuing...';
 
                     const formData = new FormData();
                     formData.append('action', 'convert');
@@ -1021,16 +1021,16 @@ require_once 'includes/header.php';
                     const result = await convertResponse.json();
 
                     if (result.success) {
-                        // Reload the page to show updated file info
-                        location.reload();
+                        this.textContent = 'Queued';
+                        if (typeof refreshQueueStatus === 'function') refreshQueueStatus();
                     } else {
-                        alert('Conversion failed: ' + (result.error || 'Unknown error'));
+                        alert('Failed to queue conversion: ' + (result.error || 'Unknown error'));
                         this.textContent = originalText;
                         this.disabled = false;
                     }
                 } catch (err) {
                     console.error('Conversion error:', err);
-                    alert('Failed to convert file');
+                    alert('Failed to queue conversion');
                     this.textContent = originalText;
                     this.disabled = false;
                 }
@@ -1156,38 +1156,28 @@ require_once 'includes/header.php';
                 }
 
                 massConvertBtn.disabled = true;
-                massConvertBtn.textContent = 'Converting...';
+                massConvertBtn.textContent = 'Queuing...';
 
-                let successCount = 0;
-                let errorCount = 0;
+                try {
+                    const formData = new FormData();
+                    formData.append('action', 'batch');
+                    stlParts.forEach(id => formData.append('part_ids[]', id));
 
-                for (const partId of stlParts) {
-                    try {
-                        const formData = new FormData();
-                        formData.append('action', 'convert');
-                        formData.append('part_id', partId);
+                    const response = await fetch('/actions/convert-part', { method: 'POST', body: formData });
+                    const result = await response.json();
 
-                        const response = await fetch('/actions/convert-part', { method: 'POST', body: formData });
-                        const result = await response.json();
-
-                        if (result.success) {
-                            successCount++;
-                        } else {
-                            errorCount++;
-                        }
-                    } catch (err) {
-                        errorCount++;
+                    if (result.success && result.queued > 0) {
+                        massConvertBtn.textContent = `Queued ${result.queued}`;
+                        if (typeof refreshQueueStatus === 'function') refreshQueueStatus();
+                    } else {
+                        alert('Failed to queue conversions.');
+                        massConvertBtn.textContent = 'Convert to 3MF';
+                        massConvertBtn.disabled = false;
                     }
-                }
-
-                massConvertBtn.disabled = false;
-                massConvertBtn.textContent = 'Convert to 3MF';
-
-                if (successCount > 0) {
-                    alert(`Converted ${successCount} file(s) to 3MF.${errorCount > 0 ? ` ${errorCount} failed.` : ''}`);
-                    location.reload();
-                } else {
-                    alert('Failed to convert files.');
+                } catch (err) {
+                    alert('Failed to queue conversions.');
+                    massConvertBtn.textContent = 'Convert to 3MF';
+                    massConvertBtn.disabled = false;
                 }
             });
         }

@@ -57,7 +57,7 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="models-grid">
                     <?php foreach ($favorites as $model): ?>
-                    <article class="model-card" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
                         <div class="model-thumbnail"
                             <?php if (!empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"

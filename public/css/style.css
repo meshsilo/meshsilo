@@ -1380,7 +1380,7 @@ section.settings-section h2 {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
@@ -1447,7 +1447,7 @@ section.settings-section h2 {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-0.5rem);
@@ -3028,6 +3028,66 @@ body.mobile-menu-open::before {
     display: none !important;
 }
 
+.part-converting::after {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.model-card.converting .model-thumbnail::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    z-index: 5;
+}
+
+.model-card.converting .model-thumbnail::before,
+.model-list-item.converting .model-thumbnail::before {
+    content: 'Converting...';
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: #fff;
+    background: rgba(0,0,0,0.6);
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius);
+    z-index: 5;
+    white-space: nowrap;
+}
+
+.model-list-item.converting .model-thumbnail::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    z-index: 5;
+}
+
 .print-type-select {
     padding: 0.125rem 0.25rem;
     border-radius: var(--radius);
@@ -3831,10 +3891,10 @@ input[type="checkbox"]:disabled {
     min-width: 180px;
     margin-top: 0.25rem;
     padding: 0.5rem 0;
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-8px);

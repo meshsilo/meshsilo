@@ -3,10 +3,85 @@
  * Part Folders AJAX endpoint
  *
  * Manages virtual subfolders for model parts by updating original_path
+ * and moving physical files to match the folder structure.
  */
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
+
+/**
+ * Move a part's physical file to match its new original_path folder.
+ * Updates file_path in the database.
+ *
+ * @param Database $db
+ * @param int $partId
+ * @param string $newOriginalPath New original_path value (e.g. "SubFolder/file.stl" or just "file.stl")
+ */
+function movePartFile($db, int $partId, string $newOriginalPath): void
+{
+    $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(dirname(__DIR__));
+
+    // Get current file_path
+    $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE id = :id');
+    $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $part = $result->fetchArray(PDO::FETCH_ASSOC);
+    if (!$part || !$part['file_path']) return;
+
+    // Don't move deduplicated files — they live in _dedup/
+    if (!empty($part['dedup_path'])) return;
+
+    $currentFilePath = $part['file_path'];
+    $currentFilename = basename($currentFilePath);
+
+    // Find the model's base directory (assets/{hash})
+    // file_path is like "assets/{hash}/file.stl" or "assets/{hash}/sub/file.stl"
+    $parts = explode('/', $currentFilePath);
+    // Base dir is always the first two segments: "assets/{hash}"
+    if (count($parts) < 2) return;
+    $baseDir = $parts[0] . '/' . $parts[1];
+
+    // Build the new file_path based on the new original_path's folder
+    $newDir = dirname($newOriginalPath);
+    if ($newDir === '.') {
+        // Moving to root
+        $newFilePath = $baseDir . '/' . $currentFilename;
+    } else {
+        $newFilePath = $baseDir . '/' . $newDir . '/' . $currentFilename;
+    }
+
+    // Skip if already in the right place
+    if ($newFilePath === $currentFilePath) return;
+
+    // Resolve physical paths
+    $oldDiskPath = $basePath . '/storage/' . $currentFilePath;
+    $newDiskDir = $basePath . '/storage/' . dirname($newFilePath);
+    $newDiskPath = $basePath . '/storage/' . $newFilePath;
+
+    // Only move if source exists
+    if (!file_exists($oldDiskPath)) return;
+
+    // Create target directory
+    if (!is_dir($newDiskDir)) {
+        mkdir($newDiskDir, 0755, true);
+    }
+
+    // Move the file
+    if (rename($oldDiskPath, $newDiskPath)) {
+        $updateStmt = $db->prepare('UPDATE models SET file_path = :new_path WHERE id = :id');
+        $updateStmt->bindValue(':new_path', $newFilePath, PDO::PARAM_STR);
+        $updateStmt->bindValue(':id', $partId, PDO::PARAM_INT);
+        $updateStmt->execute();
+
+        // Clean up empty source directory
+        $oldDir = dirname($oldDiskPath);
+        $baseAbsDir = $basePath . '/storage/' . $baseDir;
+        if ($oldDir !== $baseAbsDir && is_dir($oldDir) && count(glob($oldDir . '/*')) === 0) {
+            @rmdir($oldDir);
+        }
+    }
+}
 
 if (!isLoggedIn()) {
     http_response_code(401);
@@ -59,9 +134,10 @@ if ($modelId) {
 
 switch ($action) {
     case 'create':
-        // Validate folder name
+        // Validate folder name (allow / for nested folders, block \)
         $folderName = trim($_POST['folder_name'] ?? '');
-        if ($folderName === '' || $folderName === 'Root' || strpos($folderName, '/') !== false || strpos($folderName, '\\') !== false) {
+        $folderName = trim($folderName, '/');
+        if ($folderName === '' || $folderName === 'Root' || strpos($folderName, '\\') !== false) {
             echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
             exit;
         }
@@ -75,12 +151,13 @@ switch ($action) {
         $oldFolder = trim($_POST['old_folder'] ?? '');
         $newFolder = trim($_POST['new_folder'] ?? '');
 
+        $newFolder = trim($newFolder, '/');
         if ($oldFolder === '' || $newFolder === '' || $newFolder === 'Root') {
             echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
             exit;
         }
-        if (strpos($newFolder, '/') !== false || strpos($newFolder, '\\') !== false) {
-            echo json_encode(['success' => false, 'error' => 'Folder name cannot contain slashes']);
+        if (strpos($newFolder, '\\') !== false) {
+            echo json_encode(['success' => false, 'error' => 'Folder name cannot contain backslashes']);
             exit;
         }
 
@@ -100,6 +177,9 @@ switch ($action) {
             $updateStmt->bindValue(':new_path', $newPath, PDO::PARAM_STR);
             $updateStmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
             $updateStmt->execute();
+
+            // Move the physical file to match
+            movePartFile($db, $row['id'], $newPath);
             $updated++;
         }
 
@@ -108,13 +188,17 @@ switch ($action) {
 
     case 'delete':
         $folderName = trim($_POST['folder_name'] ?? '');
+        $folderName = trim($folderName, '/');
         if ($folderName === '' || $folderName === 'Root') {
             echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
             exit;
         }
 
-        // Move parts from this folder to root (strip folder prefix)
+        // Move parts up one level — strip this folder's segment from the path
+        // e.g. "A/B/file.stl" deleting folder "A/B" → "file.stl" (to parent A or root)
         $prefix = $folderName . '/';
+        $parentFolder = dirname($folderName);
+        $parentPrefix = ($parentFolder !== '.') ? $parentFolder . '/' : '';
 
         $stmt = $db->prepare('SELECT id, original_path FROM models WHERE parent_id = :model_id AND original_path LIKE :pattern');
         $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
@@ -123,11 +207,16 @@ switch ($action) {
 
         $updated = 0;
         while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            $basename = basename($row['original_path']);
+            // Strip only this folder level, preserving any nested subfolders below it
+            $remainder = substr($row['original_path'], strlen($prefix));
+            $newPath = $parentPrefix . $remainder;
             $updateStmt = $db->prepare('UPDATE models SET original_path = :new_path WHERE id = :id');
-            $updateStmt->bindValue(':new_path', $basename, PDO::PARAM_STR);
+            $updateStmt->bindValue(':new_path', $newPath, PDO::PARAM_STR);
             $updateStmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
             $updateStmt->execute();
+
+            // Move the physical file to match
+            movePartFile($db, $row['id'], $newPath);
             $updated++;
         }
 
@@ -142,7 +231,8 @@ switch ($action) {
             echo json_encode(['success' => false, 'error' => 'No parts specified']);
             exit;
         }
-        if (strpos($targetFolder, '/') !== false || strpos($targetFolder, '\\') !== false) {
+        $targetFolder = trim($targetFolder, '/');
+        if (strpos($targetFolder, '\\') !== false) {
             echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
             exit;
         }
@@ -179,6 +269,9 @@ switch ($action) {
             $updateStmt->bindValue(':new_path', $newPath, PDO::PARAM_STR);
             $updateStmt->bindValue(':id', $partId, PDO::PARAM_INT);
             $updateStmt->execute();
+
+            // Move the physical file to match
+            movePartFile($db, $partId, $newPath);
             $updated++;
         }
 

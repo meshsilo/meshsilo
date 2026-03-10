@@ -803,6 +803,97 @@ function getMigrationList()
         ], [
             'idx_models_user_id' => 'user_id',
         ]),
+        // Migrate part files into subdirectories matching original_path folders
+        [
+            'name' => 'Migrate part files to folder subdirectories',
+            'description' => 'Move part files into subdirectories matching their original_path folder structure and update file_path',
+            'check' => function ($db) {
+                // Check if any parts have folder structure in original_path but flat file_path
+                $sql = "SELECT COUNT(*) as cnt FROM models
+                        WHERE parent_id IS NOT NULL
+                        AND original_path IS NOT NULL
+                        AND original_path LIKE '%/%'
+                        AND file_path NOT LIKE '%/' || REPLACE(original_path, '\\', '/') ";
+                // For MySQL, use CONCAT instead of ||
+                $type = $db->getType();
+                if ($type === 'mysql') {
+                    $sql = "SELECT COUNT(*) as cnt FROM models
+                            WHERE parent_id IS NOT NULL
+                            AND original_path IS NOT NULL
+                            AND original_path LIKE '%/%'
+                            AND file_path NOT LIKE CONCAT('%/', REPLACE(original_path, '\\\\', '/'))";
+                }
+                $stmt = $db->prepare($sql);
+                $result = $stmt->execute();
+                $row = $result->fetchArray(PDO::FETCH_ASSOC);
+                return ($row['cnt'] ?? 0) === 0;
+            },
+            'apply' => function ($db) {
+                $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__);
+
+                // Find parts with folder structure in original_path where file_path is flat
+                $stmt = $db->prepare("SELECT id, file_path, original_path FROM models
+                                      WHERE parent_id IS NOT NULL
+                                      AND original_path IS NOT NULL
+                                      AND original_path LIKE '%/%'");
+                $result = $stmt->execute();
+
+                $moved = 0;
+                $skipped = 0;
+                while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                    $originalPath = str_replace('\\', '/', $row['original_path']);
+                    $subDir = dirname($originalPath);
+                    $filename = basename($originalPath);
+
+                    // Current file_path is like "assets/{hash}/filename.stl"
+                    // New file_path should be "assets/{hash}/{subDir}/filename.stl"
+                    $currentFilePath = $row['file_path'];
+                    $currentDir = dirname($currentFilePath);
+                    $currentFilename = basename($currentFilePath);
+
+                    // Build expected new path
+                    $newFilePath = $currentDir . '/' . $subDir . '/' . $currentFilename;
+
+                    // Skip if file_path already contains the subfolder
+                    if (strpos($currentFilePath, '/' . $subDir . '/') !== false) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    // Physical file paths
+                    $oldDiskPath = $basePath . '/' . $currentFilePath;
+                    $newDiskDir = $basePath . '/' . $currentDir . '/' . $subDir;
+                    $newDiskPath = $newDiskDir . '/' . $currentFilename;
+
+                    // Skip if source file doesn't exist
+                    if (!file_exists($oldDiskPath)) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    // Create subdirectory if needed
+                    if (!is_dir($newDiskDir)) {
+                        mkdir($newDiskDir, 0755, true);
+                    }
+
+                    // Move the file
+                    if (rename($oldDiskPath, $newDiskPath)) {
+                        // Update file_path in database
+                        $updateStmt = $db->prepare('UPDATE models SET file_path = :new_path WHERE id = :id');
+                        $updateStmt->bindValue(':new_path', $newFilePath, PDO::PARAM_STR);
+                        $updateStmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
+                        $updateStmt->execute();
+                        $moved++;
+                    } else {
+                        $skipped++;
+                    }
+                }
+
+                if (function_exists('logInfo')) {
+                    logInfo("Part file migration: moved $moved files, skipped $skipped");
+                }
+            }
+        ],
         // Performance indexes for sorting and filtering
         [
             'name' => 'Performance indexes for models table',

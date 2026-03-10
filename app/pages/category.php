@@ -79,7 +79,7 @@ require_once 'includes/header.php';
                     <p class="text-muted">No models in this category yet.</p>
                 <?php else: ?>
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
                         <div class="model-thumbnail"
                             <?php if (!empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
