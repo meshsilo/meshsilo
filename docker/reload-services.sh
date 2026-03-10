@@ -19,20 +19,17 @@ if [ -f "$STAGING_INI" ]; then
     fi
 fi
 
-# Reload PHP-FPM (graceful restart)
+# Reload nginx first (picks up client_max_body_size changes)
+nginx -t 2>/dev/null && nginx -s reload 2>/dev/null
+echo "nginx reloaded"
+
+# Graceful PHP-FPM reload: finish existing requests, then apply new config
 if [ -f /run/php/php8.1-fpm.pid ]; then
+    # USR2 = graceful restart: spawns new workers with new config,
+    # old workers finish current requests before exiting
     kill -USR2 "$(cat /run/php/php8.1-fpm.pid)" 2>/dev/null
-    echo "PHP-FPM reloaded"
+    echo "PHP-FPM reloading gracefully"
 else
     echo "PHP-FPM PID file not found"
-    exit 1
-fi
-
-# Reload nginx
-nginx -s reload 2>/dev/null
-if [ $? -eq 0 ]; then
-    echo "nginx reloaded"
-else
-    echo "nginx reload failed"
     exit 1
 fi

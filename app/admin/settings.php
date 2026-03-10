@@ -114,19 +114,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
     if ($valid) {
         if (is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)))) {
             if (file_put_contents($phpIniPath, $content) !== false) {
+                logInfo('php.ini updated', ['by' => getCurrentUser()['username'], 'docker' => $isDocker]);
                 if ($isDocker) {
-                    // Reload script copies from storage to /etc/php and /etc/nginx, then restarts services
-                    exec('sudo /usr/local/bin/meshsilo-reload 2>&1', $reloadOutput, $reloadResult);
-
-                    if ($reloadResult === 0) {
-                        $message = 'PHP configuration saved and services reloaded successfully.';
-                    } else {
-                        $message = 'PHP configuration saved. Services could not be reloaded automatically — restart the container for changes to take effect.';
-                    }
+                    // Defer reload: write trigger file, reload happens after response is sent
+                    file_put_contents(__DIR__ . '/../../storage/cache/.reload-pending', time());
+                    $message = 'PHP configuration saved. Services will reload momentarily.';
+                    $deferReload = true;
                 } else {
                     $message = 'PHP configuration saved successfully. Changes take effect within 5 minutes (or restart the web server for immediate effect).';
                 }
-                logInfo('php.ini updated', ['by' => getCurrentUser()['username'], 'docker' => $isDocker]);
             } else {
                 $error = 'Failed to write PHP configuration file.';
             }
@@ -629,3 +625,19 @@ if (testEmailBtn) {
 </script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
+<?php
+// Deferred reload: flush response to browser, then trigger service restart
+if (!empty($deferReload)) {
+    // Send response to browser before reloading
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        ob_end_flush();
+        flush();
+    }
+    // Small delay to ensure response is delivered
+    sleep(1);
+    exec('sudo /usr/local/bin/meshsilo-reload 2>&1');
+    @unlink(__DIR__ . '/../../storage/cache/.reload-pending');
+}
+?>
