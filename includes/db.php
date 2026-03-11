@@ -2989,13 +2989,25 @@ function getDedupStorageSavings()
 {
     try {
         $db = getDB();
-        // Get total file sizes
-        $stmt = $db->query('SELECT SUM(original_size) as total FROM models WHERE original_size > 0');
+
+        // Total file_size of all dedup'd parts (what storage would be without dedup)
+        $stmt = $db->query('SELECT SUM(file_size) as total FROM models WHERE dedup_path IS NOT NULL');
         $totalRow = $stmt->fetch();
         $totalSize = $totalRow ? (int)$totalRow['total'] : 0;
 
-        // Get actual deduplicated storage (unique hashes)
-        $stmt = $db->query('SELECT SUM(size) as actual FROM (SELECT file_hash, MAX(original_size) as size FROM models WHERE file_hash IS NOT NULL GROUP BY file_hash)');
+        if ($totalSize === 0) {
+            return ['total_size' => 0, 'actual_size' => 0, 'saved_size' => 0, 'saved_percent' => 0];
+        }
+
+        // Actual disk usage: count each unique dedup_path only once
+        $stmt = $db->query('
+            SELECT SUM(size) as actual FROM (
+                SELECT dedup_path, MAX(file_size) as size
+                FROM models
+                WHERE dedup_path IS NOT NULL
+                GROUP BY dedup_path
+            )
+        ');
         $actualRow = $stmt->fetch();
         $actualSize = $actualRow ? (int)$actualRow['actual'] : 0;
 
