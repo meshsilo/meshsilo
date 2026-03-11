@@ -115,6 +115,39 @@ class Queue
     }
 
     /**
+     * Reclaim jobs stuck in "processing" for longer than the given timeout.
+     * This handles worker crashes (OOM, container restart) where a job
+     * was reserved but never completed or failed.
+     */
+    public static function reclaimStale(int $timeoutSeconds = 900): int
+    {
+        $db = self::db();
+        if (!$db) {
+            return 0;
+        }
+
+        $cutoff = date('Y-m-d H:i:s', time() - $timeoutSeconds);
+
+        $stmt = $db->prepare("
+            UPDATE jobs
+            SET status = :pending, reserved_at = NULL
+            WHERE status = :processing
+            AND reserved_at < :cutoff
+        ");
+        $stmt->bindValue(':pending', self::STATUS_PENDING, PDO::PARAM_STR);
+        $stmt->bindValue(':processing', self::STATUS_PROCESSING, PDO::PARAM_STR);
+        $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $reclaimed = $db->changes();
+        if ($reclaimed > 0 && function_exists('logWarning')) {
+            logWarning("Reclaimed $reclaimed stale job(s) stuck in processing");
+        }
+
+        return $reclaimed;
+    }
+
+    /**
      * Get the next available job from a queue
      */
     public static function pop(string $queue = self::DEFAULT_QUEUE, int $maxRetries = 3): ?array

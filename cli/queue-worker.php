@@ -101,6 +101,8 @@ if (function_exists('pcntl_signal')) {
     });
 }
 
+$lastReclaimCheck = 0;
+
 while (!$shouldStop) {
     // Check time limit
     if ($maxTime !== null && (time() - $startTime) >= $maxTime) {
@@ -117,6 +119,13 @@ while (!$shouldStop) {
     // Process signals
     if (function_exists('pcntl_signal_dispatch')) {
         pcntl_signal_dispatch();
+    }
+
+    // Periodically reclaim jobs stuck in "processing" (every 5 minutes)
+    // Handles worker crashes where a job was reserved but never completed
+    if (time() - $lastReclaimCheck > 300) {
+        Queue::reclaimStale(900); // 15 min timeout
+        $lastReclaimCheck = time();
     }
 
     // Get next job
@@ -182,13 +191,10 @@ while (!$shouldStop) {
         }
     }
 
-    // Periodic memory cleanup
-    if ($jobsProcessed % 10 === 0) {
-        // Clear in-memory cache to prevent unbounded growth
-        if (class_exists('Cache', false)) {
-            Cache::getInstance()->clearMemory();
-        }
-        gc_collect_cycles();
+    // Memory cleanup after every job — conversions are memory-heavy
+    gc_collect_cycles();
+    if ($jobsProcessed % 10 === 0 && class_exists('Cache', false)) {
+        Cache::getInstance()->clearMemory();
     }
 
     // Safety valve: exit at 80% of PHP memory limit (supervisor will restart)

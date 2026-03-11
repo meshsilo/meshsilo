@@ -4,9 +4,15 @@
  * Upload, delete, and manage document/image attachments
  */
 
+// Suppress HTML error output — this is a JSON endpoint
+ini_set('display_errors', '0');
+ini_set('html_errors', '0');
+
 require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
+
+try {
 
 if (!isFeatureEnabled('attachments')) {
     echo json_encode(['success' => false, 'error' => 'Attachments feature is disabled']);
@@ -43,6 +49,14 @@ switch ($action) {
         break;
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
+}
+
+} catch (Throwable $e) {
+    if (function_exists('logException')) {
+        logException($e, ['action' => 'attachments']);
+    }
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
 
 /**

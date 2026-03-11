@@ -18,14 +18,14 @@ header('Content-Type: application/json');
 function isPartAlreadyQueued(int $partId): bool
 {
     $db = getDB();
+    // Match exact payload to avoid partial ID matches (e.g. 12 matching 123)
     $stmt = $db->prepare("
         SELECT COUNT(*) as cnt FROM jobs
         WHERE job_class = 'ConvertStlTo3mf'
         AND status IN ('pending', 'processing')
-        AND payload LIKE :pattern
+        AND payload = :payload
     ");
-    $pattern = '%"model_id":' . $partId . '%';
-    $stmt->bindValue(':pattern', $pattern, PDO::PARAM_STR);
+    $stmt->bindValue(':payload', json_encode(['model_id' => $partId]), PDO::PARAM_STR);
     $result = $stmt->execute();
     $row = $result->fetchArray(PDO::FETCH_ASSOC);
     return ($row['cnt'] ?? 0) > 0;
