@@ -2,6 +2,8 @@
 storage/assets/*
 !storage/assets/.gitkeep
 storage/db/*.db
+storage/db/*.db-shm
+storage/db/*.db-wal
 storage/logs/*
 !storage/logs/.gitkeep
 storage/cache/*
@@ -46,6 +48,7 @@ docs/
 
 # Development files
 .claude/
+.playwright-cli/
 todo.txt
 mcp_servers.json
 
