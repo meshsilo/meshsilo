@@ -2145,7 +2145,7 @@ require_once 'includes/header.php';
                 formData.append('attachment', file);
 
                 try {
-                    const response = await fetch('/attachments', {
+                    const response = await fetch('/actions/attachments', {
                         method: 'POST',
                         body: formData
                     });
@@ -2275,7 +2275,7 @@ require_once 'includes/header.php';
             formData.append('attachment_id', attachmentId);
 
             try {
-                const response = await fetch('/attachments', {
+                const response = await fetch('/actions/attachments', {
                     method: 'POST',
                     body: formData
                 });

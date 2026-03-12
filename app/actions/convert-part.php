@@ -91,6 +91,18 @@ if ($action === 'estimate') {
 
     ob_end_clean();
 
+    // Verify it's an STL file before queuing
+    $db = getDB();
+    $stmt = $db->prepare('SELECT file_type FROM models WHERE id = :id');
+    $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $part = $result->fetchArray(PDO::FETCH_ASSOC);
+
+    if (!$part || $part['file_type'] !== 'stl') {
+        echo json_encode(['success' => false, 'error' => 'Only STL files can be converted']);
+        exit;
+    }
+
     // Check for duplicate — skip if already queued
     if (isPartAlreadyQueued($partId)) {
         echo json_encode(['success' => true, 'queued' => 0, 'message' => 'Already queued']);
