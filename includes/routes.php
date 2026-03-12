@@ -221,16 +221,12 @@ $router->group(['prefix' => '/actions'], function ($router) {
     // Approval workflow
     $router->post('/approval', ['file' => 'app/actions/approval.php'], 'actions.approval');
 
-    // Import/Export
-    $router->post('/import', ['file' => 'app/actions/import.php'], 'actions.import');
+    // Export/Import (library backup/restore)
     $router->post('/export-import', ['file' => 'app/actions/export-import.php'], 'actions.export');
     $router->get('/export-download', ['file' => 'app/actions/export-download.php'], 'actions.export.download');
 
     // Model links
     $router->post('/model-links', ['file' => 'app/actions/model-links.php'], 'actions.model.links');
-
-    // Bulk upload
-    $router->post('/bulk-upload', ['file' => 'app/actions/bulk-upload.php'], 'actions.bulk.upload');
 
     // Homepage config
     $router->post('/homepage-config', ['file' => 'app/actions/homepage-config.php'], 'actions.homepage');
