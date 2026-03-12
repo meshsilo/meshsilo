@@ -138,17 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
 
-    // Handle file formats - ensure at least one is selected and always include zip
-    $formats = isset($_POST['formats']) ? array_map('strtolower', $_POST['formats']) : ['stl', '3mf'];
-    if (empty($formats)) {
-        $formats = ['stl', '3mf'];
-    }
-    // Always include zip for multi-part uploads
-    if (!in_array('zip', $formats)) {
-        $formats[] = 'zip';
-    }
-    $allowedExtensions = implode(',', $formats);
-
     // Site settings (stored in database, not config file)
     $siteName = trim($_POST['site_name'] ?? 'MeshSilo');
     $siteDescription = trim($_POST['site_description'] ?? '3D Model Storage');
@@ -160,7 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     setSetting('auto_convert_stl', $autoConvert);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
-    setSetting('allowed_extensions', $allowedExtensions);
 
     // Max file size (convert MB to bytes)
     $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
@@ -195,8 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     logInfo('Settings updated', [
         'auto_convert_stl' => $autoConvert,
         'allow_registration' => $allowRegistration,
-        'require_approval' => $requireApproval,
-        'allowed_extensions' => $allowedExtensions
+        'require_approval' => $requireApproval
     ]);
 
     $message = 'Settings saved successfully.';
@@ -322,30 +309,6 @@ require_once __DIR__ . '/../../includes/header.php';
                         <div class="form-group">
                             <label for="max-file-size">Max File Size (MB)</label>
                             <input type="number" id="max-file-size" name="max_file_size" class="form-input" value="<?= MAX_FILE_SIZE / (1024 * 1024) ?>" min="1">
-                        </div>
-
-                        <?php $currentFormats = getAllowedExtensions(); ?>
-                        <div class="form-group">
-                            <label for="allowed-formats">Allowed File Formats</label>
-                            <div class="checkbox-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="stl" <?= in_array('stl', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.stl</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="3mf" <?= in_array('3mf', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.3mf</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="obj" <?= in_array('obj', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.obj</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="step" <?= in_array('step', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.step</span>
-                                </label>
-                            </div>
-                            <p class="form-help">Select which 3D model formats can be uploaded. ZIP files are always allowed for multi-part uploads.</p>
                         </div>
 
                     </details>
