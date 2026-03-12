@@ -303,6 +303,48 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($rou
     $router->post('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins.action');
 });
 
+// Uploaded assets (PHP fallback — nginx serves these directly in production)
+$router->get('/assets/{path:.+}', function ($params) {
+    $path = $params['path'] ?? '';
+    if ($path === '') {
+        http_response_code(400);
+        exit;
+    }
+
+    $basePath = defined('UPLOAD_PATH') ? rtrim(UPLOAD_PATH, '/') : dirname(__DIR__) . '/storage/assets';
+    $file = $basePath . '/' . $path;
+
+    // Security: use realpath to prevent path traversal
+    $realBase = realpath($basePath);
+    if ($realBase === false) {
+        http_response_code(404);
+        exit;
+    }
+    $realFile = realpath($file);
+    if ($realFile === false || !str_starts_with($realFile, $realBase . DIRECTORY_SEPARATOR)) {
+        http_response_code(404);
+        exit;
+    }
+    if (!is_file($realFile)) {
+        http_response_code(404);
+        exit;
+    }
+
+    $ext = strtolower(pathinfo($realFile, PATHINFO_EXTENSION));
+    $mimeTypes = [
+        'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
+        'pdf' => 'application/pdf', 'stl' => 'application/octet-stream',
+        '3mf' => 'application/octet-stream', 'obj' => 'application/octet-stream',
+        'txt' => 'text/plain', 'md' => 'text/plain',
+    ];
+    header('Content-Type: ' . ($mimeTypes[$ext] ?? 'application/octet-stream'));
+    header('Cache-Control: public, max-age=604800');
+    header('Content-Length: ' . filesize($realFile));
+    readfile($realFile);
+    exit;
+}, 'assets.serve');
+
 // Plugin assets (path:.+ allows subdirectories like css/style.css)
 $router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
     $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($params['pluginId'] ?? ''));
