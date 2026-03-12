@@ -1212,7 +1212,7 @@ function runMigrations($db)
         'enable_categories' => '1',
         'enable_collections' => '1',
         'enable_tags' => '1',
-        'allowed_extensions' => 'stl,3mf,gcode,zip',
+        'allowed_extensions' => DEFAULT_ALLOWED_EXTENSIONS,
         'auto_deduplication' => '0',
         'last_deduplication' => '',
         'site_url' => '',
@@ -1863,6 +1863,97 @@ function runMigrations($db)
     }
 
     // =====================
+    // FTS v2: Add notes column to full-text search indexes
+    // Uses fts_version setting to track whether this migration has run.
+    // FTS5 virtual tables don't support PRAGMA table_info(), so column inspection
+    // is not reliable — settings-based versioning avoids the problem entirely.
+    // =====================
+    try {
+        $ftsVersionStmt = $db->prepare("SELECT value FROM settings WHERE key = 'fts_version'");
+        $ftsVersionStmt->execute();
+        $currentFtsVersion = (int)($ftsVersionStmt->fetchColumn() ?: '0');
+    } catch (Exception $e) {
+        $currentFtsVersion = 0;
+    }
+
+    if ($currentFtsVersion < 2) {
+        if ($type === 'mysql' && tableExists($db, 'models')) {
+            try {
+                // Drop old FULLTEXT index (without notes) and recreate with notes
+                $indexResult = $db->query("SHOW INDEX FROM models WHERE Key_name = 'idx_models_fulltext'");
+                if ($indexResult && $indexResult->fetch() !== false) {
+                    $db->exec('ALTER TABLE models DROP INDEX idx_models_fulltext');
+                }
+                $db->exec('CREATE FULLTEXT INDEX idx_models_fulltext ON models(name, description, creator, notes)');
+                $db->exec("INSERT INTO settings (`key`, `value`, updated_at) VALUES ('fts_version', '2', NOW()) ON DUPLICATE KEY UPDATE `value` = '2', updated_at = NOW()");
+                logInfo('Migration: Updated FULLTEXT index to include notes column');
+            } catch (Exception $e) {
+                logDebug('Migration: FTS v2 MySQL skipped', ['error' => $e->getMessage()]);
+            }
+        } elseif ($type === 'sqlite' && tableExists($db, 'models')) {
+            try {
+                // Drop existing triggers
+                $db->exec('DROP TRIGGER IF EXISTS models_fts_insert');
+                $db->exec('DROP TRIGGER IF EXISTS models_fts_delete');
+                $db->exec('DROP TRIGGER IF EXISTS models_fts_update');
+
+                // Drop and recreate FTS table with notes column
+                $db->exec('DROP TABLE IF EXISTS models_fts');
+                $db->exec("
+                    CREATE VIRTUAL TABLE models_fts USING fts5(
+                        name, description, creator, notes,
+                        content='models',
+                        content_rowid='id'
+                    )
+                ");
+
+                // Repopulate from models
+                $db->exec("
+                    INSERT INTO models_fts(rowid, name, description, creator, notes)
+                    SELECT id, name, COALESCE(description, ''), COALESCE(creator, ''), COALESCE(notes, '')
+                    FROM models WHERE parent_id IS NULL
+                ");
+
+                // Recreate triggers with notes included
+                $db->exec("
+                    CREATE TRIGGER models_fts_insert AFTER INSERT ON models
+                    WHEN NEW.parent_id IS NULL
+                    BEGIN
+                        INSERT INTO models_fts(rowid, name, description, creator, notes)
+                        VALUES (NEW.id, NEW.name, COALESCE(NEW.description, ''), COALESCE(NEW.creator, ''), COALESCE(NEW.notes, ''));
+                    END
+                ");
+
+                $db->exec("
+                    CREATE TRIGGER models_fts_delete AFTER DELETE ON models
+                    WHEN OLD.parent_id IS NULL
+                    BEGIN
+                        DELETE FROM models_fts WHERE rowid = OLD.id;
+                    END
+                ");
+
+                $db->exec("
+                    CREATE TRIGGER models_fts_update AFTER UPDATE ON models
+                    WHEN NEW.parent_id IS NULL
+                    BEGIN
+                        UPDATE models_fts
+                        SET name = NEW.name,
+                            description = COALESCE(NEW.description, ''),
+                            creator = COALESCE(NEW.creator, ''),
+                            notes = COALESCE(NEW.notes, '')
+                        WHERE rowid = NEW.id;
+                    END
+                ");
+
+                $db->exec("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('fts_version', '2', CURRENT_TIMESTAMP)");
+                logInfo('Migration: Rebuilt FTS5 table to include notes column');
+            } catch (Exception $e) {
+                logWarning('Migration: FTS v2 SQLite skipped', ['error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    // =====================
     // Ensure all default settings exist in database
     // Uses INSERT OR IGNORE / INSERT IGNORE so existing values are never overwritten
     // =====================
@@ -1888,7 +1979,7 @@ function initializeDefaultSettings($db)
         'models_per_page' => '20',
         'allow_registration' => '1',
         'require_approval' => '0',
-        'allowed_extensions' => 'stl,3mf,gcode,zip',
+        'allowed_extensions' => DEFAULT_ALLOWED_EXTENSIONS,
         'auto_convert_stl' => '0',
         'auto_deduplication' => '0',
 
@@ -2083,10 +2174,13 @@ function getAllSettings()
     }
 }
 
+// Default allowed file extensions — single source of truth for all default lists
+const DEFAULT_ALLOWED_EXTENSIONS = 'stl,3mf,obj,ply,amf,gcode,lys,ctb,cbddlp,photon,sl1,pwmo,chitubox,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,f3d,f3z,scad,skp,3dm,zip';
+
 // Get allowed file extensions (configurable via settings)
 function getAllowedExtensions()
 {
-    $setting = getSetting('allowed_extensions', 'stl,3mf,gcode,zip');
+    $setting = getSetting('allowed_extensions', DEFAULT_ALLOWED_EXTENSIONS);
     $allowedExtensions = array_map('trim', explode(',', $setting));
 
     if (class_exists('PluginManager')) {

@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
     }
 
     // Validate file extension
-    $allowedExtensions = array_map('trim', explode(',', getSetting('allowed_extensions', 'stl,3mf')));
+    $allowedExtensions = getAllowedExtensions();
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
     if (!in_array($extension, $allowedExtensions)) {

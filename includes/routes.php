@@ -182,6 +182,9 @@ $router->group(['prefix' => '/actions'], function ($router) {
     // Attachments (images and PDFs)
     $router->post('/attachments', ['file' => 'app/actions/attachments.php'], 'actions.attachments');
 
+    // Search suggestions (autocomplete)
+    $router->get('/search-suggest', ['file' => 'app/actions/search-suggest.php'], 'actions.search.suggest');
+
     // QR codes
     $router->get('/qrcode', ['file' => 'app/actions/qrcode.php'], 'actions.qrcode');
 

@@ -234,6 +234,154 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
 <?php if (class_exists('PluginManager')) : ?>
     <?= PluginManager::applyFilter('head_tags', '') ?>
 <?php endif; ?>
+<script>
+var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0]), '0'), ENT_QUOTES) ?>';
+(function() {
+    'use strict';
+
+    var RECENT_KEY = 'silo_recent_searches';
+    var MAX_RECENT = 10;
+    var debounceTimer = null;
+
+    function getRecent() {
+        try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
+        catch(e) { return []; }
+    }
+
+    function saveRecent(query) {
+        if (!query.trim()) return;
+        var list = getRecent().filter(function(q) { return q !== query; });
+        list.unshift(query);
+        if (list.length > MAX_RECENT) list = list.slice(0, MAX_RECENT);
+        try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); }
+        catch(e) {}
+    }
+
+    function clearRecent() {
+        try { localStorage.removeItem(RECENT_KEY); }
+        catch(e) {}
+    }
+
+    function escapeHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function renderDropdown(suggestions, recentMatches, browseBase) {
+        var dropdown = document.getElementById('search-dropdown');
+        var recentSection = document.getElementById('search-recent');
+        var recentList = document.getElementById('search-recent-list');
+        var resultsSection = document.getElementById('search-results');
+        var resultsList = document.getElementById('search-results-list');
+
+        // Recent searches section
+        if (recentMatches.length > 0) {
+            recentList.innerHTML = recentMatches.slice(0, 5).map(function(q) {
+                return '<li><a href="' + escapeHtml(browseBase + '?q=' + encodeURIComponent(q)) + '" class="search-dropdown-item search-dropdown-recent">' +
+                       '<span class="search-dropdown-icon">&#128336;</span>' + escapeHtml(q) + '</a></li>';
+            }).join('');
+            recentSection.hidden = false;
+        } else {
+            recentSection.hidden = true;
+        }
+
+        // Model suggestions section
+        if (suggestions.length > 0) {
+            resultsList.innerHTML = suggestions.map(function(s) {
+                return '<li><a href="' + SILO_MODEL_BASE + s.id + '" class="search-dropdown-item">' +
+                       '<span class="search-dropdown-icon">&#128196;</span>' + escapeHtml(s.name) + '</a></li>';
+            }).join('');
+            resultsSection.hidden = false;
+        } else {
+            resultsSection.hidden = true;
+        }
+
+        dropdown.hidden = recentMatches.length === 0 && suggestions.length === 0;
+    }
+
+    function closeDropdown() {
+        var dropdown = document.getElementById('search-dropdown');
+        if (dropdown) dropdown.hidden = true;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var input = document.getElementById('search-input');
+        var form = document.getElementById('search-form');
+        var dropdown = document.getElementById('search-dropdown');
+        var clearBtn = document.getElementById('search-clear-recent');
+        var browseBase = form ? form.getAttribute('action') : '/browse';
+
+        if (!input || !dropdown) return;
+
+        // Save search to recent on form submit
+        form && form.addEventListener('submit', function() {
+            saveRecent(input.value.trim());
+        });
+
+        // Clear recent searches
+        clearBtn && clearBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            clearRecent();
+            closeDropdown();
+        });
+
+        // Input: debounce and fetch suggestions
+        input.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            var q = input.value.trim();
+
+            if (q.length === 0) {
+                // Show only recent searches when no query
+                var recent = getRecent();
+                renderDropdown([], recent, browseBase);
+                return;
+            }
+
+            // Filter recent searches client-side as user types
+            var recentMatches = getRecent().filter(function(r) {
+                return r.toLowerCase().includes(q.toLowerCase());
+            });
+
+            debounceTimer = setTimeout(function() {
+                fetch('/actions/search-suggest?q=' + encodeURIComponent(q), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    renderDropdown(data.suggestions || [], recentMatches, browseBase);
+                })
+                .catch(function() {
+                    renderDropdown([], recentMatches, browseBase);
+                });
+            }, 300);
+        });
+
+        // Show recent searches when focused with empty input
+        input.addEventListener('focus', function() {
+            if (input.value.trim() === '') {
+                var recent = getRecent();
+                if (recent.length > 0) {
+                    renderDropdown([], recent, browseBase);
+                }
+            }
+        });
+
+        // Close on Escape
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeDropdown();
+        });
+
+        // Close on click outside
+        document.addEventListener('click', function(e) {
+            var container = input.closest('.search-container');
+            if (container && !container.contains(e.target)) {
+                closeDropdown();
+            }
+        });
+    });
+})();
+</script>
 </head>
 <body>
     <header class="site-header">
@@ -274,9 +422,24 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
 endif; ?>
             </nav>
             <div class="header-actions">
-                <form action="<?= route('browse') ?>" method="get" style="display: contents;">
-                    <input type="search" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
-                </form>
+                <div class="search-container" style="position: relative;">
+                    <form id="search-form" action="<?= route('browse') ?>" method="get">
+                        <input type="search" id="search-input" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>" autocomplete="off">
+                    </form>
+                    <div id="search-dropdown" class="search-dropdown" hidden>
+                        <div id="search-recent" class="search-dropdown-section" hidden>
+                            <div class="search-dropdown-header">
+                                <span>Recent</span>
+                                <button type="button" id="search-clear-recent" class="search-dropdown-clear">Clear</button>
+                            </div>
+                            <ul id="search-recent-list" class="search-dropdown-list"></ul>
+                        </div>
+                        <div id="search-results" class="search-dropdown-section" hidden>
+                            <div class="search-dropdown-header"><span>Models</span></div>
+                            <ul id="search-results-list" class="search-dropdown-list"></ul>
+                        </div>
+                    </div>
+                </div>
                 <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme) : ?>
                 <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
                     <span id="theme-icon"><?= $currentTheme === 'light' ? '&#9790;' : '&#9728;' ?></span>

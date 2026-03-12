@@ -114,8 +114,7 @@ function addFileType() {
     }
 
     // Get current allowed extensions
-    $current = getSetting('allowed_extensions', 'stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip');
-    $extensions = array_map('trim', explode(',', $current));
+    $extensions = getAllowedExtensions();
 
     if (in_array($extension, $extensions)) {
         echo json_encode(['success' => false, 'error' => 'Extension already allowed']);
@@ -154,9 +153,7 @@ function removeFileType() {
     }
 
     // Remove from allowed extensions
-    $current = getSetting('allowed_extensions', 'stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip');
-    $extensions = array_map('trim', explode(',', $current));
-    $extensions = array_filter($extensions, fn($e) => $e !== $extension);
+    $extensions = array_filter(getAllowedExtensions(), fn($e) => $e !== $extension);
     setSetting('allowed_extensions', implode(',', $extensions));
 
     // Remove config

@@ -8,10 +8,29 @@ $activePage = 'browse';
 
 $db = getDB();
 
+// Detect FTS availability for ranked full-text search
+$dbType = $db->getType();
+$ftsAvailable = false;
+if ($dbType === 'sqlite') {
+    $ftsAvailable = tableExists($db, 'models_fts');
+} elseif ($dbType === 'mysql') {
+    try {
+        $r = $db->query("SHOW INDEX FROM models WHERE Key_name = 'idx_models_fulltext'");
+        $ftsAvailable = ($r !== false && $r->fetch() !== false);
+    } catch (Exception $e) {
+        $ftsAvailable = false;
+    }
+}
+
 // Get filter parameters
 $search = trim($_GET['q'] ?? '');
 $categoryId = (int)($_GET['category'] ?? 0);
-$tagId = (int)($_GET['tag'] ?? 0);
+// Multi-tag: accept tags[] array; also accept legacy ?tag=N single-tag param
+$tagIds = array_values(array_unique(array_filter(array_map('intval', (array)($_GET['tags'] ?? [])))));
+if (empty($tagIds) && isset($_GET['tag']) && (int)$_GET['tag'] > 0) {
+    $tagIds = [(int)$_GET['tag']];
+}
+$fileType = trim($_GET['file_type'] ?? '');
 $sort = $_GET['sort'] ?? getSetting('default_sort', 'newest');
 $view = $_GET['view'] ?? ($_COOKIE['silo_view'] ?? getSetting('default_view', 'grid'));
 $showArchived = isset($_GET['archived']) && $_GET['archived'] === '1';
@@ -35,15 +54,57 @@ if (isset($_GET['view'])) {
 // Build query
 $where = ['m.parent_id IS NULL'];
 $params = [];
+$ftsActive = false;
+$ftsJoin = '';        // Extra JOIN for main query only (provides rank column)
+$ftsJoinParams = [];  // Params bound only to main query (not count query)
+$ftsOrderBy = null;   // Relevance ordering — overrides $orderBy when FTS active
 
-// Search filter (includes model name, description, creator, and part names)
+// Search filter: FTS5/FULLTEXT with LIKE fallback, also searches part names
 if ($search !== '') {
-    $where[] = '(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3 OR EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND p.name LIKE :search4))';
-    $searchTerm = '%' . $search . '%';
-    $params[':search1'] = $searchTerm;
-    $params[':search2'] = $searchTerm;
-    $params[':search3'] = $searchTerm;
-    $params[':search4'] = $searchTerm;
+    $partSearchTerm = '%' . $search . '%';
+    $params[':part_search'] = $partSearchTerm;
+    $partSubquery = 'EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND p.name LIKE :part_search)';
+
+    if ($ftsAvailable && $dbType === 'sqlite') {
+        $ftsActive = true;
+        // Build prefix query for partial word matching: "drag" → "drag*"
+        // Strip FTS5 special chars (AND, OR, NOT, NEAR, ^, ") to avoid syntax errors
+        $ftsWords = preg_split('/\s+/', trim($search), -1, PREG_SPLIT_NO_EMPTY);
+        $ftsWords = array_values(array_filter(array_map(fn($w) => preg_replace('/[^\w\x80-\xff]/u', '', $w), $ftsWords)));
+        $ftsQuery = implode(' ', array_map(fn($w) => $w . '*', $ftsWords));
+        if (empty($ftsWords)) {
+            // All words were FTS special chars — fall through to LIKE
+            $ftsActive = false;
+        } else {
+            $params[':fts_query'] = $ftsQuery;
+            // WHERE (used by both count and main): FTS rowid IN subquery OR part name
+            $where[] = "(m.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query) OR $partSubquery)";
+            // Main query only: LEFT JOIN to get rank column (bound separately so count query is unaffected)
+            $ftsJoin = "LEFT JOIN (SELECT rowid, rank FROM models_fts WHERE models_fts MATCH :fts_query2) fts_r ON fts_r.rowid = m.id";
+            $ftsJoinParams = [':fts_query2' => $ftsQuery];
+            // Use relevance ordering when no explicit sort selected (FTS5 rank is negative: lower = better)
+            if (!isset($_GET['sort'])) {
+                $ftsOrderBy = 'COALESCE(fts_r.rank, 1) ASC, m.created_at DESC';
+            }
+        }
+    } elseif ($ftsAvailable && $dbType === 'mysql') {
+        $ftsActive = true;
+        $params[':fts_query'] = $search;
+        $mysqlFtsExpr = 'MATCH(m.name, m.description, m.creator) AGAINST(:fts_query IN NATURAL LANGUAGE MODE)';
+        $where[] = "($mysqlFtsExpr OR $partSubquery)";
+        if (!isset($_GET['sort'])) {
+            $params[':fts_sort'] = $search;
+            $ftsOrderBy = 'MATCH(m.name, m.description, m.creator) AGAINST(:fts_sort IN NATURAL LANGUAGE MODE) DESC';
+        }
+    } else {
+        // LIKE fallback (FTS unavailable) — searches name, description, creator, notes, and part names
+        $searchTerm = '%' . $search . '%';
+        $where[] = "(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3 OR m.notes LIKE :search4 OR $partSubquery)";
+        $params[':search1'] = $searchTerm;
+        $params[':search2'] = $searchTerm;
+        $params[':search3'] = $searchTerm;
+        $params[':search4'] = $searchTerm;
+    }
 }
 
 // Category filter
@@ -52,10 +113,19 @@ if ($categoryId > 0) {
     $params[':category_id'] = $categoryId;
 }
 
-// Tag filter
-if ($tagId > 0) {
-    $where[] = 'EXISTS (SELECT 1 FROM model_tags mt WHERE mt.model_id = m.id AND mt.tag_id = :tag_id)';
-    $params[':tag_id'] = $tagId;
+// Tag filter (OR within selected tags — model must have ANY of the selected tags)
+if (!empty($tagIds)) {
+    $tagPlaceholders = implode(',', array_map(fn($i) => ':tag_id_' . $i, array_keys($tagIds)));
+    $where[] = "EXISTS (SELECT 1 FROM model_tags mt WHERE mt.model_id = m.id AND mt.tag_id IN ($tagPlaceholders))";
+    foreach ($tagIds as $i => $tid) {
+        $params[':tag_id_' . $i] = $tid;
+    }
+}
+
+// File type filter
+if ($fileType !== '') {
+    $where[] = 'm.file_type = :file_type';
+    $params[':file_type'] = $fileType;
 }
 
 // Archive filter
@@ -69,8 +139,8 @@ if (class_exists('PluginManager')) {
     $whereClause = PluginManager::applyFilter('browse_query_where', $whereClause, $params);
 }
 
-// Sort options
-$orderBy = match($sort) {
+// Sort options (FTS relevance overrides default when search active and no explicit sort set)
+$orderBy = $ftsOrderBy ?? match($sort) {
     'oldest' => 'm.created_at ASC',
     'name' => 'm.name ASC',
     'name_desc' => 'm.name DESC',
@@ -81,7 +151,7 @@ $orderBy = match($sort) {
     default => 'm.created_at DESC' // newest
 };
 
-// Get total count
+// Count query: no FTS join needed (rank not required for counting)
 $countSql = "SELECT COUNT(*) FROM models m WHERE $whereClause";
 $countStmt = $db->prepare($countSql);
 foreach ($params as $key => $value) {
@@ -91,15 +161,19 @@ $countStmt->execute();
 $totalModels = (int)$countStmt->fetchColumn();
 $totalPages = ceil($totalModels / $perPage);
 
-// Get models - optimized to only select columns we display
+// Main query: includes FTS join for rank column when FTS is active
 $sql = "SELECT m.id, m.name, m.description, m.creator, m.file_path, m.file_size, m.file_type,
                m.dedup_path, m.part_count, m.download_count, m.created_at, m.is_archived, m.thumbnail_path
         FROM models m
+        $ftsJoin
         WHERE $whereClause
         ORDER BY $orderBy
         LIMIT :limit OFFSET :offset";
 $stmt = $db->prepare($sql);
 foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
+foreach ($ftsJoinParams as $key => $value) {
     $stmt->bindValue($key, $value);
 }
 $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
@@ -181,6 +255,15 @@ $categories = Cache::getInstance()->remember('browse_categories', 300, function(
 // Get tags for filter dropdown
 $tags = getAllTags();
 
+// Get distinct file types for filter dropdown
+$fileTypes = [];
+$ftResult = $db->query("SELECT DISTINCT file_type FROM models WHERE parent_id IS NULL AND file_type IS NOT NULL AND file_type != '' ORDER BY file_type");
+if ($ftResult) {
+    while ($ftRow = $ftResult->fetchArray()) {
+        $fileTypes[] = $ftRow['file_type'];
+    }
+}
+
 // Get active filter names for display
 $activeCategory = null;
 if ($categoryId > 0) {
@@ -190,12 +273,17 @@ if ($categoryId > 0) {
     $activeCategory = $catStmt->fetchColumn();
 }
 
-$activeTag = null;
-if ($tagId > 0) {
-    $tagStmt = $db->prepare('SELECT name, color FROM tags WHERE id = :id');
-    $tagStmt->bindValue(':id', $tagId, PDO::PARAM_INT);
-    $tagStmt->execute();
-    $activeTag = $tagStmt->fetch();
+$activeTags = [];
+if (!empty($tagIds)) {
+    $tagPlaceholders2 = implode(',', array_fill(0, count($tagIds), '?'));
+    $activeTagStmt = $db->prepare("SELECT id, name, color FROM tags WHERE id IN ($tagPlaceholders2) ORDER BY name");
+    foreach ($tagIds as $i => $tid) {
+        $activeTagStmt->bindValue($i + 1, $tid, PDO::PARAM_INT);
+    }
+    $activeTagStmt->execute();
+    while ($tagRow = $activeTagStmt->fetch()) {
+        $activeTags[] = $tagRow;
+    }
 }
 
 // formatBytes is defined in includes/helpers.php
@@ -213,6 +301,23 @@ function buildUrl($params = []) {
     return '?' . http_build_query($current);
 }
 
+// Remove a single tag ID from the tags[] array parameter while keeping all other filters.
+// buildUrl(['tags' => null]) would remove ALL tags; this helper removes just one.
+function buildUrlWithoutTag($tagId) {
+    $current = $_GET;
+    $current['tags'] = array_values(array_filter(
+        array_map('intval', (array)($current['tags'] ?? [])),
+        fn($id) => $id !== (int)$tagId
+    ));
+    // Also remove legacy ?tag= param if present
+    unset($current['tag']);
+    $current['page'] = 1;
+    if (empty($current['tags'])) {
+        unset($current['tags']);
+    }
+    return '?' . http_build_query($current);
+}
+
 require_once 'includes/header.php';
 ?>
 
@@ -223,8 +328,8 @@ require_once 'includes/header.php';
                         Search: "<?= htmlspecialchars($search) ?>"
                     <?php elseif ($activeCategory): ?>
                         Category: <?= htmlspecialchars($activeCategory) ?>
-                    <?php elseif ($activeTag): ?>
-                        Tag: <?= htmlspecialchars($activeTag['name']) ?>
+                    <?php elseif (!empty($activeTags)): ?>
+                        Tag: <?= htmlspecialchars($activeTags[0]['name']) ?>
                     <?php else: ?>
                         All Models
                     <?php endif; ?>
@@ -266,6 +371,7 @@ require_once 'includes/header.php';
             <?php endif; ?>
 
             <div class="browse-controls">
+                <!-- Row 1: batch toggle, sort, view toggle -->
                 <div class="browse-filters">
                     <?php if (isLoggedIn()): ?>
                     <label class="batch-mode-toggle" title="Enable batch selection">
@@ -289,9 +395,17 @@ require_once 'includes/header.php';
                         <?php endforeach; endif; ?>
                     </select>
 
+                    <div class="view-toggle">
+                        <a href="<?= buildUrl(['view' => 'grid']) ?>" class="view-toggle-btn <?= $view === 'grid' ? 'active' : '' ?>" title="Grid view">&#9638;</a>
+                        <a href="<?= buildUrl(['view' => 'list']) ?>" class="view-toggle-btn <?= $view === 'list' ? 'active' : '' ?>" title="List view">&#9776;</a>
+                    </div>
+                </div>
+
+                <!-- Row 2: inline filter bar with compact add-filter dropdowns and active chips -->
+                <div class="filter-bar">
                     <?php if (isFeatureEnabled('categories') && !empty($categories)): ?>
-                    <select class="sort-select" onchange="if(this.value) location.href=this.value">
-                        <option value="">Filter by Category...</option>
+                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by category">
+                        <option value="">+ Category</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= buildUrl(['category' => $cat['id'], 'page' => 1]) ?>" <?= $categoryId == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?> (<?= $cat['model_count'] ?>)</option>
                         <?php endforeach; ?>
@@ -299,10 +413,22 @@ require_once 'includes/header.php';
                     <?php endif; ?>
 
                     <?php if (isFeatureEnabled('tags') && !empty($tags)): ?>
-                    <select class="sort-select" onchange="if(this.value) location.href=this.value">
-                        <option value="">Filter by Tag...</option>
-                        <?php foreach ($tags as $tag): ?>
-                        <option value="<?= buildUrl(['tag' => $tag['id'], 'page' => 1]) ?>" <?= $tagId == $tag['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tag['name']) ?></option>
+                    <?php $unselectedTags = array_filter($tags, fn($t) => !in_array($t['id'], $tagIds)); ?>
+                    <?php if (!empty($unselectedTags)): ?>
+                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by tag">
+                        <option value="">+ Tag</option>
+                        <?php foreach ($unselectedTags as $tag): ?>
+                        <option value="<?= buildUrl(['tags' => array_merge($tagIds, [$tag['id']]), 'page' => 1]) ?>"><?= htmlspecialchars($tag['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+                    <?php endif; ?>
+
+                    <?php if (!empty($fileTypes)): ?>
+                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by file type">
+                        <option value="">+ File Type</option>
+                        <?php foreach ($fileTypes as $ft): ?>
+                        <option value="<?= buildUrl(['file_type' => $ft, 'page' => 1]) ?>" <?= $fileType === $ft ? 'selected' : '' ?>><?= htmlspecialchars(strtoupper($ft)) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <?php endif; ?>
@@ -311,40 +437,41 @@ require_once 'includes/header.php';
                     <?= PluginManager::applyFilter('browse_filters', '') ?>
                     <?php endif; ?>
 
-                    <?php if ($search || $categoryId || $tagId): ?>
-                    <div class="active-filters">
-                        <?php if ($search): ?>
-                        <span class="active-filter">
-                            Search: <?= htmlspecialchars($search) ?>
-                            <a href="<?= buildUrl(['q' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
-                        </span>
-                        <?php endif; ?>
-                        <?php if (isFeatureEnabled('categories') && $activeCategory): ?>
-                        <span class="active-filter">
-                            <?= htmlspecialchars($activeCategory) ?>
-                            <a href="<?= buildUrl(['category' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
-                        </span>
-                        <?php endif; ?>
-                        <?php if (isFeatureEnabled('tags') && $activeTag): ?>
-                        <span class="active-filter" style="background-color: <?= htmlspecialchars($activeTag['color']) ?>">
-                            <?= htmlspecialchars($activeTag['name']) ?>
-                            <a href="<?= buildUrl(['tag' => null, 'page' => 1]) ?>" class="active-filter-remove">&times;</a>
-                        </span>
-                        <?php endif; ?>
-                    </div>
+                    <!-- Active filter chips -->
+                    <?php if ($search): ?>
+                    <span class="filter-chip">
+                        Search: <?= htmlspecialchars($search) ?>
+                        <a href="<?= buildUrl(['q' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove search filter">&times;</a>
+                    </span>
                     <?php endif; ?>
-                </div>
 
-                <div class="view-controls">
-                    <div class="view-toggle">
-                        <a href="<?= buildUrl(['view' => 'grid']) ?>" class="view-toggle-btn <?= $view === 'grid' ? 'active' : '' ?>" title="Grid view">&#9638;</a>
-                        <a href="<?= buildUrl(['view' => 'list']) ?>" class="view-toggle-btn <?= $view === 'list' ? 'active' : '' ?>" title="List view">&#9776;</a>
-                    </div>
+                    <?php if (isFeatureEnabled('categories') && $activeCategory): ?>
+                    <span class="filter-chip">
+                        <?= htmlspecialchars($activeCategory) ?>
+                        <a href="<?= buildUrl(['category' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove category filter">&times;</a>
+                    </span>
+                    <?php endif; ?>
+
+                    <?php if (isFeatureEnabled('tags')): ?>
+                        <?php foreach ($activeTags as $activeTag): ?>
+                        <span class="filter-chip" style="background-color: <?= htmlspecialchars($activeTag['color']) ?>">
+                            <?= htmlspecialchars($activeTag['name']) ?>
+                            <a href="<?= buildUrlWithoutTag($activeTag['id']) ?>" class="filter-chip-remove" aria-label="Remove tag filter">&times;</a>
+                        </span>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+
+                    <?php if ($fileType !== ''): ?>
+                    <span class="filter-chip">
+                        Type: <?= htmlspecialchars(strtoupper($fileType)) ?>
+                        <a href="<?= buildUrl(['file_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove file type filter">&times;</a>
+                    </span>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <?php if (empty($models)): ?>
-                <p class="text-muted" style="text-align: center; padding: 3rem;">No models found. <?php if (!$search && !$categoryId && !$tagId): ?><a href="<?= route('upload') ?>">Upload your first model!</a><?php endif; ?></p>
+                <p class="text-muted" style="text-align: center; padding: 3rem;">No models found. <?php if (!$search && !$categoryId && empty($tagIds) && $fileType === ''): ?><a href="<?= route('upload') ?>">Upload your first model!</a><?php endif; ?></p>
             <?php elseif ($view === 'list'): ?>
                 <div class="models-list">
                     <?php foreach ($models as $model): ?>
