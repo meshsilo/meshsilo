@@ -27,14 +27,18 @@ if (strlen($q) < 1) {
 $db = getDB();
 $searchTerm = '%' . $q . '%';
 
-// Search parent models by name
+// Search parent models by name, description, creator, or notes
 $stmt = $db->prepare(
-    "SELECT id, name, NULL as parent_id FROM models
-     WHERE parent_id IS NULL AND name LIKE :q
-     ORDER BY name
+    "SELECT id, name FROM models
+     WHERE parent_id IS NULL AND (name LIKE :q1 OR description LIKE :q2 OR creator LIKE :q3 OR notes LIKE :q4)
+     ORDER BY CASE WHEN name LIKE :q5 THEN 0 ELSE 1 END, name
      LIMIT 8"
 );
-$stmt->bindValue(':q', $searchTerm);
+$stmt->bindValue(':q1', $searchTerm);
+$stmt->bindValue(':q2', $searchTerm);
+$stmt->bindValue(':q3', $searchTerm);
+$stmt->bindValue(':q4', $searchTerm);
+$stmt->bindValue(':q5', $searchTerm);
 $stmt->execute();
 
 $suggestions = [];

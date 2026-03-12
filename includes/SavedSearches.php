@@ -15,7 +15,7 @@ class SavedSearches
     private static function getDB(): PDO
     {
         if (self::$db === null) {
-            self::$db = getDB();
+            self::$db = getDB()->getPDO();
             self::ensureTable();
         }
         return self::$db;

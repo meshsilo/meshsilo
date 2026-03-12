@@ -185,6 +185,10 @@ $router->group(['prefix' => '/actions'], function ($router) {
     // Search suggestions (autocomplete)
     $router->get('/search-suggest', ['file' => 'app/actions/search-suggest.php'], 'actions.search.suggest');
 
+    // Saved searches
+    $router->get('/saved-searches', ['file' => 'app/actions/saved-searches.php'], 'actions.saved.searches');
+    $router->post('/saved-searches', ['file' => 'app/actions/saved-searches.php'], 'actions.saved.searches.post');
+
     // QR codes
     $router->get('/qrcode', ['file' => 'app/actions/qrcode.php'], 'actions.qrcode');
 

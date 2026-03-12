@@ -289,8 +289,9 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
         // Model suggestions section
         if (suggestions.length > 0) {
             resultsList.innerHTML = suggestions.map(function(s) {
+                var badge = s.match === 'part' ? ' <span class="search-match-badge">part match</span>' : '';
                 return '<li><a href="' + SILO_MODEL_BASE + s.id + '" class="search-dropdown-item">' +
-                       '<span class="search-dropdown-icon">&#128196;</span>' + escapeHtml(s.name) + '</a></li>';
+                       '<span class="search-dropdown-icon">&#128196;</span>' + escapeHtml(s.name) + badge + '</a></li>';
             }).join('');
             resultsSection.hidden = false;
         } else {

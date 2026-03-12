@@ -597,6 +597,12 @@ require_once 'includes/header.php';
                             <?php if (canEdit()): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showMoveFolderModal(getSelectedPartIds())">Move to Folder</button>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showBatchRenameModal(getSelectedPartIds())">Rename</button>
+                            <select class="print-type-select" id="mass-print-type" onchange="massUpdatePrintType(this)" title="Set print type for selected parts">
+                                <option value="">Print Type</option>
+                                <option value="fdm">FDM</option>
+                                <option value="sla">SLA</option>
+                                <option value="clear">Clear</option>
+                            </select>
                             <button type="button" class="btn btn-secondary btn-small" id="mass-convert-3mf">Convert to 3MF</button>
                             <?php endif; ?>
                             <?php if (canDelete()): ?>
@@ -1064,6 +1070,47 @@ require_once 'includes/header.php';
 
         function getSelectedPartIds() {
             return Array.from(document.querySelectorAll('.part-checkbox:checked')).map(cb => cb.value);
+        }
+
+        async function massUpdatePrintType(selectEl) {
+            const printType = selectEl.value;
+            if (!printType) return;
+
+            const ids = getSelectedPartIds();
+            if (ids.length === 0) {
+                alert('No parts selected');
+                selectEl.value = '';
+                return;
+            }
+
+            const actualType = printType === 'clear' ? '' : printType;
+            const label = printType === 'clear' ? 'none' : printType.toUpperCase();
+            if (!confirm('Set print type to ' + label + ' for ' + ids.length + ' selected part(s)?')) {
+                selectEl.value = '';
+                return;
+            }
+
+            let success = 0;
+            for (const partId of ids) {
+                const formData = new FormData();
+                formData.append('part_id', partId);
+                formData.append('print_type', actualType);
+                formData.append('csrf_token', '<?= Csrf::getToken() ?>');
+                try {
+                    const resp = await fetch('<?= route('actions.update.part') ?>', { method: 'POST', body: formData });
+                    const data = await resp.json();
+                    if (data.success) {
+                        success++;
+                        // Update the individual dropdown
+                        const partEl = document.querySelector('[data-part-id="' + partId + '"].print-type-select:not(.folder-print-type)');
+                        if (partEl) {
+                            partEl.value = actualType;
+                            partEl.dataset.prev = actualType;
+                        }
+                    }
+                } catch (e) {}
+            }
+            selectEl.value = '';
         }
 
         function toggleSelectAllParts(checkbox) {

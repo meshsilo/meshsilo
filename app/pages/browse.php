@@ -2,6 +2,7 @@
 require_once 'includes/config.php';
 require_once 'includes/dedup.php';
 require_once 'includes/features.php';
+require_once 'includes/SavedSearches.php';
 
 $pageTitle = 'Browse Models';
 $activePage = 'browse';
@@ -134,10 +135,11 @@ if ($fileType !== '') {
     $params[':file_type'] = $fileType;
 }
 
-// Print type filter (matches models that have parts with the given print type)
+// Print type filter (matches parent models directly or those with parts of the given print type)
 if ($printType !== '' && in_array($printType, ['fdm', 'sla'])) {
-    $where[] = 'm.id IN (SELECT parent_id FROM models WHERE parent_id IS NOT NULL AND print_type = :print_type)';
+    $where[] = '(m.print_type = :print_type OR m.id IN (SELECT parent_id FROM models WHERE parent_id IS NOT NULL AND print_type = :print_type2))';
     $params[':print_type'] = $printType;
+    $params[':print_type2'] = $printType;
 }
 
 // Archive filter
@@ -276,13 +278,20 @@ if ($ftResult) {
     }
 }
 
-// Get distinct print types for filter dropdown (from parts, not parent models)
+// Get distinct print types for filter dropdown
 $printTypes = [];
-$ptResult = $db->query("SELECT DISTINCT print_type FROM models WHERE parent_id IS NOT NULL AND print_type IS NOT NULL AND print_type != '' ORDER BY print_type");
+$ptResult = $db->query("SELECT DISTINCT print_type FROM models WHERE print_type IS NOT NULL AND print_type != '' ORDER BY print_type");
 if ($ptResult) {
     while ($ptRow = $ptResult->fetchArray()) {
         $printTypes[] = $ptRow['print_type'];
     }
+}
+
+// Get user's saved searches
+$savedSearches = [];
+if (isLoggedIn()) {
+    $user = getCurrentUser();
+    $savedSearches = SavedSearches::getUserSearches($user['id'], 20);
 }
 
 // Get active filter names for display
@@ -465,6 +474,21 @@ require_once 'includes/header.php';
 
                     <?php if (class_exists('PluginManager')): ?>
                     <?= PluginManager::applyFilter('browse_filters', '') ?>
+                    <?php endif; ?>
+
+                    <?php if (isLoggedIn()): ?>
+                    <?php if (!empty($savedSearches)): ?>
+                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Load saved search">
+                        <option value="">Saved Searches</option>
+                        <?php foreach ($savedSearches as $ss): ?>
+                        <option value="<?= htmlspecialchars(SavedSearches::toUrl($ss)) ?>"><?= htmlspecialchars($ss['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+                    <?php $hasFilters = $search !== '' || $categoryId > 0 || !empty($tagIds) || $fileType !== '' || $printType !== ''; ?>
+                    <?php if ($hasFilters): ?>
+                    <button type="button" class="btn btn-small btn-secondary" onclick="saveCurrentSearch()" title="Save current search">Save Search</button>
+                    <?php endif; ?>
                     <?php endif; ?>
 
                     <!-- Active filter chips -->
@@ -962,6 +986,35 @@ require_once 'includes/header.php';
             } catch (err) {
                 console.error('Batch set collection error:', err);
                 alert('Failed to set collection');
+            }
+        }
+
+        async function saveCurrentSearch() {
+            var name = prompt('Name for this saved search:');
+            if (!name || !name.trim()) return;
+
+            var formData = new FormData();
+            formData.append('action', 'save');
+            formData.append('name', name.trim());
+            formData.append('csrf_token', '<?= Csrf::getToken() ?>');
+            // Pass current filters
+            var params = new URLSearchParams(window.location.search);
+            params.forEach(function(value, key) {
+                if (key !== 'page') {
+                    formData.append(key, value);
+                }
+            });
+
+            try {
+                var resp = await fetch('/saved-searches', { method: 'POST', body: formData });
+                var data = await resp.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed to save search');
+                }
+            } catch (e) {
+                alert('Failed to save search');
             }
         }
 

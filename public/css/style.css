@@ -238,6 +238,16 @@ a {
     opacity: 0.5;
 }
 
+.search-match-badge {
+    font-size: 0.65rem;
+    background: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    margin-left: 0.4rem;
+    white-space: nowrap;
+}
+
 /* Buttons */
 .btn,
 button.btn {
