@@ -448,10 +448,10 @@ require_once 'includes/header.php';
                                 <div class="attachment-grid" id="attachment-images">
                                     <?php foreach ($attachments['images'] as $att): ?>
                                     <div class="attachment-image" data-attachment-id="<?= $att['id'] ?>">
-                                        <img src="/storage/assets/<?= htmlspecialchars($att['file_path']) ?>"
+                                        <img src="/assets/<?= htmlspecialchars($att['file_path']) ?>"
                                              alt="<?= htmlspecialchars($att['original_filename']) ?>"
                                              loading="lazy"
-                                             onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/storage/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)">
+                                             onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)">
                                         <?php if (canEdit()): ?>
                                         <button type="button" class="attachment-delete" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
                                         <?php endif; ?>
@@ -468,7 +468,7 @@ require_once 'includes/header.php';
                                     <?php foreach ($attachments['documents'] as $att): ?>
                                     <div class="attachment-document" data-attachment-id="<?= $att['id'] ?>">
                                         <span class="file-type-badge">.<?= htmlspecialchars(pathinfo($att['original_filename'], PATHINFO_EXTENSION) ?: $att['file_type']) ?></span>
-                                        <a href="/storage/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" class="attachment-doc-name">
+                                        <a href="/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" class="attachment-doc-name">
                                             <?= htmlspecialchars($att['original_filename']) ?>
                                         </a>
                                         <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>
@@ -2296,11 +2296,11 @@ require_once 'includes/header.php';
             item.dataset.attachmentId = att.attachment_id;
 
             const img = document.createElement('img');
-            img.src = '/storage/assets/' + att.file_path;
+            img.src = '/assets/' + att.file_path;
             img.alt = att.original_filename;
             img.loading = 'lazy';
             img.onclick = function() {
-                openImageLightbox('/storage/assets/' + att.file_path, att.original_filename);
+                openImageLightbox('/assets/' + att.file_path, att.original_filename);
             };
 
             const deleteBtn = document.createElement('button');
@@ -2340,7 +2340,7 @@ require_once 'includes/header.php';
             badge.textContent = '.' + docExt;
 
             const link = document.createElement('a');
-            link.href = '/storage/assets/' + att.file_path;
+            link.href = '/assets/' + att.file_path;
             link.target = '_blank';
             link.className = 'attachment-doc-name';
             link.textContent = att.original_filename;
