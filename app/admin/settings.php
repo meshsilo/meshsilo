@@ -324,26 +324,20 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="number" id="max-file-size" name="max_file_size" class="form-input" value="<?= MAX_FILE_SIZE / (1024 * 1024) ?>" min="1">
                         </div>
 
-                        <?php $currentFormats = getAllowedExtensions(); ?>
+                        <?php
+                            $currentFormats = getAllowedExtensions();
+                            $allFormats = array_unique(array_merge($currentFormats, explode(',', DEFAULT_ALLOWED_EXTENSIONS)));
+                            sort($allFormats);
+                        ?>
                         <div class="form-group">
                             <label for="allowed-formats">Allowed File Formats</label>
                             <div class="checkbox-group">
+                                <?php foreach ($allFormats as $fmt): if ($fmt === 'zip') continue; ?>
                                 <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="stl" <?= in_array('stl', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.stl</span>
+                                    <input type="checkbox" name="formats[]" value="<?= htmlspecialchars($fmt) ?>" <?= in_array($fmt, $currentFormats) ? 'checked' : '' ?>>
+                                    <span>.<?= htmlspecialchars($fmt) ?></span>
                                 </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="3mf" <?= in_array('3mf', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.3mf</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="obj" <?= in_array('obj', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.obj</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="formats[]" value="step" <?= in_array('step', $currentFormats) ? 'checked' : '' ?>>
-                                    <span>.step</span>
-                                </label>
+                                <?php endforeach; ?>
                             </div>
                             <p class="form-help">Select which 3D model formats can be uploaded. ZIP files are always allowed for multi-part uploads.</p>
                         </div>
