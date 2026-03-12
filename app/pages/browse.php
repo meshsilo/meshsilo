@@ -31,6 +31,7 @@ if (empty($tagIds) && isset($_GET['tag']) && (int)$_GET['tag'] > 0) {
     $tagIds = [(int)$_GET['tag']];
 }
 $fileType = trim($_GET['file_type'] ?? '');
+$printType = trim($_GET['print_type'] ?? '');
 $sort = $_GET['sort'] ?? getSetting('default_sort', 'newest');
 $view = $_GET['view'] ?? ($_COOKIE['silo_view'] ?? getSetting('default_view', 'grid'));
 $showArchived = isset($_GET['archived']) && $_GET['archived'] === '1';
@@ -59,12 +60,8 @@ $ftsJoin = '';        // Extra JOIN for main query only (provides rank column)
 $ftsJoinParams = [];  // Params bound only to main query (not count query)
 $ftsOrderBy = null;   // Relevance ordering — overrides $orderBy when FTS active
 
-// Search filter: FTS5/FULLTEXT with LIKE fallback, also searches part names
+// Search filter: FTS5/FULLTEXT with LIKE fallback, searches parents and parts
 if ($search !== '') {
-    $partSearchTerm = '%' . $search . '%';
-    $params[':part_search'] = $partSearchTerm;
-    $partSubquery = 'EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND p.name LIKE :part_search)';
-
     if ($ftsAvailable && $dbType === 'sqlite') {
         $ftsActive = true;
         // Build prefix query for partial word matching: "drag" → "drag*"
@@ -77,9 +74,11 @@ if ($search !== '') {
             $ftsActive = false;
         } else {
             $params[':fts_query'] = $ftsQuery;
-            // WHERE (used by both count and main): FTS rowid IN subquery OR part name
-            $where[] = "(m.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query) OR $partSubquery)";
-            // Main query only: LEFT JOIN to get rank column (bound separately so count query is unaffected)
+            $params[':fts_query_parts'] = $ftsQuery;
+            // Match parent models directly OR parent models that have matching parts
+            $where[] = "(m.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query)
+                OR m.id IN (SELECT p.parent_id FROM models p WHERE p.parent_id IS NOT NULL AND p.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query_parts)))";
+            // Main query only: LEFT JOIN to get rank column for parent-level relevance
             $ftsJoin = "LEFT JOIN (SELECT rowid, rank FROM models_fts WHERE models_fts MATCH :fts_query2) fts_r ON fts_r.rowid = m.id";
             $ftsJoinParams = [':fts_query2' => $ftsQuery];
             // Use relevance ordering when no explicit sort selected (FTS5 rank is negative: lower = better)
@@ -91,19 +90,26 @@ if ($search !== '') {
         $ftsActive = true;
         $params[':fts_query'] = $search;
         $mysqlFtsExpr = 'MATCH(m.name, m.description, m.creator) AGAINST(:fts_query IN NATURAL LANGUAGE MODE)';
+        $partSubquery = 'EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND MATCH(p.name, p.description, p.creator) AGAINST(:fts_query_part IN NATURAL LANGUAGE MODE))';
+        $params[':fts_query_part'] = $search;
         $where[] = "($mysqlFtsExpr OR $partSubquery)";
         if (!isset($_GET['sort'])) {
             $params[':fts_sort'] = $search;
             $ftsOrderBy = 'MATCH(m.name, m.description, m.creator) AGAINST(:fts_sort IN NATURAL LANGUAGE MODE) DESC';
         }
-    } else {
+    }
+
+    if (!$ftsActive) {
         // LIKE fallback (FTS unavailable) — searches name, description, creator, notes, and part names
         $searchTerm = '%' . $search . '%';
+        $partSubquery = 'EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND (p.name LIKE :part_search1 OR p.notes LIKE :part_search2))';
         $where[] = "(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3 OR m.notes LIKE :search4 OR $partSubquery)";
         $params[':search1'] = $searchTerm;
         $params[':search2'] = $searchTerm;
         $params[':search3'] = $searchTerm;
         $params[':search4'] = $searchTerm;
+        $params[':part_search1'] = $searchTerm;
+        $params[':part_search2'] = $searchTerm;
     }
 }
 
@@ -126,6 +132,12 @@ if (!empty($tagIds)) {
 if ($fileType !== '') {
     $where[] = 'm.file_type = :file_type';
     $params[':file_type'] = $fileType;
+}
+
+// Print type filter (matches models that have parts with the given print type)
+if ($printType !== '' && in_array($printType, ['fdm', 'sla'])) {
+    $where[] = 'm.id IN (SELECT parent_id FROM models WHERE parent_id IS NOT NULL AND print_type = :print_type)';
+    $params[':print_type'] = $printType;
 }
 
 // Archive filter
@@ -261,6 +273,15 @@ $ftResult = $db->query("SELECT DISTINCT file_type FROM models WHERE parent_id IS
 if ($ftResult) {
     while ($ftRow = $ftResult->fetchArray()) {
         $fileTypes[] = $ftRow['file_type'];
+    }
+}
+
+// Get distinct print types for filter dropdown (from parts, not parent models)
+$printTypes = [];
+$ptResult = $db->query("SELECT DISTINCT print_type FROM models WHERE parent_id IS NOT NULL AND print_type IS NOT NULL AND print_type != '' ORDER BY print_type");
+if ($ptResult) {
+    while ($ptRow = $ptResult->fetchArray()) {
+        $printTypes[] = $ptRow['print_type'];
     }
 }
 
@@ -433,6 +454,15 @@ require_once 'includes/header.php';
                     </select>
                     <?php endif; ?>
 
+                    <?php if (!empty($printTypes)): ?>
+                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by print type">
+                        <option value="">+ Print Type</option>
+                        <?php foreach ($printTypes as $pt): ?>
+                        <option value="<?= buildUrl(['print_type' => $pt, 'page' => 1]) ?>" <?= $printType === $pt ? 'selected' : '' ?>><?= htmlspecialchars(strtoupper($pt)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+
                     <?php if (class_exists('PluginManager')): ?>
                     <?= PluginManager::applyFilter('browse_filters', '') ?>
                     <?php endif; ?>
@@ -465,6 +495,13 @@ require_once 'includes/header.php';
                     <span class="filter-chip">
                         Type: <?= htmlspecialchars(strtoupper($fileType)) ?>
                         <a href="<?= buildUrl(['file_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove file type filter">&times;</a>
+                    </span>
+                    <?php endif; ?>
+
+                    <?php if ($printType !== ''): ?>
+                    <span class="filter-chip">
+                        Print: <?= htmlspecialchars(strtoupper($printType)) ?>
+                        <a href="<?= buildUrl(['print_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove print type filter">&times;</a>
                     </span>
                     <?php endif; ?>
                 </div>

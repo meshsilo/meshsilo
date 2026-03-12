@@ -27,8 +27,9 @@ if (strlen($q) < 1) {
 $db = getDB();
 $searchTerm = '%' . $q . '%';
 
+// Search parent models by name
 $stmt = $db->prepare(
-    "SELECT id, name FROM models
+    "SELECT id, name, NULL as parent_id FROM models
      WHERE parent_id IS NULL AND name LIKE :q
      ORDER BY name
      LIMIT 8"
@@ -37,11 +38,49 @@ $stmt->bindValue(':q', $searchTerm);
 $stmt->execute();
 
 $suggestions = [];
+$seenParentIds = [];
 while ($row = $stmt->fetch()) {
     $suggestions[] = [
         'id'   => (int)$row['id'],
         'name' => $row['name'],
     ];
+    $seenParentIds[] = (int)$row['id'];
+}
+
+// Search part names and return their parent models
+if (count($suggestions) < 8) {
+    $remaining = 8 - count($suggestions);
+    $excludeClause = '';
+    $excludeParams = [];
+    if (!empty($seenParentIds)) {
+        $placeholders = implode(',', array_map(fn($i) => ':excl_' . $i, array_keys($seenParentIds)));
+        $excludeClause = "AND m.id NOT IN ($placeholders)";
+        foreach ($seenParentIds as $i => $pid) {
+            $excludeParams[':excl_' . $i] = $pid;
+        }
+    }
+
+    $partStmt = $db->prepare(
+        "SELECT DISTINCT m.id, m.name FROM models p
+         JOIN models m ON p.parent_id = m.id
+         WHERE p.parent_id IS NOT NULL AND p.name LIKE :q $excludeClause
+         ORDER BY m.name
+         LIMIT :lim"
+    );
+    $partStmt->bindValue(':q', $searchTerm);
+    foreach ($excludeParams as $k => $v) {
+        $partStmt->bindValue($k, $v, PDO::PARAM_INT);
+    }
+    $partStmt->bindValue(':lim', $remaining, PDO::PARAM_INT);
+    $partStmt->execute();
+
+    while ($row = $partStmt->fetch()) {
+        $suggestions[] = [
+            'id'   => (int)$row['id'],
+            'name' => $row['name'],
+            'match' => 'part',
+        ];
+    }
 }
 
 echo json_encode(['suggestions' => $suggestions]);

@@ -1954,6 +1954,71 @@ function runMigrations($db)
     }
 
     // =====================
+    // FTS v3: Include parts in search index
+    // =====================
+    if ($currentFtsVersion < 3) {
+        if ($type === 'sqlite' && tableExists($db, 'models')) {
+            try {
+                $db->exec('DROP TRIGGER IF EXISTS models_fts_insert');
+                $db->exec('DROP TRIGGER IF EXISTS models_fts_delete');
+                $db->exec('DROP TRIGGER IF EXISTS models_fts_update');
+
+                $db->exec('DROP TABLE IF EXISTS models_fts');
+                $db->exec("
+                    CREATE VIRTUAL TABLE models_fts USING fts5(
+                        name, description, creator, notes,
+                        content='models',
+                        content_rowid='id'
+                    )
+                ");
+
+                // Populate with ALL models (parents and parts)
+                $db->exec("
+                    INSERT INTO models_fts(rowid, name, description, creator, notes)
+                    SELECT id, name, COALESCE(description, ''), COALESCE(creator, ''), COALESCE(notes, '')
+                    FROM models
+                ");
+
+                // Triggers for ALL models (no parent_id filter)
+                $db->exec("
+                    CREATE TRIGGER models_fts_insert AFTER INSERT ON models
+                    BEGIN
+                        INSERT INTO models_fts(rowid, name, description, creator, notes)
+                        VALUES (NEW.id, NEW.name, COALESCE(NEW.description, ''), COALESCE(NEW.creator, ''), COALESCE(NEW.notes, ''));
+                    END
+                ");
+
+                $db->exec("
+                    CREATE TRIGGER models_fts_delete AFTER DELETE ON models
+                    BEGIN
+                        DELETE FROM models_fts WHERE rowid = OLD.id;
+                    END
+                ");
+
+                $db->exec("
+                    CREATE TRIGGER models_fts_update AFTER UPDATE ON models
+                    BEGIN
+                        UPDATE models_fts
+                        SET name = NEW.name,
+                            description = COALESCE(NEW.description, ''),
+                            creator = COALESCE(NEW.creator, ''),
+                            notes = COALESCE(NEW.notes, '')
+                        WHERE rowid = NEW.id;
+                    END
+                ");
+
+                $db->exec("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('fts_version', '3', CURRENT_TIMESTAMP)");
+                logInfo('Migration: FTS v3 - expanded search index to include parts');
+            } catch (Exception $e) {
+                logWarning('Migration: FTS v3 SQLite skipped', ['error' => $e->getMessage()]);
+            }
+        } elseif ($type === 'mysql' && tableExists($db, 'models')) {
+            // MySQL FULLTEXT already indexes all rows — just bump the version
+            $db->exec("INSERT INTO settings (`key`, `value`, updated_at) VALUES ('fts_version', '3', NOW()) ON DUPLICATE KEY UPDATE `value` = '3', updated_at = NOW()");
+        }
+    }
+
+    // =====================
     // Ensure all default settings exist in database
     // Uses INSERT OR IGNORE / INSERT IGNORE so existing values are never overwritten
     // =====================
