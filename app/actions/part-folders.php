@@ -278,6 +278,62 @@ switch ($action) {
         echo json_encode(['success' => true, 'updated' => $updated]);
         break;
 
+    case 'set_print_type':
+        $folderName = trim($_POST['folder_name'] ?? '');
+        $printType = trim($_POST['print_type'] ?? '');
+
+        if ($printType !== '' && !in_array($printType, ['fdm', 'sla'])) {
+            echo json_encode(['success' => false, 'error' => 'Invalid print type']);
+            exit;
+        }
+
+        $printValue = $printType === '' ? null : $printType;
+
+        // Find all parts in this folder
+        if ($folderName === '' || $folderName === 'Root') {
+            // Root folder: parts with no folder prefix or just a filename in original_path
+            $stmt = $db->prepare('
+                SELECT id FROM models
+                WHERE parent_id = :model_id
+                AND (original_path IS NULL OR original_path NOT LIKE \'%/%\')
+            ');
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+        } else {
+            $prefix = $folderName . '/';
+            $stmt = $db->prepare('
+                SELECT id FROM models
+                WHERE parent_id = :model_id
+                AND original_path LIKE :pattern
+            ');
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+            $stmt->bindValue(':pattern', $prefix . '%', PDO::PARAM_STR);
+        }
+
+        $result = $stmt->execute();
+        $updated = 0;
+
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            $updateStmt = $db->prepare('UPDATE models SET print_type = :print_type WHERE id = :id');
+            if ($printValue === null) {
+                $updateStmt->bindValue(':print_type', null, PDO::PARAM_NULL);
+            } else {
+                $updateStmt->bindValue(':print_type', $printValue, PDO::PARAM_STR);
+            }
+            $updateStmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
+            $updateStmt->execute();
+            $updated++;
+        }
+
+        logInfo('Folder print type updated', [
+            'model_id' => $modelId,
+            'folder' => $folderName ?: 'Root',
+            'print_type' => $printType ?: 'cleared',
+            'parts_updated' => $updated
+        ]);
+
+        echo json_encode(['success' => true, 'updated' => $updated]);
+        break;
+
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
         break;

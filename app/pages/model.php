@@ -618,10 +618,17 @@ require_once 'includes/header.php';
                             <?php endif; ?>
                             <?= htmlspecialchars($displayName) ?>
                             <span class="folder-part-count">(<?= count($dirParts) ?>)</span>
-                            <?php if (canEdit() && $dir !== 'Root'): ?>
+                            <?php if (canEdit()): ?>
                             <span class="folder-actions" onclick="event.stopPropagation()">
+                                <select class="print-type-select folder-print-type" onchange="updateFolderPrintType(this, '<?= htmlspecialchars(addslashes($dir)) ?>')" title="Set print type for all parts in this folder">
+                                    <option value="">--</option>
+                                    <option value="fdm">FDM</option>
+                                    <option value="sla">SLA</option>
+                                </select>
+                                <?php if ($dir !== 'Root'): ?>
                                 <button type="button" onclick="renameFolder('<?= htmlspecialchars(addslashes($dir)) ?>')" title="Rename folder">Rename</button>
                                 <button type="button" onclick="deleteFolder('<?= htmlspecialchars(addslashes($dir)) ?>')" title="Delete folder (moves parts to root)">Delete</button>
+                                <?php endif; ?>
                             </span>
                             <?php endif; ?>
                         </h3>
@@ -1200,6 +1207,44 @@ require_once 'includes/header.php';
                 selectEl.dataset.prev = selectEl.value;
             } catch (e) {
                 alert('Failed to update print type');
+            }
+        }
+
+        async function updateFolderPrintType(selectEl, folderName) {
+            const printType = selectEl.value;
+            const label = printType ? printType.toUpperCase() : 'none';
+            if (!confirm('Set print type to ' + label + ' for all parts in "' + folderName + '"?')) {
+                selectEl.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'set_print_type');
+            formData.append('model_id', <?= $model['id'] ?>);
+            formData.append('folder_name', folderName);
+            formData.append('print_type', printType);
+            formData.append('csrf_token', '<?= Csrf::getToken() ?>');
+
+            try {
+                const resp = await fetch('/actions/part-folders', { method: 'POST', body: formData });
+                const data = await resp.json();
+                if (data.success) {
+                    // Update all part dropdowns in this folder
+                    const folder = selectEl.closest('.parts-group');
+                    if (folder) {
+                        folder.querySelectorAll('.print-type-select:not(.folder-print-type)').forEach(sel => {
+                            sel.value = printType;
+                            sel.dataset.prev = printType;
+                        });
+                    }
+                    selectEl.value = '';
+                } else {
+                    alert(data.error || 'Failed to update print type');
+                    selectEl.value = '';
+                }
+            } catch (e) {
+                alert('Failed to update folder print type');
+                selectEl.value = '';
             }
         }
 
