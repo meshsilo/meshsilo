@@ -394,7 +394,6 @@ require_once 'includes/header.php';
                     </select>
                     <button type="button" class="btn btn-small" onclick="batchSetCreator()" title="Set creator for selected">Set Creator</button>
                     <button type="button" class="btn btn-small" onclick="batchSetCollection()" title="Set collection for selected">Set Collection</button>
-                    <button type="button" class="btn btn-small" onclick="batchExport()" title="Export selected with metadata">Export</button>
                     <button type="button" class="btn btn-small btn-warning" onclick="batchArchive()">Archive</button>
                 </div>
             </div>
@@ -781,34 +780,6 @@ require_once 'includes/header.php';
                 return;
             }
             window.location = 'actions/batch-download.php?ids=' + ids.join(',');
-        }
-
-        async function batchExport() {
-            const ids = getSelectedModelIds();
-            if (ids.length === 0) {
-                alert('Please select models first');
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'export_selective');
-                formData.append('model_ids', JSON.stringify(ids));
-
-                const response = await fetch('/actions/export-import', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.location = '/actions/export-download?token=' + result.download_token;
-                } else {
-                    alert('Export failed: ' + result.error);
-                }
-            } catch (err) {
-                alert('Export failed: ' + err.message);
-            }
         }
 
         async function batchApplyTag(tagId) {

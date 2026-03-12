@@ -169,12 +169,6 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->get('/related-models', ['file' => 'app/actions/related-models.php'], 'actions.related');
     $router->post('/related-models', ['file' => 'app/actions/related-models.php'], 'actions.related.post');
 
-    // Scaling
-    $router->post('/scaling', ['file' => 'app/actions/scaling.php'], 'actions.scaling');
-
-    // Rating
-    $router->post('/rating', ['file' => 'app/actions/rating.php'], 'actions.rating');
-
     // Thumbnails
     $router->post('/thumbnail', ['file' => 'app/actions/thumbnail.php'], 'actions.thumbnail');
     $router->post('/webp-thumbnail', ['file' => 'app/actions/webp-thumbnail.php'], 'actions.thumbnail.webp');
@@ -189,19 +183,12 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->get('/saved-searches', ['file' => 'app/actions/saved-searches.php'], 'actions.saved.searches');
     $router->post('/saved-searches', ['file' => 'app/actions/saved-searches.php'], 'actions.saved.searches.post');
 
-    // QR codes
-    $router->get('/qrcode', ['file' => 'app/actions/qrcode.php'], 'actions.qrcode');
-
     // Share links
     $router->get('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share.get');
     $router->post('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share');
 
     // Queue status
     $router->get('/queue-status', ['file' => 'app/actions/queue-status.php'], 'actions.queue.status');
-
-    // Notifications
-    $router->get('/notification', ['file' => 'app/actions/notification.php'], 'actions.notification');
-    $router->post('/notification', ['file' => 'app/actions/notification.php'], 'actions.notification.post');
 
     // Batch operations
     $router->post('/batch-apply', ['file' => 'app/actions/batch-apply.php'], 'actions.batch.apply');
@@ -218,25 +205,8 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->post('/upload-version', ['file' => 'app/actions/upload-version.php'], 'actions.upload.version');
     $router->post('/revert-version', ['file' => 'app/actions/revert-version.php'], 'actions.revert.version');
 
-    // Approval workflow
-    $router->post('/approval', ['file' => 'app/actions/approval.php'], 'actions.approval');
-
-    // Export/Import (library backup/restore)
-    $router->post('/export-import', ['file' => 'app/actions/export-import.php'], 'actions.export');
-    $router->get('/export-download', ['file' => 'app/actions/export-download.php'], 'actions.export.download');
-
     // Model links
     $router->post('/model-links', ['file' => 'app/actions/model-links.php'], 'actions.model.links');
-
-    // Homepage config
-    $router->post('/homepage-config', ['file' => 'app/actions/homepage-config.php'], 'actions.homepage');
-
-    // Branding
-    $router->post('/branding', ['file' => 'app/actions/branding.php'], 'actions.branding');
-
-    // Annotations
-    $router->get('/annotations', ['file' => 'app/actions/annotations.php'], 'actions.annotations.get');
-    $router->post('/annotations', ['file' => 'app/actions/annotations.php'], 'actions.annotations');
 
     // Features toggle (admin only)
     $router->post('/features', ['file' => 'app/actions/features.php'], 'actions.features');
