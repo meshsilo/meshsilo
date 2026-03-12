@@ -22,6 +22,8 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.database') ?>" <?= ($adminPage ?? '') === 'database' ? 'class="active"' : '' ?>>Database</a>
                             <a href="<?= route('admin.scheduler') ?>" <?= ($adminPage ?? '') === 'scheduler' ? 'class="active"' : '' ?>>Scheduled Tasks</a>
                             <a href="<?= route('admin.plugins') ?>" <?= ($adminPage ?? '') === 'plugins' ? 'class="active"' : '' ?>>Plugins</a>
+                            <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active"' : '' ?>>Routes</a>
+                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active"' : '' ?>>CLI Tools</a>
                         </div>
                     </div>
 
@@ -35,7 +37,6 @@ if (!function_exists('isFeatureEnabled')) {
                         <div class="nav-links">
                             <a href="<?= route('admin.users') ?>" <?= ($adminPage ?? '') === 'users' ? 'class="active"' : '' ?>>Users</a>
                             <a href="<?= route('admin.groups') ?>" <?= ($adminPage ?? '') === 'groups' ? 'class="active"' : '' ?>>Groups</a>
-                            <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active"' : '' ?>>Sessions</a>
                         </div>
                     </div>
 
@@ -60,20 +61,6 @@ if (!function_exists('isFeatureEnabled')) {
                         </div>
                     </div>
 
-                    <?php if (isFeatureEnabled('api_keys')) : ?>
-                    <div class="nav-category" data-category="integration">
-                        <button class="nav-section" type="button" aria-expanded="true">
-                            <span>Integration</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
-                        </button>
-                        <div class="nav-links">
-                            <a href="<?= route('admin.api-keys') ?>" <?= ($adminPage ?? '') === 'api-keys' ? 'class="active"' : '' ?>>API Keys</a>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
                     <div class="nav-category" data-category="security">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Security</span>
@@ -83,23 +70,14 @@ if (!function_exists('isFeatureEnabled')) {
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active"' : '' ?>>Security Headers</a>
+                            <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active"' : '' ?>>Sessions</a>
+                            <?php if (isFeatureEnabled('api_keys')) : ?>
+                            <a href="<?= route('admin.api-keys') ?>" <?= ($adminPage ?? '') === 'api-keys' ? 'class="active"' : '' ?>>API Keys</a>
+                            <?php endif; ?>
                             <?php if (isFeatureEnabled('activity_log')) : ?>
                             <a href="<?= route('admin.activity') ?>" <?= ($adminPage ?? '') === 'activity' ? 'class="active"' : '' ?>>Activity Log</a>
                             <a href="<?= route('admin.audit-log') ?>" <?= ($adminPage ?? '') === 'audit-log' ? 'class="active"' : '' ?>>Audit Log</a>
                             <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <div class="nav-category" data-category="developer">
-                        <button class="nav-section" type="button" aria-expanded="true">
-                            <span>Developer</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
-                        </button>
-                        <div class="nav-links">
-                            <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active"' : '' ?>>Routes</a>
-                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active"' : '' ?>>CLI Tools</a>
                         </div>
                     </div>
 <?php
