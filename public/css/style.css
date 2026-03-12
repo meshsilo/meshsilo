@@ -2855,6 +2855,15 @@ body.mobile-menu-open::before {
     margin-bottom: 0;
 }
 
+.parts-group-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
 .parts-group-header {
     font-size: 0.875rem;
     color: var(--color-text-muted);

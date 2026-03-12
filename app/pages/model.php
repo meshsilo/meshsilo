@@ -616,7 +616,8 @@ require_once 'includes/header.php';
                     <?php foreach ($groupedParts as $dir => $dirData): ?>
                     <?php $displayName = $dirData['display']; $dirParts = $dirData['parts']; ?>
                     <div class="parts-group<?= $autoCollapse ? ' collapsed' : '' ?>" data-folder="<?= htmlspecialchars($dir) ?>">
-                        <?php if (count($groupedParts) > 1): ?>
+                        <?php $multiFolder = count($groupedParts) > 1; ?>
+                        <?php if ($multiFolder): ?>
                         <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)">
                             <span class="folder-toggle"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
@@ -638,6 +639,15 @@ require_once 'includes/header.php';
                             </span>
                             <?php endif; ?>
                         </h3>
+                        <?php elseif (canEdit() && count($dirParts) > 1): ?>
+                        <div class="parts-group-actions">
+                            <span class="text-muted"><?= count($dirParts) ?> parts</span>
+                            <select class="print-type-select folder-print-type" onchange="updateFolderPrintType(this, '<?= htmlspecialchars(addslashes($dir)) ?>')" title="Set print type for all parts">
+                                <option value="">Set All Print Type</option>
+                                <option value="fdm">FDM</option>
+                                <option value="sla">SLA</option>
+                            </select>
+                        </div>
                         <?php endif; ?>
                         <?php $partLimit = 50; $partIndex = 0; ?>
                         <div class="parts-list">
