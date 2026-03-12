@@ -248,6 +248,12 @@ a {
     white-space: nowrap;
 }
 
+.search-browse-all {
+    border-top: 1px solid var(--color-border);
+    color: var(--color-primary);
+    font-size: 0.85rem;
+}
+
 /* Buttons */
 .btn,
 button.btn {

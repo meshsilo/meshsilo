@@ -76,9 +76,14 @@ if ($search !== '') {
         } else {
             $params[':fts_query'] = $ftsQuery;
             $params[':fts_query_parts'] = $ftsQuery;
-            // Match parent models directly OR parent models that have matching parts
+            $ftsSearchTerm = '%' . $search . '%';
+            $params[':fts_tag_search'] = $ftsSearchTerm;
+            $params[':fts_cat_search'] = $ftsSearchTerm;
+            // Match parent models directly, via parts, or via tag/category names
             $where[] = "(m.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query)
-                OR m.id IN (SELECT p.parent_id FROM models p WHERE p.parent_id IS NOT NULL AND p.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query_parts)))";
+                OR m.id IN (SELECT p.parent_id FROM models p WHERE p.parent_id IS NOT NULL AND p.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query_parts))
+                OR EXISTS (SELECT 1 FROM model_tags mt2 JOIN tags t2 ON mt2.tag_id = t2.id WHERE mt2.model_id = m.id AND t2.name LIKE :fts_tag_search)
+                OR EXISTS (SELECT 1 FROM model_categories mc2 JOIN categories c2 ON mc2.category_id = c2.id WHERE mc2.model_id = m.id AND c2.name LIKE :fts_cat_search))";
             // Main query only: LEFT JOIN to get rank column for parent-level relevance
             $ftsJoin = "LEFT JOIN (SELECT rowid, rank FROM models_fts WHERE models_fts MATCH :fts_query2) fts_r ON fts_r.rowid = m.id";
             $ftsJoinParams = [':fts_query2' => $ftsQuery];
@@ -93,7 +98,12 @@ if ($search !== '') {
         $mysqlFtsExpr = 'MATCH(m.name, m.description, m.creator) AGAINST(:fts_query IN NATURAL LANGUAGE MODE)';
         $partSubquery = 'EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND MATCH(p.name, p.description, p.creator) AGAINST(:fts_query_part IN NATURAL LANGUAGE MODE))';
         $params[':fts_query_part'] = $search;
-        $where[] = "($mysqlFtsExpr OR $partSubquery)";
+        $mysqlSearchTerm = '%' . $search . '%';
+        $tagSubquery = 'EXISTS (SELECT 1 FROM model_tags mt2 JOIN tags t2 ON mt2.tag_id = t2.id WHERE mt2.model_id = m.id AND t2.name LIKE :mysql_tag_search)';
+        $catSubquery = 'EXISTS (SELECT 1 FROM model_categories mc2 JOIN categories c2 ON mc2.category_id = c2.id WHERE mc2.model_id = m.id AND c2.name LIKE :mysql_cat_search)';
+        $params[':mysql_tag_search'] = $mysqlSearchTerm;
+        $params[':mysql_cat_search'] = $mysqlSearchTerm;
+        $where[] = "($mysqlFtsExpr OR $partSubquery OR $tagSubquery OR $catSubquery)";
         if (!isset($_GET['sort'])) {
             $params[':fts_sort'] = $search;
             $ftsOrderBy = 'MATCH(m.name, m.description, m.creator) AGAINST(:fts_sort IN NATURAL LANGUAGE MODE) DESC';
@@ -104,13 +114,17 @@ if ($search !== '') {
         // LIKE fallback (FTS unavailable) — searches name, description, creator, notes, and part names
         $searchTerm = '%' . $search . '%';
         $partSubquery = 'EXISTS (SELECT 1 FROM models p WHERE p.parent_id = m.id AND (p.name LIKE :part_search1 OR p.notes LIKE :part_search2))';
-        $where[] = "(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3 OR m.notes LIKE :search4 OR $partSubquery)";
+        $tagSubquery = 'EXISTS (SELECT 1 FROM model_tags mt2 JOIN tags t2 ON mt2.tag_id = t2.id WHERE mt2.model_id = m.id AND t2.name LIKE :tag_search)';
+        $catSubquery = 'EXISTS (SELECT 1 FROM model_categories mc2 JOIN categories c2 ON mc2.category_id = c2.id WHERE mc2.model_id = m.id AND c2.name LIKE :cat_search)';
+        $where[] = "(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3 OR m.notes LIKE :search4 OR $partSubquery OR $tagSubquery OR $catSubquery)";
         $params[':search1'] = $searchTerm;
         $params[':search2'] = $searchTerm;
         $params[':search3'] = $searchTerm;
         $params[':search4'] = $searchTerm;
         $params[':part_search1'] = $searchTerm;
         $params[':part_search2'] = $searchTerm;
+        $params[':tag_search'] = $searchTerm;
+        $params[':cat_search'] = $searchTerm;
     }
 }
 
@@ -156,6 +170,7 @@ if (class_exists('PluginManager')) {
 // Sort options (FTS relevance overrides default when search active and no explicit sort set)
 $orderBy = $ftsOrderBy ?? match($sort) {
     'oldest' => 'm.created_at ASC',
+    'updated' => 'm.updated_at DESC',
     'name' => 'm.name ASC',
     'name_desc' => 'm.name DESC',
     'size' => 'm.file_size DESC',
@@ -412,6 +427,7 @@ require_once 'includes/header.php';
                     <select class="sort-select" onchange="location.href=this.value">
                         <option value="<?= buildUrl(['sort' => 'newest', 'page' => 1]) ?>" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
                         <option value="<?= buildUrl(['sort' => 'oldest', 'page' => 1]) ?>" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
+                        <option value="<?= buildUrl(['sort' => 'updated', 'page' => 1]) ?>" <?= $sort === 'updated' ? 'selected' : '' ?>>Recently Updated</option>
                         <option value="<?= buildUrl(['sort' => 'name', 'page' => 1]) ?>" <?= $sort === 'name' ? 'selected' : '' ?>>Name A-Z</option>
                         <option value="<?= buildUrl(['sort' => 'name_desc', 'page' => 1]) ?>" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name Z-A</option>
                         <option value="<?= buildUrl(['sort' => 'size', 'page' => 1]) ?>" <?= $sort === 'size' ? 'selected' : '' ?>>Largest First</option>

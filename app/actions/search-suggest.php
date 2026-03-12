@@ -87,4 +87,32 @@ if (count($suggestions) < 8) {
     }
 }
 
+// Search tags by name
+$tagStmt = $db->prepare(
+    "SELECT id, name FROM tags WHERE name LIKE :q ORDER BY name LIMIT 3"
+);
+$tagStmt->bindValue(':q', $searchTerm);
+$tagStmt->execute();
+while ($row = $tagStmt->fetch()) {
+    $suggestions[] = [
+        'name' => $row['name'],
+        'type' => 'tag',
+        'url'  => '/browse?tags[]=' . (int)$row['id'],
+    ];
+}
+
+// Search categories by name
+$catStmt = $db->prepare(
+    "SELECT id, name FROM categories WHERE name LIKE :q ORDER BY name LIMIT 3"
+);
+$catStmt->bindValue(':q', $searchTerm);
+$catStmt->execute();
+while ($row = $catStmt->fetch()) {
+    $suggestions[] = [
+        'name' => $row['name'],
+        'type' => 'category',
+        'url'  => '/browse?category=' . (int)$row['id'],
+    ];
+}
+
 echo json_encode(['suggestions' => $suggestions]);

@@ -268,7 +268,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
         return d.innerHTML;
     }
 
-    function renderDropdown(suggestions, recentMatches, browseBase) {
+    function renderDropdown(suggestions, recentMatches, browseBase, query) {
         var dropdown = document.getElementById('search-dropdown');
         var recentSection = document.getElementById('search-recent');
         var recentList = document.getElementById('search-recent-list');
@@ -289,16 +289,33 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
         // Model suggestions section
         if (suggestions.length > 0) {
             resultsList.innerHTML = suggestions.map(function(s) {
-                var badge = s.match === 'part' ? ' <span class="search-match-badge">part match</span>' : '';
-                return '<li><a href="' + SILO_MODEL_BASE + s.id + '" class="search-dropdown-item">' +
-                       '<span class="search-dropdown-icon">&#128196;</span>' + escapeHtml(s.name) + badge + '</a></li>';
+                var badge = s.match === 'part' ? ' <span class="search-match-badge">part match</span>'
+                          : s.type === 'tag' ? ' <span class="search-match-badge">tag</span>'
+                          : s.type === 'category' ? ' <span class="search-match-badge">category</span>' : '';
+                var icon = s.type === 'tag' ? '&#127991;' : s.type === 'category' ? '&#128193;' : '&#128196;';
+                var href = s.url ? s.url : SILO_MODEL_BASE + s.id;
+                return '<li><a href="' + href + '" class="search-dropdown-item">' +
+                       '<span class="search-dropdown-icon">' + icon + '</span>' + escapeHtml(s.name) + badge + '</a></li>';
             }).join('');
             resultsSection.hidden = false;
         } else {
             resultsSection.hidden = true;
         }
 
-        dropdown.hidden = recentMatches.length === 0 && suggestions.length === 0;
+        // "Search for ..." link at bottom
+        var searchLink = document.getElementById('search-browse-link');
+        if (query && query.length > 0) {
+            if (searchLink) {
+                searchLink.href = browseBase + '?q=' + encodeURIComponent(query);
+                searchLink.querySelector('.search-browse-query').textContent = query;
+                searchLink.parentElement.hidden = false;
+            }
+        } else {
+            if (searchLink) searchLink.parentElement.hidden = true;
+        }
+
+        var hasContent = recentMatches.length > 0 || suggestions.length > 0 || (query && query.length > 0);
+        dropdown.hidden = !hasContent;
     }
 
     function closeDropdown() {
@@ -335,7 +352,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
             if (q.length === 0) {
                 // Show only recent searches when no query
                 var recent = getRecent();
-                renderDropdown([], recent, browseBase);
+                renderDropdown([], recent, browseBase, '');
                 return;
             }
 
@@ -350,10 +367,10 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    renderDropdown(data.suggestions || [], recentMatches, browseBase);
+                    renderDropdown(data.suggestions || [], recentMatches, browseBase, q);
                 })
                 .catch(function() {
-                    renderDropdown([], recentMatches, browseBase);
+                    renderDropdown([], recentMatches, browseBase, q);
                 });
             }, 300);
         });
@@ -363,7 +380,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
             if (input.value.trim() === '') {
                 var recent = getRecent();
                 if (recent.length > 0) {
-                    renderDropdown([], recent, browseBase);
+                    renderDropdown([], recent, browseBase, '');
                 }
             }
         });
@@ -438,6 +455,11 @@ endif; ?>
                         <div id="search-results" class="search-dropdown-section" hidden>
                             <div class="search-dropdown-header"><span>Models</span></div>
                             <ul id="search-results-list" class="search-dropdown-list"></ul>
+                        </div>
+                        <div class="search-dropdown-section" hidden>
+                            <a id="search-browse-link" href="#" class="search-dropdown-item search-browse-all">
+                                <span class="search-dropdown-icon">&#128269;</span>Search for "<span class="search-browse-query"></span>"
+                            </a>
                         </div>
                     </div>
                 </div>
