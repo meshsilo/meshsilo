@@ -453,6 +453,7 @@ require_once 'includes/header.php';
                                              loading="lazy"
                                              onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)">
                                         <?php if (canEdit()): ?>
+                                        <button type="button" class="attachment-set-thumb" onclick="setAttachmentAsThumbnail(<?= $att['id'] ?>)" title="Set as model thumbnail">&#128247;</button>
                                         <button type="button" class="attachment-delete" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
                                         <?php endif; ?>
                                     </div>
@@ -2303,6 +2304,13 @@ require_once 'includes/header.php';
                 openImageLightbox('/assets/' + att.file_path, att.original_filename);
             };
 
+            const thumbBtn = document.createElement('button');
+            thumbBtn.type = 'button';
+            thumbBtn.className = 'attachment-set-thumb';
+            thumbBtn.title = 'Set as model thumbnail';
+            thumbBtn.innerHTML = '&#128247;';
+            thumbBtn.onclick = function() { setAttachmentAsThumbnail(att.attachment_id); };
+
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
             deleteBtn.className = 'attachment-delete';
@@ -2311,6 +2319,7 @@ require_once 'includes/header.php';
             deleteBtn.onclick = function() { deleteAttachment(att.attachment_id); };
 
             item.appendChild(img);
+            item.appendChild(thumbBtn);
             item.appendChild(deleteBtn);
             grid.appendChild(item);
         }
@@ -2367,6 +2376,41 @@ require_once 'includes/header.php';
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function setAttachmentAsThumbnail(attachmentId) {
+            const formData = new FormData();
+            formData.append('action', 'set_from_attachment');
+            formData.append('model_id', <?= $modelId ?>);
+            formData.append('attachment_id', attachmentId);
+            formData.append('csrf_token', '<?= Csrf::getToken() ?>');
+
+            try {
+                const response = await fetch('/actions/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    // Update the thumbnail display
+                    const thumbContainer = document.querySelector('.model-detail-thumbnail');
+                    if (thumbContainer) {
+                        let img = thumbContainer.querySelector('.model-thumbnail-image');
+                        if (!img) {
+                            img = document.createElement('img');
+                            img.className = 'model-thumbnail-image';
+                            img.alt = '<?= htmlspecialchars(addslashes($model['name'])) ?>';
+                            thumbContainer.prepend(img);
+                        }
+                        img.src = '/assets/' + result.thumbnail_path + '?t=' + Date.now();
+                    }
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to set thumbnail'));
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
         }
 
         async function deleteAttachment(attachmentId) {

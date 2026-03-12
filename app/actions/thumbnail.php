@@ -16,7 +16,7 @@ $user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
-if (in_array($action, ['upload', 'delete', 'generate'])) {
+if (in_array($action, ['upload', 'delete', 'generate', 'set_from_attachment'])) {
     if (!Csrf::check()) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Invalid request token']);
@@ -33,6 +33,9 @@ switch ($action) {
         break;
     case 'generate':
         generateThumbnail();
+        break;
+    case 'set_from_attachment':
+        setFromAttachment();
         break;
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
@@ -215,6 +218,103 @@ function generateThumbnail() {
             'error' => 'Could not generate thumbnail. Only 3MF files with embedded thumbnails are supported.'
         ]);
     }
+}
+
+function setFromAttachment() {
+    global $user;
+
+    $modelId = (int)($_POST['model_id'] ?? 0);
+    $attachmentId = (int)($_POST['attachment_id'] ?? 0);
+
+    if (!$modelId || !$attachmentId) {
+        echo json_encode(['success' => false, 'error' => 'Model ID and attachment ID required']);
+        return;
+    }
+
+    $db = getDB();
+
+    // Verify model ownership
+    $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id AND parent_id IS NULL');
+    $stmt->execute([':id' => $modelId]);
+    $model = $stmt->fetch();
+
+    if (!$model) {
+        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        return;
+    }
+
+    $ownerId = $model['user_id'] ?? null;
+    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        return;
+    }
+
+    // Get the attachment
+    $stmt = $db->prepare('SELECT file_path, file_type FROM model_attachments WHERE id = :id AND model_id = :model_id');
+    $stmt->execute([':id' => $attachmentId, ':model_id' => $modelId]);
+    $att = $stmt->fetch();
+
+    if (!$att) {
+        echo json_encode(['success' => false, 'error' => 'Attachment not found']);
+        return;
+    }
+
+    if ($att['file_type'] !== 'image') {
+        echo json_encode(['success' => false, 'error' => 'Only image attachments can be used as thumbnails']);
+        return;
+    }
+
+    $sourcePath = UPLOAD_PATH . $att['file_path'];
+    if (!file_exists($sourcePath)) {
+        echo json_encode(['success' => false, 'error' => 'Attachment file not found on disk']);
+        return;
+    }
+
+    // Create thumbnails directory
+    $thumbDir = UPLOAD_PATH . 'thumbnails';
+    if (!is_dir($thumbDir)) {
+        mkdir($thumbDir, 0755, true);
+    }
+
+    // Determine extension from source file
+    $ext = strtolower(pathinfo($sourcePath, PATHINFO_EXTENSION));
+    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+        $ext = 'jpg';
+    }
+
+    $filename = 'thumb_' . $modelId . '_' . time() . '.' . $ext;
+    $destPath = $thumbDir . '/' . $filename;
+    $relativePath = 'thumbnails/' . $filename;
+
+    // Copy the attachment to thumbnails dir
+    if (!copy($sourcePath, $destPath)) {
+        echo json_encode(['success' => false, 'error' => 'Failed to copy image']);
+        return;
+    }
+
+    // Resize to max 800px
+    resizeThumbnail($destPath, 800);
+
+    // Delete old thumbnail if exists
+    $stmt = $db->prepare('SELECT thumbnail_path FROM models WHERE id = :id');
+    $stmt->execute([':id' => $modelId]);
+    $existing = $stmt->fetch();
+
+    if ($existing && $existing['thumbnail_path']) {
+        $oldPath = UPLOAD_PATH . $existing['thumbnail_path'];
+        if (file_exists($oldPath)) {
+            @unlink($oldPath);
+        }
+    }
+
+    // Update model
+    $stmt = $db->prepare('UPDATE models SET thumbnail_path = :path WHERE id = :id');
+    $stmt->execute([':path' => $relativePath, ':id' => $modelId]);
+
+    echo json_encode([
+        'success' => true,
+        'thumbnail_path' => $relativePath
+    ]);
 }
 
 function resizeThumbnail($filePath, $maxDimension) {
