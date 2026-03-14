@@ -6428,3 +6428,10 @@ body.batch-mode .model-list-item:hover {
     color: var(--color-primary);
     border-color: var(--color-primary);
 }
+
+/* Footer copyright */
+.footer-copyright {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+}

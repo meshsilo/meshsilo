@@ -68,7 +68,7 @@ require_once 'includes/header.php';
         <div class="page-container-wide">
             <div class="page-header">
                 <div class="breadcrumb">
-                    <a href="collections.php">Collections</a> &raquo; <?= htmlspecialchars($collectionName) ?>
+                    <a href="<?= route('collections') ?>">Collections</a> &raquo; <?= htmlspecialchars($collectionName) ?>
                 </div>
                 <h1><?= htmlspecialchars($collectionName) ?></h1>
                 <?php if (!empty($collectionInfo['description'])): ?>

@@ -815,7 +815,10 @@ require_once 'includes/header.php';
                             </div>
                             <div class="form-group">
                                 <label for="share-password">Password (optional)</label>
-                                <input type="password" id="share-password" class="form-input" placeholder="Leave empty for no password">
+                                <div class="password-wrapper">
+                                    <input type="password" id="share-password" class="form-input" placeholder="Leave empty for no password">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary">Create Share Link</button>
                         </form>

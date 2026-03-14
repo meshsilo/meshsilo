@@ -8,6 +8,7 @@
                 <?php endif; ?>
                 <span class="logo-text"><?= htmlspecialchars(SITE_NAME) ?></span>
                 <p><?= htmlspecialchars(SITE_DESCRIPTION) ?></p>
+                <p class="footer-copyright">&copy; <?= date('Y') ?> <?= htmlspecialchars(SITE_NAME) ?></p>
             </div>
             <?php
             $footerAboutUrl = getSetting('footer_about_url', '');

@@ -30,7 +30,7 @@ require_once 'includes/header.php';
         <div class="page-container-wide">
             <div class="page-header">
                 <h1>Tags</h1>
-                <p>Browse models by tag</p>
+                <p><?= count($tags) ?> tag<?= count($tags) !== 1 ? 's' : '' ?></p>
             </div>
 
             <?php if (empty($tags)): ?>
@@ -38,7 +38,7 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="categories-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                     <?php foreach ($tags as $tag): ?>
-                    <a href="browse.php?tag=<?= $tag['id'] ?>" class="category-card" style="border-left: 4px solid <?= htmlspecialchars($tag['color']) ?>;">
+                    <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="category-card" style="border-left: 4px solid <?= htmlspecialchars($tag['color']) ?>;">
                         <span class="category-name"><?= htmlspecialchars($tag['name']) ?></span>
                         <span class="category-count"><?= $tag['model_count'] ?> model<?= $tag['model_count'] !== 1 ? 's' : '' ?></span>
                     </a>

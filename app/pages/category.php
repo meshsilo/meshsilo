@@ -12,7 +12,7 @@ $db = getDB();
 $categoryId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$categoryId) {
-    header('Location: categories.php');
+    header('Location: ' . route('categories'));
     exit;
 }
 
@@ -23,7 +23,7 @@ $result = $stmt->execute();
 $category = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$category) {
-    header('Location: categories.php');
+    header('Location: ' . route('categories'));
     exit;
 }
 
@@ -68,7 +68,7 @@ require_once 'includes/header.php';
         <div class="page-container-wide">
             <div class="page-header">
                 <div class="breadcrumb">
-                    <a href="categories.php">Categories</a> &raquo; <?= htmlspecialchars($category['name']) ?>
+                    <a href="<?= route('categories') ?>">Categories</a> &raquo; <?= htmlspecialchars($category['name']) ?>
                 </div>
                 <h1><?= htmlspecialchars($category['name']) ?></h1>
                 <p><?= count($models) ?> model<?= count($models) !== 1 ? 's' : '' ?> in this category</p>
@@ -79,12 +79,15 @@ require_once 'includes/header.php';
                     <p class="text-muted">No models in this category yet.</p>
                 <?php else: ?>
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'" tabindex="0" role="link" onkeydown="if(event.key==='Enter')this.click()">
                         <div class="model-thumbnail"
-                            <?php if (!empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
+                            <?php if (!empty($model['thumbnail_path'])): ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy">
+                            <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
