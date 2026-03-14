@@ -33,6 +33,7 @@ if (empty($tagIds) && isset($_GET['tag']) && (int)$_GET['tag'] > 0) {
 }
 $fileType = trim($_GET['file_type'] ?? '');
 $printType = trim($_GET['print_type'] ?? '');
+$collection = trim($_GET['collection'] ?? '');
 $sort = $_GET['sort'] ?? getSetting('default_sort', 'newest');
 $view = $_GET['view'] ?? ($_COOKIE['silo_view'] ?? getSetting('default_view', 'grid'));
 $showArchived = isset($_GET['archived']) && $_GET['archived'] === '1';
@@ -154,6 +155,12 @@ if ($printType !== '' && in_array($printType, ['fdm', 'sla'])) {
     $where[] = '(m.print_type = :print_type OR m.id IN (SELECT parent_id FROM models WHERE parent_id IS NOT NULL AND print_type = :print_type2))';
     $params[':print_type'] = $printType;
     $params[':print_type2'] = $printType;
+}
+
+// Collection filter
+if ($collection !== '') {
+    $where[] = 'm.collection = :collection';
+    $params[':collection'] = $collection;
 }
 
 // Archive filter
@@ -299,6 +306,15 @@ $ptResult = $db->query("SELECT DISTINCT print_type FROM models WHERE print_type 
 if ($ptResult) {
     while ($ptRow = $ptResult->fetchArray()) {
         $printTypes[] = $ptRow['print_type'];
+    }
+}
+
+// Get distinct collections for filter dropdown
+$collections = [];
+$collResult = $db->query("SELECT DISTINCT collection FROM models WHERE parent_id IS NULL AND collection IS NOT NULL AND collection != '' ORDER BY collection");
+if ($collResult) {
+    while ($collRow = $collResult->fetchArray()) {
+        $collections[] = $collRow['collection'];
     }
 }
 
@@ -487,6 +503,15 @@ require_once 'includes/header.php';
                     </select>
                     <?php endif; ?>
 
+                    <?php if (!empty($collections)): ?>
+                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by collection">
+                        <option value="">+ Collection</option>
+                        <?php foreach ($collections as $coll): ?>
+                        <option value="<?= buildUrl(['collection' => $coll, 'page' => 1]) ?>" <?= $collection === $coll ? 'selected' : '' ?>><?= htmlspecialchars($coll) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+
                     <?php if (class_exists('PluginManager')): ?>
                     <?= PluginManager::applyFilter('browse_filters', '') ?>
                     <?php endif; ?>
@@ -500,7 +525,7 @@ require_once 'includes/header.php';
                         <?php endforeach; ?>
                     </select>
                     <?php endif; ?>
-                    <?php $hasFilters = $search !== '' || $categoryId > 0 || !empty($tagIds) || $fileType !== '' || $printType !== ''; ?>
+                    <?php $hasFilters = $search !== '' || $categoryId > 0 || !empty($tagIds) || $fileType !== '' || $printType !== '' || $collection !== ''; ?>
                     <?php if ($hasFilters): ?>
                     <button type="button" class="btn btn-small btn-secondary" onclick="saveCurrentSearch()" title="Save current search">Save Search</button>
                     <?php endif; ?>
@@ -541,6 +566,13 @@ require_once 'includes/header.php';
                     <span class="filter-chip">
                         Print: <?= htmlspecialchars(strtoupper($printType)) ?>
                         <a href="<?= buildUrl(['print_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove print type filter">&times;</a>
+                    </span>
+                    <?php endif; ?>
+
+                    <?php if ($collection !== ''): ?>
+                    <span class="filter-chip">
+                        Collection: <?= htmlspecialchars($collection) ?>
+                        <a href="<?= buildUrl(['collection' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove collection filter">&times;</a>
                     </span>
                     <?php endif; ?>
                 </div>
