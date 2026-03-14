@@ -997,14 +997,14 @@ require_once 'includes/header.php';
                     const estimate = await estimateResponse.json();
 
                     if (!estimate.success) {
-                        alert('Cannot estimate conversion: ' + (estimate.error || 'Unknown error'));
+                        showToast('Cannot estimate conversion: ' + (estimate.error || 'Unknown error'), 'error');
                         this.textContent = originalText;
                         this.disabled = false;
                         return;
                     }
 
                     if (!estimate.worth_converting) {
-                        alert('Converting this file would not save space. Keeping original STL.');
+                        showToast('Converting this file would not save space. Keeping original STL.', 'info');
                         this.textContent = originalText;
                         this.disabled = false;
                         return;
@@ -1017,12 +1017,10 @@ require_once 'includes/header.php';
                         return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
                     };
 
-                    const confirmed = confirm(
-                        `Convert to 3MF?\n\n` +
-                        `Current size: ${formatBytes(estimate.original_size)}\n` +
-                        `Estimated new size: ${formatBytes(estimate.estimated_size)}\n` +
-                        `Estimated savings: ${formatBytes(estimate.estimated_savings)} (${estimate.estimated_savings_percent}%)\n\n` +
-                        `This will replace the STL file with a 3MF file.`
+                    const confirmed = await showConfirm(
+                        'Convert to 3MF? Current size: ' + formatBytes(estimate.original_size) +
+                        ', Estimated new size: ' + formatBytes(estimate.estimated_size) +
+                        ', Estimated savings: ' + formatBytes(estimate.estimated_savings) + ' (' + estimate.estimated_savings_percent + '%). This will replace the STL file with a 3MF file.'
                     );
 
                     if (!confirmed) {
@@ -1048,13 +1046,13 @@ require_once 'includes/header.php';
                         this.textContent = 'Queued';
                         if (typeof refreshQueueStatus === 'function') refreshQueueStatus();
                     } else {
-                        alert('Failed to queue conversion: ' + (result.error || 'Unknown error'));
+                        showToast('Failed to queue conversion: ' + (result.error || 'Unknown error'), 'error');
                         this.textContent = originalText;
                         this.disabled = false;
                     }
                 } catch (err) {
                     console.error('Conversion error:', err);
-                    alert('Failed to queue conversion');
+                    showToast('Failed to queue conversion', 'error');
                     this.textContent = originalText;
                     this.disabled = false;
                 }
@@ -1089,14 +1087,14 @@ require_once 'includes/header.php';
 
             const ids = getSelectedPartIds();
             if (ids.length === 0) {
-                alert('No parts selected');
+                showToast('No parts selected', 'error');
                 selectEl.value = '';
                 return;
             }
 
             const actualType = printType === 'clear' ? '' : printType;
             const label = printType === 'clear' ? 'none' : printType.toUpperCase();
-            if (!confirm('Set print type to ' + label + ' for ' + ids.length + ' selected part(s)?')) {
+            if (!await showConfirm('Set print type to ' + label + ' for ' + ids.length + ' selected part(s)?')) {
                 selectEl.value = '';
                 return;
             }
@@ -1174,7 +1172,7 @@ require_once 'includes/header.php';
                 const ids = getSelectedPartIds();
                 if (ids.length === 0) return;
 
-                if (!confirm(`Delete ${ids.length} selected parts? This cannot be undone.`)) {
+                if (!await showConfirm(`Delete ${ids.length} selected parts? This cannot be undone.`)) {
                     return;
                 }
 
@@ -1189,11 +1187,11 @@ require_once 'includes/header.php';
                     if (result.success) {
                         location.reload();
                     } else {
-                        alert('Failed: ' + (result.error || 'Unknown error'));
+                        showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
                     }
                 } catch (err) {
                     console.error('Mass delete error:', err);
-                    alert('Failed to delete parts');
+                    showToast('Failed to delete parts', 'error');
                 }
             });
         }
@@ -1212,11 +1210,11 @@ require_once 'includes/header.php';
                 });
 
                 if (stlParts.length === 0) {
-                    alert('No STL files selected. Only STL files can be converted to 3MF.');
+                    showToast('No STL files selected. Only STL files can be converted to 3MF.', 'error');
                     return;
                 }
 
-                if (!confirm(`Convert ${stlParts.length} STL file(s) to 3MF? This will replace the original files.`)) {
+                if (!await showConfirm(`Convert ${stlParts.length} STL file(s) to 3MF? This will replace the original files.`)) {
                     return;
                 }
 
@@ -1235,12 +1233,12 @@ require_once 'includes/header.php';
                         massConvertBtn.textContent = `Queued ${result.queued}`;
                         if (typeof refreshQueueStatus === 'function') refreshQueueStatus();
                     } else {
-                        alert('Failed to queue conversions.');
+                        showToast('Failed to queue conversions', 'error');
                         massConvertBtn.textContent = 'Convert to 3MF';
                         massConvertBtn.disabled = false;
                     }
                 } catch (err) {
-                    alert('Failed to queue conversions.');
+                    showToast('Failed to queue conversions', 'error');
                     massConvertBtn.textContent = 'Convert to 3MF';
                     massConvertBtn.disabled = false;
                 }
@@ -1259,19 +1257,19 @@ require_once 'includes/header.php';
                 const resp = await fetch('<?= route('actions.update.part') ?>', { method: 'POST', body: formData });
                 const data = await resp.json();
                 if (!data.success) {
-                    alert(data.error || 'Failed to update print type');
+                    showToast(data.error || 'Failed to update print type', 'error');
                     selectEl.value = selectEl.dataset.prev || '';
                 }
                 selectEl.dataset.prev = selectEl.value;
             } catch (e) {
-                alert('Failed to update print type');
+                showToast('Failed to update print type', 'error');
             }
         }
 
         async function updateFolderPrintType(selectEl, folderName) {
             const printType = selectEl.value;
             const label = printType ? printType.toUpperCase() : 'none';
-            if (!confirm('Set print type to ' + label + ' for all parts in "' + folderName + '"?')) {
+            if (!await showConfirm('Set print type to ' + label + ' for all parts in "' + folderName + '"?')) {
                 selectEl.value = '';
                 return;
             }
@@ -1297,11 +1295,11 @@ require_once 'includes/header.php';
                     }
                     selectEl.value = '';
                 } else {
-                    alert(data.error || 'Failed to update print type');
+                    showToast(data.error || 'Failed to update print type', 'error');
                     selectEl.value = '';
                 }
             } catch (e) {
-                alert('Failed to update folder print type');
+                showToast('Failed to update folder print type', 'error');
                 selectEl.value = '';
             }
         }
@@ -1361,11 +1359,11 @@ require_once 'includes/header.php';
             // Show result and reload
             if (successCount > 0) {
                 if (errorCount > 0) {
-                    alert(`Uploaded ${successCount} files. ${errorCount} files failed.`);
+                    showToast(`Uploaded ${successCount} files. ${errorCount} files failed.`, 'error');
                 }
                 location.reload();
             } else if (errorCount > 0) {
-                alert(`Upload failed. ${errorCount} files could not be uploaded.`);
+                showToast(`Upload failed. ${errorCount} files could not be uploaded.`, 'error');
             }
         }
 
@@ -1450,11 +1448,11 @@ require_once 'includes/header.php';
                 if (result.success) {
                     location.reload();
                 } else {
-                    alert('Failed: ' + (result.error || 'Unknown error'));
+                    showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Create folder error:', err);
-                alert('Failed to create folder');
+                showToast('Failed to create folder', 'error');
             }
         }
 
@@ -1474,16 +1472,16 @@ require_once 'includes/header.php';
                 if (result.success) {
                     location.reload();
                 } else {
-                    alert('Failed: ' + (result.error || 'Unknown error'));
+                    showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Rename folder error:', err);
-                alert('Failed to rename folder');
+                showToast('Failed to rename folder', 'error');
             }
         }
 
         async function deleteFolder(folderName) {
-            if (!confirm('Delete folder "' + folderName + '"? Parts will be moved to root.')) return;
+            if (!await showConfirm('Delete folder "' + folderName + '"? Parts will be moved to root.')) return;
 
             const formData = new FormData();
             formData.append('action', 'delete');
@@ -1496,11 +1494,11 @@ require_once 'includes/header.php';
                 if (result.success) {
                     location.reload();
                 } else {
-                    alert('Failed: ' + (result.error || 'Unknown error'));
+                    showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Delete folder error:', err);
-                alert('Failed to delete folder');
+                showToast('Failed to delete folder', 'error');
             }
         }
 
@@ -1526,7 +1524,7 @@ require_once 'includes/header.php';
         async function submitMoveToFolder() {
             const selected = document.querySelector('#move-folder-list input[type="radio"]:checked');
             if (!selected) {
-                alert('Please select a folder');
+                showToast('Please select a folder', 'error');
                 return;
             }
 
@@ -1543,11 +1541,11 @@ require_once 'includes/header.php';
                 if (result.success) {
                     location.reload();
                 } else {
-                    alert('Failed: ' + (result.error || 'Unknown error'));
+                    showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Move to folder error:', err);
-                alert('Failed to move parts');
+                showToast('Failed to move parts', 'error');
             }
         }
 
@@ -1572,7 +1570,7 @@ require_once 'includes/header.php';
             const submitBtn = document.getElementById('version-submit-btn');
 
             if (!fileInput.files.length) {
-                alert('Please select a file');
+                showToast('Please select a file', 'error');
                 return;
             }
 
@@ -1591,11 +1589,11 @@ require_once 'includes/header.php';
                     closeUploadVersionModal();
                     location.reload();
                 } else {
-                    alert('Failed: ' + (result.error || 'Unknown error'));
+                    showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Upload version error:', err);
-                alert('Failed to upload version');
+                showToast('Failed to upload version', 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Upload Version';
@@ -1712,12 +1710,12 @@ require_once 'includes/header.php';
                     partCalculatedData[partId].dimensions = data.formatted;
                     linkEl.textContent = 'Dimensions: ' + data.formatted;
                 } else {
-                    alert('Failed: ' + (data.error || 'Unknown error'));
+                    showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
                     linkEl.textContent = originalText;
                 }
             } catch (err) {
                 console.error('Part dimensions error:', err);
-                alert('Failed to calculate dimensions');
+                showToast('Failed to calculate dimensions', 'error');
                 linkEl.textContent = originalText;
             }
         }
@@ -1741,12 +1739,12 @@ require_once 'includes/header.php';
                     }
                     linkEl.textContent = volumeText;
                 } else {
-                    alert('Failed: ' + (data.error || 'Unknown error'));
+                    showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
                     linkEl.textContent = originalText;
                 }
             } catch (err) {
                 console.error('Part volume error:', err);
-                alert('Failed to calculate volume');
+                showToast('Failed to calculate volume', 'error');
                 linkEl.textContent = originalText;
             }
         }
@@ -1792,12 +1790,12 @@ require_once 'includes/header.php';
                         linkEl.textContent = 'Analyzed';
                     }
                 } else {
-                    alert('Failed: ' + (data.error || 'Unknown error'));
+                    showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
                     linkEl.textContent = originalText;
                 }
             } catch (err) {
                 console.error('Part mesh analysis error:', err);
-                alert('Failed to analyze mesh');
+                showToast('Failed to analyze mesh', 'error');
                 linkEl.textContent = originalText;
             }
         }
@@ -1814,11 +1812,11 @@ require_once 'includes/header.php';
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert('Failed to update: ' + (data.error || 'Unknown error'));
+                    showToast('Failed to update: ' + (data.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Failed to toggle archive:', err);
-                alert('Failed to update model');
+                showToast('Failed to update model', 'error');
             }
         }
 
@@ -1883,7 +1881,7 @@ require_once 'includes/header.php';
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert('Failed to add tag: ' + (data.error || 'Unknown error'));
+                    showToast('Failed to add tag: ' + (data.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Failed to add tag:', err);
@@ -1905,7 +1903,7 @@ require_once 'includes/header.php';
                 if (data.success) {
                     element.remove();
                 } else {
-                    alert('Failed to remove tag: ' + (data.error || 'Unknown error'));
+                    showToast('Failed to remove tag: ' + (data.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Failed to remove tag:', err);
@@ -1950,11 +1948,11 @@ require_once 'includes/header.php';
                     // Reload links
                     loadShareLinks();
                 } else {
-                    alert('Failed to create share link: ' + (result.error || 'Unknown error'));
+                    showToast('Failed to create share link: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Error creating share link:', err);
-                alert('Failed to create share link');
+                showToast('Failed to create share link', 'error');
             }
         });
 
@@ -2010,7 +2008,7 @@ require_once 'includes/header.php';
         }
 
         async function deleteShareLink(linkId) {
-            if (!confirm('Delete this share link? Anyone with this link will no longer be able to access the model.')) {
+            if (!await showConfirm('Delete this share link? Anyone with this link will no longer be able to access the model.')) {
                 return;
             }
 
@@ -2028,11 +2026,11 @@ require_once 'includes/header.php';
                 if (result.success) {
                     loadShareLinks();
                 } else {
-                    alert('Failed to delete share link: ' + (result.error || 'Unknown error'));
+                    showToast('Failed to delete share link: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Error deleting share link:', err);
-                alert('Failed to delete share link');
+                showToast('Failed to delete share link', 'error');
             }
         }
         <?php endif; ?>
@@ -2060,7 +2058,7 @@ require_once 'includes/header.php';
             const linkType = document.getElementById('link-type').value;
 
             if (!title || !url) {
-                alert('Title and URL are required');
+                showToast('Title and URL are required', 'error');
                 return;
             }
 
@@ -2095,15 +2093,15 @@ require_once 'includes/header.php';
 
                     toggleAddLinkForm();
                 } else {
-                    alert('Error: ' + result.error);
+                    showToast(result.error, 'error');
                 }
             } catch (err) {
-                alert('Error: ' + err.message);
+                showToast(err.message, 'error');
             }
         }
 
         async function deleteModelLink(linkId) {
-            if (!confirm('Remove this link?')) return;
+            if (!await showConfirm('Remove this link?')) return;
 
             try {
                 const response = await fetch('/actions/model-links', {
@@ -2127,10 +2125,10 @@ require_once 'includes/header.php';
                         list.appendChild(p);
                     }
                 } else {
-                    alert('Error: ' + result.error);
+                    showToast(result.error, 'error');
                 }
             } catch (err) {
-                alert('Error: ' + err.message);
+                showToast(err.message, 'error');
             }
         }
 
@@ -2141,21 +2139,42 @@ require_once 'includes/header.php';
         }
 
         // Attachments - Lightbox
+        var lightboxImages = [];
+        var lightboxIndex = 0;
+
+        function collectLightboxImages() {
+            lightboxImages = [];
+            var grid = document.getElementById('attachment-images');
+            if (!grid) return;
+            var imgs = grid.querySelectorAll('.attachment-image img');
+            imgs.forEach(function(img) {
+                lightboxImages.push({ src: img.src, caption: img.alt });
+            });
+        }
+
         function openImageLightbox(src, caption) {
+            collectLightboxImages();
+            lightboxIndex = lightboxImages.findIndex(function(img) { return img.src === src || img.src.endsWith(src); });
+            if (lightboxIndex < 0) lightboxIndex = 0;
+
             // Remove existing lightbox if any
-            const existing = document.getElementById('image-lightbox');
+            var existing = document.getElementById('image-lightbox');
             if (existing) existing.remove();
 
-            const lightbox = document.createElement('div');
+            var hasMultiple = lightboxImages.length > 1;
+            var lightbox = document.createElement('div');
             lightbox.id = 'image-lightbox';
             lightbox.className = 'lightbox-overlay';
-            lightbox.innerHTML = `
-                <div class="lightbox-content">
-                    <button type="button" class="lightbox-close" onclick="closeLightbox()">&times;</button>
-                    <img src="${escapeHtml(src)}" alt="${escapeHtml(caption)}">
-                    <div class="lightbox-caption">${escapeHtml(caption)}</div>
-                </div>
-            `;
+            lightbox.innerHTML =
+                '<div class="lightbox-content">' +
+                    '<button type="button" class="lightbox-close" onclick="closeLightbox()">&times;</button>' +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1)">&#8249;</button>' : '') +
+                    '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(caption) + '">' +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" onclick="lightboxNav(1)">&#8250;</button>' : '') +
+                    '<div class="lightbox-caption">' + escapeHtml(caption) +
+                    (hasMultiple ? ' <span class="lightbox-counter">' + (lightboxIndex + 1) + ' / ' + lightboxImages.length + '</span>' : '') +
+                    '</div>' +
+                '</div>';
             document.body.appendChild(lightbox);
             lightbox.style.display = 'flex';
 
@@ -2164,18 +2183,31 @@ require_once 'includes/header.php';
                 if (e.target === this) closeLightbox();
             });
 
-            // Close on Escape key
             document.addEventListener('keydown', lightboxKeyHandler);
         }
 
+        function lightboxNav(dir) {
+            if (lightboxImages.length < 2) return;
+            lightboxIndex = (lightboxIndex + dir + lightboxImages.length) % lightboxImages.length;
+            var img = lightboxImages[lightboxIndex];
+            var lightbox = document.getElementById('image-lightbox');
+            if (!lightbox) return;
+            lightbox.querySelector('.lightbox-content img').src = img.src;
+            lightbox.querySelector('.lightbox-content img').alt = img.caption;
+            var caption = lightbox.querySelector('.lightbox-caption');
+            caption.innerHTML = escapeHtml(img.caption) + ' <span class="lightbox-counter">' + (lightboxIndex + 1) + ' / ' + lightboxImages.length + '</span>';
+        }
+
         function closeLightbox() {
-            const lightbox = document.getElementById('image-lightbox');
+            var lightbox = document.getElementById('image-lightbox');
             if (lightbox) lightbox.remove();
             document.removeEventListener('keydown', lightboxKeyHandler);
         }
 
         function lightboxKeyHandler(e) {
             if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') lightboxNav(-1);
+            if (e.key === 'ArrowRight') lightboxNav(1);
         }
 
         <?php if (canEdit()): ?>
@@ -2189,7 +2221,7 @@ require_once 'includes/header.php';
             for (const file of files) {
                 const ext = '.' + file.name.split('.').pop().toLowerCase();
                 if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
-                    alert(`Invalid file type: ${file.name}. Allowed: Images, PDFs, TXT, MD`);
+                    showToast(`Invalid file type: ${file.name}. Allowed: Images, PDFs, TXT, MD`, 'error');
                     continue;
                 }
 
@@ -2217,10 +2249,10 @@ require_once 'includes/header.php';
                             addDocumentAttachment(result);
                         }
                     } else {
-                        alert(`Error uploading ${file.name}: ${result.error}`);
+                        showToast(`Error uploading ${file.name}: ${result.error}`, 'error');
                     }
                 } catch (err) {
-                    alert(`Error uploading ${file.name}: ${err.message}`);
+                    showToast(`Error uploading ${file.name}: ${err.message}`, 'error');
                 }
             }
 
@@ -2357,15 +2389,15 @@ require_once 'includes/header.php';
                         img.src = '/assets/' + result.thumbnail_path + '?t=' + Date.now();
                     }
                 } else {
-                    alert('Error: ' + (result.error || 'Failed to set thumbnail'));
+                    showToast(result.error || 'Failed to set thumbnail', 'error');
                 }
             } catch (err) {
-                alert('Error: ' + err.message);
+                showToast(err.message, 'error');
             }
         }
 
         async function deleteAttachment(attachmentId) {
-            if (!confirm('Delete this attachment?')) return;
+            if (!await showConfirm('Delete this attachment?')) return;
 
             const formData = new FormData();
             formData.append('action', 'delete');
@@ -2408,10 +2440,10 @@ require_once 'includes/header.php';
                         }
                     }
                 } else {
-                    alert('Error: ' + result.error);
+                    showToast(result.error, 'error');
                 }
             } catch (err) {
-                alert('Error: ' + err.message);
+                showToast(err.message, 'error');
             }
         }
         <?php endif; ?>
@@ -2515,7 +2547,7 @@ require_once 'includes/header.php';
             const suffix = document.getElementById('rename-suffix').value;
 
             if (!pattern && !prefix && !suffix) {
-                alert('Please enter a pattern, prefix, or suffix');
+                showToast('Please enter a pattern, prefix, or suffix', 'error');
                 return;
             }
 
@@ -2536,10 +2568,10 @@ require_once 'includes/header.php';
                 if (result.success) {
                     location.reload();
                 } else {
-                    alert('Error: ' + result.error);
+                    showToast(result.error, 'error');
                 }
             } catch (err) {
-                alert('Error: ' + err.message);
+                showToast(err.message, 'error');
             }
         }
         <?php endif; ?>

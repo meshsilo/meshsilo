@@ -45,6 +45,61 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <script src="<?= basePath('js/viewer.js') ?>?v=15" defer></script>
     <script src="<?= basePath('js/main.js') ?>?v=8" defer></script>
     <script>
+        // Toast notification helper (works before main.js loads)
+        function showToast(message, type) {
+            type = type || 'info';
+            if (window.siloUI && window.siloUI.toasts) {
+                window.siloUI.toasts.show(message, type);
+                return;
+            }
+            var container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+            var toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.innerHTML = '<span class="toast-message"></span><button class="toast-close">&times;</button>';
+            toast.querySelector('.toast-message').textContent = message;
+            toast.querySelector('.toast-close').onclick = function() {
+                toast.classList.remove('show');
+                setTimeout(function() { toast.remove(); }, 300);
+            };
+            container.appendChild(toast);
+            requestAnimationFrame(function() { toast.classList.add('show'); });
+            setTimeout(function() {
+                toast.classList.remove('show');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 4000);
+        }
+
+        // Confirm dialog replacement (returns Promise)
+        function showConfirm(message) {
+            return new Promise(function(resolve) {
+                var existing = document.getElementById('confirm-modal');
+                if (existing) existing.remove();
+                var overlay = document.createElement('div');
+                overlay.id = 'confirm-modal';
+                overlay.className = 'modal-overlay';
+                overlay.style.display = 'flex';
+                overlay.innerHTML =
+                    '<div class="modal-content" style="max-width:400px">' +
+                        '<div class="modal-header"><h3>Confirm</h3></div>' +
+                        '<div class="modal-body" style="padding:1.5rem"><p></p></div>' +
+                        '<div class="modal-footer" style="display:flex;gap:0.5rem;justify-content:flex-end;padding:1rem 1.5rem">' +
+                            '<button type="button" class="btn btn-secondary" id="confirm-cancel">Cancel</button>' +
+                            '<button type="button" class="btn btn-danger" id="confirm-ok">Confirm</button>' +
+                        '</div>' +
+                    '</div>';
+                overlay.querySelector('.modal-body p').textContent = message;
+                document.body.appendChild(overlay);
+                overlay.querySelector('#confirm-ok').onclick = function() { overlay.remove(); resolve(true); };
+                overlay.querySelector('#confirm-cancel').onclick = function() { overlay.remove(); resolve(false); };
+                overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(false); } });
+            });
+        }
+
         // Theme toggle functionality
         function toggleTheme() {
             const html = document.documentElement;

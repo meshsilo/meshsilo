@@ -824,7 +824,7 @@ require_once 'includes/header.php';
         function batchDownload() {
             const ids = getSelectedModelIds();
             if (ids.length === 0) {
-                alert('Please select models first');
+                showToast('Please select models first', 'error');
                 return;
             }
             window.location = 'actions/batch-download.php?ids=' + ids.join(',');
@@ -839,7 +839,7 @@ require_once 'includes/header.php';
 
             const ids = getSelectedModelIds();
             if (ids.length === 0) {
-                alert('Please select models first');
+                showToast('Please select models first', 'error');
                 select.value = '';
                 return;
             }
@@ -865,14 +865,14 @@ require_once 'includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Tagged ${result.updated} model(s)`);
+                    showToast(`Tagged ${result.updated} model(s)`, 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error('Batch tag error:', err);
-                alert('Failed to apply tag');
+                showToast('Failed to apply tag', 'error');
             }
 
             select.value = '';
@@ -887,7 +887,7 @@ require_once 'includes/header.php';
 
             const ids = getSelectedModelIds();
             if (ids.length === 0) {
-                alert('Please select models first');
+                showToast('Please select models first', 'error');
                 select.value = '';
                 return;
             }
@@ -902,13 +902,13 @@ require_once 'includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Added category to ${result.updated} model(s)`);
+                    showToast(`Added category to ${result.updated} model(s)`, 'success');
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error('Batch category error:', err);
-                alert('Failed to apply category');
+                showToast('Failed to apply category', 'error');
             }
 
             select.value = '';
@@ -917,11 +917,11 @@ require_once 'includes/header.php';
         async function batchArchive() {
             const ids = getSelectedModelIds();
             if (ids.length === 0) {
-                alert('Please select models first');
+                showToast('Please select models first', 'error');
                 return;
             }
 
-            if (!confirm(`Archive ${ids.length} selected model(s)?`)) {
+            if (!await showConfirm(`Archive ${ids.length} selected model(s)?`)) {
                 return;
             }
 
@@ -935,21 +935,21 @@ require_once 'includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Archived ${result.updated} model(s)`);
+                    showToast(`Archived ${result.updated} model(s)`, 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error('Batch archive error:', err);
-                alert('Failed to archive');
+                showToast('Failed to archive', 'error');
             }
         }
 
         async function batchSetCreator() {
             const ids = getSelectedModelIds();
             if (ids.length === 0) {
-                alert('Please select models first');
+                showToast('Please select models first', 'error');
                 return;
             }
 
@@ -966,21 +966,21 @@ require_once 'includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Updated creator on ${result.updated} model(s)`);
+                    showToast(`Updated creator on ${result.updated} model(s)`, 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error('Batch set creator error:', err);
-                alert('Failed to set creator');
+                showToast('Failed to set creator', 'error');
             }
         }
 
         async function batchSetCollection() {
             const ids = getSelectedModelIds();
             if (ids.length === 0) {
-                alert('Please select models first');
+                showToast('Please select models first', 'error');
                 return;
             }
 
@@ -997,14 +997,14 @@ require_once 'includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Updated collection on ${result.updated} model(s)`);
+                    showToast(`Updated collection on ${result.updated} model(s)`, 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error('Batch set collection error:', err);
-                alert('Failed to set collection');
+                showToast('Failed to set collection', 'error');
             }
         }
 
@@ -1030,10 +1030,10 @@ require_once 'includes/header.php';
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert(data.error || 'Failed to save search');
+                    showToast(data.error || 'Failed to save search', 'error');
                 }
             } catch (e) {
-                alert('Failed to save search');
+                showToast('Failed to save search', 'error');
             }
         }
 
