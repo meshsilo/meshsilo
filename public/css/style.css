@@ -228,6 +228,7 @@ a {
     text-overflow: ellipsis;
 }
 
+.search-dropdown-item.active,
 .search-dropdown-item:hover {
     background-color: var(--color-surface-hover);
 }

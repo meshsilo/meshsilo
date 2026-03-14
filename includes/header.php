@@ -262,10 +262,19 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
         catch(e) {}
     }
 
+    var activeIndex = -1;
+
     function escapeHtml(str) {
         var d = document.createElement('div');
         d.textContent = str;
         return d.innerHTML;
+    }
+
+    function highlightMatch(text, query) {
+        if (!query) return escapeHtml(text);
+        var escaped = escapeHtml(text);
+        var re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+        return escaped.replace(re, '<strong>$1</strong>');
     }
 
     function renderDropdown(suggestions, recentMatches, browseBase, query) {
@@ -279,7 +288,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
         if (recentMatches.length > 0) {
             recentList.innerHTML = recentMatches.slice(0, 5).map(function(q) {
                 return '<li><a href="' + escapeHtml(browseBase + '?q=' + encodeURIComponent(q)) + '" class="search-dropdown-item search-dropdown-recent">' +
-                       '<span class="search-dropdown-icon">&#128336;</span>' + escapeHtml(q) + '</a></li>';
+                       '<span class="search-dropdown-icon">&#128336;</span>' + highlightMatch(q, query) + '</a></li>';
             }).join('');
             recentSection.hidden = false;
         } else {
@@ -295,7 +304,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
                 var icon = s.type === 'tag' ? '&#127991;' : s.type === 'category' ? '&#128193;' : '&#128196;';
                 var href = s.url ? s.url : SILO_MODEL_BASE + s.id;
                 return '<li><a href="' + href + '" class="search-dropdown-item">' +
-                       '<span class="search-dropdown-icon">' + icon + '</span>' + escapeHtml(s.name) + badge + '</a></li>';
+                       '<span class="search-dropdown-icon">' + icon + '</span>' + highlightMatch(s.name, query) + badge + '</a></li>';
             }).join('');
             resultsSection.hidden = false;
         } else {
@@ -316,6 +325,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
 
         var hasContent = recentMatches.length > 0 || suggestions.length > 0 || (query && query.length > 0);
         dropdown.hidden = !hasContent;
+        activeIndex = -1;
     }
 
     function closeDropdown() {
@@ -385,9 +395,23 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
             }
         });
 
-        // Close on Escape
+        // Keyboard navigation
         input.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeDropdown();
+            if (e.key === 'Escape') { closeDropdown(); return; }
+            var items = dropdown.querySelectorAll('.search-dropdown-item');
+            if (!items.length || dropdown.hidden) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeIndex = (activeIndex + 1) % items.length;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
+            } else if (e.key === 'Enter' && activeIndex >= 0) {
+                e.preventDefault();
+                items[activeIndex].click();
+                return;
+            } else { return; }
+            items.forEach(function(el, i) { el.classList.toggle('active', i === activeIndex); });
         });
 
         // Close on click outside
