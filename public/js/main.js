@@ -267,6 +267,8 @@ class ToastManager {
     init() {
         this.container = document.createElement('div');
         this.container.className = 'toast-container';
+        this.container.setAttribute('aria-live', 'polite');
+        this.container.setAttribute('role', 'status');
         document.body.appendChild(this.container);
 
         // Auto-convert alert messages to toasts
@@ -537,6 +539,24 @@ class KeyboardShortcuts {
 }
 
 // =====================
+// Back to Top Button
+// =====================
+class BackToTop {
+    constructor() {
+        this.btn = document.createElement('button');
+        this.btn.className = 'back-to-top';
+        this.btn.innerHTML = '&#8679;';
+        this.btn.title = 'Back to top';
+        this.btn.setAttribute('aria-label', 'Scroll to top');
+        this.btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        document.body.appendChild(this.btn);
+        window.addEventListener('scroll', () => {
+            this.btn.classList.toggle('visible', window.scrollY > 400);
+        }, { passive: true });
+    }
+}
+
+// =====================
 // Initialize Everything
 // =====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -547,7 +567,8 @@ document.addEventListener('DOMContentLoaded', () => {
         search: new SearchHandler(),
         toasts: new ToastManager(),
         cardEffects: new CardEffects(),
-        keyboard: new KeyboardShortcuts()
+        keyboard: new KeyboardShortcuts(),
+        backToTop: new BackToTop()
     };
 
     // Add smooth scrolling

@@ -45,6 +45,18 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <script src="<?= basePath('js/viewer.js') ?>?v=15" defer></script>
     <script src="<?= basePath('js/main.js') ?>?v=8" defer></script>
     <script>
+        // Focus trap for modals (accessibility)
+        function trapFocus(el) {
+            el.addEventListener('keydown', function(e) {
+                if (e.key !== 'Tab') return;
+                var focusable = el.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (focusable.length === 0) return;
+                var first = focusable[0], last = focusable[focusable.length - 1];
+                if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+                else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+            });
+        }
+
         // Toast notification helper (works before main.js loads)
         function showToast(message, type) {
             type = type || 'info';
@@ -56,6 +68,8 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             if (!container) {
                 container = document.createElement('div');
                 container.className = 'toast-container';
+                container.setAttribute('aria-live', 'polite');
+                container.setAttribute('role', 'status');
                 document.body.appendChild(container);
             }
             var toast = document.createElement('div');
@@ -83,6 +97,9 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 overlay.id = 'confirm-modal';
                 overlay.className = 'modal-overlay';
                 overlay.style.display = 'flex';
+                overlay.setAttribute('role', 'dialog');
+                overlay.setAttribute('aria-modal', 'true');
+                overlay.setAttribute('aria-label', 'Confirm action');
                 overlay.innerHTML =
                     '<div class="modal-content" style="max-width:400px">' +
                         '<div class="modal-header"><h3>Confirm</h3></div>' +
@@ -94,6 +111,8 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                     '</div>';
                 overlay.querySelector('.modal-body p').textContent = message;
                 document.body.appendChild(overlay);
+                overlay.querySelector('#confirm-cancel').focus();
+                trapFocus(overlay);
                 overlay.querySelector('#confirm-ok').onclick = function() { overlay.remove(); resolve(true); };
                 overlay.querySelector('#confirm-cancel').onclick = function() { overlay.remove(); resolve(false); };
                 overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(false); } });
@@ -110,6 +129,9 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 overlay.id = 'prompt-modal';
                 overlay.className = 'modal-overlay';
                 overlay.style.display = 'flex';
+                overlay.setAttribute('role', 'dialog');
+                overlay.setAttribute('aria-modal', 'true');
+                overlay.setAttribute('aria-label', 'Input required');
                 overlay.innerHTML =
                     '<div class="modal-content" style="max-width:400px">' +
                         '<div class="modal-header"><h3>Input</h3></div>' +
@@ -125,6 +147,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 var input = overlay.querySelector('#prompt-input');
                 input.value = defaultValue;
                 document.body.appendChild(overlay);
+                trapFocus(overlay);
                 input.focus();
                 input.select();
                 function submit() { var v = input.value; overlay.remove(); resolve(v); }

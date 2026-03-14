@@ -1998,12 +1998,14 @@ require_once 'includes/header.php';
         function copyShareUrl(input) {
             input.select();
             navigator.clipboard.writeText(input.value).then(() => {
+                showToast('Link copied to clipboard', 'success');
                 const btn = input.nextElementSibling;
                 const originalText = btn.textContent;
                 btn.textContent = 'Copied!';
                 setTimeout(() => btn.textContent = originalText, 1500);
             }).catch(() => {
                 document.execCommand('copy');
+                showToast('Link copied to clipboard', 'success');
             });
         }
 
