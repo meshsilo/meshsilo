@@ -608,6 +608,10 @@ require_once 'includes/header.php';
                     <label for="model-description">Description</label>
                     <textarea id="model-description" name="description" class="form-input form-textarea" placeholder="Describe your model..." rows="4"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                     <small class="form-hint">Supports Markdown: **bold**, *italic*, `code`, [links](url), lists, headings (##), and more.</small>
+                    <details class="markdown-preview-toggle" style="margin-top:0.5rem">
+                        <summary style="cursor:pointer;color:var(--color-text-muted);font-size:0.85rem">Preview</summary>
+                        <div id="md-preview" class="markdown-content" style="padding:1rem;border:1px solid var(--color-border);border-radius:var(--radius);margin-top:0.5rem;min-height:3rem;background:var(--color-surface)"></div>
+                    </details>
                 </div>
 
                 <!-- Advanced Options (collapsible on mobile) -->
@@ -824,6 +828,31 @@ require_once 'includes/header.php';
             xhr.open('POST', uploadForm.action, true);
             xhr.send(formData);
         }
+
+        // Markdown preview
+        (function() {
+            var ta = document.getElementById('model-description');
+            var preview = document.getElementById('md-preview');
+            var timer = null;
+            function updatePreview() {
+                var text = ta.value;
+                if (!text.trim()) { preview.innerHTML = '<em style="color:var(--color-text-muted)">Nothing to preview</em>'; return; }
+                var html = text
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+                    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/`(.+?)`/g, '<code>$1</code>')
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+                    .replace(/^- (.+)$/gm, '<li>$1</li>')
+                    .replace(/\n/g, '<br>');
+                preview.innerHTML = html;
+            }
+            ta.addEventListener('input', function() { clearTimeout(timer); timer = setTimeout(updatePreview, 200); });
+            document.querySelector('.markdown-preview-toggle').addEventListener('toggle', updatePreview);
+        })();
 
         // Auto-open advanced options on desktop, keep collapsed on mobile
         const advancedOptions = document.getElementById('advanced-options');

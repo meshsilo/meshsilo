@@ -194,6 +194,22 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             });
         });
 
+        // Global Escape key: close any open modal overlay
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            var modals = document.querySelectorAll('.modal-overlay[style*="flex"], .modal-overlay[style*="block"]');
+            modals.forEach(function(m) { m.style.display = 'none'; });
+        });
+
+        // Copy current page URL to clipboard
+        function copyPageUrl() {
+            navigator.clipboard.writeText(window.location.href).then(function() {
+                showToast('Link copied to clipboard', 'success');
+            }).catch(function() {
+                showToast('Failed to copy link', 'error');
+            });
+        }
+
         // Theme toggle functionality
         function toggleTheme() {
             const html = document.documentElement;
@@ -575,6 +591,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
 </script>
 </head>
 <body>
+    <a href="#main-content" class="skip-to-content">Skip to content</a>
     <header class="site-header">
         <div class="header-content">
             <a href="<?= route('home') ?>" class="logo">
@@ -681,4 +698,4 @@ endif; ?>
         </div>
     </header>
 
-    <main>
+    <main id="main-content">

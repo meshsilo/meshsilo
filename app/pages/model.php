@@ -517,6 +517,7 @@ require_once 'includes/header.php';
                         <?php endif; ?>
 
                         <div class="model-actions" style="margin-top: 1rem;">
+                            <button type="button" class="copy-link-btn" onclick="copyPageUrl()" title="Copy link to clipboard">&#128279; Copy Link</button>
                             <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>
                             <?php endif; ?>
@@ -546,6 +547,20 @@ require_once 'includes/header.php';
                 <div class="model-description">
                     <h2>Description</h2>
                     <div class="markdown-content"><?= Markdown::render($model['description']) ?></div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($relatedModels)): ?>
+                <div class="related-models">
+                    <h2>Related Models</h2>
+                    <div class="related-models-grid">
+                        <?php foreach ($relatedModels as $rm): ?>
+                        <a href="<?= route('model.show', ['id' => $rm['related_model_id']]) ?>" class="related-model-card">
+                            <h4><?= htmlspecialchars($rm['name']) ?></h4>
+                            <span class="related-meta"><?= date('M j, Y', strtotime($rm['created_at'])) ?></span>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
 

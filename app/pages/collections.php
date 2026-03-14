@@ -33,6 +33,19 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row;
 }
 
+// Get a thumbnail for each collection from its first model
+foreach ($collections as &$col) {
+    $col['thumbnail'] = null;
+    $thumbStmt = $db->prepare('SELECT thumbnail_path FROM models WHERE collection = :name AND parent_id IS NULL AND thumbnail_path IS NOT NULL AND thumbnail_path != "" LIMIT 1');
+    $thumbStmt->bindValue(':name', $col['name'], PDO::PARAM_STR);
+    $thumbResult = $thumbStmt->execute();
+    $thumbRow = $thumbResult->fetchArray(PDO::FETCH_ASSOC);
+    if ($thumbRow) {
+        $col['thumbnail'] = $thumbRow['thumbnail_path'];
+    }
+}
+unset($col);
+
 require_once 'includes/header.php';
 ?>
 
@@ -47,7 +60,10 @@ require_once 'includes/header.php';
             <?php else: ?>
             <div class="collections-grid">
                 <?php foreach ($collections as $collection): ?>
-                <a href="collection.php?name=<?= urlencode($collection['name']) ?>" class="collection-card">
+                <a href="<?= route('browse', [], ['collection' => $collection['name']]) ?>" class="collection-card" tabindex="0">
+                    <?php if (!empty($collection['thumbnail'])): ?>
+                    <img src="/assets/<?= htmlspecialchars($collection['thumbnail']) ?>" alt="" class="collection-thumb" loading="lazy">
+                    <?php endif; ?>
                     <h2 class="collection-name"><?= htmlspecialchars($collection['name']) ?></h2>
                     <?php if (!empty($collection['description'])): ?>
                     <p class="collection-description"><?= htmlspecialchars($collection['description']) ?></p>

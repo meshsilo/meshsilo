@@ -12,7 +12,7 @@ $db = getDB();
 $collectionName = isset($_GET['name']) ? trim($_GET['name']) : '';
 
 if (empty($collectionName)) {
-    header('Location: collections.php');
+    header('Location: ' . route('collections'));
     exit;
 }
 
@@ -58,7 +58,7 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
 
 // If collection doesn't exist in either table or models, redirect
 if (empty($models) && !$collectionInfo) {
-    header('Location: collections.php');
+    header('Location: ' . route('collections'));
     exit;
 }
 
@@ -79,12 +79,15 @@ require_once 'includes/header.php';
 
             <div class="models-grid">
                 <?php foreach ($models as $model): ?>
-                <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'" tabindex="0" role="link" onkeydown="if(event.key==='Enter')this.click()">
                     <div class="model-thumbnail"
-                        <?php if (!empty($model['preview_path'])): ?>
+                        <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
                         data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                         data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                         <?php endif; ?>>
+                        <?php if (!empty($model['thumbnail_path'])): ?>
+                        <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy">
+                        <?php endif; ?>
                         <?php if ($model['part_count'] > 0): ?>
                         <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                         <?php endif; ?>
