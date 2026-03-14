@@ -1981,7 +1981,6 @@ require_once 'includes/header.php';
                             <div class="share-link-url">
                                 <input type="text" readonly value="${link.share_url}" class="share-url-input" onclick="this.select()">
                                 <button type="button" class="btn btn-small" onclick="copyShareUrl(this.previousElementSibling)" title="Copy URL">Copy</button>
-                                <button type="button" class="btn btn-small" onclick="showQRCode('${link.share_url}')" title="Show QR Code">QR</button>
                             </div>
                             <div class="share-link-meta">
                                 ${link.has_password ? '<span class="share-badge">Password</span>' : ''}
@@ -2008,54 +2007,6 @@ require_once 'includes/header.php';
             }).catch(() => {
                 document.execCommand('copy');
             });
-        }
-
-        function showQRCode(url) {
-            // Create QR code modal
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.id = 'qr-modal';
-            modal.innerHTML = `
-                <div class="modal-content" style="max-width: 320px; text-align: center;">
-                    <div class="modal-header">
-                        <h3>Scan to Access</h3>
-                        <button type="button" class="modal-close" onclick="document.getElementById('qr-modal').remove()">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="qr-container" style="padding: 1rem; background: white; display: inline-block; border-radius: 8px;"></div>
-                        <p class="text-muted" style="margin-top: 1rem; font-size: 0.875rem; word-break: break-all;">${url}</p>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            modal.style.display = 'flex';
-            modal.addEventListener('click', function(e) {
-                if (e.target === this) this.remove();
-            });
-
-            // Load QRCode.js from CDN and generate QR code
-            if (typeof QRCode === 'undefined') {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-                script.onload = () => generateQR(url);
-                document.head.appendChild(script);
-            } else {
-                generateQR(url);
-            }
-        }
-
-        function generateQR(url) {
-            const container = document.getElementById('qr-container');
-            if (container) {
-                new QRCode(container, {
-                    text: url,
-                    width: 200,
-                    height: 200,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.M
-                });
-            }
         }
 
         async function deleteShareLink(linkId) {
