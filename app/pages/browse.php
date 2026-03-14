@@ -608,7 +608,7 @@ require_once 'includes/header.php';
                                 <?php if ($model['part_count'] > 0): ?>
                                 <span><?= $model['part_count'] ?> parts</span>
                                 <?php endif; ?>
-                                <span><?= date('M j, Y', strtotime($model['created_at'])) ?></span>
+                                <span data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></span>
                                 <?php if (isFeatureEnabled('download_tracking') && $model['download_count'] > 0): ?>
                                 <span class="download-count"><?= number_format($model['download_count']) ?> downloads</span>
                                 <?php endif; ?>

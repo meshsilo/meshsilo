@@ -285,6 +285,22 @@ require_once 'includes/header.php';
 ?>
 
         <div class="page-container-wide model-page">
+            <nav class="model-breadcrumb">
+                <a href="<?= route('home') ?>">Home</a>
+                <span class="breadcrumb-sep">/</span>
+                <a href="<?= route('browse') ?>">Browse</a>
+                <?php if (!empty($categories)): ?>
+                <span class="breadcrumb-sep">/</span>
+                <a href="<?= route('browse', [], ['category' => $categories[0]['id']]) ?>"><?= htmlspecialchars($categories[0]['name']) ?></a>
+                <?php endif; ?>
+                <?php if (!empty($model['collection'])): ?>
+                <span class="breadcrumb-sep">/</span>
+                <a href="<?= route('browse', [], ['collection' => $model['collection']]) ?>"><?= htmlspecialchars($model['collection']) ?></a>
+                <?php endif; ?>
+                <span class="breadcrumb-sep">/</span>
+                <span class="breadcrumb-current"><?= htmlspecialchars($model['name']) ?></span>
+            </nav>
+
             <?php if ($message): ?>
             <div class="alert alert-<?= $messageType ?>" style="margin-bottom: 1.5rem;"><?= htmlspecialchars($message) ?></div>
             <?php endif; ?>
@@ -344,7 +360,7 @@ require_once 'includes/header.php';
                                 <strong>Collection:</strong> <?= htmlspecialchars($model['collection']) ?>
                             </span>
                             <?php endif; ?>
-                            <span class="meta-item">
+                            <span class="meta-item" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>">
                                 <strong>Added:</strong> <?= date('M j, Y', strtotime($model['created_at'])) ?>
                             </span>
                             <?php if (isFeatureEnabled('download_tracking') && ($model['download_count'] ?? 0) > 0): ?>

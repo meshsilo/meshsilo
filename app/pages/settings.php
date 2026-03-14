@@ -35,7 +35,9 @@ $error = '';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['update_profile'])) {
+    if (!Csrf::validate()) {
+        $error = 'Security validation failed. Please try again.';
+    } elseif (isset($_POST['update_profile'])) {
         $email = trim($_POST['email'] ?? '');
 
         if (empty($email)) {
@@ -146,6 +148,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="settings-section">
                     <h2>Profile Information</h2>
                     <form method="post">
+                        <?= csrf_field() ?>
                         <div class="form-row-grid">
                             <div class="form-group">
                                 <label for="username">Username</label>
@@ -181,21 +184,33 @@ require_once __DIR__ . '/../../includes/header.php';
                     <h2>Change Password</h2>
 
                     <form method="post">
+                        <?= csrf_field() ?>
                         <div class="form-group">
                             <label for="current_password">Current Password</label>
-                            <input type="password" id="current_password" name="current_password" class="form-input"
-                                   placeholder="Enter your current password" required>
+                            <div class="password-wrapper">
+                                <input type="password" id="current_password" name="current_password" class="form-input"
+                                       placeholder="Enter your current password" required>
+                                <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                            </div>
                         </div>
                         <div class="form-row-grid">
                             <div class="form-group">
                                 <label for="new_password">New Password</label>
-                                <input type="password" id="new_password" name="new_password" class="form-input"
-                                       minlength="8" placeholder="Minimum 8 characters" required>
+                                <div class="password-wrapper">
+                                    <input type="password" id="new_password" name="new_password" class="form-input"
+                                           minlength="8" placeholder="Minimum 8 characters" required>
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                                </div>
+                                <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>
+                                <div class="password-strength-text" id="pw-strength-text"></div>
                             </div>
                             <div class="form-group">
                                 <label for="confirm_password">Confirm New Password</label>
-                                <input type="password" id="confirm_password" name="confirm_password" class="form-input"
-                                       placeholder="Re-enter new password" required>
+                                <div class="password-wrapper">
+                                    <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                                           placeholder="Re-enter new password" required>
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                                </div>
                             </div>
                         </div>
                         <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
@@ -336,5 +351,34 @@ require_once __DIR__ . '/../../includes/header.php';
     color: var(--text-secondary);
 }
 </style>
+
+<script>
+(function() {
+    var pw = document.getElementById('new_password');
+    var bar = document.getElementById('pw-strength-bar');
+    var text = document.getElementById('pw-strength-text');
+    if (!pw || !bar) return;
+    pw.addEventListener('input', function() {
+        var v = pw.value, score = 0;
+        if (v.length >= 8) score++;
+        if (v.length >= 12) score++;
+        if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+        if (/\d/.test(v)) score++;
+        if (/[^a-zA-Z0-9]/.test(v)) score++;
+        var levels = [
+            { w: '0%', c: '', t: '' },
+            { w: '20%', c: '#ef4444', t: 'Weak' },
+            { w: '40%', c: '#f97316', t: 'Fair' },
+            { w: '60%', c: '#eab308', t: 'Good' },
+            { w: '80%', c: '#22c55e', t: 'Strong' },
+            { w: '100%', c: '#16a34a', t: 'Very strong' }
+        ];
+        var l = levels[score];
+        bar.style.width = l.w;
+        bar.style.backgroundColor = l.c;
+        if (text) text.textContent = v.length === 0 ? '' : l.t;
+    });
+})();
+</script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

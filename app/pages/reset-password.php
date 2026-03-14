@@ -148,15 +148,22 @@ require_once __DIR__ . '/../../includes/header.php';
 
                     <div class="form-group">
                         <label for="password">New Password</label>
-                        <input type="password" id="password" name="password" class="form-input"
-                               placeholder="Enter new password" required minlength="8">
-                        <p class="form-hint">Must be at least 8 characters</p>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" name="password" class="form-input"
+                                   placeholder="Enter new password" required minlength="8">
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                        </div>
+                        <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>
+                        <div class="password-strength-text" id="pw-strength-text">Must be at least 8 characters</div>
                     </div>
 
                     <div class="form-group">
                         <label for="confirm_password">Confirm New Password</label>
-                        <input type="password" id="confirm_password" name="confirm_password" class="form-input"
-                               placeholder="Re-enter new password" required>
+                        <div class="password-wrapper">
+                            <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                                   placeholder="Re-enter new password" required>
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-full">Reset Password</button>
@@ -188,5 +195,34 @@ require_once __DIR__ . '/../../includes/header.php';
     margin-top: 0.25rem;
 }
 </style>
+
+<script>
+(function() {
+    var pw = document.getElementById('password');
+    var bar = document.getElementById('pw-strength-bar');
+    var text = document.getElementById('pw-strength-text');
+    if (!pw || !bar) return;
+    pw.addEventListener('input', function() {
+        var v = pw.value, score = 0;
+        if (v.length >= 8) score++;
+        if (v.length >= 12) score++;
+        if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+        if (/\d/.test(v)) score++;
+        if (/[^a-zA-Z0-9]/.test(v)) score++;
+        var levels = [
+            { w: '0%', c: '', t: 'Must be at least 8 characters' },
+            { w: '20%', c: '#ef4444', t: 'Weak' },
+            { w: '40%', c: '#f97316', t: 'Fair' },
+            { w: '60%', c: '#eab308', t: 'Good' },
+            { w: '80%', c: '#22c55e', t: 'Strong' },
+            { w: '100%', c: '#16a34a', t: 'Very strong' }
+        ];
+        var l = levels[score];
+        bar.style.width = l.w;
+        bar.style.backgroundColor = l.c;
+        if (text) text.textContent = v.length === 0 ? levels[0].t : l.t;
+    });
+})();
+</script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

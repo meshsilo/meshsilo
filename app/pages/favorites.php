@@ -25,17 +25,19 @@ $favorites = getUserFavorites($user['id'], 100);
 // Enhance models with preview data using preview endpoint
 foreach ($favorites as &$model) {
     if ($model['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT id, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
+        $partStmt = $db->prepare('SELECT id, file_type, file_size FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
         $partStmt->bindValue(':parent_id', $model['id'], PDO::PARAM_INT);
         $partResult = $partStmt->execute();
         $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
         if ($firstPart) {
             $model['preview_path'] = '/preview?id=' . $firstPart['id'];
             $model['preview_type'] = $firstPart['file_type'];
+            $model['preview_file_size'] = $firstPart['file_size'] ?? 0;
         }
     } else {
         $model['preview_path'] = '/preview?id=' . $model['id'];
         $model['preview_type'] = $model['file_type'];
+        $model['preview_file_size'] = $model['file_size'] ?? 0;
     }
 }
 unset($model);
@@ -57,12 +59,15 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="models-grid">
                     <?php foreach ($favorites as $model): ?>
-                    <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='model.php?id=<?= $model['id'] ?>'">
+                    <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'">
                         <div class="model-thumbnail"
-                            <?php if (!empty($model['preview_path'])): ?>
+                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
+                            <?php if (!empty($model['thumbnail_path'])): ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy">
+                            <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>

@@ -671,10 +671,37 @@ require_once 'includes/header.php';
         const progressFill = document.getElementById('progress-fill');
         const progressText = document.getElementById('progress-text');
 
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function getFileIcon(ext) {
+            var icons = {
+                'stl': '\uD83D\uDDA8', '3mf': '\uD83D\uDCE6', 'obj': '\uD83D\uDCCB',
+                'gcode': '\u2699', 'zip': '\uD83D\uDCC1', 'step': '\uD83D\uDD27',
+                'stp': '\uD83D\uDD27', 'iges': '\uD83D\uDD27', 'igs': '\uD83D\uDD27',
+                'blend': '\uD83C\uDFA8', 'fbx': '\uD83C\uDFAC', 'glb': '\uD83C\uDF10',
+                'gltf': '\uD83C\uDF10'
+            };
+            return icons[ext] || '\uD83D\uDCC4';
+        }
+
         // File selection handlers
         function handleFileSelect(file) {
-            display.textContent = 'Selected: ' + file.name;
-            display.style.color = 'var(--color-success)';
+            var ext = file.name.split('.').pop().toLowerCase();
+            display.innerHTML = '';
+            var preview = document.createElement('div');
+            preview.className = 'file-preview-info';
+            preview.innerHTML =
+                '<span class="file-preview-icon">' + getFileIcon(ext) + '</span>' +
+                '<div class="file-preview-details">' +
+                    '<div class="file-preview-name"></div>' +
+                    '<div class="file-preview-meta">' + ext.toUpperCase() + ' \u2022 ' + formatFileSize(file.size) + '</div>' +
+                '</div>';
+            preview.querySelector('.file-preview-name').textContent = file.name;
+            display.appendChild(preview);
 
             // Auto-fill name from filename if empty
             const nameInput = document.getElementById('model-name');

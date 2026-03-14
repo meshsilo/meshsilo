@@ -6239,3 +6239,104 @@ body.batch-mode .model-list-item:hover {
     transform: translateY(-2px);
     background-color: var(--color-primary-hover);
 }
+
+/* Password visibility toggle */
+.password-wrapper {
+    position: relative;
+}
+.password-wrapper input {
+    padding-right: 2.5rem;
+}
+.password-toggle {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.25rem;
+    line-height: 1;
+}
+.password-toggle:hover {
+    color: var(--color-text);
+}
+
+/* Password strength indicator */
+.password-strength {
+    height: 4px;
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    background: var(--color-border);
+    overflow: hidden;
+}
+.password-strength-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s, background-color 0.3s;
+    width: 0;
+}
+.password-strength-text {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    color: var(--color-text-muted);
+}
+
+/* Breadcrumb navigation */
+.model-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.model-breadcrumb a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+}
+.model-breadcrumb a:hover {
+    color: var(--color-primary);
+}
+.model-breadcrumb .breadcrumb-sep {
+    color: var(--color-text-muted);
+    opacity: 0.5;
+}
+.model-breadcrumb .breadcrumb-current {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+/* Upload file preview */
+.file-preview-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+.file-preview-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+.file-preview-details {
+    flex: 1;
+    min-width: 0;
+}
+.file-preview-name {
+    font-weight: 500;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.file-preview-meta {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}

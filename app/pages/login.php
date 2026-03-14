@@ -54,7 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Clear login attempts on success
             RateLimiter::reset($ip, 'login');
 
-            header('Location: ' . route('home'));
+            // Redirect to the page they were trying to access, or home
+            $redirect = $_SESSION['redirect_after_login'] ?? null;
+            unset($_SESSION['redirect_after_login']);
+            header('Location: ' . ($redirect ?: route('home')));
             exit;
         } else {
             $error = 'Invalid username or password.';
@@ -102,7 +105,10 @@ require_once 'includes/header.php';
 
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                        </div>
                     </div>
 
                     <div class="form-group form-row">
