@@ -304,7 +304,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             const ids = getSelectedIds();
             if (ids.length === 0) {
-                alert('Select models first');
+                showToast('Select models first', 'error');
                 select.value = '';
                 return;
             }
@@ -319,13 +319,13 @@ require_once __DIR__ . '/../../includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Tagged ${result.updated} model(s)`);
+                    showToast(`Tagged ${result.updated} model(s)`, 'success');
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Failed');
+                showToast('Failed', 'error');
             }
             select.value = '';
         }
@@ -336,7 +336,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             const ids = getSelectedIds();
             if (ids.length === 0) {
-                alert('Select models first');
+                showToast('Select models first', 'error');
                 select.value = '';
                 return;
             }
@@ -351,13 +351,13 @@ require_once __DIR__ . '/../../includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Added category to ${result.updated} model(s)`);
+                    showToast(`Added category to ${result.updated} model(s)`, 'success');
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Failed');
+                showToast('Failed', 'error');
             }
             select.value = '';
         }
@@ -368,7 +368,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             const ids = getSelectedIds();
             if (ids.length === 0) {
-                alert('Select models first');
+                showToast('Select models first', 'error');
                 select.value = '';
                 return;
             }
@@ -383,13 +383,13 @@ require_once __DIR__ . '/../../includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Set license on ${result.updated} model(s)`);
+                    showToast(`Set license on ${result.updated} model(s)`, 'success');
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Failed');
+                showToast('Failed', 'error');
             }
             select.value = '';
         }
@@ -397,12 +397,12 @@ require_once __DIR__ . '/../../includes/header.php';
         async function bulkArchive(archive) {
             const ids = getSelectedIds();
             if (ids.length === 0) {
-                alert('Select models first');
+                showToast('Select models first', 'error');
                 return;
             }
 
             const action = archive ? 'archive' : 'unarchive';
-            if (!confirm(`${archive ? 'Archive' : 'Unarchive'} ${ids.length} model(s)?`)) return;
+            if (!await showConfirm(`${archive ? 'Archive' : 'Unarchive'} ${ids.length} model(s)?`)) return;
 
             try {
                 const formData = new FormData();
@@ -414,26 +414,26 @@ require_once __DIR__ . '/../../includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`${archive ? 'Archived' : 'Unarchived'} ${result.updated} model(s)`);
+                    showToast(`${archive ? 'Archived' : 'Unarchived'} ${result.updated} model(s)`, 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Failed');
+                showToast('Failed', 'error');
             }
         }
 
         async function bulkDelete() {
             const ids = getSelectedIds();
             if (ids.length === 0) {
-                alert('Select models first');
+                showToast('Select models first', 'error');
                 return;
             }
 
-            if (!confirm(`DELETE ${ids.length} model(s)? This cannot be undone!`)) return;
-            if (!confirm(`Are you sure? All files and data will be permanently deleted.`)) return;
+            if (!await showConfirm(`DELETE ${ids.length} model(s)? This cannot be undone!`)) return;
+            if (!await showConfirm(`Are you sure? All files and data will be permanently deleted.`)) return;
 
             try {
                 const formData = new FormData();
@@ -444,19 +444,19 @@ require_once __DIR__ . '/../../includes/header.php';
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Deleted ${result.deleted} model(s)`);
+                    showToast(`Deleted ${result.deleted} model(s)`, 'success');
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Failed');
+                showToast('Failed', 'error');
             }
         }
 
         async function deleteModel(id, name) {
-            if (!confirm(`Delete "${name}"? This cannot be undone!`)) return;
+            if (!await showConfirm(`Delete "${name}"? This cannot be undone!`)) return;
 
             try {
                 const formData = new FormData();
@@ -469,11 +469,11 @@ require_once __DIR__ . '/../../includes/header.php';
                 if (result.success) {
                     location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'Unknown'));
+                    showToast(result.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Failed');
+                showToast('Failed', 'error');
             }
         }
         </script>

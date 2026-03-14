@@ -780,7 +780,7 @@ require_once 'includes/header.php';
                         uploadForm.submit();
                     }
                 } else {
-                    alert('Upload failed. Please try again.');
+                    showToast('Upload failed. Please try again.', 'error');
                     progressContainer.style.display = 'none';
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Upload Model';
@@ -788,7 +788,7 @@ require_once 'includes/header.php';
             });
 
             xhr.addEventListener('error', function() {
-                alert('Upload failed. Please check your connection and try again.');
+                showToast('Upload failed. Please check your connection and try again.', 'error');
                 progressContainer.style.display = 'none';
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Upload Model';

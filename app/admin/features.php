@@ -437,8 +437,8 @@ require_once __DIR__ . '/../../includes/header.php';
         </style>
 
         <script>
-        function resetToDefaults() {
-            if (!confirm('Reset all features to their default settings?')) {
+        async function resetToDefaults() {
+            if (!await showConfirm('Reset all features to their default settings?')) {
                 return;
             }
 
@@ -496,7 +496,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         setTimeout(() => item.classList.remove('just-saved'), 1000);
                     }
                 } else {
-                    alert('Failed to save: ' + (data.error || 'Unknown error'));
+                    showToast('Failed to save: ' + (data.error || 'Unknown error'), 'error');
                     // Revert the checkbox state
                     const checkbox = item?.querySelector('input[type="checkbox"]');
                     if (checkbox) {
@@ -506,7 +506,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 }
             } catch (error) {
                 console.error('Error saving feature:', error);
-                alert('Failed to save feature state');
+                showToast('Failed to save feature state', 'error');
                 // Revert the checkbox state
                 const checkbox = item?.querySelector('input[type="checkbox"]');
                 if (checkbox) {
@@ -528,7 +528,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 const enabled = this.checked;
 
                 // Check dependencies first (for disabling)
-                if (!enabled && !checkDependencies(this)) {
+                if (!enabled && !await checkDependencies(this)) {
                     return; // User cancelled
                 }
 
@@ -539,7 +539,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         // Check if disabling a feature breaks dependencies or has existing data
         // Returns true if user confirms or no warnings, false if user cancels
-        function checkDependencies(checkbox) {
+        async function checkDependencies(checkbox) {
             if (checkbox.checked) return true; // Only check when disabling
 
             const item = checkbox.closest('.feature-item');
@@ -573,7 +573,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             if (warnings.length > 0) {
                 const message = `Warning for "${featureName}":\n\n` + warnings.join('\n\n') + '\n\nContinue?';
-                if (!confirm(message)) {
+                if (!await showConfirm(message)) {
                     checkbox.checked = true;
                     updateFeatureItemState(checkbox);
                     return false;

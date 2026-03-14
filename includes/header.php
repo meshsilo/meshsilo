@@ -100,6 +100,41 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             });
         }
 
+        // Prompt dialog replacement (returns Promise<string|null>)
+        function showPrompt(message, defaultValue) {
+            defaultValue = defaultValue || '';
+            return new Promise(function(resolve) {
+                var existing = document.getElementById('prompt-modal');
+                if (existing) existing.remove();
+                var overlay = document.createElement('div');
+                overlay.id = 'prompt-modal';
+                overlay.className = 'modal-overlay';
+                overlay.style.display = 'flex';
+                overlay.innerHTML =
+                    '<div class="modal-content" style="max-width:400px">' +
+                        '<div class="modal-header"><h3>Input</h3></div>' +
+                        '<div class="modal-body" style="padding:1.5rem"><p></p>' +
+                            '<input type="text" id="prompt-input" class="form-control" style="width:100%;margin-top:0.75rem;padding:0.5rem;border:1px solid var(--color-border);border-radius:var(--radius);background:var(--color-surface);color:var(--color-text)">' +
+                        '</div>' +
+                        '<div class="modal-footer" style="display:flex;gap:0.5rem;justify-content:flex-end;padding:1rem 1.5rem">' +
+                            '<button type="button" class="btn btn-secondary" id="prompt-cancel">Cancel</button>' +
+                            '<button type="button" class="btn btn-primary" id="prompt-ok">OK</button>' +
+                        '</div>' +
+                    '</div>';
+                overlay.querySelector('.modal-body p').textContent = message;
+                var input = overlay.querySelector('#prompt-input');
+                input.value = defaultValue;
+                document.body.appendChild(overlay);
+                input.focus();
+                input.select();
+                function submit() { var v = input.value; overlay.remove(); resolve(v); }
+                overlay.querySelector('#prompt-ok').onclick = submit;
+                overlay.querySelector('#prompt-cancel').onclick = function() { overlay.remove(); resolve(null); };
+                input.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { overlay.remove(); resolve(null); } });
+                overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+            });
+        }
+
         // Theme toggle functionality
         function toggleTheme() {
             const html = document.documentElement;

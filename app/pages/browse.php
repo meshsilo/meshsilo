@@ -846,7 +846,7 @@ require_once 'includes/header.php';
 
             let tagName = '';
             if (tagId === '__new__') {
-                tagName = prompt('Enter new tag name:');
+                tagName = await showPrompt('Enter new tag name:');
                 if (!tagName) {
                     select.value = '';
                     return;
@@ -953,7 +953,7 @@ require_once 'includes/header.php';
                 return;
             }
 
-            const creator = prompt(`Set creator for ${ids.length} selected model(s):\n(Leave empty to clear)`);
+            const creator = await showPrompt(`Set creator for ${ids.length} selected model(s) (leave empty to clear):`);
             if (creator === null) return; // Cancelled
 
             try {
@@ -984,7 +984,7 @@ require_once 'includes/header.php';
                 return;
             }
 
-            const collection = prompt(`Set collection for ${ids.length} selected model(s):\n(Leave empty to clear)`);
+            const collection = await showPrompt(`Set collection for ${ids.length} selected model(s) (leave empty to clear):`);
             if (collection === null) return; // Cancelled
 
             try {
@@ -1009,7 +1009,7 @@ require_once 'includes/header.php';
         }
 
         async function saveCurrentSearch() {
-            var name = prompt('Name for this saved search:');
+            var name = await showPrompt('Name for this saved search:');
             if (!name || !name.trim()) return;
 
             var formData = new FormData();

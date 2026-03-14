@@ -737,14 +737,14 @@ document.getElementById('save-remix-btn').addEventListener('click', async functi
     if (sourceType === 'internal') {
         const selectedId = document.getElementById('selected-model-id').value;
         if (!selectedId) {
-            alert('Please select a model');
+            showToast('Please select a model', 'error');
             return;
         }
         payload.remix_of = parseInt(selectedId);
     } else {
         const externalUrl = document.getElementById('remix-external-url').value.trim();
         if (!externalUrl) {
-            alert('Please enter an external URL');
+            showToast('Please enter an external URL', 'error');
             return;
         }
         payload.external_url = externalUrl;
@@ -770,12 +770,12 @@ document.getElementById('save-remix-btn').addEventListener('click', async functi
         if (result.success) {
             window.location.reload();
         } else {
-            alert('Error: ' + result.error);
+            showToast(result.error, 'error');
             this.disabled = false;
             this.textContent = 'Save';
         }
     } catch (err) {
-        alert('Error: ' + err.message);
+        showToast(err.message, 'error');
         this.disabled = false;
         this.textContent = 'Save';
     }

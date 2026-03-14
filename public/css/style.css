@@ -6044,6 +6044,8 @@ body.batch-mode .model-list-item:hover {
     max-height: 85vh;
     object-fit: contain;
     border-radius: var(--radius);
+    transition: transform 0.1s ease;
+    user-select: none;
 }
 
 .lightbox-close {
@@ -6122,5 +6124,85 @@ body.batch-mode .model-list-item:hover {
     .attachment-document .attachment-actions {
         width: 100%;
         margin-top: 0.5rem;
+    }
+}
+
+/* Model page mobile improvements */
+@media (max-width: 768px) {
+    .mass-actions {
+        flex-direction: column;
+        align-items: stretch;
+        margin-left: 0;
+        margin-top: 0.5rem;
+    }
+
+    .mass-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .model-detail-info h1 {
+        font-size: 1.25rem;
+    }
+
+    .model-detail {
+        padding: 0 0.5rem;
+    }
+
+    .model-detail-header {
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .parts-group-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .parts-group-actions {
+        width: 100%;
+    }
+
+    .share-links-list {
+        overflow-x: auto;
+    }
+
+    .modal-content {
+        margin: 1rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .lightbox-content {
+        max-width: 95vw;
+    }
+
+    .lightbox-caption {
+        font-size: 0.75rem;
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .model-detail-thumbnail {
+        height: 180px;
+    }
+
+    .attachment-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .part-item {
+        padding: 0.5rem;
+    }
+
+    .part-actions .btn {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    .model-meta span {
+        font-size: 0.8rem;
     }
 }

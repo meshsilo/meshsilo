@@ -258,7 +258,7 @@ require_once 'includes/header.php';
                     tagInput.value = '';
                     tagSuggestions.style.display = 'none';
                 } else {
-                    alert('Failed to add tag: ' + (data.error || 'Unknown error'));
+                    showToast('Failed to add tag: ' + (data.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Failed to add tag:', err);
@@ -276,7 +276,7 @@ require_once 'includes/header.php';
                 if (data.success) {
                     element.remove();
                 } else {
-                    alert('Failed to remove tag: ' + (data.error || 'Unknown error'));
+                    showToast('Failed to remove tag: ' + (data.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Failed to remove tag:', err);

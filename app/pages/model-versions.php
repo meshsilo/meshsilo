@@ -499,12 +499,12 @@ document.getElementById('confirm-revert-btn').addEventListener('click', async fu
         if (result.success) {
             window.location.reload();
         } else {
-            alert('Error: ' + result.error);
+            showToast(result.error, 'error');
             this.disabled = false;
             this.textContent = 'Revert';
         }
     } catch (err) {
-        alert('Error: ' + err.message);
+        showToast(err.message, 'error');
         this.disabled = false;
         this.textContent = 'Revert';
     }
