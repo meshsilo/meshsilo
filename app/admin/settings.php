@@ -256,7 +256,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                         <?php else: ?>
                         <div class="version-status up-to-date">
-                            <span class="status-icon">&#10003;</span>
+                            <span class="status-icon" aria-hidden="true">&#10003;</span>
                             <span>You're running the latest version</span>
                         </div>
                         <?php endif; ?>

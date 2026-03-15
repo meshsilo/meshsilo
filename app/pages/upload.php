@@ -571,7 +571,7 @@ require_once 'includes/header.php';
                 <?= csrf_field() ?>
                 <div class="upload-dropzone" id="dropzone">
                     <div class="dropzone-content">
-                        <span class="dropzone-icon">&#8679;</span>
+                        <span class="dropzone-icon" aria-hidden="true">&#8679;</span>
                         <p class="dropzone-text">Drag and drop your file here</p>
                         <p class="dropzone-subtext">or</p>
                         <div class="upload-buttons">
@@ -699,7 +699,7 @@ require_once 'includes/header.php';
             var preview = document.createElement('div');
             preview.className = 'file-preview-info';
             preview.innerHTML =
-                '<span class="file-preview-icon">' + getFileIcon(ext) + '</span>' +
+                '<span class="file-preview-icon" aria-hidden="true">' + getFileIcon(ext) + '</span>' +
                 '<div class="file-preview-details">' +
                     '<div class="file-preview-name"></div>' +
                     '<div class="file-preview-meta">' + ext.toUpperCase() + ' \u2022 ' + formatFileSize(file.size) + '</div>' +

@@ -245,7 +245,7 @@ include __DIR__ . '/../../includes/header.php';
         <?php if ($output): ?>
         <div class="cli-output-panel <?= $success ? 'success' : 'error' ?>">
             <div class="output-header">
-                <span class="output-icon"><?= $success ? '&#10004;' : '&#10006;' ?></span>
+                <span class="output-icon" aria-hidden="true"><?= $success ? '&#10004;' : '&#10006;' ?></span>
                 <span class="output-title"><?= $success ? 'Command Completed' : 'Command Output' ?></span>
                 <?php if ($executedCommand): ?>
                 <code class="executed-command"><?= htmlspecialchars($executedCommand) ?></code>
@@ -259,13 +259,13 @@ include __DIR__ . '/../../includes/header.php';
             <?php foreach ($tools as $toolKey => $tool): ?>
             <div class="tool-card" data-tool="<?= $toolKey ?>">
                 <div class="tool-header">
-                    <span class="tool-icon"><?= $tool['icon'] ?></span>
+                    <span class="tool-icon" aria-hidden="true"><?= $tool['icon'] ?></span>
                     <div class="tool-title">
                         <h3><?= htmlspecialchars($tool['name']) ?></h3>
                         <p><?= htmlspecialchars($tool['description']) ?></p>
                     </div>
                     <button type="button" class="tool-expand" aria-expanded="false" onclick="toggleTool('<?= $toolKey ?>')">
-                        <span class="expand-icon">&#9662;</span>
+                        <span class="expand-icon" aria-hidden="true">&#9662;</span>
                     </button>
                 </div>
 
@@ -331,7 +331,7 @@ include __DIR__ . '/../../includes/header.php';
 
                     <div class="tool-actions">
                         <button type="submit" class="btn btn-primary">
-                            <span class="btn-icon">&#9654;</span>
+                            <span class="btn-icon" aria-hidden="true">&#9654;</span>
                             Run <?= htmlspecialchars($tool['name']) ?>
                         </button>
                     </div>

@@ -176,7 +176,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <thead>
                         <tr>
                             <th style="width: 40px;">
-                                <input type="checkbox" id="header-select-all" onchange="toggleSelectAll(this)">
+                                <input type="checkbox" id="header-select-all" onchange="toggleSelectAll(this)" aria-label="Select all models">
                             </th>
                             <th scope="col">Model</th>
                             <th scope="col">Uploader</th>
@@ -192,7 +192,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php foreach ($models as $model): ?>
                         <tr data-model-id="<?= $model['id'] ?>">
                             <td>
-                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateSelection()">
+                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateSelection()" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
                             </td>
                             <td>
                                 <a href="<?= route('model.show', ['id' => $model['id']]) ?>" target="_blank" rel="noopener">

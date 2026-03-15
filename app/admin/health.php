@@ -449,7 +449,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="metrics-grid">
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon">&#128202;</span>
+                <span class="metric-icon" aria-hidden="true">&#128202;</span>
                 <span class="metric-title">Memory Usage</span>
             </div>
             <div class="metric-value" id="memory-percent"><?= $metrics['memory']['percent'] ?>%</div>
@@ -465,7 +465,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon">&#128190;</span>
+                <span class="metric-icon" aria-hidden="true">&#128190;</span>
                 <span class="metric-title">Disk Usage</span>
             </div>
             <div class="metric-value" id="disk-percent"><?= $metrics['disk']['percent'] ?>%</div>
@@ -481,7 +481,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon">&#128100;</span>
+                <span class="metric-icon" aria-hidden="true">&#128100;</span>
                 <span class="metric-title">Active Sessions</span>
             </div>
             <div class="metric-value" id="active-sessions"><?= $metrics['active_sessions'] ?></div>
@@ -490,7 +490,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon">&#9888;</span>
+                <span class="metric-icon" aria-hidden="true">&#9888;</span>
                 <span class="metric-title">Errors (24h)</span>
             </div>
             <div class="metric-value <?= $metrics['errors_24h'] > 0 ? 'text-danger' : 'text-success' ?>"
@@ -500,7 +500,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon">&#128196;</span>
+                <span class="metric-icon" aria-hidden="true">&#128196;</span>
                 <span class="metric-title">Requests/Hour</span>
             </div>
             <div class="metric-value" id="requests-hour"><?= $metrics['requests_hour'] ?></div>

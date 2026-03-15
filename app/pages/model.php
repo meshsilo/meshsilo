@@ -620,7 +620,7 @@ require_once 'includes/header.php';
                         <button type="button" class="collapse-all-toggle" onclick="toggleCollapseAllGroups(this)" title="Collapse/expand all groups" aria-label="Collapse/expand all groups">&#9660;</button>
                         <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
-                        <input type="checkbox" class="select-all-checkbox" id="select-all-parts" onclick="toggleSelectAllParts(this)" title="Select all parts">
+                        <input type="checkbox" class="select-all-checkbox" id="select-all-parts" onclick="toggleSelectAllParts(this)" title="Select all parts" aria-label="Select all parts">
                         <?php endif; ?>
                         <h2>Parts (<?= count($parts) ?>)</h2>
                         <?php if (canEdit() || canDelete()): ?>
@@ -653,7 +653,7 @@ require_once 'includes/header.php';
                         <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)" aria-expanded="<?= $autoCollapse ? 'false' : 'true' ?>">
                             <span class="folder-toggle"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
-                            <input type="checkbox" class="folder-checkbox" onclick="event.stopPropagation(); selectFolderParts(this);" title="Select all parts in this folder">
+                            <input type="checkbox" class="folder-checkbox" onclick="event.stopPropagation(); selectFolderParts(this);" title="Select all parts in this folder" aria-label="Select all parts in this folder">
                             <?php endif; ?>
                             <?= htmlspecialchars($displayName) ?>
                             <span class="folder-part-count">(<?= count($dirParts) ?>)</span>
@@ -689,7 +689,7 @@ require_once 'includes/header.php';
                                 <span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
                                 <?php endif; ?>
                                 <?php if (canEdit() || canDelete()): ?>
-                                <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>">
+                                <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>" aria-label="Select <?= htmlspecialchars($part['name']) ?>">
                                 <?php endif; ?>
                                 <div class="part-info part-preview-trigger">
                                     <span class="part-name" title="Click to preview"><?= htmlspecialchars($part['name']) ?><?= !empty($part['file_type']) ? '.' . htmlspecialchars($part['file_type']) : '' ?></span>

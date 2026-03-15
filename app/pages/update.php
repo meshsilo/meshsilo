@@ -589,7 +589,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
             <div class="migration-list">
                 <?php foreach ($migrationStatus as $m): ?>
                     <div class="migration-item <?= $m['applied'] ? 'applied' : 'pending' ?>">
-                        <span class="migration-icon"><?= $m['applied'] ? '✓' : '○' ?></span>
+                        <span class="migration-icon" aria-hidden="true"><?= $m['applied'] ? '✓' : '○' ?></span>
                         <div>
                             <div class="migration-name"><?= htmlspecialchars($m['name']) ?></div>
                             <?php if ($m['description']): ?>

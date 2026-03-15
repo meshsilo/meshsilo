@@ -586,7 +586,7 @@ require_once 'includes/header.php';
                     <article class="model-list-item <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')handleModelCardClick(event,<?= $model['id'] ?>)">
                         <?php if (isLoggedIn()): ?>
                         <label class="model-list-checkbox" onclick="event.stopPropagation()">
-                            <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()">
+                            <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
                         </label>
                         <?php endif; ?>
                         <div class="model-list-thumbnail"
@@ -646,7 +646,7 @@ require_once 'includes/header.php';
                             <?php endif; ?>
                             <?php if (isLoggedIn()): ?>
                             <label class="model-select-checkbox" onclick="event.stopPropagation()">
-                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()">
+                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
                             </label>
                             <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>

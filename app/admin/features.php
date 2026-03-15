@@ -125,7 +125,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     </div>
                                     <div class="feature-info">
                                         <div class="feature-header">
-                                            <span class="feature-icon" data-icon="<?= htmlspecialchars($feature['icon']) ?>">
+                                            <span class="feature-icon" data-icon="<?= htmlspecialchars($feature['icon']) ?>" aria-hidden="true">
                                                 <?= getFeatureIcon($feature['icon']) ?>
                                             </span>
                                             <span class="feature-name"><?= htmlspecialchars($feature['name']) ?></span>
