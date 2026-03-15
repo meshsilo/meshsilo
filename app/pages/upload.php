@@ -638,8 +638,8 @@ require_once 'includes/header.php';
                             <input type="url" id="model-source" name="source_url" class="form-input" placeholder="https://thingiverse.com/..." value="<?= htmlspecialchars($_POST['source_url'] ?? '') ?>">
                         </div>
 
-                        <div class="form-group">
-                            <label>Categories</label>
+                        <fieldset class="form-group">
+                            <legend>Categories</legend>
                             <div class="checkbox-group">
                                 <?php foreach ($categories as $category): ?>
                                 <label class="checkbox-label">
@@ -648,7 +648,7 @@ require_once 'includes/header.php';
                                 </label>
                                 <?php endforeach; ?>
                             </div>
-                        </div>
+                        </fieldset>
                     </div>
                 </details>
 
