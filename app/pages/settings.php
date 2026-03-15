@@ -313,7 +313,7 @@ require_once __DIR__ . '/../../includes/header.php';
 }
 .group-item {
     padding: 0.5rem 0.75rem;
-    background: var(--bg-tertiary);
+    background: var(--color-surface-hover);
     border-radius: 4px;
 }
 .group-name {
@@ -333,12 +333,12 @@ require_once __DIR__ . '/../../includes/header.php';
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem;
-    background: var(--bg-tertiary);
+    background: var(--color-surface-hover);
     border-radius: 4px;
     font-size: 0.9rem;
 }
 .permission-item.has-permission {
-    color: var(--success);
+    color: var(--color-success);
 }
 .permission-item.no-permission {
     color: var(--color-text-muted);

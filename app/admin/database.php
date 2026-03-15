@@ -323,7 +323,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <details class="settings-section">
             <summary><h2>CLI Tool</h2></summary>
             <p>For automated updates and scripting, use the CLI migration tool:</p>
-            <pre style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code># Check migration status
+            <pre style="background: var(--color-surface-hover); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code># Check migration status
 php cli/migrate.php --status
 
 # Run migrations with backup
@@ -350,7 +350,7 @@ php cli/migrate.php --dry-run
     align-items: flex-start;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: var(--bg-tertiary);
+    background: var(--color-surface-hover);
     border-radius: 6px;
     border-left: 3px solid var(--color-border);
 }
@@ -388,7 +388,7 @@ php cli/migrate.php --dry-run
 }
 
 .migration-results {
-    background: var(--bg-tertiary);
+    background: var(--color-surface-hover);
     padding: 1rem;
     border-radius: 8px;
     margin-bottom: 1.5rem;

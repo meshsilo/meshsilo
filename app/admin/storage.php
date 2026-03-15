@@ -439,7 +439,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         </form>
 
                         <?php if ($storageType === 'local' && getSetting('s3_endpoint', '')): ?>
-                        <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px;">
+                        <div style="margin-top: 1rem; padding: 1rem; background: var(--color-surface-hover); border-radius: 8px;">
                             <h4>Migrate to S3</h4>
                             <p class="form-hint">You have S3 configured but are using local storage. You can migrate existing files to S3.</p>
                             <form method="post" data-confirm="This will copy all local files to S3. This may take a while. Continue?">

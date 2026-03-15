@@ -258,7 +258,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: var(--bg-primary);
-            color: var(--text-primary);
+            color: var(--color-text);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -314,12 +314,12 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
 
         .badge-success {
             background: rgba(34, 197, 94, 0.15);
-            color: var(--success);
+            color: var(--color-success);
         }
 
         .badge-warning {
             background: rgba(245, 158, 11, 0.15);
-            color: var(--warning);
+            color: var(--color-warning);
         }
 
         .stats {
@@ -332,18 +332,18 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         .stat {
             text-align: center;
             padding: 1rem;
-            background: var(--bg-tertiary);
+            background: var(--color-surface-hover);
             border-radius: 8px;
         }
 
         .stat-value {
             font-size: 1.5rem;
             font-weight: 700;
-            color: var(--primary);
+            color: var(--color-primary);
         }
 
-        .stat-value.success { color: var(--success); }
-        .stat-value.warning { color: var(--warning); }
+        .stat-value.success { color: var(--color-success); }
+        .stat-value.warning { color: var(--color-warning); }
 
         .stat-label {
             font-size: 0.75rem;
@@ -367,17 +367,17 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
             align-items: flex-start;
             gap: 0.75rem;
             padding: 0.75rem;
-            background: var(--bg-tertiary);
+            background: var(--color-surface-hover);
             border-radius: 6px;
             border-left: 3px solid var(--color-border);
         }
 
         .migration-item.applied {
-            border-left-color: var(--success);
+            border-left-color: var(--color-success);
         }
 
         .migration-item.pending {
-            border-left-color: var(--warning);
+            border-left-color: var(--color-warning);
         }
 
         .migration-icon {
@@ -385,8 +385,8 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
             min-width: 1.5rem;
         }
 
-        .migration-item.applied .migration-icon { color: var(--success); }
-        .migration-item.pending .migration-icon { color: var(--warning); }
+        .migration-item.applied .migration-icon { color: var(--color-success); }
+        .migration-item.pending .migration-icon { color: var(--color-warning); }
 
         .migration-name {
             font-weight: 500;
@@ -405,21 +405,21 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         }
 
         .alert-success {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid var(--success);
-            color: var(--success);
+            background: color-mix(in srgb, var(--color-success) 10%, transparent);
+            border: 1px solid var(--color-success);
+            color: var(--color-success);
         }
 
         .alert-error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--error);
-            color: var(--error);
+            background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+            border: 1px solid var(--color-danger);
+            color: var(--color-danger);
         }
 
         .alert-warning {
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid var(--warning);
-            color: var(--warning);
+            background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+            border: 1px solid var(--color-warning);
+            color: var(--color-warning);
         }
 
         .results {
@@ -444,8 +444,8 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
             border-bottom: none;
         }
 
-        .result-item.success { color: var(--success); }
-        .result-item.error { color: var(--error); }
+        .result-item.success { color: var(--color-success); }
+        .result-item.error { color: var(--color-danger); }
 
         .result-error {
             font-size: 0.75rem;
@@ -469,7 +469,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         }
 
         .btn-primary {
-            background: var(--primary);
+            background: var(--color-primary);
             color: white;
         }
 
@@ -483,8 +483,8 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         }
 
         .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
+            background: var(--color-surface-hover);
+            color: var(--color-text);
         }
 
         .btn-secondary:hover {
@@ -506,7 +506,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         }
 
         .footer a {
-            color: var(--primary);
+            color: var(--color-primary);
             text-decoration: none;
         }
 
