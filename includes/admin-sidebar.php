@@ -15,15 +15,15 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
-                            <a href="<?= route('admin.health') ?>" <?= ($adminPage ?? '') === 'health' ? 'class="active"' : '' ?>>System Health</a>
-                            <a href="<?= route('admin.settings') ?>" <?= ($adminPage ?? '') === 'settings' ? 'class="active"' : '' ?>>Site Settings</a>
-                            <a href="<?= route('admin.features') ?>" <?= ($adminPage ?? '') === 'features' ? 'class="active"' : '' ?>>Features</a>
-                            <a href="<?= route('admin.storage') ?>" <?= ($adminPage ?? '') === 'storage' ? 'class="active"' : '' ?>>Storage</a>
-                            <a href="<?= route('admin.database') ?>" <?= ($adminPage ?? '') === 'database' ? 'class="active"' : '' ?>>Database</a>
-                            <a href="<?= route('admin.scheduler') ?>" <?= ($adminPage ?? '') === 'scheduler' ? 'class="active"' : '' ?>>Scheduled Tasks</a>
-                            <a href="<?= route('admin.plugins') ?>" <?= ($adminPage ?? '') === 'plugins' ? 'class="active"' : '' ?>>Plugins</a>
-                            <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active"' : '' ?>>Routes</a>
-                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active"' : '' ?>>CLI Tools</a>
+                            <a href="<?= route('admin.health') ?>" <?= ($adminPage ?? '') === 'health' ? 'class="active" aria-current="page"' : '' ?>>System Health</a>
+                            <a href="<?= route('admin.settings') ?>" <?= ($adminPage ?? '') === 'settings' ? 'class="active" aria-current="page"' : '' ?>>Site Settings</a>
+                            <a href="<?= route('admin.features') ?>" <?= ($adminPage ?? '') === 'features' ? 'class="active" aria-current="page"' : '' ?>>Features</a>
+                            <a href="<?= route('admin.storage') ?>" <?= ($adminPage ?? '') === 'storage' ? 'class="active" aria-current="page"' : '' ?>>Storage</a>
+                            <a href="<?= route('admin.database') ?>" <?= ($adminPage ?? '') === 'database' ? 'class="active" aria-current="page"' : '' ?>>Database</a>
+                            <a href="<?= route('admin.scheduler') ?>" <?= ($adminPage ?? '') === 'scheduler' ? 'class="active" aria-current="page"' : '' ?>>Scheduled Tasks</a>
+                            <a href="<?= route('admin.plugins') ?>" <?= ($adminPage ?? '') === 'plugins' ? 'class="active" aria-current="page"' : '' ?>>Plugins</a>
+                            <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active" aria-current="page"' : '' ?>>Routes</a>
+                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active" aria-current="page"' : '' ?>>CLI Tools</a>
                         </div>
                     </div>
 
@@ -35,8 +35,8 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
-                            <a href="<?= route('admin.users') ?>" <?= ($adminPage ?? '') === 'users' ? 'class="active"' : '' ?>>Users</a>
-                            <a href="<?= route('admin.groups') ?>" <?= ($adminPage ?? '') === 'groups' ? 'class="active"' : '' ?>>Groups</a>
+                            <a href="<?= route('admin.users') ?>" <?= ($adminPage ?? '') === 'users' ? 'class="active" aria-current="page"' : '' ?>>Users</a>
+                            <a href="<?= route('admin.groups') ?>" <?= ($adminPage ?? '') === 'groups' ? 'class="active" aria-current="page"' : '' ?>>Groups</a>
                         </div>
                     </div>
 
@@ -48,15 +48,15 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
-                            <a href="<?= route('admin.models') ?>" <?= ($adminPage ?? '') === 'models' ? 'class="active"' : '' ?>>Models</a>
+                            <a href="<?= route('admin.models') ?>" <?= ($adminPage ?? '') === 'models' ? 'class="active" aria-current="page"' : '' ?>>Models</a>
                             <?php if (isFeatureEnabled('categories')) : ?>
-                            <a href="<?= route('admin.categories') ?>" <?= ($adminPage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
+                            <a href="<?= route('admin.categories') ?>" <?= ($adminPage ?? '') === 'categories' ? 'class="active" aria-current="page"' : '' ?>>Categories</a>
                             <?php endif; ?>
                             <?php if (isFeatureEnabled('collections')) : ?>
-                            <a href="<?= route('admin.collections') ?>" <?= ($adminPage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
+                            <a href="<?= route('admin.collections') ?>" <?= ($adminPage ?? '') === 'collections' ? 'class="active" aria-current="page"' : '' ?>>Collections</a>
                             <?php endif; ?>
                             <?php if (isFeatureEnabled('tags')) : ?>
-                            <a href="<?= route('admin.tags') ?>" <?= ($adminPage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
+                            <a href="<?= route('admin.tags') ?>" <?= ($adminPage ?? '') === 'tags' ? 'class="active" aria-current="page"' : '' ?>>Tags</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -69,14 +69,14 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
-                            <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active"' : '' ?>>Security Headers</a>
-                            <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active"' : '' ?>>Sessions</a>
+                            <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active" aria-current="page"' : '' ?>>Security Headers</a>
+                            <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active" aria-current="page"' : '' ?>>Sessions</a>
                             <?php if (isFeatureEnabled('api_keys')) : ?>
-                            <a href="<?= route('admin.api-keys') ?>" <?= ($adminPage ?? '') === 'api-keys' ? 'class="active"' : '' ?>>API Keys</a>
+                            <a href="<?= route('admin.api-keys') ?>" <?= ($adminPage ?? '') === 'api-keys' ? 'class="active" aria-current="page"' : '' ?>>API Keys</a>
                             <?php endif; ?>
                             <?php if (isFeatureEnabled('activity_log')) : ?>
-                            <a href="<?= route('admin.activity') ?>" <?= ($adminPage ?? '') === 'activity' ? 'class="active"' : '' ?>>Activity Log</a>
-                            <a href="<?= route('admin.audit-log') ?>" <?= ($adminPage ?? '') === 'audit-log' ? 'class="active"' : '' ?>>Audit Log</a>
+                            <a href="<?= route('admin.activity') ?>" <?= ($adminPage ?? '') === 'activity' ? 'class="active" aria-current="page"' : '' ?>>Activity Log</a>
+                            <a href="<?= route('admin.audit-log') ?>" <?= ($adminPage ?? '') === 'audit-log' ? 'class="active" aria-current="page"' : '' ?>>Audit Log</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -94,7 +94,7 @@ if (class_exists('PluginManager')) {
                         </button>
                         <div class="nav-links">
                             <?php foreach ($items as $item) : ?>
-                            <a href="<?= route($item['route'] ?? 'admin.plugins') ?>" <?= ($adminPage ?? '') === $item['slug'] ? 'class="active"' : '' ?>><?= htmlspecialchars($item['label']) ?></a>
+                            <a href="<?= route($item['route'] ?? 'admin.plugins') ?>" <?= ($adminPage ?? '') === $item['slug'] ? 'class="active" aria-current="page"' : '' ?>><?= htmlspecialchars($item['label']) ?></a>
                             <?php endforeach; ?>
                         </div>
                     </div>

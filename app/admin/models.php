@@ -143,21 +143,21 @@ require_once __DIR__ . '/../../includes/header.php';
                     </label>
                 </div>
                 <div class="batch-actions-right">
-                    <select id="bulk-tag" class="sort-select" style="max-width: 150px;" onchange="bulkAddTag(this.value)">
+                    <select id="bulk-tag" class="sort-select" style="max-width: 150px;" onchange="bulkAddTag(this.value)" aria-label="Add tag to selected">
                         <option value="">Add Tag...</option>
                         <?php foreach ($tags as $tag): ?>
                         <option value="<?= $tag['id'] ?>"><?= htmlspecialchars($tag['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select id="bulk-category" class="sort-select" style="max-width: 150px;" onchange="bulkAddCategory(this.value)">
+                    <select id="bulk-category" class="sort-select" style="max-width: 150px;" onchange="bulkAddCategory(this.value)" aria-label="Add category to selected">
                         <option value="">Add Category...</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select id="bulk-license" class="sort-select" style="max-width: 150px;" onchange="bulkSetLicense(this.value)">
+                    <select id="bulk-license" class="sort-select" style="max-width: 150px;" onchange="bulkSetLicense(this.value)" aria-label="Set license for selected">
                         <option value="">Set License...</option>
                         <?php foreach (getLicenseOptions() as $key => $label): ?>
                         <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>

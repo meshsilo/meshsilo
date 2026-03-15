@@ -635,23 +635,23 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
                 <span class="hamburger-icon"></span>
             </button>
             <nav class="main-nav" aria-label="Main navigation">
-                <a href="<?= route('browse') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
+                <a href="<?= route('browse') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active" aria-current="page"' : '' ?>>Browse</a>
                 <?php if (isFeatureEnabled('categories')) : ?>
-                <a href="<?= route('categories') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>
+                <a href="<?= route('categories') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active" aria-current="page"' : '' ?>>Categories</a>
                 <?php endif; ?>
                 <?php if (isFeatureEnabled('collections')) : ?>
-                <a href="<?= route('collections') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active"' : '' ?>>Collections</a>
+                <a href="<?= route('collections') ?>" <?= ($activePage ?? '') === 'collections' ? 'class="active" aria-current="page"' : '' ?>>Collections</a>
                 <?php endif; ?>
                 <?php if (isFeatureEnabled('tags')) : ?>
-                <a href="<?= route('tags') ?>" <?= ($activePage ?? '') === 'tags' ? 'class="active"' : '' ?>>Tags</a>
+                <a href="<?= route('tags') ?>" <?= ($activePage ?? '') === 'tags' ? 'class="active" aria-current="page"' : '' ?>>Tags</a>
                 <?php endif; ?>
                 <?php if (canUpload()) : ?>
-                <a href="<?= route('upload') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active"' : '' ?>>Upload</a>
+                <a href="<?= route('upload') ?>" <?= ($activePage ?? '') === 'upload' ? 'class="active" aria-current="page"' : '' ?>>Upload</a>
                 <?php endif; ?>
 <?php if (class_exists('PluginManager')) :
     $pluginNavItems = PluginManager::applyFilter('nav_items', []);
     foreach ($pluginNavItems as $navItem) : ?>
-    <a href="<?= htmlspecialchars($navItem['url'] ?? '#') ?>" <?= !empty($navItem['active']) ? 'class="active"' : '' ?>>
+    <a href="<?= htmlspecialchars($navItem['url'] ?? '#') ?>" <?= !empty($navItem['active']) ? 'class="active" aria-current="page"' : '' ?>>
         <?php if (!empty($navItem['icon'])) :
             ?><i data-feather="<?= htmlspecialchars($navItem['icon']) ?>"></i> <?php
         endif; ?>

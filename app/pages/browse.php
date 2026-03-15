@@ -410,14 +410,14 @@ require_once 'includes/header.php';
                 </div>
                 <div class="batch-actions-right">
                     <button type="button" class="btn btn-small" onclick="batchDownload()" title="Download selected as ZIP">Download</button>
-                    <select id="batch-tag-select" class="batch-select" onchange="batchApplyTag(this.value)">
+                    <select id="batch-tag-select" class="batch-select" onchange="batchApplyTag(this.value)" aria-label="Add tag to selected">
                         <option value="">+ Tag</option>
                         <?php foreach ($tags as $tag): ?>
                         <option value="<?= $tag['id'] ?>"><?= htmlspecialchars($tag['name']) ?></option>
                         <?php endforeach; ?>
                         <option value="__new__">Create New...</option>
                     </select>
-                    <select id="batch-category-select" class="batch-select" onchange="batchApplyCategory(this.value)">
+                    <select id="batch-category-select" class="batch-select" onchange="batchApplyCategory(this.value)" aria-label="Add category to selected">
                         <option value="">+ Category</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>

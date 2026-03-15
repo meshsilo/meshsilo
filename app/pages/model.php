@@ -435,7 +435,7 @@ require_once 'includes/header.php';
                                 <div class="link-form-row">
                                     <input type="text" id="link-title" class="form-input" placeholder="Link title" required>
                                     <input type="url" id="link-url" class="form-input" placeholder="https://..." required>
-                                    <select id="link-type" class="form-input">
+                                    <select id="link-type" class="form-input" aria-label="Link type">
                                         <option value="other">Other</option>
                                         <option value="documentation">Documentation</option>
                                         <option value="video">Video</option>
@@ -629,7 +629,7 @@ require_once 'includes/header.php';
                             <?php if (canEdit()): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showMoveFolderModal(getSelectedPartIds())">Move to Folder</button>
                             <button type="button" class="btn btn-secondary btn-small" onclick="showBatchRenameModal(getSelectedPartIds())">Rename</button>
-                            <select class="print-type-select" id="mass-print-type" onchange="massUpdatePrintType(this)" title="Set print type for selected parts">
+                            <select class="print-type-select" id="mass-print-type" onchange="massUpdatePrintType(this)" title="Set print type for selected parts" aria-label="Set print type for selected parts">
                                 <option value="">Print Type</option>
                                 <option value="fdm">FDM</option>
                                 <option value="sla">SLA</option>
@@ -699,7 +699,7 @@ require_once 'includes/header.php';
                                 </div>
                                 <div class="part-actions">
                                     <?php if (canEdit()): ?>
-                                    <select class="print-type-select" data-part-id="<?= $part['id'] ?>" onchange="updatePrintType(this)" title="Print type">
+                                    <select class="print-type-select" data-part-id="<?= $part['id'] ?>" onchange="updatePrintType(this)" title="Print type" aria-label="Print type">
                                         <option value="">--</option>
                                         <option value="fdm"<?= ($part['print_type'] ?? '') === 'fdm' ? ' selected' : '' ?>>FDM</option>
                                         <option value="sla"<?= ($part['print_type'] ?? '') === 'sla' ? ' selected' : '' ?>>SLA</option>

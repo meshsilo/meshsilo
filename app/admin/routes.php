@@ -153,7 +153,7 @@ require_once __DIR__ . '/../../includes/header.php';
         </p>
 
         <div style="display: flex; gap: 0.4rem; margin-bottom: 0.75rem;">
-            <select id="test-method" style="padding: 0.3rem; font-size: 0.8rem; border-radius: 4px; border: 1px solid var(--color-border); background: var(--color-surface);">
+            <select id="test-method" style="padding: 0.3rem; font-size: 0.8rem; border-radius: 4px; border: 1px solid var(--color-border); background: var(--color-surface);" aria-label="HTTP method">
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
                 <option value="PUT">PUT</option>
