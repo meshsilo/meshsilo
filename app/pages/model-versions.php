@@ -179,10 +179,10 @@ require_once 'includes/header.php';
 </div>
 
 <!-- Revert Confirmation Modal -->
-<div id="revert-modal" class="modal" role="dialog" aria-modal="true" style="display: none;">
+<div id="revert-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="revert-modal-title" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Revert to Version</h3>
+            <h3 id="revert-modal-title">Revert to Version</h3>
             <button type="button" class="modal-close" aria-label="Close" onclick="closeRevertModal()">&times;</button>
         </div>
         <div class="modal-body">

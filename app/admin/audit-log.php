@@ -268,10 +268,10 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <!-- Details Modal -->
-<div id="details-modal" class="modal" role="dialog" aria-modal="true" style="display: none;">
+<div id="details-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="details-modal-title" style="display: none;">
     <div class="modal-content modal-lg">
         <div class="modal-header">
-            <h3>Event Details</h3>
+            <h3 id="details-modal-title">Event Details</h3>
             <button type="button" class="modal-close" aria-label="Close" onclick="closeDetailsModal()">&times;</button>
         </div>
         <div class="modal-body" id="details-content">
@@ -281,10 +281,10 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <!-- Compliance Report Modal -->
-<div id="compliance-modal" class="modal" role="dialog" aria-modal="true" style="display: none;">
+<div id="compliance-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="compliance-modal-title" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Generate Compliance Report</h3>
+            <h3 id="compliance-modal-title">Generate Compliance Report</h3>
             <button type="button" class="modal-close" aria-label="Close" onclick="closeComplianceModal()">&times;</button>
         </div>
         <form method="GET" class="modal-body">
