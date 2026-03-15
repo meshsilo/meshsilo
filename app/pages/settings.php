@@ -159,7 +159,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div class="form-group">
                                 <label for="email">Email</label>
                                 <input type="email" id="email" name="email" class="form-input"
-                                       value="<?= htmlspecialchars($user['email']) ?>" required>
+                                       value="<?= htmlspecialchars($user['email']) ?>" required autocomplete="email">
                             </div>
                         </div>
                         <div class="form-row-grid">

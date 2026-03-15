@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
 
 // Get model count
 $result = $db->query('SELECT COUNT(*) as count FROM models');
-$modelCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+$modelCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
 // Get total storage from database
 $result = $db->query('SELECT SUM(file_size) as total, AVG(file_size) as avg FROM models');
@@ -219,11 +219,11 @@ $result = $db->query('
     SELECT COUNT(*) as count FROM models m
     WHERE NOT EXISTS (SELECT 1 FROM model_categories mc WHERE mc.model_id = m.id)
 ');
-$uncategorizedCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+$uncategorizedCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
 // Get models without source URL
 $result = $db->query('SELECT COUNT(*) as count FROM models WHERE source_url IS NULL OR source_url = ""');
-$noSourceCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+$noSourceCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
 // Get models by collection
 $result = $db->query('
@@ -314,7 +314,7 @@ $conversionStats = $result->fetchArray(PDO::FETCH_ASSOC);
 
 // Get count of STL files that could be converted
 $result = $db->query('SELECT COUNT(*) as count FROM models WHERE file_type = "stl"');
-$stlCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+$stlCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
 // Get oldest and newest models
 $result = $db->query('SELECT name, created_at FROM models ORDER BY created_at ASC LIMIT 1');
@@ -376,7 +376,7 @@ $dedupStats = getDeduplicationStats();
 
 // Count files without hashes
 $result = $db->query('SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = "") AND file_path IS NOT NULL');
-$filesWithoutHash = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+$filesWithoutHash = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
 // formatBytes is defined in includes/helpers.php
 

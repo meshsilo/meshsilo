@@ -118,7 +118,8 @@ require_once __DIR__ . '/../../includes/header.php';
                                             <?php
                                             $stmt = $db->prepare('SELECT COUNT(*) as count FROM model_tags WHERE tag_id = :id');
                                             $stmt->bindValue(':id', $tag['id'], PDO::PARAM_INT);
-                                            $count = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
+                                            $execResult = $stmt->execute();
+                                            $count = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
                                             echo $count;
                                             ?>
                                         </td>

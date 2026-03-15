@@ -95,25 +95,25 @@ if ($useDbSessions) {
     $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > :now");
     $stmt->bindValue(':now', $now, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $stats['active'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+    $stats['active'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
     // Expired sessions count
     $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > 0 AND expires_at <= :now");
     $stmt->bindValue(':now', $now, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $stats['expired'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+    $stats['expired'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
     // Unique users with sessions
     $stmt = $db->prepare("SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE expires_at > :now");
     $stmt->bindValue(':now', $now, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $stats['unique_users'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+    $stats['unique_users'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
     // Sessions created today
     $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE last_activity >= :today");
     $stmt->bindValue(':today', strtotime('today'), PDO::PARAM_INT);
     $result = $stmt->execute();
-    $stats['today'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+    $stats['today'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
     // Get active sessions with user info
     $stmt = $db->prepare("
