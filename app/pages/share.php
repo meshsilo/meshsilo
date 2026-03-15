@@ -116,7 +116,7 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
             padding: 0 1rem;
         }
         .share-card {
-            background: var(--bg-secondary);
+            background: var(--color-surface);
             border-radius: 12px;
             padding: 2rem;
         }
@@ -128,7 +128,7 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
             margin: 0 0 0.5rem 0;
         }
         .share-preview {
-            background: var(--bg-tertiary);
+            background: var(--color-surface-hover);
             border-radius: 8px;
             padding: 1rem;
             margin-bottom: 1.5rem;
@@ -144,13 +144,13 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
             margin-bottom: 1.5rem;
         }
         .detail-item {
-            background: var(--bg-tertiary);
+            background: var(--color-surface-hover);
             padding: 0.75rem;
             border-radius: 6px;
         }
         .detail-label {
             font-size: 0.8rem;
-            color: var(--text-muted);
+            color: var(--color-text-muted);
             margin-bottom: 0.25rem;
         }
         .detail-value {
@@ -164,7 +164,7 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
             margin: 0 auto;
         }
         .error-message {
-            background: var(--danger);
+            background: var(--color-danger);
             color: white;
             padding: 1rem;
             border-radius: 8px;
@@ -172,8 +172,27 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
         }
         .downloads-remaining {
             font-size: 0.9rem;
-            color: var(--text-muted);
+            color: var(--color-text-muted);
             margin-top: 0.5rem;
+        }
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            flex: 1;
+            padding-right: 2.5rem;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.25rem;
         }
     </style>
 </head>
@@ -196,7 +215,10 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
                     <?php endif; ?>
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" required autofocus>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" name="password" required autofocus>
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Access Model</button>
                 </form>
@@ -254,10 +276,21 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
             <?php endif; ?>
         </div>
 
-        <div style="text-align: center; margin-top: 1rem; color: var(--text-muted);">
+        <div style="text-align: center; margin-top: 1rem; color: var(--color-text-muted);">
             Shared via <a href="<?= htmlspecialchars(getSetting('site_url', '/')) ?>"><?= htmlspecialchars($siteName) ?></a>
         </div>
     </div>
+
+    <script>
+    function togglePasswordVisibility(btn) {
+        var input = btn.parentElement.querySelector('input');
+        if (!input) return;
+        var isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        btn.textContent = isPassword ? '\u25C9' : '\u25CE';
+        btn.title = isPassword ? 'Hide password' : 'Show password';
+    }
+    </script>
 
     <?php if ($model && in_array($model['file_type'], ['stl', '3mf'])): ?>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

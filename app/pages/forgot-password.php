@@ -20,7 +20,9 @@ $emailSent = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
-    if (empty($email)) {
+    if (!Csrf::validate()) {
+        $error = 'Security validation failed. Please try again.';
+    } elseif (empty($email)) {
         $error = 'Please enter your email address.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
@@ -134,7 +136,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (!$emailSent): ?>
-                <form class="auth-form" action="/forgot-password" method="post">
+                <form class="auth-form" action="<?= route('forgot-password') ?>" method="post">
+                    <?= csrf_field() ?>
                     <div class="form-group">
                         <label for="email">Email Address</label>
                         <input type="email" id="email" name="email" class="form-input"
@@ -148,12 +151,12 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div class="text-center">
                     <p>Check your email for the password reset link.</p>
                     <p class="text-muted">Didn't receive the email? Check your spam folder or try again.</p>
-                    <a href="/forgot-password" class="btn btn-secondary" style="margin-top: 1rem;">Try Again</a>
+                    <a href="<?= route('forgot-password') ?>" class="btn btn-secondary" style="margin-top: 1rem;">Try Again</a>
                 </div>
                 <?php endif; ?>
 
                 <div class="auth-footer">
-                    <a href="/login" class="form-link">&larr; Back to Login</a>
+                    <a href="<?= route('login') ?>" class="form-link">&larr; Back to Login</a>
                 </div>
             </div>
         </div>

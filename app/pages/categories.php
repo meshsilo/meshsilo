@@ -40,12 +40,12 @@ require_once 'includes/header.php';
         <div class="page-container-wide">
             <div class="page-header">
                 <h1>Categories</h1>
-                <p>Browse models by category</p>
+                <p><?= count($categories) ?> categor<?= count($categories) !== 1 ? 'ies' : 'y' ?></p>
             </div>
 
             <div class="categories-grid-large">
                 <?php foreach ($categories as $category): ?>
-                <a href="<?= route('category.show', ['id' => $category['id']]) ?>" class="category-card-large">
+                <a href="<?= route('category.show', ['id' => $category['id']]) ?>" class="category-card-large" tabindex="0">
                     <div class="category-icon"><?= $category['icon'] ?></div>
                     <h2 class="category-name"><?= htmlspecialchars($category['name']) ?></h2>
                     <p class="category-count"><?= $category['count'] ?> models</p>

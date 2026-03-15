@@ -62,20 +62,6 @@ $activePage = 'browse';
 
 // formatBytes is defined in includes/helpers.php
 
-// Format date relative
-function timeAgo($datetime) {
-    $now = new DateTime();
-    $ago = new DateTime($datetime);
-    $diff = $now->diff($ago);
-
-    if ($diff->y > 0) return $diff->y . ' year' . ($diff->y > 1 ? 's' : '') . ' ago';
-    if ($diff->m > 0) return $diff->m . ' month' . ($diff->m > 1 ? 's' : '') . ' ago';
-    if ($diff->d > 0) return $diff->d . ' day' . ($diff->d > 1 ? 's' : '') . ' ago';
-    if ($diff->h > 0) return $diff->h . ' hour' . ($diff->h > 1 ? 's' : '') . ' ago';
-    if ($diff->i > 0) return $diff->i . ' minute' . ($diff->i > 1 ? 's' : '') . ' ago';
-    return 'just now';
-}
-
 require_once 'includes/header.php';
 ?>
 
@@ -131,8 +117,8 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                     </div>
                     <div class="version-meta">
-                        <span class="version-date" title="<?= htmlspecialchars($version['created_at']) ?>">
-                            <?= timeAgo($version['created_at']) ?>
+                        <span class="version-date" data-timestamp="<?= htmlspecialchars($version['created_at']) ?>" title="<?= htmlspecialchars($version['created_at']) ?>">
+                            <?= date('M j, Y', strtotime($version['created_at'])) ?>
                         </span>
                         <?php if ($version['created_by_name']): ?>
                         <span class="version-author">by <?= htmlspecialchars($version['created_by_name']) ?></span>

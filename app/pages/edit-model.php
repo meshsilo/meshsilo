@@ -59,7 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $license = trim($_POST['license'] ?? '');
     $categoryIds = $_POST['categories'] ?? [];
 
-    if (empty($name)) {
+    if (!Csrf::validate()) {
+        $message = 'Security validation failed. Please try again.';
+        $messageType = 'error';
+    } elseif (empty($name)) {
         $message = 'Name is required';
         $messageType = 'error';
     } else {
@@ -123,6 +126,7 @@ require_once 'includes/header.php';
             <?php endif; ?>
 
             <form method="post" class="upload-form" style="max-width: 800px;">
+                <?= csrf_field() ?>
                 <div class="form-group">
                     <label for="name">Name *</label>
                     <input type="text" id="name" name="name" class="form-input" value="<?= htmlspecialchars($model['name']) ?>" required>
