@@ -544,7 +544,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             const item = checkbox.closest('.feature-item');
             const featureName = item.querySelector('.feature-name').textContent;
-            const usage = parseInt(item.dataset.usage) || 0;
+            const usage = parseInt(item.dataset.usage, 10) || 0;
             const dependents = JSON.parse(item.dataset.dependents || '[]');
 
             let warnings = [];

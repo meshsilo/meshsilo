@@ -734,7 +734,7 @@ document.getElementById('save-remix-btn').addEventListener('click', async functi
             showToast('Please select a model', 'error');
             return;
         }
-        payload.remix_of = parseInt(selectedId);
+        payload.remix_of = parseInt(selectedId, 10);
     } else {
         const externalUrl = document.getElementById('remix-external-url').value.trim();
         if (!externalUrl) {

@@ -496,7 +496,7 @@ document.getElementById('enable-caching').addEventListener('change', function() 
 });
 
 // Allow Enter key in URL tester
-document.getElementById('test-url').addEventListener('keypress', function(e) {
+document.getElementById('test-url').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         document.getElementById('test-btn').click();
     }
