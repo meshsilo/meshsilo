@@ -253,7 +253,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>
-    <div class="pagination">
+    <nav class="pagination" aria-label="Pagination">
         <?php if ($page > 1): ?>
         <a href="?<?= http_build_query(array_merge($filters, ['page' => $page - 1])) ?>" class="btn btn-secondary">&laquo; Prev</a>
         <?php endif; ?>
@@ -263,7 +263,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <?php if ($page < $totalPages): ?>
         <a href="?<?= http_build_query(array_merge($filters, ['page' => $page + 1])) ?>" class="btn btn-secondary">Next &raquo;</a>
         <?php endif; ?>
-    </div>
+    </nav>
     <?php endif; ?>
 </div>
 

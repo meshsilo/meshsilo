@@ -222,7 +222,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <?php if ($totalPages > 1): ?>
-            <nav class="pagination" style="margin-top: 1.5rem;">
+            <nav class="pagination" aria-label="Pagination" style="margin-top: 1.5rem;">
                 <?php if ($page > 1): ?>
                 <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" class="pagination-btn">&laquo; Prev</a>
                 <?php endif; ?>

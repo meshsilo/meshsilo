@@ -195,9 +195,9 @@ require_once __DIR__ . '/../../includes/header.php';
             <?php endif; ?>
 
             <?php if ($totalPages > 1): ?>
-            <nav class="pagination">
+            <nav class="pagination" aria-label="Pagination">
                 <?php if ($page > 1): ?>
-                <a href="?page=<?= $page - 1 ?>&action_filter=<?= urlencode($filterAction) ?>&user_filter=<?= $filterUser ?>&entity_filter=<?= urlencode($filterEntity) ?>" class="pagination-btn">&laquo; Prev</a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" class="pagination-btn">&laquo; Prev</a>
                 <?php endif; ?>
 
                 <?php
@@ -205,25 +205,25 @@ require_once __DIR__ . '/../../includes/header.php';
                 $endPage = min($totalPages, $page + 2);
 
                 if ($startPage > 1): ?>
-                <a href="?page=1&action_filter=<?= urlencode($filterAction) ?>&user_filter=<?= $filterUser ?>&entity_filter=<?= urlencode($filterEntity) ?>" class="pagination-btn">1</a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['page' => 1])) ?>" class="pagination-btn">1</a>
                 <?php if ($startPage > 2): ?>
                 <span class="pagination-ellipsis">...</span>
                 <?php endif; ?>
                 <?php endif; ?>
 
                 <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-                <a href="?page=<?= $i ?>&action_filter=<?= urlencode($filterAction) ?>&user_filter=<?= $filterUser ?>&entity_filter=<?= urlencode($filterEntity) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
                 <?php endfor; ?>
 
                 <?php if ($endPage < $totalPages): ?>
                 <?php if ($endPage < $totalPages - 1): ?>
                 <span class="pagination-ellipsis">...</span>
                 <?php endif; ?>
-                <a href="?page=<?= $totalPages ?>&action_filter=<?= urlencode($filterAction) ?>&user_filter=<?= $filterUser ?>&entity_filter=<?= urlencode($filterEntity) ?>" class="pagination-btn"><?= $totalPages ?></a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $totalPages])) ?>" class="pagination-btn"><?= $totalPages ?></a>
                 <?php endif; ?>
 
                 <?php if ($page < $totalPages): ?>
-                <a href="?page=<?= $page + 1 ?>&action_filter=<?= urlencode($filterAction) ?>&user_filter=<?= $filterUser ?>&entity_filter=<?= urlencode($filterEntity) ?>" class="pagination-btn">Next &raquo;</a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" class="pagination-btn">Next &raquo;</a>
                 <?php endif; ?>
             </nav>
             <?php endif; ?>

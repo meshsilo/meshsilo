@@ -675,7 +675,7 @@ require_once 'includes/header.php';
             <?php endif; ?>
 
             <?php if ($totalPages > 1): ?>
-            <nav class="pagination">
+            <nav class="pagination" aria-label="Pagination">
                 <?php if ($page > 1): ?>
                 <a href="<?= buildUrl(['page' => $page - 1]) ?>" class="pagination-btn">&laquo; Prev</a>
                 <?php endif; ?>
@@ -692,7 +692,7 @@ require_once 'includes/header.php';
                 <?php endif; ?>
 
                 <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-                <a href="<?= buildUrl(['page' => $i]) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                <a href="<?= buildUrl(['page' => $i]) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>"<?= $i === $page ? ' aria-current="page"' : '' ?>><?= $i ?></a>
                 <?php endfor; ?>
 
                 <?php if ($endPage < $totalPages): ?>

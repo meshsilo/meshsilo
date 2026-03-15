@@ -23,7 +23,9 @@ $message = '';
 $error = '';
 
 // Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && Csrf::validate()) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Security validation failed. Please try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     switch ($action) {

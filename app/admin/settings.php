@@ -597,13 +597,21 @@ if (testEmailBtn) {
             const result = await response.json();
 
             if (result.success) {
-                resultDiv.innerHTML = '<div class="alert alert-success" style="margin: 0;">' +
-                    '<strong>Success!</strong> ' + result.message +
-                    '</div>';
+                var successDiv = document.createElement('div');
+                successDiv.className = 'alert alert-success';
+                successDiv.style.margin = '0';
+                successDiv.innerHTML = '<strong>Success!</strong> ';
+                successDiv.appendChild(document.createTextNode(result.message));
+                resultDiv.innerHTML = '';
+                resultDiv.appendChild(successDiv);
             } else {
-                resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-                    '<strong>Failed:</strong> ' + result.message +
-                    '</div>';
+                var errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-error';
+                errorDiv.style.margin = '0';
+                errorDiv.innerHTML = '<strong>Failed:</strong> ';
+                errorDiv.appendChild(document.createTextNode(result.message));
+                resultDiv.innerHTML = '';
+                resultDiv.appendChild(errorDiv);
             }
         } catch (error) {
             resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
