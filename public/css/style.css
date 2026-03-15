@@ -4046,10 +4046,16 @@ input[type="checkbox"]:disabled {
 
 .dropdown-item {
     display: block;
+    width: 100%;
     padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    font: inherit;
     color: var(--color-text);
     font-size: 0.875rem;
     white-space: nowrap;
+    text-align: left;
+    cursor: pointer;
     transition: background-color 0.15s;
 }
 

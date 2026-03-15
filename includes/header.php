@@ -480,7 +480,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
         // Recent searches section
         if (recentMatches.length > 0) {
             recentList.innerHTML = recentMatches.slice(0, 5).map(function(q) {
-                return '<li><a href="' + escapeHtml(browseBase + '?q=' + encodeURIComponent(q)) + '" class="search-dropdown-item search-dropdown-recent">' +
+                return '<li role="option"><a href="' + escapeHtml(browseBase + '?q=' + encodeURIComponent(q)) + '" class="search-dropdown-item search-dropdown-recent">' +
                        '<span class="search-dropdown-icon">&#128336;</span>' + highlightMatch(q, query) + '</a></li>';
             }).join('');
             recentSection.hidden = false;
@@ -496,7 +496,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
                           : s.type === 'category' ? ' <span class="search-match-badge">category</span>' : '';
                 var icon = s.type === 'tag' ? '&#127991;' : s.type === 'category' ? '&#128193;' : '&#128196;';
                 var href = s.url ? s.url : SILO_MODEL_BASE + s.id;
-                return '<li><a href="' + href + '" class="search-dropdown-item">' +
+                return '<li role="option"><a href="' + href + '" class="search-dropdown-item">' +
                        '<span class="search-dropdown-icon">' + icon + '</span>' + highlightMatch(s.name, query) + badge + '</a></li>';
             }).join('');
             resultsSection.hidden = false;
@@ -518,12 +518,15 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
 
         var hasContent = recentMatches.length > 0 || suggestions.length > 0 || (query && query.length > 0);
         dropdown.hidden = !hasContent;
+        input.setAttribute('aria-expanded', hasContent ? 'true' : 'false');
         activeIndex = -1;
     }
 
     function closeDropdown() {
         var dropdown = document.getElementById('search-dropdown');
         if (dropdown) dropdown.hidden = true;
+        var input = document.getElementById('search-input');
+        if (input) input.setAttribute('aria-expanded', 'false');
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -660,7 +663,7 @@ endif; ?>
             <div class="header-actions">
                 <div class="search-container" style="position: relative;">
                     <form id="search-form" action="<?= route('browse') ?>" method="get" role="search">
-                        <input type="search" id="search-input" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>" autocomplete="off">
+                        <input type="search" id="search-input" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>" autocomplete="off" aria-label="Search models" aria-expanded="false" aria-controls="search-dropdown">
                     </form>
                     <div id="search-dropdown" class="search-dropdown" hidden>
                         <div id="search-recent" class="search-dropdown-section" hidden>
@@ -668,14 +671,14 @@ endif; ?>
                                 <span>Recent</span>
                                 <button type="button" id="search-clear-recent" class="search-dropdown-clear">Clear</button>
                             </div>
-                            <ul id="search-recent-list" class="search-dropdown-list"></ul>
+                            <ul id="search-recent-list" class="search-dropdown-list" role="listbox"></ul>
                         </div>
                         <div id="search-results" class="search-dropdown-section" hidden>
                             <div class="search-dropdown-header"><span>Models</span></div>
-                            <ul id="search-results-list" class="search-dropdown-list"></ul>
+                            <ul id="search-results-list" class="search-dropdown-list" role="listbox"></ul>
                         </div>
                         <div class="search-dropdown-section" hidden>
-                            <a id="search-browse-link" href="#" class="search-dropdown-item search-browse-all">
+                            <a id="search-browse-link" href="<?= route('browse') ?>" class="search-dropdown-item search-browse-all">
                                 <span class="search-dropdown-icon">&#128269;</span>Search for "<span class="search-browse-query"></span>"
                             </a>
                         </div>

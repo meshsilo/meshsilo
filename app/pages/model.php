@@ -719,18 +719,18 @@ require_once 'includes/header.php';
                                         <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="More actions">
                                             &#8943;
                                         </button>
-                                        <div class="dropdown-menu dropdown-menu-right">
-                                            <a href="#" class="dropdown-item" onclick="calculatePartDimensions(<?= $part['id'] ?>, this); return false;">Calculate Dimensions</a>
-                                            <a href="#" class="dropdown-item" onclick="calculatePartVolume(<?= $part['id'] ?>, this); return false;">Calculate Volume</a>
+                                        <div class="dropdown-menu dropdown-menu-right" role="menu">
+                                            <button type="button" class="dropdown-item" role="menuitem" onclick="calculatePartDimensions(<?= $part['id'] ?>, this)">Calculate Dimensions</button>
+                                            <button type="button" class="dropdown-item" role="menuitem" onclick="calculatePartVolume(<?= $part['id'] ?>, this)">Calculate Volume</button>
                                             <?php if (strtolower($part['file_type']) === 'stl'): ?>
-                                            <a href="#" class="dropdown-item" onclick="analyzePartMesh(<?= $part['id'] ?>, this); return false;">Analyze Mesh</a>
+                                            <button type="button" class="dropdown-item" role="menuitem" onclick="analyzePartMesh(<?= $part['id'] ?>, this)">Analyze Mesh</button>
                                             <?php endif; ?>
                                             <?php if (canEdit()): ?>
-                                            <div class="dropdown-divider"></div>
-                                            <a href="#" class="dropdown-item" onclick="showMoveFolderModal([<?= $part['id'] ?>]); return false;">Move to Folder</a>
+                                            <div class="dropdown-divider" role="separator"></div>
+                                            <button type="button" class="dropdown-item" role="menuitem" onclick="showMoveFolderModal([<?= $part['id'] ?>])">Move to Folder</button>
                                             <?php endif; ?>
                                             <?php if (canEdit() && $part['file_type'] === 'stl'): ?>
-                                            <a href="#" class="dropdown-item convert-btn" data-part-id="<?= $part['id'] ?>">Convert to 3MF</a>
+                                            <button type="button" class="dropdown-item convert-btn" role="menuitem" data-part-id="<?= $part['id'] ?>">Convert to 3MF</button>
                                             <?php endif; ?>
                                         </div>
                                     </div>

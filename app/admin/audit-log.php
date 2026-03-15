@@ -106,9 +106,9 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="header-actions">
             <div class="dropdown">
                 <button type="button" class="btn btn-secondary dropdown-toggle">Export</button>
-                <div class="dropdown-menu">
-                    <a href="?<?= http_build_query(array_merge($filters, ['export' => 'csv'])) ?>" class="dropdown-item">Export CSV</a>
-                    <a href="?<?= http_build_query(array_merge($filters, ['export' => 'json'])) ?>" class="dropdown-item">Export JSON</a>
+                <div class="dropdown-menu" role="menu">
+                    <a href="?<?= http_build_query(array_merge($filters, ['export' => 'csv'])) ?>" class="dropdown-item" role="menuitem">Export CSV</a>
+                    <a href="?<?= http_build_query(array_merge($filters, ['export' => 'json'])) ?>" class="dropdown-item" role="menuitem">Export JSON</a>
                 </div>
             </div>
             <button type="button" class="btn btn-primary" onclick="showComplianceModal()">Compliance Report</button>
