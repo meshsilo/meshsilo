@@ -190,7 +190,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div class="password-wrapper">
                                 <input type="password" id="current_password" name="current_password" class="form-input"
                                        placeholder="Enter your current password" required autocomplete="current-password">
-                                <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                                <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                             </div>
                         </div>
                         <div class="form-row-grid">
@@ -199,7 +199,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="password-wrapper">
                                     <input type="password" id="new_password" name="new_password" class="form-input"
                                            minlength="8" placeholder="Minimum 8 characters" required autocomplete="new-password" aria-describedby="pw-strength-text">
-                                    <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                                    <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                                 </div>
                                 <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>
                                 <div class="password-strength-text" id="pw-strength-text"></div>
@@ -209,7 +209,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="password-wrapper">
                                     <input type="password" id="confirm_password" name="confirm_password" class="form-input"
                                            placeholder="Re-enter new password" required autocomplete="new-password">
-                                    <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                                    <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                                 </div>
                             </div>
                         </div>
