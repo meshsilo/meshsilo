@@ -315,7 +315,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 formData.append('tag_id', tagId);
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('../actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -347,7 +347,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 formData.append('category_id', categoryId);
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('../actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -379,7 +379,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 formData.append('license', license);
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('../actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -410,7 +410,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 formData.append('archive', archive ? '1' : '0');
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('../actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -440,7 +440,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 formData.append('action', 'delete');
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('../actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -463,7 +463,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 formData.append('action', 'delete');
                 formData.append('model_ids[]', id);
 
-                const response = await fetch('../actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {

@@ -362,9 +362,9 @@ class KeyboardShortcuts {
             '/': { description: 'Focus search', action: (e) => { e.preventDefault(); this.focusSearch(); } },
             'Escape': { description: 'Clear focus', action: () => this.clearFocus() },
             '?': { description: 'Show shortcuts', action: () => this.showHelp() },
-            'g h': { description: 'Go home', action: () => window.location.href = 'index.php' },
-            'g b': { description: 'Go browse', action: () => window.location.href = 'browse.php' },
-            'g f': { description: 'Go favorites', action: () => window.location.href = 'favorites.php' },
+            'g h': { description: 'Go home', action: () => window.location.href = '/' },
+            'g b': { description: 'Go browse', action: () => window.location.href = '/browse' },
+            'g f': { description: 'Go favorites', action: () => window.location.href = '/favorites' },
         };
         this.pendingKey = null;
         this.helpModal = null;
@@ -448,10 +448,10 @@ class KeyboardShortcuts {
     openSelected() {
         if (this.currentIndex >= 0 && this.modelCards[this.currentIndex]) {
             const card = this.modelCards[this.currentIndex];
-            const link = card.querySelector('a[href*="model.php"]') || card;
+            const link = card.querySelector('a[href*="/model/"]') || card;
             const modelId = card.dataset.modelId;
             if (modelId) {
-                window.location.href = `model.php?id=${modelId}`;
+                window.location.href = SILO_MODEL_BASE + modelId;
             } else if (link.href) {
                 window.location.href = link.href;
             }
