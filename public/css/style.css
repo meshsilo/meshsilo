@@ -6429,6 +6429,13 @@ body.batch-mode .model-list-item:hover {
     border-color: var(--color-primary);
 }
 
+/* Model card date */
+.model-date {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 0.15rem;
+}
+
 /* Footer copyright */
 .footer-copyright {
     font-size: 0.8rem;

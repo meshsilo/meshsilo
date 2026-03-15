@@ -468,10 +468,12 @@ document.getElementById('confirm-revert-btn').addEventListener('click', async fu
     this.textContent = 'Reverting...';
 
     try {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]');
         const response = await fetch('/actions/revert-version', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken ? csrfToken.content : '',
             },
             body: JSON.stringify({
                 model_id: revertModelId,

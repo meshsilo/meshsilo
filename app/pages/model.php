@@ -485,7 +485,7 @@ require_once 'includes/header.php';
                                     <?php foreach ($attachments['documents'] as $att): ?>
                                     <div class="attachment-document" data-attachment-id="<?= $att['id'] ?>">
                                         <span class="file-type-badge">.<?= htmlspecialchars(pathinfo($att['original_filename'], PATHINFO_EXTENSION) ?: $att['file_type']) ?></span>
-                                        <a href="/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" class="attachment-doc-name">
+                                        <a href="/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" rel="noopener" class="attachment-doc-name">
                                             <?= htmlspecialchars($att['original_filename']) ?>
                                         </a>
                                         <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>

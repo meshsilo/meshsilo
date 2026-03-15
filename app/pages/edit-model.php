@@ -243,19 +243,20 @@ require_once 'includes/header.php';
 
                 const matching = allTags.filter(t => t.name.toLowerCase().includes(value));
                 if (matching.length === 0 && value.length > 0) {
-                    tagSuggestions.innerHTML = `
-                        <div class="tag-suggestion" onclick="addTag('${value.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: var(--color-primary);"></span>
-                            <span>Create "${value}"</span>
-                        </div>
-                    `;
+                    var safeValue = value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                    tagSuggestions.innerHTML =
+                        '<div class="tag-suggestion" onclick="addTag(this.dataset.name)" data-name="' + safeValue + '">' +
+                            '<span class="tag-color-dot" style="background-color: var(--color-primary);"></span>' +
+                            '<span>Create "' + safeValue + '"</span>' +
+                        '</div>';
                 } else {
-                    tagSuggestions.innerHTML = matching.map(t => `
-                        <div class="tag-suggestion" onclick="addTag('${t.name.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: ${t.color};"></span>
-                            <span>${t.name}</span>
-                        </div>
-                    `).join('');
+                    tagSuggestions.innerHTML = matching.map(function(t) {
+                        var safeName = t.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                        return '<div class="tag-suggestion" onclick="addTag(this.dataset.name)" data-name="' + safeName + '">' +
+                            '<span class="tag-color-dot" style="background-color:' + t.color + ';"></span>' +
+                            '<span>' + safeName + '</span>' +
+                        '</div>';
+                    }).join('');
                 }
                 tagSuggestions.style.display = matching.length > 0 || value.length > 0 ? 'block' : 'none';
             });
@@ -275,7 +276,7 @@ require_once 'includes/header.php';
 
         async function addTag(tagName) {
             try {
-                const response = await fetch('actions/tag.php', {
+                const response = await fetch('/actions/tag', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'action=add&model_id=' + modelId + '&tag_name=' + encodeURIComponent(tagName)
@@ -304,7 +305,7 @@ require_once 'includes/header.php';
 
         async function removeTag(modelId, tagId, element) {
             try {
-                const response = await fetch('actions/tag.php', {
+                const response = await fetch('/actions/tag', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'action=remove&model_id=' + modelId + '&tag_id=' + tagId
