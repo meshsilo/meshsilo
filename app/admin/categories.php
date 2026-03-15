@@ -110,7 +110,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php if (empty($categories)): ?>
                             <p class="text-muted">No categories yet.</p>
                         <?php else: ?>
-                            <table class="admin-table">
+                            <table class="admin-table" aria-label="Categories">
                                 <thead>
                                     <tr>
                                         <th scope="col">Name</th>

@@ -381,7 +381,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <p>Add a repository below to browse and install plugins from external sources.</p>
             </div>
             <?php else: ?>
-            <table class="data-table">
+            <table class="data-table" aria-label="Plugin repositories">
                 <thead>
                     <tr>
                         <th scope="col">Name</th>

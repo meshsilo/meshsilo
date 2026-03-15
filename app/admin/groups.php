@@ -164,7 +164,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="admin-section">
                     <h2>Groups</h2>
                     <div class="admin-table-container">
-                        <table class="admin-table">
+                        <table class="admin-table" aria-label="Permission groups">
                             <thead>
                                 <tr>
                                     <th scope="col">Name</th>

@@ -211,7 +211,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </summary>
 
             <div class="table-responsive" style="margin-bottom: 1rem;">
-                <table class="admin-table route-table">
+                <table class="admin-table route-table" aria-label="Registered routes">
                     <thead>
                         <tr>
                             <th scope="col" style="width: 50px;">Method</th>
@@ -277,7 +277,7 @@ require_once __DIR__ . '/../../includes/header.php';
         </p>
 
         <div class="table-responsive">
-            <table class="admin-table">
+            <table class="admin-table" aria-label="Named routes">
                 <thead>
                     <tr>
                         <th scope="col">Name</th>

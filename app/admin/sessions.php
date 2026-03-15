@@ -198,7 +198,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="admin-section" style="margin-bottom: 1.5rem;">
         <h2>Current Session</h2>
         <div class="table-responsive">
-            <table class="data-table" style="width: 100%; table-layout: fixed;">
+            <table class="data-table" style="width: 100%; table-layout: fixed;" aria-label="Current session">
                 <thead>
                     <tr>
                         <th scope="col">User</th>
@@ -253,7 +253,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="admin-section">
             <h2>Active Sessions</h2>
             <div class="table-responsive">
-                <table class="data-table">
+                <table class="data-table" aria-label="Active sessions">
                     <thead>
                         <tr>
                             <th scope="col">User</th>
@@ -314,7 +314,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="admin-section">
             <h2>Users with Multiple Sessions</h2>
             <div class="table-responsive">
-                <table class="data-table">
+                <table class="data-table" aria-label="Users with multiple sessions">
                     <thead>
                         <tr>
                             <th scope="col">User</th>

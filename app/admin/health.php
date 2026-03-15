@@ -554,7 +554,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="info-grid">
             <div class="info-card">
                 <h3>PHP Configuration</h3>
-                <table class="info-table">
+                <table class="info-table" aria-label="PHP configuration">
                     <tr>
                         <td>PHP Version</td>
                         <td><?= $metrics['php']['version'] ?></td>
@@ -580,7 +580,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="info-card">
                 <h3>Application Stats</h3>
-                <table class="info-table">
+                <table class="info-table" aria-label="Application statistics">
                     <tr>
                         <td>Total Models</td>
                         <td id="model-count"><?= number_format($metrics['model_count']) ?></td>
@@ -607,7 +607,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="section">
         <h2>Recent Issues</h2>
         <div class="errors-table-container">
-            <table class="data-table" id="errors-table">
+            <table class="data-table" id="errors-table" aria-label="Recent issues">
                 <thead>
                     <tr>
                         <th scope="col">Time</th>

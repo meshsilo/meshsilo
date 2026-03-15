@@ -196,7 +196,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
     <!-- Log Table -->
     <div class="table-responsive">
-        <table class="data-table">
+        <table class="data-table" aria-label="Audit log entries">
             <thead>
                 <tr>
                     <th scope="col">Timestamp</th>

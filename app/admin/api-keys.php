@@ -242,7 +242,7 @@ include __DIR__ . '/../../includes/header.php';
                 <pre class="api-code-block"><code>curl -H "X-API-Key: silo_your_key_here" <?= rtrim(getSetting('site_url', ''), '/') ?>/api/models</code></pre>
 
                 <h4 style="margin-top: 1.5rem;">Endpoints</h4>
-                <table class="table">
+                <table class="table" aria-label="API endpoints">
                     <thead>
                         <tr>
                             <th scope="col">Method</th>

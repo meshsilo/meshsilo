@@ -215,7 +215,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <details class="settings-section" open>
             <summary><h2>Database Information</h2></summary>
-            <table class="data-table">
+            <table class="data-table" aria-label="Database information">
                 <tr>
                     <th scope="col">Schema Version</th>
                     <td><?= htmlspecialchars($schemaVersion) ?></td>
@@ -239,7 +239,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <details class="settings-section">
             <summary><h2>Table Statistics</h2></summary>
-            <table class="data-table">
+            <table class="data-table" aria-label="Table statistics">
                 <thead>
                     <tr>
                         <th scope="col">Table</th>

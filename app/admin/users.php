@@ -212,7 +212,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
                     <details class="settings-section" open>
                         <summary><h2>Existing Users</h2></summary>
-                        <table class="admin-table">
+                        <table class="admin-table" aria-label="Users">
                             <thead>
                                 <tr>
                                     <th scope="col">Username</th>

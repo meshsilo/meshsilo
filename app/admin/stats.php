@@ -592,7 +592,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="stats-section">
                     <h2>Parts by File Type</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Parts by file type">
                             <thead>
                                 <tr>
                                     <th scope="col">Type</th>
@@ -620,7 +620,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="stats-section">
                     <h2>Models by Category</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Models by category">
                             <thead>
                                 <tr>
                                     <th scope="col">Category</th>
@@ -647,7 +647,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="stats-section">
                     <h2>Top Collections</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Top collections">
                             <thead>
                                 <tr>
                                     <th scope="col">Collection</th>
@@ -673,7 +673,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="stats-section">
                     <h2>Largest Models</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Largest models">
                             <thead>
                                 <tr>
                                     <th scope="col">Name</th>
@@ -699,7 +699,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="stats-section">
                     <h2>Top Creators</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Top creators">
                             <thead>
                                 <tr>
                                     <th scope="col">Creator</th>
@@ -725,7 +725,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="stats-section">
                     <h2>Recent Upload Activity (7 days)</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Recent upload activity">
                             <thead>
                                 <tr>
                                     <th scope="col">Date</th>
@@ -749,7 +749,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <section class="stats-section">
                     <h2>Monthly Trends (12 months)</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Monthly trends">
                             <thead>
                                 <tr>
                                     <th scope="col">Month</th>
@@ -783,7 +783,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </form>
                     <?php endif; ?>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Missing files">
                             <thead>
                                 <tr>
                                     <th scope="col">ID</th>
@@ -828,7 +828,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </form>
                     <?php endif; ?>
                     <div class="stats-table-container">
-                        <table class="stats-table">
+                        <table class="stats-table" aria-label="Orphaned files">
                             <thead>
                                 <tr>
                                     <th scope="col">Filename</th>
