@@ -597,7 +597,7 @@ function convertPartTo3MF($partId)
                 $refStmt->bindValue(':dedup_path', $part['dedup_path'], PDO::PARAM_STR);
                 $refStmt->bindValue(':id', $partId, PDO::PARAM_INT);
                 $refResult = $refStmt->execute();
-                $refCount = $refResult->fetchArray(PDO::FETCH_ASSOC)['cnt'];
+                $refCount = $refResult ? ($refResult->fetchArray(PDO::FETCH_ASSOC)['cnt'] ?? 0) : 0;
 
                 if ($refCount == 0) {
                     unlink($stlPath);

@@ -331,11 +331,11 @@ function getDeduplicationStats()
 
     // Count deduplicated files
     $result = $db->query('SELECT COUNT(DISTINCT dedup_path) as count FROM models WHERE dedup_path IS NOT NULL');
-    $dedupFileCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+    $dedupFileCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
     // Count parts using deduplicated files
     $result = $db->query('SELECT COUNT(*) as count FROM models WHERE dedup_path IS NOT NULL');
-    $dedupPartCount = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+    $dedupPartCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
     // Calculate space saved (parts using dedup - actual dedup files)
     $result = $db->query('

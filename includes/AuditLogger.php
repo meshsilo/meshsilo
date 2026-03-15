@@ -235,7 +235,8 @@ class AuditLogger
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
         }
-        $total = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['total'];
+        $execResult = $stmt->execute();
+        $total = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['total'] ?? 0) : 0;
 
         // Get results
         $sql = "
@@ -429,7 +430,8 @@ class AuditLogger
         ');
         $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
         $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
-        $report['summary']['unique_users'] = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
+        $execResult = $stmt->execute();
+        $report['summary']['unique_users'] = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
         // Unique IPs
         $stmt = $db->prepare('
@@ -440,7 +442,8 @@ class AuditLogger
         ');
         $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
         $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
-        $report['summary']['unique_ips'] = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
+        $execResult = $stmt->execute();
+        $report['summary']['unique_ips'] = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
         // Security events (warning and above)
         $stmt = $db->prepare('

@@ -307,13 +307,13 @@ class RateLimiter
         $stmt = self::$db->prepare('SELECT COUNT(*) as count FROM rate_limit_hits WHERE `timestamp` >= :since');
         $stmt->bindValue(':since', $now - 3600, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $stats['requests_hour'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+        $stats['requests_hour'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
         // Unique identifiers in last hour
         $stmt = self::$db->prepare('SELECT COUNT(DISTINCT key_hash) as count FROM rate_limit_hits WHERE `timestamp` >= :since');
         $stmt->bindValue(':since', $now - 3600, PDO::PARAM_INT);
         $result = $stmt->execute();
-        $stats['unique_keys_hour'] = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+        $stats['unique_keys_hour'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
         // Rate limited requests (approximate - those who hit limits)
         $stmt = self::$db->prepare('
