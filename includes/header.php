@@ -709,17 +709,17 @@ endif; ?>
                         <a href="<?= route('admin.settings') ?>" class="btn btn-secondary">Admin</a>
                     <?php endif; ?>
                     <div class="user-dropdown">
-                        <button type="button" class="user-dropdown-toggle">
+                        <button type="button" class="user-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
                             <span class="user-name"><?= htmlspecialchars($user['username']) ?></span>
                             <span class="dropdown-arrow">&#9662;</span>
                         </button>
-                        <div class="user-dropdown-menu">
-                            <a href="<?= route('settings') ?>">&#9881; Settings</a>
+                        <div class="user-dropdown-menu" role="menu">
+                            <a href="<?= route('settings') ?>" role="menuitem">&#9881; Settings</a>
                             <?php if (isFeatureEnabled('favorites')) : ?>
-                            <a href="<?= route('favorites') ?>">&#9829; Favorites</a>
+                            <a href="<?= route('favorites') ?>" role="menuitem">&#9829; Favorites</a>
                             <?php endif; ?>
-                            <div class="dropdown-divider"></div>
-                            <a href="<?= route('logout') ?>">&#10140; Log Out</a>
+                            <div class="dropdown-divider" role="separator"></div>
+                            <a href="<?= route('logout') ?>" role="menuitem">&#10140; Log Out</a>
                         </div>
                     </div>
                 <?php else : ?>

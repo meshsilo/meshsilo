@@ -611,6 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggle.addEventListener('click', (e) => {
                 e.stopPropagation();
                 userDropdown.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', userDropdown.classList.contains('open'));
             });
         }
 
@@ -618,6 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('click', (e) => {
             if (!userDropdown.contains(e.target)) {
                 userDropdown.classList.remove('open');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
             }
         });
 
@@ -625,6 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 userDropdown.classList.remove('open');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
             }
         });
     }

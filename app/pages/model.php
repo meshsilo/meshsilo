@@ -716,7 +716,7 @@ require_once 'includes/header.php';
                                     <a href="<?= route('actions.delete', [], ['id' => $model['id'], 'part_id' => $part['id']]) ?>" class="btn btn-small btn-danger" title="Delete part">Delete</a>
                                     <?php endif; ?>
                                     <div class="dropdown part-actions-dropdown">
-                                        <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="More actions">
+                                        <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="More actions" aria-haspopup="true" aria-expanded="false">
                                             &#8943;
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right" role="menu">
@@ -1689,11 +1689,14 @@ require_once 'includes/header.php';
                 // Close all other dropdowns
                 document.querySelectorAll('.dropdown.open').forEach(d => {
                     d.classList.remove('open');
+                    var t = d.querySelector('.dropdown-toggle');
+                    if (t) t.setAttribute('aria-expanded', 'false');
                 });
 
                 // Toggle this dropdown
                 if (!wasOpen) {
                     dropdown.classList.add('open');
+                    this.setAttribute('aria-expanded', 'true');
                     positionDropdownMenu(dropdown);
 
                     // Restore calculated data for part dropdowns
@@ -1712,24 +1715,24 @@ require_once 'includes/header.php';
         });
 
         // Close dropdowns when clicking outside (but not when interacting with inline controls)
+        function closeAllDropdowns() {
+            document.querySelectorAll('.dropdown.open').forEach(d => {
+                d.classList.remove('open');
+                var t = d.querySelector('.dropdown-toggle');
+                if (t) t.setAttribute('aria-expanded', 'false');
+            });
+        }
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.dropdown')) {
-                document.querySelectorAll('.dropdown.open').forEach(d => {
-                    d.classList.remove('open');
-                });
+                closeAllDropdowns();
             } else if (e.target.closest('.dropdown-item') && !e.target.closest('.dropdown-item-inline') && !e.target.closest('select')) {
-                // Close dropdown on regular item click (but not inline controls)
-                document.querySelectorAll('.dropdown.open').forEach(d => {
-                    d.classList.remove('open');
-                });
+                closeAllDropdowns();
             }
         });
 
         // Close fixed-position dropdowns on scroll (since they won't move with the page)
         window.addEventListener('scroll', function() {
-            document.querySelectorAll('.part-actions-dropdown.open').forEach(d => {
-                d.classList.remove('open');
-            });
+            closeAllDropdowns();
         }, { passive: true });
 
         // Favorite toggle
