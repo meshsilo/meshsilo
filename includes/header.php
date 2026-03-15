@@ -660,7 +660,7 @@ endif; ?>
             <div class="header-actions">
                 <div class="search-container" style="position: relative;">
                     <form id="search-form" action="<?= route('browse') ?>" method="get" role="search">
-                        <input type="search" id="search-input" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>" autocomplete="off" aria-label="Search models" aria-expanded="false" aria-controls="search-dropdown">
+                        <input type="search" id="search-input" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>" autocomplete="off" aria-label="Search models" aria-expanded="false" aria-controls="search-dropdown" enterkeyhint="search">
                     </form>
                     <div id="search-dropdown" class="search-dropdown" hidden>
                         <div id="search-recent" class="search-dropdown-section" hidden>
