@@ -173,7 +173,7 @@ class Markdown
                 if (!self::isSafeUrl($url)) {
                     return $matches[0];
                 }
-                return '<img src="' . $url . '" alt="' . $alt . '" loading="lazy">';
+                return '<img src="' . $url . '" alt="' . $alt . '" loading="lazy" decoding="async">';
             },
             $text
         );

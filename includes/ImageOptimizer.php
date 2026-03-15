@@ -414,6 +414,6 @@ if (!function_exists('optimized_img')) {
             </picture>';
         }
 
-        return '<img src="' . htmlspecialchars($src) . '" alt="' . htmlspecialchars($alt) . '"' . $attrStr . ' loading="lazy">';
+        return '<img src="' . htmlspecialchars($src) . '" alt="' . htmlspecialchars($alt) . '"' . $attrStr . ' loading="lazy" decoding="async">';
     }
 }
