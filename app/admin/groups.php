@@ -231,8 +231,8 @@ require_once __DIR__ . '/../../includes/header.php';
                             <textarea id="description" name="description" class="form-input form-textarea" rows="2" <?= $editGroup['is_system'] ? 'disabled' : '' ?>><?= htmlspecialchars($editGroup['description'] ?? '') ?></textarea>
                         </div>
 
-                        <div class="form-group">
-                            <label>Permissions</label>
+                        <fieldset class="form-group">
+                            <legend>Permissions</legend>
                             <div class="checkbox-group">
                                 <?php foreach ($allPermissions as $perm => $desc): ?>
                                 <label class="checkbox-label">
@@ -241,7 +241,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 </label>
                                 <?php endforeach; ?>
                             </div>
-                        </div>
+                        </fieldset>
 
                         <div class="form-actions">
                             <a href="<?= route('admin.groups') ?>" class="btn btn-secondary">Cancel</a>
@@ -309,8 +309,8 @@ require_once __DIR__ . '/../../includes/header.php';
                             <textarea id="description" name="description" class="form-input form-textarea" rows="2"></textarea>
                         </div>
 
-                        <div class="form-group">
-                            <label>Permissions</label>
+                        <fieldset class="form-group">
+                            <legend>Permissions</legend>
                             <div class="checkbox-group">
                                 <?php foreach ($allPermissions as $perm => $desc): ?>
                                 <label class="checkbox-label">
@@ -319,7 +319,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 </label>
                                 <?php endforeach; ?>
                             </div>
-                        </div>
+                        </fieldset>
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">Create Group</button>

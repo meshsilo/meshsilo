@@ -120,8 +120,8 @@ include __DIR__ . '/../../includes/header.php';
                                placeholder="e.g., My Integration, CI/CD Pipeline">
                     </div>
 
-                    <div class="form-group">
-                        <label>Permissions</label>
+                    <fieldset class="form-group">
+                        <legend>Permissions</legend>
                         <div class="checkbox-group">
                             <label>
                                 <input type="checkbox" name="permissions[]" value="read" checked>
@@ -140,7 +140,7 @@ include __DIR__ . '/../../includes/header.php';
                                 Admin (manage webhooks, categories)
                             </label>
                         </div>
-                    </div>
+                    </fieldset>
 
                     <div class="form-group">
                         <label for="expires_in">Expiration</label>

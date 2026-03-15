@@ -191,8 +191,8 @@ require_once 'includes/header.php';
                 </div>
 
                 <?php if (!empty($categories)): ?>
-                <div class="form-group">
-                    <label>Categories</label>
+                <fieldset class="form-group">
+                    <legend>Categories</legend>
                     <div class="checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
                         <?php foreach ($categories as $cat): ?>
                         <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem;">
@@ -201,7 +201,7 @@ require_once 'includes/header.php';
                         </label>
                         <?php endforeach; ?>
                     </div>
-                </div>
+                </fieldset>
                 <?php endif; ?>
 
                 <div class="form-group">

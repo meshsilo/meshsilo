@@ -183,7 +183,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
                 <div class="filter-group">
                     <label for="audit_search">Search</label>
-                    <input type="text" name="search" id="audit_search" class="form-control" placeholder="Search events..." value="<?= htmlspecialchars($filters['search']) ?>">
+                    <input type="search" name="search" id="audit_search" class="form-control" placeholder="Search events..." value="<?= htmlspecialchars($filters['search']) ?>">
                 </div>
             </div>
 

@@ -317,7 +317,7 @@ require_once 'includes/header.php';
             <div id="internal-source" class="source-input">
                 <div class="form-group">
                     <label for="remix-model-search">Search for original model</label>
-                    <input type="text" id="remix-model-search" class="form-control" placeholder="Search models...">
+                    <input type="search" id="remix-model-search" class="form-control" placeholder="Search models...">
                     <div id="model-search-results" class="search-results"></div>
                 </div>
                 <input type="hidden" id="selected-model-id">

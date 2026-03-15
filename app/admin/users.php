@@ -195,8 +195,8 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <input type="password" id="password" name="password" class="form-input" required autocomplete="new-password">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label>Groups</label>
+                            <fieldset class="form-group">
+                                <legend>Groups</legend>
                                 <div class="checkbox-group">
                                     <?php foreach ($groups as $group): ?>
                                     <label class="checkbox-label">
@@ -205,7 +205,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     </label>
                                     <?php endforeach; ?>
                                 </div>
-                            </div>
+                            </fieldset>
                             <button type="submit" name="add_user" class="btn btn-primary">Add User</button>
                         </form>
                     </details>
