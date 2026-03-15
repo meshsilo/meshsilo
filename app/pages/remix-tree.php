@@ -399,7 +399,7 @@ require_once 'includes/header.php';
 }
 
 .tree-node.remix {
-    border-color: var(--success-color);
+    border-color: var(--color-success);
 }
 
 .node-link {
@@ -442,7 +442,7 @@ require_once 'includes/header.php';
 
 .node-external {
     font-size: 0.75rem;
-    color: var(--warning-color);
+    color: var(--color-warning);
 }
 
 .current-badge {

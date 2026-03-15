@@ -447,19 +447,19 @@ require_once 'includes/header.php';
 }
 
 .diff.increase {
-    color: var(--warning-color);
+    color: var(--color-warning);
 }
 
 .diff.decrease {
-    color: var(--success-color);
+    color: var(--color-success);
 }
 
 .diff.changed {
-    color: var(--warning-color);
+    color: var(--color-warning);
 }
 
 .diff.same {
-    color: var(--success-color);
+    color: var(--color-success);
 }
 
 .compare-controls {
@@ -573,8 +573,8 @@ require_once 'includes/header.php';
     min-width: 120px;
 }
 
-.stats-diff-positive { color: var(--warning-color, #f59e0b); }
-.stats-diff-negative { color: var(--success-color, #22c55e); }
+.stats-diff-positive { color: var(--color-warning, #f59e0b); }
+.stats-diff-negative { color: var(--color-success, #22c55e); }
 .stats-diff-zero { color: var(--color-text-muted); }
 
 @media (max-width: 768px) {

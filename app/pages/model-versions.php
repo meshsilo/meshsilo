@@ -338,7 +338,7 @@ require_once 'includes/header.php';
 }
 
 .badge-success {
-    background: var(--success-color);
+    background: var(--color-success);
     color: white;
 }
 
@@ -348,8 +348,8 @@ require_once 'includes/header.php';
 }
 
 .btn-warning {
-    background: var(--warning-color);
-    color: var(--warning-text);
+    background: var(--color-warning);
+    color: white;
 }
 
 .btn-warning:hover {

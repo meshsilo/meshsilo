@@ -356,11 +356,11 @@ php cli/migrate.php --dry-run
 }
 
 .migration-item.applied {
-    border-left-color: var(--success-color, #22c55e);
+    border-left-color: var(--color-success, #22c55e);
 }
 
 .migration-item.pending {
-    border-left-color: var(--warning-color, #f59e0b);
+    border-left-color: var(--color-warning, #f59e0b);
 }
 
 .migration-status {
@@ -369,11 +369,11 @@ php cli/migrate.php --dry-run
 }
 
 .migration-item.applied .migration-status {
-    color: var(--success-color, #22c55e);
+    color: var(--color-success, #22c55e);
 }
 
 .migration-item.pending .migration-status {
-    color: var(--warning-color, #f59e0b);
+    color: var(--color-warning, #f59e0b);
 }
 
 .migration-name {
@@ -415,23 +415,23 @@ php cli/migrate.php --dry-run
 }
 
 .migration-results li.success {
-    color: var(--success-color, #22c55e);
+    color: var(--color-success, #22c55e);
 }
 
 .migration-results li.error {
-    color: var(--error-color, #ef4444);
+    color: var(--color-danger, #ef4444);
 }
 
 .stat-card-warning {
-    border-color: var(--warning-color, #f59e0b);
+    border-color: var(--color-warning, #f59e0b);
 }
 
 .stat-card-warning .stat-value {
-    color: var(--warning-color, #f59e0b);
+    color: var(--color-warning, #f59e0b);
 }
 
 .stat-card-success .stat-value {
-    color: var(--success-color, #22c55e);
+    color: var(--color-success, #22c55e);
 }
 
 .data-table {
@@ -460,20 +460,20 @@ php cli/migrate.php --dry-run
 
 .alert-success {
     background: color-mix(in srgb, var(--color-success) 10%, transparent);
-    color: var(--success-color, #22c55e);
-    border: 1px solid var(--success-color, #22c55e);
+    color: var(--color-success, #22c55e);
+    border: 1px solid var(--color-success, #22c55e);
 }
 
 .alert-warning {
     background: color-mix(in srgb, var(--color-warning) 10%, transparent);
-    color: var(--warning-color, #f59e0b);
-    border: 1px solid var(--warning-color, #f59e0b);
+    color: var(--color-warning, #f59e0b);
+    border: 1px solid var(--color-warning, #f59e0b);
 }
 
 .alert-error {
     background: color-mix(in srgb, var(--color-danger) 10%, transparent);
-    color: var(--error-color, #ef4444);
-    border: 1px solid var(--error-color, #ef4444);
+    color: var(--color-danger, #ef4444);
+    border: 1px solid var(--color-danger, #ef4444);
 }
 </style>
 

@@ -459,7 +459,7 @@ function parseUserAgent($ua) {
 .stat-value {
     font-size: 2rem;
     font-weight: bold;
-    color: var(--primary-color);
+    color: var(--color-primary);
 }
 
 .stat-label {
@@ -522,7 +522,7 @@ function parseUserAgent($ua) {
     border: 1px solid var(--color-border);
     border-radius: 4px;
     background: var(--color-bg);
-    color: var(--text-color);
+    color: var(--color-text);
 }
 
 .form-help {

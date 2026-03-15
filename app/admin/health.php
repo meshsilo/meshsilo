@@ -795,7 +795,7 @@ function getStatusMessage($services) {
 
 .metric-bar-fill {
     height: 100%;
-    background: var(--primary-color);
+    background: var(--color-primary);
     border-radius: 3px;
     transition: width 0.3s ease;
 }

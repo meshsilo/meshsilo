@@ -435,7 +435,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
 
                             <details class="provider-presets" style="margin-top: 0.5rem;">
-                                <summary style="cursor: pointer; color: var(--primary-color);">Common SMTP configurations</summary>
+                                <summary style="cursor: pointer; color: var(--color-primary);">Common SMTP configurations</summary>
                                 <ul style="margin: 0.5rem 0 0 1rem; font-size: 0.875rem;">
                                     <li><strong>Gmail:</strong> smtp.gmail.com:587 (TLS) - Requires App Password</li>
                                     <li><strong>Outlook/Office 365:</strong> smtp.office365.com:587 (TLS)</li>

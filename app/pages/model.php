@@ -1843,11 +1843,11 @@ require_once 'includes/header.php';
                 if (data.success) {
                     if (data.analysis && data.analysis.is_manifold) {
                         linkEl.textContent = 'Mesh OK';
-                        linkEl.style.color = 'var(--success-color, #10b981)';
+                        linkEl.style.color = 'var(--color-success, #10b981)';
                     } else if (data.analysis) {
                         const issues = data.analysis.issues ? data.analysis.issues.length : 0;
                         linkEl.textContent = issues + ' issue(s)';
-                        linkEl.style.color = 'var(--warning-color, #f59e0b)';
+                        linkEl.style.color = 'var(--color-warning, #f59e0b)';
                     } else {
                         linkEl.textContent = 'Analyzed';
                     }
