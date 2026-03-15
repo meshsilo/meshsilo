@@ -113,7 +113,7 @@ include __DIR__ . '/../../includes/header.php';
             <div role="status" class="alert alert-success"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
         <?php if (!empty($error)): ?>
-            <div role="alert" class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <!-- Security Score Card -->

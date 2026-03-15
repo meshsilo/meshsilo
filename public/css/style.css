@@ -1438,6 +1438,12 @@ section.settings-section h2 {
     color: var(--color-success);
 }
 
+.alert-warning {
+    background-color: rgba(234, 179, 8, 0.1);
+    border: 1px solid var(--color-warning);
+    color: var(--color-warning);
+}
+
 /* User Name in Header */
 .user-name {
     color: var(--color-text-muted);
@@ -4215,6 +4221,12 @@ input[type="checkbox"]:disabled {
     padding: 0.5rem 0.75rem;
     cursor: pointer;
     transition: background-color 0.15s;
+    width: 100%;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
 }
 
 .tag-suggestion:hover {

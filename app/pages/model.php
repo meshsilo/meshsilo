@@ -1871,17 +1871,17 @@ require_once 'includes/header.php';
                 if (matching.length === 0 && value.length > 0) {
                     // Show option to create new tag
                     tagSuggestions.innerHTML = `
-                        <div class="tag-suggestion" onclick="addTag('${value.replace(/'/g, "\\'")}')">
+                        <button type="button" class="tag-suggestion" onclick="addTag('${value.replace(/'/g, "\\'")}')">
                             <span class="tag-color-dot" style="background-color: var(--color-primary);"></span>
                             <span>Create "${value}"</span>
-                        </div>
+                        </button>
                     `;
                 } else {
                     tagSuggestions.innerHTML = matching.map(t => `
-                        <div class="tag-suggestion" onclick="addTagById(${t.id}, '${t.name.replace(/'/g, "\\'")}')">
+                        <button type="button" class="tag-suggestion" onclick="addTagById(${t.id}, '${t.name.replace(/'/g, "\\'")}')">
                             <span class="tag-color-dot" style="background-color: ${t.color};"></span>
                             <span>${t.name}</span>
-                        </div>
+                        </button>
                     `).join('');
                 }
                 tagSuggestions.style.display = matching.length > 0 || value.length > 0 ? 'block' : 'none';

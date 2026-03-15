@@ -142,7 +142,7 @@ include __DIR__ . '/../../includes/header.php';
             <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
         <?php if ($error): ?>
-            <div role="alert" class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <!-- Quick Actions -->

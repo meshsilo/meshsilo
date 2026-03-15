@@ -84,7 +84,7 @@ include __DIR__ . '/../../includes/header.php';
         </div>
 
         <?php if ($error): ?>
-            <div role="alert" class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <?php if ($success): ?>
