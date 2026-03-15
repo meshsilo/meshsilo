@@ -17,7 +17,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#3b82f6">
+    <meta name="theme-color" content="<?= $currentTheme === 'dark' ? '#0f172a' : '#3b82f6' ?>">
     <meta name="color-scheme" content="light dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -30,9 +30,11 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
     <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=8">
 
-    <!-- CDN preconnect hints -->
+    <!-- CDN preconnect hints (dns-prefetch as fallback for older browsers) -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
     <!-- Three.js for 3D model rendering (defer preserves execution order) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" defer></script>
