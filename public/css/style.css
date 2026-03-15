@@ -3202,7 +3202,7 @@ body.mobile-menu-open::before {
     left: 50%;
     transform: translateX(-50%);
     font-size: 0.7rem;
-    color: #fff;
+    color: var(--color-text-inverse, #fff);
     background: rgba(0,0,0,0.6);
     padding: 0.15rem 0.5rem;
     border-radius: var(--radius);
@@ -6461,6 +6461,7 @@ body.batch-mode .model-list-item:hover {
 
 /* Model card date */
 .model-date {
+    display: block;
     font-size: 0.75rem;
     color: var(--color-text-muted);
     margin-top: 0.15rem;

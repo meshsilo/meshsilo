@@ -360,9 +360,9 @@ require_once 'includes/header.php';
                                 <strong>Collection:</strong> <?= htmlspecialchars($model['collection']) ?>
                             </span>
                             <?php endif; ?>
-                            <span class="meta-item" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>">
+                            <time class="meta-item" datetime="<?= htmlspecialchars(date('c', strtotime($model['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>">
                                 <strong>Added:</strong> <?= date('M j, Y', strtotime($model['created_at'])) ?>
-                            </span>
+                            </time>
                             <?php if (isFeatureEnabled('download_tracking') && ($model['download_count'] ?? 0) > 0): ?>
                             <span class="meta-item download-count">
                                 <strong>Downloads:</strong> <?= number_format($model['download_count']) ?>
@@ -557,7 +557,7 @@ require_once 'includes/header.php';
                         <?php foreach ($relatedModels as $rm): ?>
                         <a href="<?= route('model.show', ['id' => $rm['related_model_id']]) ?>" class="related-model-card">
                             <h4><?= htmlspecialchars($rm['name']) ?></h4>
-                            <span class="related-meta" data-timestamp="<?= htmlspecialchars($rm['created_at']) ?>"><?= date('M j, Y', strtotime($rm['created_at'])) ?></span>
+                            <time class="related-meta" datetime="<?= htmlspecialchars(date('c', strtotime($rm['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($rm['created_at']) ?>"><?= date('M j, Y', strtotime($rm['created_at'])) ?></time>
                         </a>
                         <?php endforeach; ?>
                     </div>
@@ -592,7 +592,7 @@ require_once 'includes/header.php';
                                 <span class="version-badge-current">Current</span>
                                 <?php endif; ?>
                                 <span class="version-entry-meta">
-                                    <span data-timestamp="<?= htmlspecialchars($v['created_at']) ?>"><?= date('M j, Y', strtotime($v['created_at'])) ?></span>
+                                    <time datetime="<?= htmlspecialchars(date('c', strtotime($v['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($v['created_at']) ?>"><?= date('M j, Y', strtotime($v['created_at'])) ?></time>
                                     <?php if ($v['created_by_name']): ?>
                                     &middot; <?= htmlspecialchars($v['created_by_name']) ?>
                                     <?php endif; ?>
@@ -650,7 +650,7 @@ require_once 'includes/header.php';
                     <div class="parts-group<?= $autoCollapse ? ' collapsed' : '' ?>" data-folder="<?= htmlspecialchars($dir) ?>">
                         <?php $multiFolder = count($groupedParts) > 1; ?>
                         <?php if ($multiFolder): ?>
-                        <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)">
+                        <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)" aria-expanded="<?= $autoCollapse ? 'false' : 'true' ?>">
                             <span class="folder-toggle"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
                             <input type="checkbox" class="folder-checkbox" onclick="event.stopPropagation(); selectFolderParts(this);" title="Select all parts in this folder">
@@ -1420,6 +1420,8 @@ require_once 'includes/header.php';
 
         function toggleFolder(groupEl) {
             groupEl.classList.toggle('collapsed');
+            var header = groupEl.querySelector('.parts-group-header');
+            if (header) header.setAttribute('aria-expanded', !groupEl.classList.contains('collapsed'));
             const folder = groupEl.dataset.folder;
             const key = 'model_<?= $model['id'] ?>_folder_' + folder;
             sessionStorage.setItem(key, groupEl.classList.contains('collapsed') ? '1' : '0');
@@ -1435,6 +1437,8 @@ require_once 'includes/header.php';
                 } else {
                     group.classList.add('collapsed');
                 }
+                var header = group.querySelector('.parts-group-header');
+                if (header) header.setAttribute('aria-expanded', allCollapsed);
                 const folder = group.dataset.folder;
                 const key = 'model_<?= $model['id'] ?>_folder_' + folder;
                 sessionStorage.setItem(key, allCollapsed ? '0' : '1');
@@ -1456,6 +1460,8 @@ require_once 'includes/header.php';
             const key = 'model_<?= $model['id'] ?>_folder_' + folder;
             if (sessionStorage.getItem(key) === '1') {
                 group.classList.add('collapsed');
+                var header = group.querySelector('.parts-group-header');
+                if (header) header.setAttribute('aria-expanded', 'false');
             }
         });
         updateCollapseAllToggle();

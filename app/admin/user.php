@@ -210,7 +210,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div class="form-row-grid">
                                 <div class="form-group">
                                     <label>Account Created</label>
-                                    <input type="text" class="form-input" value="<?= date('F j, Y g:i A', strtotime($user['created_at'])) ?>" disabled>
+                                    <input type="text" class="form-input" value="<?= date('F j, Y g:i A', strtotime($user['created_at'])) ?>" disabled aria-disabled="true">
                                 </div>
                             </div>
                             <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
@@ -249,7 +249,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <label class="checkbox-label">
                                         <input type="checkbox" name="groups[]" value="<?= $group['id'] ?>"
                                             <?= in_array($group['id'], $userGroupIds) ? 'checked' : '' ?>
-                                            <?= ($isCurrentUser && $group['name'] === 'Admin') ? 'disabled' : '' ?>>
+                                            <?= ($isCurrentUser && $group['name'] === 'Admin') ? 'disabled aria-disabled="true"' : '' ?>>
                                         <span>
                                             <?= htmlspecialchars($group['name']) ?>
                                             <?php if ($group['description']): ?>

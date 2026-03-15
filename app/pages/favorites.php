@@ -77,7 +77,7 @@ require_once 'includes/header.php';
                             <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
                             <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
                             <?php if (!empty($model['created_at'])): ?>
-                            <p class="model-date" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></p>
+                            <time class="model-date" datetime="<?= htmlspecialchars(date('c', strtotime($model['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></time>
                             <?php endif; ?>
                         </div>
                     </article>

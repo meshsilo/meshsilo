@@ -119,7 +119,7 @@ require_once 'includes/header.php';
             <div class="compare-header">
                 <span class="version-badge">v<?= $v1 ?></span>
                 <?php if ($version1): ?>
-                <span class="version-date" data-timestamp="<?= htmlspecialchars($version1['created_at']) ?>"><?= date('M j, Y', strtotime($version1['created_at'])) ?></span>
+                <time class="version-date" datetime="<?= htmlspecialchars(date('c', strtotime($version1['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($version1['created_at']) ?>"><?= date('M j, Y', strtotime($version1['created_at'])) ?></time>
                 <?php endif; ?>
             </div>
 
@@ -163,7 +163,7 @@ require_once 'includes/header.php';
             <div class="compare-header">
                 <span class="version-badge">v<?= $v2 ?></span>
                 <?php if ($version2): ?>
-                <span class="version-date" data-timestamp="<?= htmlspecialchars($version2['created_at']) ?>"><?= date('M j, Y', strtotime($version2['created_at'])) ?></span>
+                <time class="version-date" datetime="<?= htmlspecialchars(date('c', strtotime($version2['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($version2['created_at']) ?>"><?= date('M j, Y', strtotime($version2['created_at'])) ?></time>
                 <?php endif; ?>
             </div>
 

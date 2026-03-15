@@ -117,9 +117,9 @@ require_once 'includes/header.php';
                         <?php endif; ?>
                     </div>
                     <div class="version-meta">
-                        <span class="version-date" data-timestamp="<?= htmlspecialchars($version['created_at']) ?>" title="<?= htmlspecialchars($version['created_at']) ?>">
+                        <time class="version-date" datetime="<?= htmlspecialchars(date('c', strtotime($version['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($version['created_at']) ?>" title="<?= htmlspecialchars($version['created_at']) ?>">
                             <?= date('M j, Y', strtotime($version['created_at'])) ?>
-                        </span>
+                        </time>
                         <?php if ($version['created_by_name']): ?>
                         <span class="version-author">by <?= htmlspecialchars($version['created_by_name']) ?></span>
                         <?php endif; ?>
