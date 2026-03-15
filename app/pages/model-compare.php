@@ -224,7 +224,7 @@ require_once 'includes/header.php';
             <div class="loading-spinner" role="status">Loading overlay...</div>
         </div>
         <div class="overlay-opacity-control">
-            <label>Right model opacity:</label>
+            <label for="overlay-opacity">Right model opacity:</label>
             <input type="range" id="overlay-opacity" min="0" max="100" value="60">
             <span id="overlay-opacity-value">60%</span>
         </div>

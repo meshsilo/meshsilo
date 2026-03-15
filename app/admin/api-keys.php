@@ -187,7 +187,7 @@ include __DIR__ . '/../../includes/header.php';
                                 <div class="api-key-details">
                                     <div class="api-key-prefix-row">
                                         <span class="api-key-label">Key</span>
-                                        <code class="api-key-prefix" title="Click to copy prefix" onclick="copyKey('<?= htmlspecialchars($key['key_prefix'], ENT_QUOTES) ?>...', this)">
+                                        <code class="api-key-prefix" title="Click to copy prefix" tabindex="0" role="button" onclick="copyKey('<?= htmlspecialchars($key['key_prefix'], ENT_QUOTES) ?>...', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                                             <?= htmlspecialchars($key['key_prefix']) ?>...
                                         </code>
                                     </div>

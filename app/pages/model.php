@@ -467,7 +467,9 @@ require_once 'includes/header.php';
                                         <img src="/assets/<?= htmlspecialchars($att['file_path']) ?>"
                                              alt="<?= htmlspecialchars($att['original_filename']) ?>"
                                              loading="lazy" decoding="async"
-                                             onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)">
+                                             tabindex="0" role="button"
+                                             onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)"
+                                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
                                         <?php if (canEdit()): ?>
                                         <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" onclick="setAttachmentAsThumbnail(<?= $att['id'] ?>)" title="Set as model thumbnail">&#128247;</button>
                                         <button type="button" class="attachment-delete" aria-label="Delete attachment" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
@@ -650,7 +652,7 @@ require_once 'includes/header.php';
                     <div class="parts-group<?= $autoCollapse ? ' collapsed' : '' ?>" data-folder="<?= htmlspecialchars($dir) ?>">
                         <?php $multiFolder = count($groupedParts) > 1; ?>
                         <?php if ($multiFolder): ?>
-                        <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)" aria-expanded="<?= $autoCollapse ? 'false' : 'true' ?>">
+                        <h3 class="parts-group-header" tabindex="0" role="button" onclick="toggleFolder(this.parentElement)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" aria-expanded="<?= $autoCollapse ? 'false' : 'true' ?>">
                             <span class="folder-toggle" aria-hidden="true"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
                             <input type="checkbox" class="folder-checkbox" onclick="event.stopPropagation(); selectFolderParts(this);" title="Select all parts in this folder" aria-label="Select all parts in this folder">
