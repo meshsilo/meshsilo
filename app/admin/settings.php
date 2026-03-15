@@ -223,11 +223,11 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <?php if ($message): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+                <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
                 <?php endif; ?>
 
                 <?php if ($error): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+                <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
                 <?php
@@ -513,7 +513,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         </p>
 
                         <?php if (!$phpIniWritable): ?>
-                        <div class="alert alert-error">
+                        <div role="alert" class="alert alert-error">
                             <?php if ($isDockerEnv): ?>
                             The PHP-FPM configuration file is not writable. The web server process may not have sufficient permissions.
                             <?php else: ?>
@@ -575,7 +575,7 @@ if (testEmailBtn) {
         const email = emailInput.value.trim();
 
         if (!email) {
-            resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">Please enter an email address.</div>';
+            resultDiv.innerHTML = '<div role="alert" class="alert alert-error" style="margin: 0;">Please enter an email address.</div>';
             emailInput.focus();
             return;
         }
@@ -598,6 +598,7 @@ if (testEmailBtn) {
 
             if (result.success) {
                 var successDiv = document.createElement('div');
+                successDiv.setAttribute('role', 'status');
                 successDiv.className = 'alert alert-success';
                 successDiv.style.margin = '0';
                 successDiv.innerHTML = '<strong>Success!</strong> ';
@@ -606,6 +607,7 @@ if (testEmailBtn) {
                 resultDiv.appendChild(successDiv);
             } else {
                 var errorDiv = document.createElement('div');
+                errorDiv.setAttribute('role', 'alert');
                 errorDiv.className = 'alert alert-error';
                 errorDiv.style.margin = '0';
                 errorDiv.innerHTML = '<strong>Failed:</strong> ';
@@ -615,6 +617,7 @@ if (testEmailBtn) {
             }
         } catch (error) {
             var catchDiv = document.createElement('div');
+            catchDiv.setAttribute('role', 'alert');
             catchDiv.className = 'alert alert-error';
             catchDiv.style.margin = '0';
             catchDiv.innerHTML = '<strong>Error:</strong> ';

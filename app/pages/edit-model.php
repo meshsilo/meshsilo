@@ -122,7 +122,7 @@ require_once 'includes/header.php';
             </div>
 
             <?php if ($message): ?>
-            <div class="alert alert-<?= $messageType ?>"><?= htmlspecialchars($message) ?></div>
+            <div role="<?= $messageType === 'success' ? 'status' : 'alert' ?>" class="alert alert-<?= $messageType ?>"><?= htmlspecialchars($message) ?></div>
             <?php endif; ?>
 
             <form method="post" class="upload-form" style="max-width: 800px;">

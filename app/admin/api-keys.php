@@ -84,11 +84,11 @@ include __DIR__ . '/../../includes/header.php';
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <?php if ($success): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+            <div role="status" class="alert alert-success"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
 
         <?php if ($newKey): ?>

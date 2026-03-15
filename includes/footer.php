@@ -17,7 +17,7 @@
             $footerTermsUrl = getSetting('footer_terms_url', '');
             if ($footerAboutUrl || $footerContactUrl || $footerPrivacyUrl || $footerTermsUrl) :
                 ?>
-            <nav class="footer-nav">
+            <nav class="footer-nav" aria-label="Footer navigation">
                 <?php if ($footerAboutUrl) :
                     ?><a href="<?= htmlspecialchars($footerAboutUrl) ?>">About</a><?php
                 endif; ?>

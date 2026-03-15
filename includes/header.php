@@ -603,7 +603,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
             <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false">
                 <span class="hamburger-icon"></span>
             </button>
-            <nav class="main-nav">
+            <nav class="main-nav" aria-label="Main navigation">
                 <a href="<?= route('browse') ?>" <?= ($activePage ?? '') === 'browse' ? 'class="active"' : '' ?>>Browse</a>
                 <?php if (isFeatureEnabled('categories')) : ?>
                 <a href="<?= route('categories') ?>" <?= ($activePage ?? '') === 'categories' ? 'class="active"' : '' ?>>Categories</a>

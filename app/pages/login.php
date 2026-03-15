@@ -93,7 +93,7 @@ require_once 'includes/header.php';
                 </div>
 
                 <?php if ($error): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+                <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
                 <form class="auth-form" action="<?= route('login') ?>" method="post">

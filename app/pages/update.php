@@ -529,11 +529,11 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         </div>
 
         <?php if ($message): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+            <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
 
         <?php if ($error): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <?php if (!empty($migrationsRun)): ?>
@@ -568,11 +568,11 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
             </div>
 
             <?php if ($pendingCount > 0): ?>
-                <div class="alert alert-warning">
+                <div role="alert" class="alert alert-warning">
                     <?= $pendingCount ?> migration(s) pending. Click the button below to update your database.
                 </div>
             <?php else: ?>
-                <div class="alert alert-success">
+                <div role="status" class="alert alert-success">
                     Your database is up to date. No migrations needed.
                 </div>
             <?php endif; ?>

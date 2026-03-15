@@ -91,7 +91,7 @@ require_once __DIR__ . '/../../includes/header.php';
     </div>
 
     <?php if ($message): ?>
-    <div class="alert alert-<?= $messageType ?>"><?= htmlspecialchars($message) ?></div>
+    <div role="<?= $messageType === 'success' ? 'status' : 'alert' ?>" class="alert alert-<?= $messageType ?>"><?= htmlspecialchars($message) ?></div>
     <?php endif; ?>
 
     <!-- Cache Status -->

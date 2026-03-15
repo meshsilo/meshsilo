@@ -110,10 +110,10 @@ include __DIR__ . '/../../includes/header.php';
         </div>
 
         <?php if (!empty($success)): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+            <div role="status" class="alert alert-success"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
         <?php if (!empty($error)): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <!-- Security Score Card -->
@@ -167,7 +167,7 @@ include __DIR__ . '/../../includes/header.php';
                     <div class="form-row">
                         <div class="form-group">
                             <label>Max Age (seconds)</label>
-                            <select name="hsts_max_age" class="form-control">
+                            <select name="hsts_max_age" class="form-control" aria-label="HSTS max age">
                                 <option value="86400" <?= $config['hsts']['max_age'] == 86400 ? 'selected' : '' ?>>1 day (testing)</option>
                                 <option value="604800" <?= $config['hsts']['max_age'] == 604800 ? 'selected' : '' ?>>1 week</option>
                                 <option value="2592000" <?= $config['hsts']['max_age'] == 2592000 ? 'selected' : '' ?>>30 days</option>
@@ -292,7 +292,7 @@ include __DIR__ . '/../../includes/header.php';
                             <input type="checkbox" name="xfo_enabled" <?= $config['x_frame_options']['enabled'] ? 'checked' : '' ?>>
                             X-Frame-Options (Clickjacking protection)
                         </label>
-                        <select name="xfo_value" class="form-control mt-2" style="max-width: 200px;">
+                        <select name="xfo_value" class="form-control mt-2" style="max-width: 200px;" aria-label="X-Frame-Options value">
                             <option value="DENY" <?= $config['x_frame_options']['value'] === 'DENY' ? 'selected' : '' ?>>DENY</option>
                             <option value="SAMEORIGIN" <?= $config['x_frame_options']['value'] === 'SAMEORIGIN' ? 'selected' : '' ?>>SAMEORIGIN</option>
                         </select>
@@ -312,7 +312,7 @@ include __DIR__ . '/../../includes/header.php';
                             <input type="checkbox" name="xxss_enabled" <?= $config['x_xss_protection']['enabled'] ? 'checked' : '' ?>>
                             X-XSS-Protection (Legacy XSS filter)
                         </label>
-                        <select name="xxss_mode" class="form-control mt-2" style="max-width: 200px;">
+                        <select name="xxss_mode" class="form-control mt-2" style="max-width: 200px;" aria-label="X-XSS-Protection mode">
                             <option value="0" <?= $config['x_xss_protection']['mode'] === '0' ? 'selected' : '' ?>>Disabled (0)</option>
                             <option value="1" <?= $config['x_xss_protection']['mode'] === '1' ? 'selected' : '' ?>>Enabled (1)</option>
                             <option value="block" <?= $config['x_xss_protection']['mode'] === 'block' ? 'selected' : '' ?>>Block mode</option>
@@ -325,7 +325,7 @@ include __DIR__ . '/../../includes/header.php';
                             <input type="checkbox" name="referrer_enabled" <?= $config['referrer_policy']['enabled'] ? 'checked' : '' ?>>
                             Referrer-Policy
                         </label>
-                        <select name="referrer_value" class="form-control mt-2" style="max-width: 300px;">
+                        <select name="referrer_value" class="form-control mt-2" style="max-width: 300px;" aria-label="Referrer-Policy value">
                             <option value="no-referrer" <?= $config['referrer_policy']['value'] === 'no-referrer' ? 'selected' : '' ?>>no-referrer</option>
                             <option value="no-referrer-when-downgrade" <?= $config['referrer_policy']['value'] === 'no-referrer-when-downgrade' ? 'selected' : '' ?>>no-referrer-when-downgrade</option>
                             <option value="origin" <?= $config['referrer_policy']['value'] === 'origin' ? 'selected' : '' ?>>origin</option>
@@ -355,7 +355,7 @@ include __DIR__ . '/../../includes/header.php';
                             <input type="checkbox" name="coep_enabled" <?= $config['cross_origin_embedder_policy']['enabled'] ? 'checked' : '' ?>>
                             Cross-Origin-Embedder-Policy
                         </label>
-                        <select name="coep_value" class="form-control mt-2" style="max-width: 200px;">
+                        <select name="coep_value" class="form-control mt-2" style="max-width: 200px;" aria-label="Cross-Origin-Embedder-Policy value">
                             <option value="unsafe-none" <?= $config['cross_origin_embedder_policy']['value'] === 'unsafe-none' ? 'selected' : '' ?>>unsafe-none</option>
                             <option value="require-corp" <?= $config['cross_origin_embedder_policy']['value'] === 'require-corp' ? 'selected' : '' ?>>require-corp</option>
                             <option value="credentialless" <?= $config['cross_origin_embedder_policy']['value'] === 'credentialless' ? 'selected' : '' ?>>credentialless</option>
@@ -367,7 +367,7 @@ include __DIR__ . '/../../includes/header.php';
                             <input type="checkbox" name="coop_enabled" <?= $config['cross_origin_opener_policy']['enabled'] ? 'checked' : '' ?>>
                             Cross-Origin-Opener-Policy
                         </label>
-                        <select name="coop_value" class="form-control mt-2" style="max-width: 200px;">
+                        <select name="coop_value" class="form-control mt-2" style="max-width: 200px;" aria-label="Cross-Origin-Opener-Policy value">
                             <option value="unsafe-none" <?= $config['cross_origin_opener_policy']['value'] === 'unsafe-none' ? 'selected' : '' ?>>unsafe-none</option>
                             <option value="same-origin-allow-popups" <?= $config['cross_origin_opener_policy']['value'] === 'same-origin-allow-popups' ? 'selected' : '' ?>>same-origin-allow-popups</option>
                             <option value="same-origin" <?= $config['cross_origin_opener_policy']['value'] === 'same-origin' ? 'selected' : '' ?>>same-origin</option>
@@ -379,7 +379,7 @@ include __DIR__ . '/../../includes/header.php';
                             <input type="checkbox" name="corp_enabled" <?= $config['cross_origin_resource_policy']['enabled'] ? 'checked' : '' ?>>
                             Cross-Origin-Resource-Policy
                         </label>
-                        <select name="corp_value" class="form-control mt-2" style="max-width: 200px;">
+                        <select name="corp_value" class="form-control mt-2" style="max-width: 200px;" aria-label="Cross-Origin-Resource-Policy value">
                             <option value="same-site" <?= $config['cross_origin_resource_policy']['value'] === 'same-site' ? 'selected' : '' ?>>same-site</option>
                             <option value="same-origin" <?= $config['cross_origin_resource_policy']['value'] === 'same-origin' ? 'selected' : '' ?>>same-origin</option>
                             <option value="cross-origin" <?= $config['cross_origin_resource_policy']['value'] === 'cross-origin' ? 'selected' : '' ?>>cross-origin</option>

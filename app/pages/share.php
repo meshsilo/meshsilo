@@ -211,7 +211,7 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
                 <form method="post" class="password-form">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                     <?php if ($passwordError): ?>
-                        <div class="alert alert-danger" style="margin-bottom: 1rem;">Incorrect password</div>
+                        <div role="alert" class="alert alert-danger" style="margin-bottom: 1rem;">Incorrect password</div>
                     <?php endif; ?>
                     <div class="form-group">
                         <label for="password">Password</label>

@@ -285,7 +285,7 @@ require_once 'includes/header.php';
 ?>
 
         <div class="page-container-wide model-page">
-            <nav class="model-breadcrumb">
+            <nav class="model-breadcrumb" aria-label="Breadcrumb">
                 <a href="<?= route('home') ?>">Home</a>
                 <span class="breadcrumb-sep">/</span>
                 <a href="<?= route('browse') ?>">Browse</a>
@@ -302,7 +302,7 @@ require_once 'includes/header.php';
             </nav>
 
             <?php if ($message): ?>
-            <div class="alert alert-<?= $messageType ?>" style="margin-bottom: 1.5rem;"><?= htmlspecialchars($message) ?></div>
+            <div role="<?= $messageType === 'success' ? 'status' : 'alert' ?>" class="alert alert-<?= $messageType ?>" style="margin-bottom: 1.5rem;"><?= htmlspecialchars($message) ?></div>
             <?php endif; ?>
 
             <div class="model-detail">

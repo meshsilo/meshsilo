@@ -168,11 +168,11 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
         <?php if ($message): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+            <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
 
         <?php if ($error): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <?php if (!empty($migrationsRun)): ?>
@@ -260,11 +260,11 @@ require_once __DIR__ . '/../../includes/header.php';
         <details class="settings-section" open>
             <summary><h2>Migration Status</h2></summary>
             <?php if ($pendingCount > 0): ?>
-                <div class="alert alert-warning" style="margin-bottom: 1rem;">
+                <div role="alert" class="alert alert-warning" style="margin-bottom: 1rem;">
                     <?= $pendingCount ?> migration(s) pending. Run migrations to update your database schema.
                 </div>
             <?php else: ?>
-                <div class="alert alert-success" style="margin-bottom: 1rem;">
+                <div role="status" class="alert alert-success" style="margin-bottom: 1rem;">
                     Database schema is up to date.
                 </div>
             <?php endif; ?>

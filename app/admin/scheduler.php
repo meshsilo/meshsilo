@@ -139,10 +139,10 @@ include __DIR__ . '/../../includes/header.php';
         </div>
 
         <?php if ($message): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+            <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
         <?php if ($error): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <div role="alert" class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <!-- Quick Actions -->

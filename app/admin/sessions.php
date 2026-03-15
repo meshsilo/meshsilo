@@ -181,15 +181,15 @@ require_once __DIR__ . '/../../includes/header.php';
     </div>
 
     <?php if ($message): ?>
-    <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+    <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
     <?php endif; ?>
 
     <?php if ($error): ?>
-    <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+    <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
     <?php if (!$useDbSessions): ?>
-    <div class="alert alert-warning">
+    <div role="alert" class="alert alert-warning">
         <strong>File-based sessions active.</strong>
         Database session tracking is not enabled. To track and manage all user sessions here,
         set <code>DB_SESSIONS=true</code> as an environment variable or enable it in settings.

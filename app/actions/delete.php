@@ -276,7 +276,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php if ($part): ?>
                 <h1>Delete Part</h1>
 
-                <div class="alert alert-error">
+                <div role="alert" class="alert alert-error">
                     <strong>Warning:</strong> This action cannot be undone.
                 </div>
 
@@ -298,7 +298,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php else: ?>
                 <h1>Delete Model</h1>
 
-                <div class="alert alert-error">
+                <div role="alert" class="alert alert-error">
                     <strong>Warning:</strong> This action cannot be undone.
                 </div>
 

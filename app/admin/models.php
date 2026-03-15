@@ -110,14 +110,14 @@ require_once __DIR__ . '/../../includes/header.php';
                 <form method="get" role="search" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                     <input type="search" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search..." class="search-bar" style="width: auto;">
 
-                    <select name="category" class="sort-select">
+                    <select name="category" class="sort-select" aria-label="Filter by category">
                         <option value="">All Categories</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= $cat['id'] ?>" <?= $categoryId == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select name="sort" class="sort-select">
+                    <select name="sort" class="sort-select" aria-label="Sort order">
                         <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest</option>
                         <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest</option>
                         <option value="name" <?= $sort === 'name' ? 'selected' : '' ?>>Name</option>

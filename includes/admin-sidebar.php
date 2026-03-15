@@ -6,7 +6,7 @@ if (!function_exists('isFeatureEnabled')) {
 ?>
             <aside class="admin-sidebar">
                 <h3>Admin</h3>
-                <nav class="admin-nav">
+                <nav class="admin-nav" aria-label="Admin navigation">
                     <div class="nav-category" data-category="system">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>System</span>

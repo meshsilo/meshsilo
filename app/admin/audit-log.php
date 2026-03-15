@@ -136,8 +136,8 @@ require_once __DIR__ . '/../../includes/header.php';
         <form method="GET" class="filters-form" role="search">
             <div class="filter-row">
                 <div class="filter-group">
-                    <label>Event Type</label>
-                    <select name="event_type" class="form-control">
+                    <label for="event_type">Event Type</label>
+                    <select name="event_type" id="event_type" class="form-control">
                         <option value="">All Types</option>
                         <option value="auth" <?= $filters['event_type'] === 'auth' ? 'selected' : '' ?>>Authentication</option>
                         <option value="data" <?= $filters['event_type'] === 'data' ? 'selected' : '' ?>>Data Changes</option>
@@ -149,8 +149,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <div class="filter-group">
-                    <label>Severity</label>
-                    <select name="severity" class="form-control">
+                    <label for="severity">Severity</label>
+                    <select name="severity" id="severity" class="form-control">
                         <option value="">All Severities</option>
                         <option value="info" <?= $filters['severity'] === 'info' ? 'selected' : '' ?>>Info</option>
                         <option value="warning" <?= $filters['severity'] === 'warning' ? 'selected' : '' ?>>Warning</option>
@@ -160,8 +160,8 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <div class="filter-group">
-                    <label>User</label>
-                    <select name="user_id" class="form-control">
+                    <label for="audit_user_id">User</label>
+                    <select name="user_id" id="audit_user_id" class="form-control">
                         <option value="">All Users</option>
                         <?php foreach ($users as $u): ?>
                         <option value="<?= $u['id'] ?>" <?= $filters['user_id'] == $u['id'] ? 'selected' : '' ?>>
@@ -301,8 +301,8 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <div class="form-group">
-                <label>Report Format</label>
-                <select name="report_format" class="form-control">
+                <label for="report_format">Report Format</label>
+                <select name="report_format" id="report_format" class="form-control">
                     <option value="summary">Summary Only</option>
                     <option value="detailed">Detailed (includes critical events)</option>
                 </select>

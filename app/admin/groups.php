@@ -152,11 +152,11 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <?php if ($message): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+                <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
                 <?php endif; ?>
 
                 <?php if ($error): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+                <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
                 <div class="admin-grid">
@@ -276,7 +276,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <input type="hidden" name="action" value="add_member">
                         <input type="hidden" name="group_id" value="<?= $editGroup['id'] ?>">
                         <div class="form-row">
-                            <select name="user_id" class="form-input" required>
+                            <select name="user_id" class="form-input" aria-label="Select user" required>
                                 <option value="">Select user to add...</option>
                                 <?php
                                 $existingMemberIds = array_column($editGroup['members'], 'id');
