@@ -200,7 +200,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <h2>Registered Routes</h2>
 
         <div style="margin-bottom: 0.5rem;">
-            <input type="text" id="route-filter" placeholder="Filter routes..." style="width: 100%; max-width: 250px; padding: 0.3rem 0.5rem; font-size: 0.8rem; border-radius: 4px; border: 1px solid var(--color-border); background: var(--color-surface);">
+            <input type="text" id="route-filter" placeholder="Filter routes..." aria-label="Filter routes" style="width: 100%; max-width: 250px; padding: 0.3rem 0.5rem; font-size: 0.8rem; border-radius: 4px; border: 1px solid var(--color-border); background: var(--color-surface);">
         </div>
 
         <?php foreach ($groupedRoutes as $prefix => $prefixRoutes): ?>

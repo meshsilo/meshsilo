@@ -330,8 +330,8 @@ require_once 'includes/header.php';
                                 <?= PluginManager::applyFilter('model_header_actions', '', $model) ?>
                                 <?php endif; ?>
                                 <?php if (isFeatureEnabled('favorites')): ?>
-                                <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" onclick="toggleFavorite(<?= $model['id'] ?>, this)" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
-                                    <?= $isFavorited ? '&#9829;' : '&#9825;' ?>
+                                <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" onclick="toggleFavorite(<?= $model['id'] ?>, this)" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>" aria-label="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
+                                    <span aria-hidden="true"><?= $isFavorited ? '&#9829;' : '&#9825;' ?></span>
                                 </button>
                                 <?php endif; ?>
                             </div>

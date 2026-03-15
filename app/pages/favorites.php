@@ -71,7 +71,7 @@ require_once 'includes/header.php';
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
                             <?php endif; ?>
-                            <button type="button" class="model-card-favorite favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(<?= $model['id'] ?>, this)" title="Remove from favorites">&#9829;</button>
+                            <button type="button" class="model-card-favorite favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(<?= $model['id'] ?>, this)" title="Remove from favorites" aria-label="Remove from favorites"><span aria-hidden="true">&#9829;</span></button>
                         </div>
                         <div class="model-info">
                             <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
