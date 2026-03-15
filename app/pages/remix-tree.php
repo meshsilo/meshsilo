@@ -719,10 +719,6 @@ function selectModel(id, name) {
     document.getElementById('model-search-results').classList.remove('active');
 }
 
-function escapeHtml(text) {
-    return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
-
 document.getElementById('save-remix-btn').addEventListener('click', async function() {
     const sourceType = document.getElementById('remix-source-type').value;
     const notes = document.getElementById('remix-notes').value;

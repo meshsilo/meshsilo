@@ -243,7 +243,7 @@ require_once 'includes/header.php';
 
                 const matching = allTags.filter(t => t.name.toLowerCase().includes(value));
                 if (matching.length === 0 && value.length > 0) {
-                    var safeValue = value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                    var safeValue = escapeHtml(value);
                     tagSuggestions.innerHTML =
                         '<button type="button" class="tag-suggestion" onclick="addTag(this.dataset.name)" data-name="' + safeValue + '">' +
                             '<span class="tag-color-dot" style="background-color: var(--color-primary);"></span>' +
@@ -251,7 +251,7 @@ require_once 'includes/header.php';
                         '</button>';
                 } else {
                     tagSuggestions.innerHTML = matching.map(function(t) {
-                        var safeName = t.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                        var safeName = escapeHtml(t.name);
                         return '<button type="button" class="tag-suggestion" onclick="addTag(this.dataset.name)" data-name="' + safeName + '">' +
                             '<span class="tag-color-dot" style="background-color:' + t.color + ';"></span>' +
                             '<span>' + safeName + '</span>' +

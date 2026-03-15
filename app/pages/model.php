@@ -2202,10 +2202,6 @@ require_once 'includes/header.php';
             }
         }
 
-        function escapeHtml(text) {
-            return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-        }
-
         // Attachments - Lightbox
         var lightboxImages = [];
         var lightboxIndex = 0;
