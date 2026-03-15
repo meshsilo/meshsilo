@@ -199,12 +199,12 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="form-group">
                                     <label for="username">Username</label>
                                     <input type="text" id="username" name="username" class="form-input"
-                                           value="<?= htmlspecialchars($user['username']) ?>" required>
+                                           value="<?= htmlspecialchars($user['username']) ?>" required autocomplete="username">
                                 </div>
                                 <div class="form-group">
                                     <label for="email">Email</label>
                                     <input type="email" id="email" name="email" class="form-input"
-                                           value="<?= htmlspecialchars($user['email']) ?>" required>
+                                           value="<?= htmlspecialchars($user['email']) ?>" required autocomplete="email">
                                 </div>
                             </div>
                             <div class="form-row-grid">
@@ -226,12 +226,12 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="form-group">
                                     <label for="new_password">New Password</label>
                                     <input type="password" id="new_password" name="new_password" class="form-input"
-                                           minlength="8" placeholder="Minimum 8 characters">
+                                           minlength="8" placeholder="Minimum 8 characters" autocomplete="new-password">
                                 </div>
                                 <div class="form-group">
                                     <label for="confirm_password">Confirm Password</label>
                                     <input type="password" id="confirm_password" name="confirm_password" class="form-input"
-                                           placeholder="Re-enter password">
+                                           placeholder="Re-enter password" autocomplete="new-password">
                                 </div>
                             </div>
                             <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>

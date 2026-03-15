@@ -288,10 +288,13 @@ require_once 'includes/header.php';
                     tagEl.className = 'model-tag';
                     tagEl.style.setProperty('--tag-color', data.tag.color);
                     tagEl.dataset.tagId = data.tag.id;
-                    tagEl.innerHTML = `
-                        ${data.tag.name}
-                        <button type="button" class="model-tag-remove" onclick="removeTag(${modelId}, ${data.tag.id}, this.parentElement)">&times;</button>
-                    `;
+                    tagEl.textContent = data.tag.name + ' ';
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'model-tag-remove';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.onclick = function() { removeTag(modelId, data.tag.id, tagEl); };
+                    tagEl.appendChild(removeBtn);
                     tagsContainer.appendChild(tagEl);
                     tagInput.value = '';
                     tagSuggestions.style.display = 'none';

@@ -2473,6 +2473,7 @@ require_once 'includes/header.php';
             const link = document.createElement('a');
             link.href = '/assets/' + att.file_path;
             link.target = '_blank';
+            link.rel = 'noopener';
             link.className = 'attachment-doc-name';
             link.textContent = att.original_filename;
 

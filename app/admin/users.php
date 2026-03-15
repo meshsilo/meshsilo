@@ -184,15 +184,15 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div class="form-row-grid">
                                 <div class="form-group">
                                     <label for="username">Username</label>
-                                    <input type="text" id="username" name="username" class="form-input" required>
+                                    <input type="text" id="username" name="username" class="form-input" required autocomplete="username">
                                 </div>
                                 <div class="form-group">
                                     <label for="email">Email</label>
-                                    <input type="email" id="email" name="email" class="form-input" required>
+                                    <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
                                 </div>
                                 <div class="form-group">
                                     <label for="password">Password</label>
-                                    <input type="password" id="password" name="password" class="form-input" required>
+                                    <input type="password" id="password" name="password" class="form-input" required autocomplete="new-password">
                                 </div>
                             </div>
                             <div class="form-group">
