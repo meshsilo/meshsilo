@@ -173,7 +173,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="revoke_all">
                 <button type="submit" class="btn btn-danger"
-                        onclick="return confirm('Revoke ALL sessions except yours? All users will be logged out.')">
+                        data-confirm="Revoke ALL sessions except yours? All users will be logged out.">
                     Revoke All Sessions
                 </button>
             </form>
@@ -333,7 +333,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <input type="hidden" name="action" value="revoke_user">
                                     <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
                                     <button type="submit" class="btn btn-sm btn-warning"
-                                            onclick="return confirm('Revoke all sessions for this user?')">
+                                            data-confirm="Revoke all sessions for this user?">
                                         Revoke All
                                     </button>
                                 </form>

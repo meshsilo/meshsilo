@@ -158,6 +158,34 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             });
         }
 
+        // Global data-confirm handler for forms and buttons
+        document.addEventListener('submit', function(e) {
+            var msg = e.target.getAttribute('data-confirm');
+            if (!msg) return;
+            e.preventDefault();
+            showConfirm(msg).then(function(ok) {
+                if (ok) {
+                    e.target.removeAttribute('data-confirm');
+                    e.target.submit();
+                }
+            });
+        });
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('button[data-confirm], a[data-confirm]');
+            if (!btn) return;
+            e.preventDefault();
+            showConfirm(btn.getAttribute('data-confirm')).then(function(ok) {
+                if (ok) {
+                    if (btn.tagName === 'A') {
+                        window.location.href = btn.href;
+                    } else if (btn.type === 'submit' && btn.form) {
+                        btn.removeAttribute('data-confirm');
+                        btn.click();
+                    }
+                }
+            });
+        });
+
         // Password visibility toggle
         function togglePasswordVisibility(btn) {
             var input = btn.parentElement.querySelector('input');

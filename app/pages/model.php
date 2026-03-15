@@ -956,6 +956,7 @@ require_once 'includes/header.php';
 
             nameEl.textContent = name;
             modal.style.display = 'flex';
+            trapFocus(modal);
 
             // Clear previous viewer
             if (partPreviewViewer) {
@@ -979,6 +980,7 @@ require_once 'includes/header.php';
 
         function closePartPreview() {
             const modal = document.getElementById('part-preview-modal');
+            releaseFocus(modal);
             modal.style.display = 'none';
 
             if (partPreviewViewer) {
@@ -1453,12 +1455,15 @@ require_once 'includes/header.php';
         updateCollapseAllToggle();
 
         function showCreateFolderModal() {
-            document.getElementById('create-folder-modal').style.display = 'flex';
-            document.getElementById('new-folder-name').focus();
+            var modal = document.getElementById('create-folder-modal');
+            modal.style.display = 'flex';
+            trapFocus(modal);
         }
 
         function closeCreateFolderModal() {
-            document.getElementById('create-folder-modal').style.display = 'none';
+            var modal = document.getElementById('create-folder-modal');
+            releaseFocus(modal);
+            modal.style.display = 'none';
             document.getElementById('new-folder-name').value = '';
         }
 
@@ -1541,13 +1546,17 @@ require_once 'includes/header.php';
         function showMoveFolderModal(partIds) {
             movingPartIds = partIds;
             document.getElementById('move-part-ids').value = partIds.join(',');
-            document.getElementById('move-folder-modal').style.display = 'flex';
+            var modal = document.getElementById('move-folder-modal');
+            modal.style.display = 'flex';
+            trapFocus(modal);
             // Uncheck all radios
             document.querySelectorAll('#move-folder-list input[type="radio"]').forEach(r => r.checked = false);
         }
 
         function closeMoveFolderModal() {
-            document.getElementById('move-folder-modal').style.display = 'none';
+            var modal = document.getElementById('move-folder-modal');
+            releaseFocus(modal);
+            modal.style.display = 'none';
             movingPartIds = [];
         }
 
@@ -1585,11 +1594,15 @@ require_once 'includes/header.php';
 
         // Version upload management
         function showUploadVersionModal() {
-            document.getElementById('upload-version-modal').style.display = 'flex';
+            var modal = document.getElementById('upload-version-modal');
+            modal.style.display = 'flex';
+            trapFocus(modal);
         }
 
         function closeUploadVersionModal() {
-            document.getElementById('upload-version-modal').style.display = 'none';
+            var modal = document.getElementById('upload-version-modal');
+            releaseFocus(modal);
+            modal.style.display = 'none';
             document.getElementById('upload-version-form').reset();
         }
 
@@ -1947,12 +1960,16 @@ require_once 'includes/header.php';
         // Share Modal Functions
         <?php if (isLoggedIn()): ?>
         function openShareModal() {
-            document.getElementById('share-modal').style.display = 'flex';
+            var modal = document.getElementById('share-modal');
+            modal.style.display = 'flex';
+            trapFocus(modal);
             loadShareLinks();
         }
 
         function closeShareModal() {
-            document.getElementById('share-modal').style.display = 'none';
+            var modal = document.getElementById('share-modal');
+            releaseFocus(modal);
+            modal.style.display = 'none';
         }
 
         document.getElementById('share-modal')?.addEventListener('click', function(e) {
@@ -2643,12 +2660,16 @@ require_once 'includes/header.php';
             document.getElementById('rename-pattern').value = '{name}';
             document.getElementById('rename-prefix').value = '';
             document.getElementById('rename-suffix').value = '';
-            document.getElementById('batch-rename-modal').style.display = 'flex';
+            var modal = document.getElementById('batch-rename-modal');
+            modal.style.display = 'flex';
+            trapFocus(modal);
             updateRenamePreview();
         }
 
         function closeBatchRenameModal() {
-            document.getElementById('batch-rename-modal').style.display = 'none';
+            var modal = document.getElementById('batch-rename-modal');
+            releaseFocus(modal);
+            modal.style.display = 'none';
             batchRenamePartIds = [];
         }
 

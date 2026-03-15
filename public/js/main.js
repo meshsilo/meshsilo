@@ -559,6 +559,33 @@ class BackToTop {
 }
 
 // =====================
+// Modal Focus Trap
+// =====================
+window.trapFocus = function(modal) {
+    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    first.focus();
+    modal._focusTrapHandler = function(e) {
+        if (e.key !== 'Tab') return;
+        if (e.shiftKey) {
+            if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+            if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+    };
+    modal.addEventListener('keydown', modal._focusTrapHandler);
+};
+
+window.releaseFocus = function(modal) {
+    if (modal._focusTrapHandler) {
+        modal.removeEventListener('keydown', modal._focusTrapHandler);
+        delete modal._focusTrapHandler;
+    }
+};
+
+// =====================
 // Initialize Everything
 // =====================
 document.addEventListener('DOMContentLoaded', () => {

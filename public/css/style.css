@@ -2594,12 +2594,12 @@ body.mobile-menu-open::before {
     white-space: nowrap;
 }
 
-.model-link-type.type-documentation { background: #dbeafe; color: #1e40af; }
-.model-link-type.type-video { background: #fce7f3; color: #9d174d; }
-.model-link-type.type-forum { background: #e0e7ff; color: #3730a3; }
-.model-link-type.type-repository { background: #d1fae5; color: #065f46; }
-.model-link-type.type-source { background: #fef3c7; color: #92400e; }
-.model-link-type.type-store { background: #ede9fe; color: #5b21b6; }
+.model-link-type.type-documentation { background: rgba(59, 130, 246, 0.15); color: var(--color-primary); }
+.model-link-type.type-video { background: rgba(236, 72, 153, 0.15); color: var(--link-type-video, #ec4899); }
+.model-link-type.type-forum { background: rgba(99, 102, 241, 0.15); color: var(--link-type-forum, #6366f1); }
+.model-link-type.type-repository { background: rgba(34, 197, 94, 0.15); color: var(--color-success); }
+.model-link-type.type-source { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
+.model-link-type.type-store { background: rgba(139, 92, 246, 0.15); color: var(--link-type-store, #8b5cf6); }
 
 .model-link-title {
     color: var(--color-primary);

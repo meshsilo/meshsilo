@@ -442,7 +442,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px;">
                             <h4>Migrate to S3</h4>
                             <p class="form-hint">You have S3 configured but are using local storage. You can migrate existing files to S3.</p>
-                            <form method="post" onsubmit="return confirm('This will copy all local files to S3. This may take a while. Continue?');">
+                            <form method="post" data-confirm="This will copy all local files to S3. This may take a while. Continue?">
                                 <?= csrf_field() ?>
                                 <button type="submit" name="migrate_to_s3" class="btn btn-secondary">Migrate Files to S3</button>
                             </form>
@@ -472,7 +472,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <?= csrf_field() ?>
                                 <button type="submit" name="backup_db" class="btn btn-secondary">Backup Database</button>
                             </form>
-                            <form method="post" style="display:inline;" onsubmit="return confirm('This will delete files not tracked in the database. Continue?');">
+                            <form method="post" style="display:inline;" data-confirm="This will delete files not tracked in the database. Continue?">
                                 <?= csrf_field() ?>
                                 <button type="submit" name="clear_orphans" class="btn btn-secondary">Clean Orphaned Files</button>
                             </form>

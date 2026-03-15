@@ -132,7 +132,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                             ?>
                                         </td>
                                         <td>
-                                            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this collection?');">
+                                            <form method="post" style="display:inline;" data-confirm="Delete this collection?">
                                                 <?= csrf_field() ?>
                                                 <input type="hidden" name="collection_id" value="<?= $collection['id'] ?>">
                                                 <button type="submit" name="delete_collection" class="btn btn-small btn-danger">Delete</button>

@@ -300,7 +300,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="uninstall">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to uninstall this plugin? All plugin files will be removed.')">Uninstall</button>
+                            <button type="submit" class="btn btn-danger btn-sm" data-confirm="Are you sure you want to uninstall this plugin? All plugin files will be removed.">Uninstall</button>
                         </form>
                     </div>
                 </div>
@@ -404,7 +404,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="action" value="remove-repo">
                                 <input type="hidden" name="repo_id" value="<?= (int)$repo['id'] ?>">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this repository?')">Remove</button>
+                                <button type="submit" class="btn btn-danger btn-sm" data-confirm="Remove this repository?">Remove</button>
                             </form>
                             <?php else: ?>
                             <span class="text-muted">--</span>

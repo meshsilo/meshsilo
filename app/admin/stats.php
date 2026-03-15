@@ -509,7 +509,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <form method="POST" style="display: inline;">
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="run_dedup_scan">
-                        <button type="submit" class="btn btn-primary btn-small" onclick="return confirm('This will deduplicate <?= $dedupStats['potential_duplicates'] ?> duplicate file sets, potentially saving <?= formatBytes($dedupStats['potential_savings']) ?>. Continue?');">Run Deduplication</button>
+                        <button type="submit" class="btn btn-primary btn-small" data-confirm="This will deduplicate <?= $dedupStats['potential_duplicates'] ?> duplicate file sets, potentially saving <?= formatBytes($dedupStats['potential_savings']) ?>. Continue?">Run Deduplication</button>
                     </form>
                     <?php endif; ?>
                     <?php if ($dedupStats['dedup_file_count'] > 0): ?>
@@ -779,7 +779,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <form method="POST" style="margin-bottom: 1rem;">
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="delete_all_missing">
-                        <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Delete all <?= count($missingFiles) ?> missing file entries from the database?');">Remove All from Database</button>
+                        <button type="submit" class="btn btn-danger btn-small" data-confirm="Delete all <?= count($missingFiles) ?> missing file entries from the database?">Remove All from Database</button>
                     </form>
                     <?php endif; ?>
                     <div class="stats-table-container">
@@ -824,7 +824,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <form method="POST" style="margin-bottom: 1rem;">
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="delete_all_orphans">
-                        <button type="submit" class="btn btn-warning btn-small" onclick="return confirm('Delete all <?= count($orphanedFiles) ?> orphaned files from disk? This cannot be undone.');">Delete All from Disk</button>
+                        <button type="submit" class="btn btn-warning btn-small" data-confirm="Delete all <?= count($orphanedFiles) ?> orphaned files from disk? This cannot be undone.">Delete All from Disk</button>
                     </form>
                     <?php endif; ?>
                     <div class="stats-table-container">

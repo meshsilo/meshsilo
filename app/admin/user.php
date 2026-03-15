@@ -290,7 +290,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?php if (!$isCurrentUser): ?>
                     <details class="settings-section danger-zone">
                         <summary><h2>Danger Zone</h2></summary>
-                        <form method="post" onsubmit="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
+                        <form method="post" data-confirm="Are you sure you want to delete this user? This action cannot be undone.">
                             <?= csrf_field() ?>
                             <p>Permanently delete this user account. This cannot be undone.</p>
                             <button type="submit" name="delete_user" class="btn btn-danger">Delete User</button>

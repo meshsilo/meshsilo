@@ -132,7 +132,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                             ?>
                                         </td>
                                         <td>
-                                            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this category?');">
+                                            <form method="post" style="display:inline;" data-confirm="Delete this category?">
                                                 <?= csrf_field() ?>
                                                 <input type="hidden" name="category_id" value="<?= $category['id'] ?>">
                                                 <button type="submit" name="delete_category" class="btn btn-small btn-danger">Delete</button>

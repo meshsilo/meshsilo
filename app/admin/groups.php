@@ -194,7 +194,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <td>
                                         <a href="?edit=<?= $group['id'] ?>" class="btn btn-small btn-secondary">Edit</a>
                                         <?php if (!$group['is_system']): ?>
-                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this group?');">
+                                        <form method="POST" style="display: inline;" data-confirm="Are you sure you want to delete this group?">
                                             <?= csrf_field() ?>
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="group_id" value="<?= $group['id'] ?>">

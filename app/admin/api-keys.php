@@ -218,7 +218,7 @@ include __DIR__ . '/../../includes/header.php';
 
                                 <div class="api-key-actions">
                                     <form method="post" style="display:inline"
-                                          onsubmit="return confirm('Are you sure you want to revoke this API key? This cannot be undone.')">
+                                          data-confirm="Are you sure you want to revoke this API key? This cannot be undone.">
                                         <input type="hidden" name="action" value="revoke">
                                         <input type="hidden" name="key_id" value="<?= $key['id'] ?>">
                                         <?= csrf_field() ?>

@@ -124,7 +124,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                             ?>
                                         </td>
                                         <td>
-                                            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this tag? It will be removed from all models.');">
+                                            <form method="post" style="display:inline;" data-confirm="Delete this tag? It will be removed from all models.">
                                                 <?= csrf_field() ?>
                                                 <input type="hidden" name="tag_id" value="<?= $tag['id'] ?>">
                                                 <button type="submit" name="delete_tag" class="btn btn-small btn-danger">Delete</button>

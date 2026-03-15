@@ -284,7 +284,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <?php if ($pendingCount > 0): ?>
-                <form method="post" style="margin-top: 1rem;" onsubmit="return confirm('Run all pending migrations? This will modify your database schema.');">
+                <form method="post" style="margin-top: 1rem;" data-confirm="Run all pending migrations? This will modify your database schema.">
                     <?= csrf_field() ?>
                     <button type="submit" name="run_migrations" class="btn btn-primary">
                         Run <?= $pendingCount ?> Pending Migration(s)
@@ -304,7 +304,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </button>
                 </form>
                 <?php endif; ?>
-                <form method="post" style="display: inline;" onsubmit="return confirm('Optimize database? This may take a moment.');">
+                <form method="post" style="display: inline;" data-confirm="Optimize database? This may take a moment.">
                     <?= csrf_field() ?>
                     <button type="submit" name="optimize_db" class="btn btn-secondary">
                         Optimize Database

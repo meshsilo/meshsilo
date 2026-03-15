@@ -603,7 +603,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
 
         <div class="actions">
             <?php if ($pendingCount > 0): ?>
-                <form method="post" onsubmit="return confirm('Run all pending migrations? This will modify your database schema.');">
+                <form method="post" data-confirm="Run all pending migrations? This will modify your database schema.">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                     <button type="submit" name="run_migrations" class="btn btn-primary">
                         Run <?= $pendingCount ?> Migration(s)
@@ -628,7 +628,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
                 <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;">
                     If you encounter "Unknown column 'expires_at'" or similar rate limiting errors, use this to fix the table schema.
                 </p>
-                <form method="post" style="display: inline;" onsubmit="return confirm('This will drop and recreate the rate_limits table. Continue?');">
+                <form method="post" style="display: inline;" data-confirm="This will drop and recreate the rate_limits table. Continue?">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                     <button type="submit" name="repair_rate_limits" class="btn btn-secondary">
                         Repair Rate Limits Table

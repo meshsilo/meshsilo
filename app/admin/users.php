@@ -256,7 +256,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <td>
                                         <a href="<?= route('admin.user', ['id' => $user['id']]) ?>" class="btn btn-small btn-secondary">Edit</a>
                                         <?php if ($user['id'] !== getCurrentUser()['id']): ?>
-                                        <form method="post" style="display:inline;" onsubmit="return confirm('Delete this user? This cannot be undone.');">
+                                        <form method="post" style="display:inline;" data-confirm="Delete this user? This cannot be undone.">
                                             <?= csrf_field() ?>
                                             <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
                                             <button type="submit" name="delete_user" class="btn btn-small btn-danger">Delete</button>
