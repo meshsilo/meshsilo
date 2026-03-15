@@ -68,15 +68,25 @@
         });
 
         document.querySelectorAll('.settings-section h2').forEach(header => {
-            header.addEventListener('click', function() {
-                const section = this.closest('.settings-section');
-                section.classList.toggle('collapsed');
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+            header.style.cursor = 'pointer';
+            var isCollapsed = header.closest('.settings-section').classList.contains('collapsed');
+            header.setAttribute('aria-expanded', String(!isCollapsed));
 
-                // Save state to localStorage
-                const sectionId = section.id || this.textContent.trim();
-                const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
+            function toggleSection(h) {
+                var section = h.closest('.settings-section');
+                section.classList.toggle('collapsed');
+                h.setAttribute('aria-expanded', String(!section.classList.contains('collapsed')));
+                var sectionId = section.id || h.textContent.trim();
+                var collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
                 collapsedSections[sectionId] = section.classList.contains('collapsed');
                 localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
+            }
+
+            header.addEventListener('click', function() { toggleSection(this); });
+            header.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSection(this); }
             });
         });
 
