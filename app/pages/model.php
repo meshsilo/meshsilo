@@ -408,7 +408,7 @@ require_once 'includes/header.php';
 
                         <?php if (!empty($model['source_url'])): ?>
                         <p class="model-source">
-                            <a href="<?= htmlspecialchars($model['source_url']) ?>" target="_blank" rel="noopener">View Original Source</a>
+                            <a href="<?= htmlspecialchars($model['source_url']) ?>" target="_blank" rel="noopener noreferrer">View Original Source</a>
                         </p>
                         <?php endif; ?>
 
@@ -487,7 +487,7 @@ require_once 'includes/header.php';
                                     <?php foreach ($attachments['documents'] as $att): ?>
                                     <div class="attachment-document" data-attachment-id="<?= $att['id'] ?>">
                                         <span class="file-type-badge">.<?= htmlspecialchars(pathinfo($att['original_filename'], PATHINFO_EXTENSION) ?: $att['file_type']) ?></span>
-                                        <a href="/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" rel="noopener" class="attachment-doc-name">
+                                        <a href="/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" rel="noopener noreferrer" class="attachment-doc-name">
                                             <?= htmlspecialchars($att['original_filename']) ?>
                                         </a>
                                         <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>

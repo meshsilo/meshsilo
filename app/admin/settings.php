@@ -249,7 +249,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <?php if ($updateInfo['published']): ?>
                                 <p class="update-date">Released: <?= htmlspecialchars(date('M j, Y', strtotime($updateInfo['published']))) ?></p>
                                 <?php endif; ?>
-                                <a href="<?= htmlspecialchars($updateInfo['url']) ?>" target="_blank" rel="noopener" class="btn btn-primary">
+                                <a href="<?= htmlspecialchars($updateInfo['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
                                     View Release
                                 </a>
                             </div>

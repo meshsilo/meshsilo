@@ -153,7 +153,7 @@ require_once 'includes/header.php';
             This is a remix of
             <a href="<?= route('model.show', ['id' => $model['remix_of']]) ?>">another model</a>
             <?php elseif ($model['external_source_url']): ?>
-            Based on <a href="<?= htmlspecialchars($model['external_source_url']) ?>" target="_blank" rel="noopener">external source</a>
+            Based on <a href="<?= htmlspecialchars($model['external_source_url']) ?>" target="_blank" rel="noopener noreferrer">external source</a>
             <?php endif; ?>
         </span>
         <?php endif; ?>

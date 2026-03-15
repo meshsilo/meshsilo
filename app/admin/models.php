@@ -195,7 +195,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateSelection()" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
                             </td>
                             <td>
-                                <a href="<?= route('model.show', ['id' => $model['id']]) ?>" target="_blank" rel="noopener">
+                                <a href="<?= route('model.show', ['id' => $model['id']]) ?>" target="_blank" rel="noopener noreferrer">
                                     <?= htmlspecialchars($model['name']) ?>
                                 </a>
                             </td>

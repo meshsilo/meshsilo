@@ -452,7 +452,7 @@ class TwoFactor
 
         // Simple QR code generation - for production, use a proper library
         // This is a placeholder that returns a link instead
-        return '<a href="' . htmlspecialchars(self::getQRCodeUrl($secret, $account, $issuer)) . '" target="_blank" rel="noopener">View QR Code</a>';
+        return '<a href="' . htmlspecialchars(self::getQRCodeUrl($secret, $account, $issuer)) . '" target="_blank" rel="noopener noreferrer">View QR Code</a>';
     }
 }
 
