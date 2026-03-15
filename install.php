@@ -988,11 +988,11 @@ foreach ($requirements as $req) {
         </div>
 
         <?php if ($error): ?>
-        <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+        <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <?php if ($success): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+        <div role="status" class="alert alert-success"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
 
         <?php if ($step === 1): ?>
@@ -1080,24 +1080,24 @@ foreach ($requirements as $req) {
             <div class="form-group">
                 <label for="admin_username">Username</label>
                 <input type="text" id="admin_username" name="admin_username" class="form-input" required
-                    value="<?= htmlspecialchars($_SESSION['install']['admin']['username'] ?? '') ?>">
+                    value="<?= htmlspecialchars($_SESSION['install']['admin']['username'] ?? '') ?>" autocomplete="username">
             </div>
 
             <div class="form-group">
                 <label for="admin_email">Email</label>
                 <input type="email" id="admin_email" name="admin_email" class="form-input" required
-                    value="<?= htmlspecialchars($_SESSION['install']['admin']['email'] ?? '') ?>">
+                    value="<?= htmlspecialchars($_SESSION['install']['admin']['email'] ?? '') ?>" autocomplete="email">
             </div>
 
             <div class="form-group">
                 <label for="admin_password">Password</label>
-                <input type="password" id="admin_password" name="admin_password" class="form-input" required minlength="8">
+                <input type="password" id="admin_password" name="admin_password" class="form-input" required minlength="8" autocomplete="new-password">
                 <p class="form-help">Minimum 8 characters</p>
             </div>
 
             <div class="form-group">
                 <label for="admin_password_confirm">Confirm Password</label>
-                <input type="password" id="admin_password_confirm" name="admin_password_confirm" class="form-input" required>
+                <input type="password" id="admin_password_confirm" name="admin_password_confirm" class="form-input" required autocomplete="new-password">
             </div>
 
             <div class="btn-group">
