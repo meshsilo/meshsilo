@@ -608,7 +608,7 @@ require_once 'includes/header.php';
                                 <?php if ($model['part_count'] > 0): ?>
                                 <span><?= $model['part_count'] ?> parts</span>
                                 <?php endif; ?>
-                                <span data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></span>
+                                <span class="model-date" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></span>
                                 <?php if (isFeatureEnabled('download_tracking') && $model['download_count'] > 0): ?>
                                 <span class="download-count"><?= number_format($model['download_count']) ?> downloads</span>
                                 <?php endif; ?>
@@ -659,6 +659,9 @@ require_once 'includes/header.php';
                         <div class="model-info">
                             <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
                             <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
+                            <?php if (!empty($model['created_at'])): ?>
+                            <p class="model-date" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></p>
+                            <?php endif; ?>
                             <?php if (isFeatureEnabled('download_tracking') && $model['download_count'] > 0): ?>
                             <p class="download-count" style="margin-top: 0.25rem;"><?= number_format($model['download_count']) ?> downloads</p>
                             <?php endif; ?>

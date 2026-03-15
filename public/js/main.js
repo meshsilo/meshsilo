@@ -180,7 +180,7 @@ class SearchHandler {
 
     async search(query) {
         try {
-            const response = await fetch(`search.php?q=${encodeURIComponent(query)}&limit=5`);
+            const response = await fetch(`/actions/search-suggest?q=${encodeURIComponent(query)}&limit=5`);
             if (!response.ok) throw new Error('Search failed');
 
             const results = await response.json();
@@ -200,14 +200,14 @@ class SearchHandler {
         }
 
         const html = results.map(model => `
-            <a href="model.php?id=${model.id}" class="search-result-item">
+            <a href="${SILO_MODEL_BASE}${model.id}" class="search-result-item">
                 <span class="search-result-name">${this.highlight(model.name, query)}</span>
                 ${model.creator ? `<span class="search-result-creator">by ${this.escapeHtml(model.creator)}</span>` : ''}
             </a>
         `).join('');
 
         this.searchResults.innerHTML = html + `
-            <a href="index.php?search=${encodeURIComponent(query)}" class="search-view-all">
+            <a href="/browse?q=${encodeURIComponent(query)}" class="search-view-all">
                 View all results
             </a>
         `;
@@ -233,7 +233,7 @@ class SearchHandler {
         } else if (e.key === 'Enter') {
             const query = this.searchBar.value.trim();
             if (query) {
-                window.location.href = `index.php?search=${encodeURIComponent(query)}`;
+                window.location.href = `/browse?q=${encodeURIComponent(query)}`;
             }
         }
     }
