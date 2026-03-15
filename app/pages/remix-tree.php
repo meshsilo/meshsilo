@@ -174,7 +174,7 @@ require_once 'includes/header.php';
                     <div class="tree-node <?= $isCurrent ? 'current' : '' ?> <?= $isRemix ? 'remix' : 'original' ?>">
                         <a href="<?= route('model.show', ['id' => $node['id']]) ?>" class="node-link">
                             <?php if ($node['thumbnail']): ?>
-                            <img src="<?= basePath('assets/' . $node['thumbnail']) ?>" alt="" class="node-thumbnail" loading="lazy">
+                            <img src="<?= basePath('assets/' . $node['thumbnail']) ?>" alt="<?= htmlspecialchars($node['name']) ?>" class="node-thumbnail" loading="lazy">
                             <?php else: ?>
                             <div class="node-thumbnail placeholder">&#9653;</div>
                             <?php endif; ?>
@@ -276,7 +276,7 @@ require_once 'includes/header.php';
                 <div class="related-item">
                     <a href="<?= route('model.show', ['id' => $related['related_model_id']]) ?>">
                         <?php if ($related['thumbnail']): ?>
-                        <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="" class="related-thumbnail" loading="lazy">
+                        <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="<?= htmlspecialchars($related['name']) ?>" class="related-thumbnail" loading="lazy">
                         <?php else: ?>
                         <div class="related-thumbnail placeholder">&#9653;</div>
                         <?php endif; ?>
@@ -695,7 +695,7 @@ document.getElementById('remix-model-search').addEventListener('input', function
                     item.className = 'search-result-item';
                     item.dataset.id = model.id;
                     item.innerHTML = `
-                        <img src="${model.thumbnail ? '<?= basePath('assets/') ?>' + model.thumbnail : '<?= basePath('images/placeholder.png') ?>'}" alt="">
+                        <img src="${model.thumbnail ? '<?= basePath('assets/') ?>' + model.thumbnail : '<?= basePath('images/placeholder.png') ?>'}" alt="${escapeHtml(model.name)}">
                         <span>${escapeHtml(model.name)}</span>
                     `;
                     item.addEventListener('click', function() {

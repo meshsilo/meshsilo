@@ -189,7 +189,7 @@ class SignedUrl
                 header('Content-Type: application/json');
                 echo json_encode(['error' => $message]);
             } else {
-                echo '<!DOCTYPE html><html><head><title>Access Denied</title></head>';
+                echo '<!DOCTYPE html><html lang="en"><head><title>Access Denied</title></head>';
                 echo '<body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;">';
                 echo '<div style="text-align: center;"><h1>Access Denied</h1><p>' . htmlspecialchars($message) . '</p></div>';
                 echo '</body></html>';

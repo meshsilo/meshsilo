@@ -166,8 +166,8 @@ include __DIR__ . '/../../includes/header.php';
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Max Age (seconds)</label>
-                            <select name="hsts_max_age" class="form-control" aria-label="HSTS max age">
+                            <label for="hsts_max_age">Max Age (seconds)</label>
+                            <select name="hsts_max_age" id="hsts_max_age" class="form-control">
                                 <option value="86400" <?= $config['hsts']['max_age'] == 86400 ? 'selected' : '' ?>>1 day (testing)</option>
                                 <option value="604800" <?= $config['hsts']['max_age'] == 604800 ? 'selected' : '' ?>>1 week</option>
                                 <option value="2592000" <?= $config['hsts']['max_age'] == 2592000 ? 'selected' : '' ?>>30 days</option>
@@ -218,62 +218,62 @@ include __DIR__ . '/../../includes/header.php';
                     <p class="help-text">Space-separated values. Common: 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:</p>
 
                     <div class="form-group">
-                        <label>default-src</label>
-                        <input type="text" name="csp_default_src" class="form-control"
+                        <label for="csp_default_src">default-src</label>
+                        <input type="text" name="csp_default_src" id="csp_default_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['default-src'] ?? [])) ?>"
                                placeholder="'self'">
                     </div>
                     <div class="form-group">
-                        <label>script-src</label>
-                        <input type="text" name="csp_script_src" class="form-control"
+                        <label for="csp_script_src">script-src</label>
+                        <input type="text" name="csp_script_src" id="csp_script_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['script-src'] ?? [])) ?>"
                                placeholder="'self' 'unsafe-inline'">
                     </div>
                     <div class="form-group">
-                        <label>style-src</label>
-                        <input type="text" name="csp_style_src" class="form-control"
+                        <label for="csp_style_src">style-src</label>
+                        <input type="text" name="csp_style_src" id="csp_style_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['style-src'] ?? [])) ?>"
                                placeholder="'self' 'unsafe-inline'">
                     </div>
                     <div class="form-group">
-                        <label>img-src</label>
-                        <input type="text" name="csp_img_src" class="form-control"
+                        <label for="csp_img_src">img-src</label>
+                        <input type="text" name="csp_img_src" id="csp_img_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['img-src'] ?? [])) ?>"
                                placeholder="'self' data: blob: https:">
                     </div>
                     <div class="form-group">
-                        <label>font-src</label>
-                        <input type="text" name="csp_font_src" class="form-control"
+                        <label for="csp_font_src">font-src</label>
+                        <input type="text" name="csp_font_src" id="csp_font_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['font-src'] ?? [])) ?>"
                                placeholder="'self' https://fonts.gstatic.com">
                     </div>
                     <div class="form-group">
-                        <label>connect-src</label>
-                        <input type="text" name="csp_connect_src" class="form-control"
+                        <label for="csp_connect_src">connect-src</label>
+                        <input type="text" name="csp_connect_src" id="csp_connect_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['connect-src'] ?? [])) ?>"
                                placeholder="'self'">
                     </div>
                     <div class="form-group">
-                        <label>frame-src</label>
-                        <input type="text" name="csp_frame_src" class="form-control"
+                        <label for="csp_frame_src">frame-src</label>
+                        <input type="text" name="csp_frame_src" id="csp_frame_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['frame-src'] ?? [])) ?>"
                                placeholder="'self'">
                     </div>
                     <div class="form-group">
-                        <label>object-src</label>
-                        <input type="text" name="csp_object_src" class="form-control"
+                        <label for="csp_object_src">object-src</label>
+                        <input type="text" name="csp_object_src" id="csp_object_src" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['object-src'] ?? [])) ?>"
                                placeholder="'none'">
                     </div>
                     <div class="form-group">
-                        <label>frame-ancestors</label>
-                        <input type="text" name="csp_frame_ancestors" class="form-control"
+                        <label for="csp_frame_ancestors">frame-ancestors</label>
+                        <input type="text" name="csp_frame_ancestors" id="csp_frame_ancestors" class="form-control"
                                value="<?= htmlspecialchars(implode(' ', $config['csp']['directives']['frame-ancestors'] ?? [])) ?>"
                                placeholder="'self'">
                     </div>
                     <div class="form-group">
-                        <label>Report URI (optional)</label>
-                        <input type="url" name="csp_report_uri" class="form-control"
+                        <label for="csp_report_uri">Report URI (optional)</label>
+                        <input type="url" name="csp_report_uri" id="csp_report_uri" class="form-control"
                                value="<?= htmlspecialchars($config['csp']['report_uri'] ?? '') ?>"
                                placeholder="https://your-report-collector.com/csp">
                     </div>

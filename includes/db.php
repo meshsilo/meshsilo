@@ -748,7 +748,7 @@ function verifySchemaReady($db)
                 http_response_code(503);
                 header('Content-Type: text/html; charset=utf-8');
             }
-            echo '<!DOCTYPE html><html><head><title>Database Setup Required</title></head><body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">';
+            echo '<!DOCTYPE html><html lang="en"><head><title>Database Setup Required</title></head><body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">';
             echo '<h1>Database Setup Required</h1>';
             echo '<p>The database schema needs to be initialized or updated.</p>';
             echo '<p>Please run the following command:</p>';

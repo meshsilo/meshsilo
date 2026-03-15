@@ -62,7 +62,7 @@ require_once 'includes/header.php';
                 <?php foreach ($collections as $collection): ?>
                 <a href="<?= route('browse', [], ['collection' => $collection['name']]) ?>" class="collection-card" tabindex="0">
                     <?php if (!empty($collection['thumbnail'])): ?>
-                    <img src="/assets/<?= htmlspecialchars($collection['thumbnail']) ?>" alt="" class="collection-thumb" loading="lazy">
+                    <img src="/assets/<?= htmlspecialchars($collection['thumbnail']) ?>" alt="<?= htmlspecialchars($collection['name']) ?>" class="collection-thumb" loading="lazy">
                     <?php endif; ?>
                     <h2 class="collection-name"><?= htmlspecialchars($collection['name']) ?></h2>
                     <?php if (!empty($collection['description'])): ?>
