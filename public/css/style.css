@@ -292,6 +292,12 @@ button.btn {
     color: var(--color-text);
 }
 
+.btn:focus-visible,
+button.btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
 /* Hero */
 .hero {
     background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg) 100%);

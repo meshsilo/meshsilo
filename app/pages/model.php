@@ -504,7 +504,7 @@ require_once 'includes/header.php';
 
                             <?php if (canEdit()): ?>
                             <div class="attachment-upload">
-                                <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" multiple style="display:none" onchange="uploadAttachments(this.files)">
+                                <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" multiple style="display:none" onchange="uploadAttachments(this.files)" aria-label="Upload attachments">
                                 <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('attachment-file-input').click()">Add Attachment</button>
                                 <span class="attachment-hint">Images, PDFs &amp; Text Files</span>
                             </div>
@@ -753,7 +753,7 @@ require_once 'includes/header.php';
                         <a href="<?= route('actions.download.all', [], ['id' => $model['id']]) ?>" class="btn btn-primary">Download All Parts</a>
                         <?php if (canUpload()): ?>
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
-                        <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1" multiple hidden onchange="uploadParts(this.files)">
+                        <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1" multiple hidden onchange="uploadParts(this.files)" aria-label="Add model parts">
                         <?php endif; ?>
                     </div>
                 </div>
@@ -761,7 +761,7 @@ require_once 'includes/header.php';
                 <div class="model-download">
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-part-file').click()">Add Parts</button>
-                    <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1" multiple hidden onchange="uploadParts(this.files)">
+                    <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1" multiple hidden onchange="uploadParts(this.files)" aria-label="Add model parts">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
@@ -897,7 +897,7 @@ require_once 'includes/header.php';
                     <form id="upload-version-form" method="post" onsubmit="submitUploadVersion(event)">
                         <div class="form-group">
                             <label for="version-file">File</label>
-                            <input type="file" id="version-file" class="form-input" accept=".stl,.3mf,.gcode" required>
+                            <input type="file" id="version-file" class="form-input" accept=".stl,.3mf,.gcode" required aria-label="Select version file">
                         </div>
                         <div class="form-group">
                             <label for="version-changelog">Changelog (optional)</label>

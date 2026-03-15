@@ -306,7 +306,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <td><?= $cat['model_count'] ?></td>
                                     <td><?= formatBytes($cat['total_size'] ?? 0) ?></td>
                                     <td>
-                                        <div class="progress-bar">
+                                        <div class="progress-bar" role="progressbar" aria-valuenow="<?= round($percent, 1) ?>" aria-valuemin="0" aria-valuemax="100">
                                             <div class="progress-bar-fill" style="width: <?= $percent ?>%"></div>
                                         </div>
                                     </td>
@@ -342,7 +342,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <td><?= $usr['model_count'] ?></td>
                                     <td><?= formatBytes($usr['total_size'] ?? 0) ?></td>
                                     <td>
-                                        <div class="progress-bar">
+                                        <div class="progress-bar" role="progressbar" aria-valuenow="<?= round($percent, 1) ?>" aria-valuemin="0" aria-valuemax="100">
                                             <div class="progress-bar-fill" style="width: <?= $percent ?>%"></div>
                                         </div>
                                     </td>

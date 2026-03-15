@@ -533,7 +533,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div class="health-grid">
                     <div class="health-item">
                         <span class="health-label">Disk Space</span>
-                        <div class="health-bar">
+                        <div class="health-bar" role="progressbar" aria-valuenow="<?= round($diskUsedPercent, 1) ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Disk usage">
                             <div class="health-bar-fill <?= $diskUsedPercent > 90 ? 'health-bar-danger' : ($diskUsedPercent > 70 ? 'health-bar-warning' : '') ?>" style="width: <?= min($diskUsedPercent, 100) ?>%"></div>
                         </div>
                         <span class="health-value"><?= formatBytes($diskFree) ?> free of <?= formatBytes($diskTotal) ?> (<?= round($diskUsedPercent, 1) ?>% used)</span>

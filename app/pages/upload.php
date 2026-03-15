@@ -577,11 +577,11 @@ require_once 'includes/header.php';
                         <div class="upload-buttons">
                             <label class="btn btn-primary file-select-btn">
                                 Browse Files
-                                <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.zip,.lys,.ctb,.pwmo,.sl1" hidden>
+                                <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.zip,.lys,.ctb,.pwmo,.sl1" hidden aria-label="Browse model files">
                             </label>
                             <label class="btn btn-secondary file-select-btn mobile-only">
                                 Take Photo
-                                <input type="file" name="photo_file" id="photo_file" accept="image/*" capture="environment" hidden>
+                                <input type="file" name="photo_file" id="photo_file" accept="image/*" capture="environment" hidden aria-label="Take photo">
                             </label>
                         </div>
                         <p class="dropzone-hint">Supported: 3D models, slicer files (.lys, .ctb, .sl1), and ZIP archives (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
@@ -592,7 +592,7 @@ require_once 'includes/header.php';
 
                 <!-- Upload Progress Bar -->
                 <div class="upload-progress" id="upload-progress" style="display: none;">
-                    <div class="progress-bar">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress">
                         <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
                     </div>
                     <p class="progress-text" id="progress-text">Uploading... 0%</p>
@@ -790,6 +790,7 @@ require_once 'includes/header.php';
                 if (e.lengthComputable) {
                     const percent = Math.round((e.loaded / e.total) * 100);
                     progressFill.style.width = percent + '%';
+                    progressFill.parentElement.setAttribute('aria-valuenow', percent);
                     progressText.textContent = 'Uploading... ' + percent + '%';
 
                     if (percent === 100) {
