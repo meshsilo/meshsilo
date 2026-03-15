@@ -133,7 +133,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
     <!-- Filters -->
     <div class="filters-card">
-        <form method="GET" class="filters-form">
+        <form method="GET" class="filters-form" role="search">
             <div class="filter-row">
                 <div class="filter-group">
                     <label>Event Type</label>

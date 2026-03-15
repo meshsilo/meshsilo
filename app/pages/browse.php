@@ -830,7 +830,7 @@ require_once 'includes/header.php';
                 showToast('Please select models first', 'error');
                 return;
             }
-            window.location = 'actions/batch-download.php?ids=' + ids.join(',');
+            window.location = '/actions/batch-download?ids=' + ids.join(',');
         }
 
         async function batchApplyTag(tagId) {

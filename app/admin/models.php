@@ -107,7 +107,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <!-- Filters -->
             <div class="admin-filters" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
-                <form method="get" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <form method="get" role="search" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                     <input type="search" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search..." class="search-bar" style="width: auto;">
 
                     <select name="category" class="sort-select">

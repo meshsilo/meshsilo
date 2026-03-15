@@ -405,7 +405,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <label for="mail_port">SMTP Port</label>
                                     <input type="number" id="mail_port" name="mail_port" class="form-input"
                                         value="<?= htmlspecialchars($settings['mail_port'] ?? '587') ?>"
-                                        placeholder="587">
+                                        placeholder="587" min="1" max="65535">
                                     <p class="form-help">Common ports: 587 (TLS), 465 (SSL), 25 (unencrypted)</p>
                                 </div>
                             </div>

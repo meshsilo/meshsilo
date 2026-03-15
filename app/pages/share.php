@@ -216,7 +216,7 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
                     <div class="form-group">
                         <label for="password">Password</label>
                         <div class="password-wrapper">
-                            <input type="password" id="password" name="password" required autofocus>
+                            <input type="password" id="password" name="password" required autofocus autocomplete="current-password">
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                         </div>
                     </div>
