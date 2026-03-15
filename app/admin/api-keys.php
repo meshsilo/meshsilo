@@ -20,7 +20,9 @@ $pageTitle = 'API Keys';
 $adminPage = 'api-keys';
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $error = 'Security validation failed. Please try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create') {
@@ -108,7 +110,7 @@ include __DIR__ . '/../../includes/header.php';
                 <h2>Create New API Key</h2>
             </div>
             <div class="card-body">
-                <form method="post" action="">
+                <form method="post">
                     <input type="hidden" name="action" value="create">
                     <?= csrf_field() ?>
 
@@ -215,7 +217,7 @@ include __DIR__ . '/../../includes/header.php';
                                 </div>
 
                                 <div class="api-key-actions">
-                                    <form method="post" action="" style="display:inline"
+                                    <form method="post" style="display:inline"
                                           onsubmit="return confirm('Are you sure you want to revoke this API key? This cannot be undone.')">
                                         <input type="hidden" name="action" value="revoke">
                                         <input type="hidden" name="key_id" value="<?= $key['id'] ?>">

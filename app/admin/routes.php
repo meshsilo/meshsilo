@@ -27,7 +27,10 @@ $namedRoutes = $router->getNamedRoutes();
 $message = '';
 $messageType = 'success';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+    $message = 'Security validation failed. Please try again.';
+    $messageType = 'error';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     switch ($action) {
@@ -123,10 +126,12 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="button-group">
             <form method="post" style="display: inline;">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="clear_cache">
                 <button type="submit" class="btn btn-secondary">Clear Cache</button>
             </form>
             <form method="post" style="display: inline;">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="rebuild_cache">
                 <button type="submit" class="btn btn-primary">Rebuild Cache</button>
             </form>
@@ -475,9 +480,10 @@ document.getElementById('route-filter').addEventListener('input', function() {
 
 // Enable caching toggle
 document.getElementById('enable-caching').addEventListener('change', function() {
+    var csrfToken = document.querySelector('meta[name="csrf-token"]');
     fetch('<?= route('admin.settings') ?>', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken ? csrfToken.content : '' },
         body: 'setting_route_caching=' + (this.checked ? '1' : '0')
     });
 });
