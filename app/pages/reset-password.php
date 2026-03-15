@@ -144,8 +144,8 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?= csrf_field() ?>
                     <?php if ($tokenData): ?>
                     <div class="form-group">
-                        <label>Resetting password for</label>
-                        <input type="text" class="form-input" value="<?= htmlspecialchars($tokenData['email']) ?>" disabled>
+                        <label for="reset-email">Resetting password for</label>
+                        <input type="text" id="reset-email" class="form-input" value="<?= htmlspecialchars($tokenData['email']) ?>" disabled>
                     </div>
                     <?php endif; ?>
 

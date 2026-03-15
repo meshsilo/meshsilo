@@ -172,7 +172,7 @@ require_once __DIR__ . '/../../includes/header.php';
             <div class="admin-content">
                 <div class="page-header">
                     <h1>
-                        <a href="<?= route('admin.users') ?>" class="back-link">&larr;</a>
+                        <a href="<?= route('admin.users') ?>" class="back-link" aria-label="Back to users">&larr;</a>
                         Edit User: <?= htmlspecialchars($user['username']) ?>
                         <?php if ($user['is_admin']): ?>
                         <span class="badge badge-admin">Admin</span>

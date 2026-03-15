@@ -99,7 +99,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="input-with-button">
-                                <input type="text" name="category_name" class="form-input" placeholder="New category name" required>
+                                <input type="text" name="category_name" class="form-input" placeholder="New category name" required aria-label="Category name">
                                 <button type="submit" name="add_category" class="btn btn-primary">Add</button>
                             </div>
                         </form>

@@ -210,7 +210,7 @@ require_once 'includes/header.php';
                         <?php foreach ($modelTags as $tag): ?>
                         <span class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>;" data-tag-id="<?= $tag['id'] ?>">
                             <?= htmlspecialchars($tag['name']) ?>
-                            <button type="button" class="model-tag-remove" onclick="removeTag(<?= $modelId ?>, <?= $tag['id'] ?>, this.parentElement)">&times;</button>
+                            <button type="button" class="model-tag-remove" aria-label="Remove tag <?= htmlspecialchars($tag['name']) ?>" onclick="removeTag(<?= $modelId ?>, <?= $tag['id'] ?>, this.parentElement)">&times;</button>
                         </span>
                         <?php endforeach; ?>
                     </div>
@@ -293,6 +293,7 @@ require_once 'includes/header.php';
                     removeBtn.type = 'button';
                     removeBtn.className = 'model-tag-remove';
                     removeBtn.innerHTML = '&times;';
+                    removeBtn.setAttribute('aria-label', 'Remove tag ' + data.tag.name);
                     removeBtn.onclick = function() { removeTag(modelId, data.tag.id, tagEl); };
                     tagEl.appendChild(removeBtn);
                     tagsContainer.appendChild(tagEl);

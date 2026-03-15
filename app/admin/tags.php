@@ -88,8 +88,8 @@ require_once __DIR__ . '/../../includes/header.php';
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="input-with-button">
-                                <input type="text" name="tag_name" class="form-input" placeholder="New tag name" required>
-                                <input type="color" name="tag_color" value="#6366f1" style="height: 38px; border: 1px solid var(--color-border); border-radius: 4px;">
+                                <input type="text" name="tag_name" class="form-input" placeholder="New tag name" required aria-label="Tag name">
+                                <input type="color" name="tag_color" value="#6366f1" aria-label="Tag color" style="height: 38px; border: 1px solid var(--color-border); border-radius: 4px;">
                                 <button type="submit" name="add_tag" class="btn btn-primary">Add</button>
                             </div>
                         </form>

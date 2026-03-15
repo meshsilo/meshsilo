@@ -164,12 +164,12 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                         <div class="form-row-grid">
                             <div class="form-group">
-                                <label>Account Created</label>
-                                <input type="text" class="form-input" value="<?= date('F j, Y', strtotime($user['created_at'])) ?>" disabled>
+                                <label for="account-created">Account Created</label>
+                                <input type="text" id="account-created" class="form-input" value="<?= date('F j, Y', strtotime($user['created_at'])) ?>" disabled>
                             </div>
                             <div class="form-group">
-                                <label>Account Type</label>
-                                <input type="text" class="form-input" value="Local Account" disabled>
+                                <label for="account-type">Account Type</label>
+                                <input type="text" id="account-type" class="form-input" value="Local Account" disabled>
                             </div>
                         </div>
                         <?php if (class_exists('PluginManager')): ?>
@@ -258,12 +258,12 @@ require_once __DIR__ . '/../../includes/header.php';
                     <h2>Session Information</h2>
                     <div class="form-row-grid">
                         <div class="form-group">
-                            <label>Session ID</label>
-                            <input type="text" class="form-input" value="<?= htmlspecialchars(substr(session_id(), 0, 8)) ?>..." disabled>
+                            <label for="session-id">Session ID</label>
+                            <input type="text" id="session-id" class="form-input" value="<?= htmlspecialchars(substr(session_id(), 0, 8)) ?>..." disabled>
                         </div>
                         <div class="form-group">
-                            <label>IP Address</label>
-                            <input type="text" class="form-input" value="<?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'Unknown') ?>" disabled>
+                            <label for="ip-address">IP Address</label>
+                            <input type="text" id="ip-address" class="form-input" value="<?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'Unknown') ?>" disabled>
                         </div>
                     </div>
                 </section>
