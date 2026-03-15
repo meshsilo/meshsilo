@@ -261,12 +261,12 @@ include __DIR__ . '/../../includes/header.php';
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Task</th>
-                            <th>Schedule</th>
-                            <th>Description</th>
-                            <th>Next Run</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th scope="col">Task</th>
+                            <th scope="col">Schedule</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Next Run</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -344,11 +344,11 @@ include __DIR__ . '/../../includes/header.php';
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Task</th>
-                                <th>Status</th>
-                                <th>Duration</th>
-                                <th>Output</th>
-                                <th>Time</th>
+                                <th scope="col">Task</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Duration</th>
+                                <th scope="col">Output</th>
+                                <th scope="col">Time</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -199,14 +199,14 @@ require_once __DIR__ . '/../../includes/header.php';
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Timestamp</th>
-                    <th>Type</th>
-                    <th>Event</th>
-                    <th>Severity</th>
-                    <th>User</th>
-                    <th>Resource</th>
-                    <th>IP</th>
-                    <th>Actions</th>
+                    <th scope="col">Timestamp</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Event</th>
+                    <th scope="col">Severity</th>
+                    <th scope="col">User</th>
+                    <th scope="col">Resource</th>
+                    <th scope="col">IP</th>
+                    <th scope="col">Actions</th>
                 </tr>
             </thead>
             <tbody>

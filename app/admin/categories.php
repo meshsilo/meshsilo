@@ -113,9 +113,9 @@ require_once __DIR__ . '/../../includes/header.php';
                             <table class="admin-table">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Models</th>
-                                        <th>Actions</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Models</th>
+                                        <th scope="col">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>

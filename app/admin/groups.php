@@ -167,10 +167,10 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Members</th>
-                                    <th>Permissions</th>
-                                    <th>Actions</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Members</th>
+                                    <th scope="col">Permissions</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>

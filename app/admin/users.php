@@ -215,11 +215,11 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Username</th>
-                                    <th>Email</th>
-                                    <th>Groups</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
+                                    <th scope="col">Username</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Groups</th>
+                                    <th scope="col">Created</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>

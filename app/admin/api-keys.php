@@ -245,10 +245,10 @@ include __DIR__ . '/../../includes/header.php';
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Method</th>
-                            <th>Endpoint</th>
-                            <th>Description</th>
-                            <th>Permission</th>
+                            <th scope="col">Method</th>
+                            <th scope="col">Endpoint</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Permission</th>
                         </tr>
                     </thead>
                     <tbody>

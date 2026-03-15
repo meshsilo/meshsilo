@@ -201,11 +201,11 @@ require_once __DIR__ . '/../../includes/header.php';
             <table class="data-table" style="width: 100%; table-layout: fixed;">
                 <thead>
                     <tr>
-                        <th>User</th>
-                        <th>Session ID</th>
-                        <th>IP Address</th>
-                        <th>User Agent</th>
-                        <th>Status</th>
+                        <th scope="col">User</th>
+                        <th scope="col">Session ID</th>
+                        <th scope="col">IP Address</th>
+                        <th scope="col">User Agent</th>
+                        <th scope="col">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -256,13 +256,13 @@ require_once __DIR__ . '/../../includes/header.php';
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>User</th>
-                            <th>IP Address</th>
-                            <th>User Agent</th>
-                            <th>Created</th>
-                            <th>Last Activity</th>
-                            <th>Expires</th>
-                            <th>Actions</th>
+                            <th scope="col">User</th>
+                            <th scope="col">IP Address</th>
+                            <th scope="col">User Agent</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Last Activity</th>
+                            <th scope="col">Expires</th>
+                            <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -317,9 +317,9 @@ require_once __DIR__ . '/../../includes/header.php';
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>User</th>
-                            <th>Session Count</th>
-                            <th>Actions</th>
+                            <th scope="col">User</th>
+                            <th scope="col">Session Count</th>
+                            <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>

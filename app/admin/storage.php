@@ -208,8 +208,8 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Type</th>
-                                    <th>Count</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Count</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -289,9 +289,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Category</th>
-                                    <th>Models</th>
-                                    <th>Size</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">Models</th>
+                                    <th scope="col">Size</th>
                                     <th style="width: 40%;">Usage</th>
                                 </tr>
                             </thead>
@@ -325,9 +325,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>User</th>
-                                    <th>Models</th>
-                                    <th>Size</th>
+                                    <th scope="col">User</th>
+                                    <th scope="col">Models</th>
+                                    <th scope="col">Size</th>
                                     <th style="width: 40%;">Usage</th>
                                 </tr>
                             </thead>

@@ -610,11 +610,11 @@ require_once __DIR__ . '/../../includes/header.php';
             <table class="data-table" id="errors-table">
                 <thead>
                     <tr>
-                        <th>Time</th>
-                        <th>Severity</th>
-                        <th>Event</th>
-                        <th>Resource</th>
-                        <th>Details</th>
+                        <th scope="col">Time</th>
+                        <th scope="col">Severity</th>
+                        <th scope="col">Event</th>
+                        <th scope="col">Resource</th>
+                        <th scope="col">Details</th>
                     </tr>
                 </thead>
                 <tbody>

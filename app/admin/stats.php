@@ -595,9 +595,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Type</th>
-                                    <th>Count</th>
-                                    <th>Size</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Count</th>
+                                    <th scope="col">Size</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -623,8 +623,8 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Category</th>
-                                    <th>Models</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">Models</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -650,9 +650,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Collection</th>
-                                    <th>Models</th>
-                                    <th>Size</th>
+                                    <th scope="col">Collection</th>
+                                    <th scope="col">Models</th>
+                                    <th scope="col">Size</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -676,9 +676,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Size</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Size</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -702,9 +702,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Creator</th>
-                                    <th>Models</th>
-                                    <th>Size</th>
+                                    <th scope="col">Creator</th>
+                                    <th scope="col">Models</th>
+                                    <th scope="col">Size</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -728,8 +728,8 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Uploads</th>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Uploads</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -752,9 +752,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Month</th>
-                                    <th>Uploads</th>
-                                    <th>Size</th>
+                                    <th scope="col">Month</th>
+                                    <th scope="col">Uploads</th>
+                                    <th scope="col">Size</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -786,10 +786,10 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>File Path</th>
-                                    <?php if (isAdmin()): ?><th>Actions</th><?php endif; ?>
+                                    <th scope="col">ID</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">File Path</th>
+                                    <?php if (isAdmin()): ?><th scope="col">Actions</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
@@ -831,9 +831,9 @@ require_once __DIR__ . '/../../includes/header.php';
                         <table class="stats-table">
                             <thead>
                                 <tr>
-                                    <th>Filename</th>
-                                    <th>Size</th>
-                                    <?php if (isAdmin()): ?><th>Actions</th><?php endif; ?>
+                                    <th scope="col">Filename</th>
+                                    <th scope="col">Size</th>
+                                    <?php if (isAdmin()): ?><th scope="col">Actions</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>

@@ -178,14 +178,14 @@ require_once __DIR__ . '/../../includes/header.php';
                             <th style="width: 40px;">
                                 <input type="checkbox" id="header-select-all" onchange="toggleSelectAll(this)">
                             </th>
-                            <th>Model</th>
-                            <th>Uploader</th>
-                            <th>Size</th>
-                            <th>Parts</th>
-                            <th>Downloads</th>
-                            <th>Created</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th scope="col">Model</th>
+                            <th scope="col">Uploader</th>
+                            <th scope="col">Size</th>
+                            <th scope="col">Parts</th>
+                            <th scope="col">Downloads</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>

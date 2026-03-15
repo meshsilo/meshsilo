@@ -236,10 +236,10 @@ require_once 'includes/header.php';
         <table class="stats-table">
             <thead>
                 <tr>
-                    <th></th>
-                    <th>v<?= $v1 ?> (Left)</th>
-                    <th>v<?= $v2 ?> (Right)</th>
-                    <th>Diff</th>
+                    <th scope="col"></th>
+                    <th scope="col">v<?= $v1 ?> (Left)</th>
+                    <th scope="col">v<?= $v2 ?> (Right)</th>
+                    <th scope="col">Diff</th>
                 </tr>
             </thead>
             <tbody>

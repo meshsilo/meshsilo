@@ -384,11 +384,11 @@ require_once __DIR__ . '/../../includes/header.php';
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>URL</th>
-                        <th>Official</th>
-                        <th>Last Fetched</th>
-                        <th>Actions</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">URL</th>
+                        <th scope="col">Official</th>
+                        <th scope="col">Last Fetched</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -217,20 +217,20 @@ require_once __DIR__ . '/../../includes/header.php';
             <summary><h2>Database Information</h2></summary>
             <table class="data-table">
                 <tr>
-                    <th>Schema Version</th>
+                    <th scope="col">Schema Version</th>
                     <td><?= htmlspecialchars($schemaVersion) ?></td>
                 </tr>
                 <tr>
-                    <th>Last Migration</th>
+                    <th scope="col">Last Migration</th>
                     <td><?= htmlspecialchars($lastMigration) ?></td>
                 </tr>
                 <tr>
-                    <th>Database Type</th>
+                    <th scope="col">Database Type</th>
                     <td><?= strtoupper($dbType) ?></td>
                 </tr>
                 <?php if ($dbType === 'sqlite' && defined('DB_PATH')): ?>
                 <tr>
-                    <th>Database Path</th>
+                    <th scope="col">Database Path</th>
                     <td><code><?= htmlspecialchars(DB_PATH) ?></code></td>
                 </tr>
                 <?php endif; ?>
@@ -242,8 +242,8 @@ require_once __DIR__ . '/../../includes/header.php';
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Table</th>
-                        <th>Row Count</th>
+                        <th scope="col">Table</th>
+                        <th scope="col">Row Count</th>
                     </tr>
                 </thead>
                 <tbody>
