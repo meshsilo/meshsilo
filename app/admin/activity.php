@@ -120,7 +120,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="browse-controls">
                 <div class="browse-filters">
-                    <form method="get" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <form method="get" role="search" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                         <select name="action_filter" class="sort-select" onchange="this.form.submit()">
                             <option value="">All Actions</option>
                             <?php foreach ($actions as $action): ?>

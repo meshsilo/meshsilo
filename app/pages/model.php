@@ -557,7 +557,7 @@ require_once 'includes/header.php';
                         <?php foreach ($relatedModels as $rm): ?>
                         <a href="<?= route('model.show', ['id' => $rm['related_model_id']]) ?>" class="related-model-card">
                             <h4><?= htmlspecialchars($rm['name']) ?></h4>
-                            <span class="related-meta"><?= date('M j, Y', strtotime($rm['created_at'])) ?></span>
+                            <span class="related-meta" data-timestamp="<?= htmlspecialchars($rm['created_at']) ?>"><?= date('M j, Y', strtotime($rm['created_at'])) ?></span>
                         </a>
                         <?php endforeach; ?>
                     </div>
@@ -592,7 +592,7 @@ require_once 'includes/header.php';
                                 <span class="version-badge-current">Current</span>
                                 <?php endif; ?>
                                 <span class="version-entry-meta">
-                                    <?= date('M j, Y', strtotime($v['created_at'])) ?>
+                                    <span data-timestamp="<?= htmlspecialchars($v['created_at']) ?>"><?= date('M j, Y', strtotime($v['created_at'])) ?></span>
                                     <?php if ($v['created_by_name']): ?>
                                     &middot; <?= htmlspecialchars($v['created_by_name']) ?>
                                     <?php endif; ?>
@@ -659,7 +659,7 @@ require_once 'includes/header.php';
                             <span class="folder-part-count">(<?= count($dirParts) ?>)</span>
                             <?php if (canEdit()): ?>
                             <span class="folder-actions" onclick="event.stopPropagation()">
-                                <select class="print-type-select folder-print-type" onchange="updateFolderPrintType(this, '<?= htmlspecialchars(addslashes($dir)) ?>')" title="Set print type for all parts in this folder">
+                                <select class="print-type-select folder-print-type" aria-label="Set print type for all parts in this folder" onchange="updateFolderPrintType(this, '<?= htmlspecialchars(addslashes($dir)) ?>')" title="Set print type for all parts in this folder">
                                     <option value="">--</option>
                                     <option value="fdm">FDM</option>
                                     <option value="sla">SLA</option>
@@ -674,7 +674,7 @@ require_once 'includes/header.php';
                         <?php elseif (canEdit() && count($dirParts) > 1): ?>
                         <div class="parts-group-actions">
                             <span class="text-muted"><?= count($dirParts) ?> parts</span>
-                            <select class="print-type-select folder-print-type" onchange="updateFolderPrintType(this, '<?= htmlspecialchars(addslashes($dir)) ?>')" title="Set print type for all parts">
+                            <select class="print-type-select folder-print-type" aria-label="Set print type for all parts" onchange="updateFolderPrintType(this, '<?= htmlspecialchars(addslashes($dir)) ?>')" title="Set print type for all parts">
                                 <option value="">Set All Print Type</option>
                                 <option value="fdm">FDM</option>
                                 <option value="sla">SLA</option>
