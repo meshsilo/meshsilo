@@ -391,7 +391,7 @@ require_once 'includes/header.php';
                             <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none;">
                                 <?= htmlspecialchars($tag['name']) ?>
                                 <?php if (canEdit()): ?>
-                                <button type="button" class="model-tag-remove" onclick="event.preventDefault(); event.stopPropagation(); removeTag(<?= $model['id'] ?>, <?= $tag['id'] ?>, this.parentElement)" title="Remove tag">&times;</button>
+                                <button type="button" class="model-tag-remove" aria-label="Remove tag" onclick="event.preventDefault(); event.stopPropagation(); removeTag(<?= $model['id'] ?>, <?= $tag['id'] ?>, this.parentElement)" title="Remove tag">&times;</button>
                                 <?php endif; ?>
                             </a>
                             <?php endforeach; ?>
@@ -421,7 +421,7 @@ require_once 'includes/header.php';
                                     <span class="model-link-type type-<?= htmlspecialchars($link['link_type']) ?>"><?= htmlspecialchars($link['link_type']) ?></span>
                                     <a href="<?= htmlspecialchars($link['url']) ?>" target="_blank" rel="noopener noreferrer" class="model-link-title"><?= htmlspecialchars($link['title']) ?></a>
                                     <?php if (canEdit()): ?>
-                                    <button type="button" class="model-link-delete" onclick="deleteModelLink(<?= $link['id'] ?>)" title="Remove link">&times;</button>
+                                    <button type="button" class="model-link-delete" aria-label="Remove link" onclick="deleteModelLink(<?= $link['id'] ?>)" title="Remove link">&times;</button>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -469,8 +469,8 @@ require_once 'includes/header.php';
                                              loading="lazy"
                                              onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)">
                                         <?php if (canEdit()): ?>
-                                        <button type="button" class="attachment-set-thumb" onclick="setAttachmentAsThumbnail(<?= $att['id'] ?>)" title="Set as model thumbnail">&#128247;</button>
-                                        <button type="button" class="attachment-delete" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
+                                        <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" onclick="setAttachmentAsThumbnail(<?= $att['id'] ?>)" title="Set as model thumbnail">&#128247;</button>
+                                        <button type="button" class="attachment-delete" aria-label="Delete attachment" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
                                         <?php endif; ?>
                                     </div>
                                     <?php endforeach; ?>
@@ -490,7 +490,7 @@ require_once 'includes/header.php';
                                         </a>
                                         <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>
                                         <?php if (canEdit()): ?>
-                                        <button type="button" class="attachment-delete" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
+                                        <button type="button" class="attachment-delete" aria-label="Delete attachment" onclick="deleteAttachment(<?= $att['id'] ?>)" title="Delete">&times;</button>
                                         <?php endif; ?>
                                     </div>
                                     <?php endforeach; ?>
@@ -817,7 +817,7 @@ require_once 'includes/header.php';
                                 <label for="share-password">Password (optional)</label>
                                 <div class="password-wrapper">
                                     <input type="password" id="share-password" class="form-input" placeholder="Leave empty for no password">
-                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                                    <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-primary">Create Share Link</button>
@@ -2124,7 +2124,7 @@ require_once 'includes/header.php';
                     item.innerHTML =
                         '<span class="model-link-type type-' + escapeHtml(link.link_type) + '">' + escapeHtml(link.link_type) + '</span>' +
                         '<a href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener noreferrer" class="model-link-title">' + escapeHtml(link.title) + '</a>' +
-                        '<button type="button" class="model-link-delete" onclick="deleteModelLink(' + link.id + ')" title="Remove link">&times;</button>';
+                        '<button type="button" class="model-link-delete" aria-label="Remove link" onclick="deleteModelLink(' + link.id + ')" title="Remove link">&times;</button>';
                     list.appendChild(item);
 
                     toggleAddLinkForm();

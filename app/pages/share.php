@@ -217,7 +217,7 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
                         <label for="password">Password</label>
                         <div class="password-wrapper">
                             <input type="password" id="password" name="password" required autofocus autocomplete="current-password">
-                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
+                            <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Access Model</button>
