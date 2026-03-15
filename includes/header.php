@@ -74,7 +74,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             }
             var toast = document.createElement('div');
             toast.className = 'toast toast-' + type;
-            toast.innerHTML = '<span class="toast-message"></span><button class="toast-close">&times;</button>';
+            toast.innerHTML = '<span class="toast-message"></span><button type="button" class="toast-close" aria-label="Close">&times;</button>';
             toast.querySelector('.toast-message').textContent = message;
             toast.querySelector('.toast-close').onclick = function() {
                 toast.classList.remove('show');

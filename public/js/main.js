@@ -289,7 +289,9 @@ class ToastManager {
         messageSpan.textContent = message;
 
         const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
         closeBtn.className = 'toast-close';
+        closeBtn.setAttribute('aria-label', 'Close');
         closeBtn.innerHTML = '&times;';
 
         toast.appendChild(messageSpan);

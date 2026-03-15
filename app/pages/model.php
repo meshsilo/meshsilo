@@ -2225,12 +2225,14 @@ require_once 'includes/header.php';
             var lightbox = document.createElement('div');
             lightbox.id = 'image-lightbox';
             lightbox.className = 'lightbox-overlay';
+            lightbox.setAttribute('role', 'dialog');
+            lightbox.setAttribute('aria-modal', 'true');
             lightbox.innerHTML =
                 '<div class="lightbox-content">' +
-                    '<button type="button" class="lightbox-close" onclick="closeLightbox()">&times;</button>' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1)">&#8249;</button>' : '') +
+                    '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeLightbox()">&times;</button>' +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image" onclick="lightboxNav(-1)">&#8249;</button>' : '') +
                     '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(caption) + '" draggable="false">' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" onclick="lightboxNav(1)">&#8250;</button>' : '') +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" aria-label="Next image" onclick="lightboxNav(1)">&#8250;</button>' : '') +
                     '<div class="lightbox-caption">' + escapeHtml(caption) +
                     (hasMultiple ? ' <span class="lightbox-counter">' + (lightboxIndex + 1) + ' / ' + lightboxImages.length + '</span>' : '') +
                     '</div>' +
