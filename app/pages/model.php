@@ -796,7 +796,7 @@ require_once 'includes/header.php';
                     <!-- Create New Share Link -->
                     <div class="share-create-section">
                         <h4>Create Share Link</h4>
-                        <form id="share-link-form" class="share-form">
+                        <form id="share-link-form" method="post" class="share-form">
                             <div class="share-form-row">
                                 <div class="form-group">
                                     <label for="share-expires">Expires In</label>
@@ -845,7 +845,7 @@ require_once 'includes/header.php';
                     <button type="button" class="modal-close" aria-label="Close" onclick="closeCreateFolderModal()">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <form id="create-folder-form" onsubmit="submitCreateFolder(event)">
+                    <form id="create-folder-form" method="post" onsubmit="submitCreateFolder(event)">
                         <div class="form-group">
                             <label for="new-folder-name">Folder Name</label>
                             <input type="text" id="new-folder-name" class="form-input" placeholder="Enter folder name (e.g. Parts/Screws)" required>
@@ -894,7 +894,7 @@ require_once 'includes/header.php';
                     <button type="button" class="modal-close" aria-label="Close" onclick="closeUploadVersionModal()">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <form id="upload-version-form" onsubmit="submitUploadVersion(event)">
+                    <form id="upload-version-form" method="post" onsubmit="submitUploadVersion(event)">
                         <div class="form-group">
                             <label for="version-file">File</label>
                             <input type="file" id="version-file" class="form-input" accept=".stl,.3mf,.gcode" required>

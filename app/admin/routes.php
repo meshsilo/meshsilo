@@ -214,11 +214,11 @@ require_once __DIR__ . '/../../includes/header.php';
                 <table class="admin-table route-table">
                     <thead>
                         <tr>
-                            <th style="width: 50px;">Method</th>
-                            <th>Pattern</th>
-                            <th>Name</th>
-                            <th>Handler</th>
-                            <th>Middleware</th>
+                            <th scope="col" style="width: 50px;">Method</th>
+                            <th scope="col">Pattern</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Handler</th>
+                            <th scope="col">Middleware</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -280,9 +280,9 @@ require_once __DIR__ . '/../../includes/header.php';
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Pattern</th>
-                        <th>Example Usage</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Pattern</th>
+                        <th scope="col">Example Usage</th>
                     </tr>
                 </thead>
                 <tbody>

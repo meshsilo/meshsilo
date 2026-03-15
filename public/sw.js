@@ -289,7 +289,7 @@ async function networkFirstWithOffline(request) {
     <div class="container">
         <h1>You're Offline</h1>
         <p>Please check your internet connection and try again.</p>
-        <button onclick="location.reload()">Retry</button>
+        <button type="button" onclick="location.reload()">Retry</button>
     </div>
 </body>
 </html>`,

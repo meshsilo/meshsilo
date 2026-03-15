@@ -316,7 +316,7 @@ class ErrorHandler
 
         <div class="error-actions">
             <a href="/" class="btn btn-primary">Go Home</a>
-            <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+            <button type="button" onclick="history.back()" class="btn btn-secondary">Go Back</button>
         </div>
 
         <?php if ($showDetails) : ?>

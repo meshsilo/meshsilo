@@ -1027,13 +1027,13 @@ class Debug
         <span title="Log entries" style="cursor: help;">📝 {$metrics['log_count']} logs</span>
 
         <div style="margin-left: auto; display: flex; gap: 5px;">
-            <button onclick="debugTogglePanel('logs')" class="debug-tab-btn" data-panel="logs">Logs</button>
-            <button onclick="debugTogglePanel('queries')" class="debug-tab-btn" data-panel="queries">Queries</button>
-            <button onclick="debugTogglePanel('session')" class="debug-tab-btn" data-panel="session">Session</button>
-            <button onclick="debugTogglePanel('request')" class="debug-tab-btn" data-panel="request">Request</button>
-            <button onclick="debugTogglePanel('config')" class="debug-tab-btn" data-panel="config">Config</button>
+            <button type="button" onclick="debugTogglePanel('logs')" class="debug-tab-btn" data-panel="logs">Logs</button>
+            <button type="button" onclick="debugTogglePanel('queries')" class="debug-tab-btn" data-panel="queries">Queries</button>
+            <button type="button" onclick="debugTogglePanel('session')" class="debug-tab-btn" data-panel="session">Session</button>
+            <button type="button" onclick="debugTogglePanel('request')" class="debug-tab-btn" data-panel="request">Request</button>
+            <button type="button" onclick="debugTogglePanel('config')" class="debug-tab-btn" data-panel="config">Config</button>
             <button onclick="debugTogglePanel('timeline')" class="debug-tab-btn" data-panel="timeline">Timeline</button>
-            <button onclick="document.getElementById('debug-bar').style.display='none'"
+            <button type="button" onclick="document.getElementById('debug-bar').style.display='none'"
                     style="background: transparent; border: none; color: #888; cursor: pointer; font-size: 16px; margin-left: 10px;">✕</button>
         </div>
     </div>
@@ -1197,7 +1197,7 @@ HTML;
         if (empty(self::$queries)) {
             $html .= '<p style="color: #666;">No queries executed</p>';
         } else {
-            $html .= '<table class="debug-table"><thead><tr><th>#</th><th>Time</th><th>Duration</th><th>Query</th></tr></thead><tbody>';
+            $html .= '<table class="debug-table"><thead><tr><th scope="col">#</th><th scope="col">Time</th><th scope="col">Duration</th><th scope="col">Query</th></tr></thead><tbody>';
 
             foreach (self::$queries as $q) {
                 $duration = $q['duration'] ? round($q['duration'] * 1000, 2) . 'ms' : '-';
@@ -1297,7 +1297,7 @@ HTML;
 
         if (!empty($_FILES)) {
             $html .= '<h4 style="margin-top: 15px;">Uploaded Files</h4>';
-            $html .= '<table class="debug-table"><thead><tr><th>Field</th><th>Name</th><th>Size</th><th>Type</th><th>Error</th></tr></thead><tbody>';
+            $html .= '<table class="debug-table"><thead><tr><th scope="col">Field</th><th scope="col">Name</th><th scope="col">Size</th><th scope="col">Type</th><th scope="col">Error</th></tr></thead><tbody>';
             foreach ($_FILES as $field => $file) {
                 if (is_array($file['name'])) {
                     for ($i = 0; $i < count($file['name']); $i++) {
@@ -1386,7 +1386,7 @@ HTML;
         // Memory timeline
         if (!empty(self::$memorySnapshots)) {
             $html .= '<h5 style="color: #888; margin: 15px 0 5px;">Memory Snapshots</h5>';
-            $html .= '<table class="debug-table"><thead><tr><th>Label</th><th>Time</th><th>Current</th><th>Peak</th></tr></thead><tbody>';
+            $html .= '<table class="debug-table"><thead><tr><th scope="col">Label</th><th scope="col">Time</th><th scope="col">Current</th><th scope="col">Peak</th></tr></thead><tbody>';
             foreach (self::$memorySnapshots as $label => $snap) {
                 $html .= sprintf(
                     '<tr><td>%s</td><td>+%.3fs</td><td>%s</td><td>%s</td></tr>',

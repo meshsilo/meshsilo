@@ -172,18 +172,18 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
 
                 <div class="filter-group">
-                    <label>From Date</label>
-                    <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($filters['date_from']) ?>">
+                    <label for="date_from">From Date</label>
+                    <input type="date" name="date_from" id="date_from" class="form-control" value="<?= htmlspecialchars($filters['date_from']) ?>">
                 </div>
 
                 <div class="filter-group">
-                    <label>To Date</label>
-                    <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($filters['date_to']) ?>">
+                    <label for="date_to">To Date</label>
+                    <input type="date" name="date_to" id="date_to" class="form-control" value="<?= htmlspecialchars($filters['date_to']) ?>">
                 </div>
 
                 <div class="filter-group">
-                    <label>Search</label>
-                    <input type="text" name="search" class="form-control" placeholder="Search events..." value="<?= htmlspecialchars($filters['search']) ?>">
+                    <label for="audit_search">Search</label>
+                    <input type="text" name="search" id="audit_search" class="form-control" placeholder="Search events..." value="<?= htmlspecialchars($filters['search']) ?>">
                 </div>
             </div>
 
@@ -291,13 +291,13 @@ require_once __DIR__ . '/../../includes/header.php';
             <input type="hidden" name="compliance_report" value="1">
 
             <div class="form-group">
-                <label>Start Date</label>
-                <input type="date" name="report_start" class="form-control" value="<?= date('Y-m-d', strtotime('-30 days')) ?>" required>
+                <label for="report_start">Start Date</label>
+                <input type="date" name="report_start" id="report_start" class="form-control" value="<?= date('Y-m-d', strtotime('-30 days')) ?>" required>
             </div>
 
             <div class="form-group">
-                <label>End Date</label>
-                <input type="date" name="report_end" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                <label for="report_end">End Date</label>
+                <input type="date" name="report_end" id="report_end" class="form-control" value="<?= date('Y-m-d') ?>" required>
             </div>
 
             <div class="form-group">
