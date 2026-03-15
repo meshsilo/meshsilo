@@ -103,7 +103,7 @@ $siteName = getSetting('site_name', 'MeshSilo');
 $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared Model';
 ?>
 <!DOCTYPE html>
-<function_calls lang="en" data-theme="<?= htmlspecialchars($_COOKIE['meshsilo_theme'] ?? 'dark') ?>">
+<html lang="en" data-theme="<?= htmlspecialchars($_COOKIE['meshsilo_theme'] ?? 'dark') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

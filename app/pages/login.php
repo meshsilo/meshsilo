@@ -96,7 +96,7 @@ require_once 'includes/header.php';
                 <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
-                <form class="auth-form" action="/login" method="post">
+                <form class="auth-form" action="<?= route('login') ?>" method="post">
                     <?= csrf_field() ?>
                     <div class="form-group">
                         <label for="username">Username or Email</label>
@@ -116,7 +116,7 @@ require_once 'includes/header.php';
                             <input type="checkbox" name="remember">
                             <span>Remember me</span>
                         </label>
-                        <a href="/forgot-password" class="form-link">Forgot password?</a>
+                        <a href="<?= route('forgot-password') ?>" class="form-link">Forgot password?</a>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-full">Log In</button>

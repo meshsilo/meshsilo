@@ -70,7 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken && $tokenData) {
     $newPassword = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
 
-    if (empty($newPassword)) {
+    if (!Csrf::validate()) {
+        $error = 'Security validation failed. Please try again.';
+    } elseif (empty($newPassword)) {
         $error = 'Please enter a new password.';
     } elseif (strlen($newPassword) < 8) {
         $error = 'Password must be at least 8 characters.';
@@ -135,10 +137,11 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php if ($resetComplete): ?>
                 <div class="text-center">
                     <p>You can now log in with your new password.</p>
-                    <a href="/login" class="btn btn-primary" style="margin-top: 1rem;">Go to Login</a>
+                    <a href="<?= route('login') ?>" class="btn btn-primary" style="margin-top: 1rem;">Go to Login</a>
                 </div>
                 <?php elseif ($validToken): ?>
-                <form class="auth-form" action="/reset-password?token=<?= htmlspecialchars(urlencode($token)) ?>" method="post">
+                <form class="auth-form" action="<?= route('reset-password') ?>?token=<?= htmlspecialchars(urlencode($token)) ?>" method="post">
+                    <?= csrf_field() ?>
                     <?php if ($tokenData): ?>
                     <div class="form-group">
                         <label>Resetting password for</label>
@@ -171,12 +174,12 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php else: ?>
                 <div class="text-center">
                     <p>Unable to reset password with this link.</p>
-                    <a href="/forgot-password" class="btn btn-secondary" style="margin-top: 1rem;">Request New Reset Link</a>
+                    <a href="<?= route('forgot-password') ?>" class="btn btn-secondary" style="margin-top: 1rem;">Request New Reset Link</a>
                 </div>
                 <?php endif; ?>
 
                 <div class="auth-footer">
-                    <a href="/login" class="form-link">&larr; Back to Login</a>
+                    <a href="<?= route('login') ?>" class="form-link">&larr; Back to Login</a>
                 </div>
             </div>
         </div>

@@ -48,7 +48,7 @@ require_once 'includes/header.php';
                 <a href="<?= route('category.show', ['id' => $category['id']]) ?>" class="category-card-large" tabindex="0">
                     <div class="category-icon"><?= $category['icon'] ?></div>
                     <h2 class="category-name"><?= htmlspecialchars($category['name']) ?></h2>
-                    <p class="category-count"><?= $category['count'] ?> models</p>
+                    <p class="category-count"><?= $category['count'] ?> model<?= $category['count'] !== 1 ? 's' : '' ?></p>
                 </a>
                 <?php endforeach; ?>
             </div>

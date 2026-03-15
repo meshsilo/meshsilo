@@ -38,7 +38,7 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="categories-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                     <?php foreach ($tags as $tag): ?>
-                    <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="category-card" style="border-left: 4px solid <?= htmlspecialchars($tag['color']) ?>;">
+                    <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="category-card" tabindex="0" style="border-left: 4px solid <?= htmlspecialchars($tag['color']) ?>;">
                         <span class="category-name"><?= htmlspecialchars($tag['name']) ?></span>
                         <span class="category-count"><?= $tag['model_count'] ?> model<?= $tag['model_count'] !== 1 ? 's' : '' ?></span>
                     </a>
