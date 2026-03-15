@@ -583,7 +583,7 @@ require_once 'includes/header.php';
             <?php elseif ($view === 'list'): ?>
                 <div class="models-list">
                     <?php foreach ($models as $model): ?>
-                    <article class="model-list-item <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)" tabindex="0" role="link" onkeydown="if(event.key==='Enter')handleModelCardClick(event,<?= $model['id'] ?>)">
+                    <article class="model-list-item <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')handleModelCardClick(event,<?= $model['id'] ?>)">
                         <?php if (isLoggedIn()): ?>
                         <label class="model-list-checkbox" onclick="event.stopPropagation()">
                             <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()">
@@ -635,7 +635,7 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="models-grid">
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)" tabindex="0" role="link" onkeydown="if(event.key==='Enter')handleModelCardClick(event,<?= $model['id'] ?>)">
+                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')handleModelCardClick(event,<?= $model['id'] ?>)">
                         <div class="model-thumbnail"
                             <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? $model['file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"

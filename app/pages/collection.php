@@ -79,7 +79,7 @@ require_once 'includes/header.php';
 
             <div class="models-grid">
                 <?php foreach ($models as $model): ?>
-                <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'" tabindex="0" role="link" onkeydown="if(event.key==='Enter')this.click()">
+                <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')this.click()">
                     <div class="model-thumbnail"
                         <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path'])): ?>
                         data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
