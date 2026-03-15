@@ -617,7 +617,7 @@ require_once 'includes/header.php';
                 <div class="model-parts">
                     <div class="parts-header">
                         <?php if (count($groupedParts) > 1): ?>
-                        <span class="collapse-all-toggle" onclick="toggleCollapseAllGroups(this)" title="Collapse/expand all groups">&#9660;</span>
+                        <button type="button" class="collapse-all-toggle" onclick="toggleCollapseAllGroups(this)" title="Collapse/expand all groups" aria-label="Collapse/expand all groups">&#9660;</button>
                         <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
                         <input type="checkbox" class="select-all-checkbox" id="select-all-parts" onclick="toggleSelectAllParts(this)" title="Select all parts">
