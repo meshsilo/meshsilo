@@ -239,7 +239,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>"<?= $i === $page ? ' aria-current="page"' : '' ?>><?= $i ?></a>
                 <?php endfor; ?>
 
                 <?php if ($endPage < $totalPages): ?>

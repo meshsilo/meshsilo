@@ -460,7 +460,14 @@ document.getElementById('test-btn').addEventListener('click', function() {
         resultDiv.innerHTML = html;
         resultDiv.className = 'success';
     } else {
-        resultDiv.innerHTML = '<p class="route-test-error">&#10007; No matching route found for <code>' + method + ' ' + url + '</code></p>';
+        var errorP = document.createElement('p');
+        errorP.className = 'route-test-error';
+        var errorCode = document.createElement('code');
+        errorCode.textContent = method + ' ' + url;
+        errorP.innerHTML = '&#10007; No matching route found for ';
+        errorP.appendChild(errorCode);
+        resultDiv.innerHTML = '';
+        resultDiv.appendChild(errorP);
         resultDiv.className = 'error';
     }
 

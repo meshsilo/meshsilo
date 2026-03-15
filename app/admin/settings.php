@@ -614,9 +614,13 @@ if (testEmailBtn) {
                 resultDiv.appendChild(errorDiv);
             }
         } catch (error) {
-            resultDiv.innerHTML = '<div class="alert alert-error" style="margin: 0;">' +
-                '<strong>Error:</strong> ' + error.message +
-                '</div>';
+            var catchDiv = document.createElement('div');
+            catchDiv.className = 'alert alert-error';
+            catchDiv.style.margin = '0';
+            catchDiv.innerHTML = '<strong>Error:</strong> ';
+            catchDiv.appendChild(document.createTextNode(error.message));
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(catchDiv);
         }
 
         btn.disabled = false;
