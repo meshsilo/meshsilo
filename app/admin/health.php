@@ -787,7 +787,7 @@ function getStatusMessage($services) {
 
 .metric-bar {
     height: 6px;
-    background: var(--bg-color);
+    background: var(--color-bg);
     border-radius: 3px;
     overflow: hidden;
     margin-bottom: 0.5rem;
@@ -810,7 +810,7 @@ function getStatusMessage($services) {
 
 .metric-detail {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .section {
@@ -832,7 +832,7 @@ function getStatusMessage($services) {
     background: var(--card-bg);
     padding: 1rem;
     border-radius: 8px;
-    border-left: 4px solid var(--border-color);
+    border-left: 4px solid var(--color-border);
 }
 
 .service-card.status-healthy { border-left-color: var(--color-success); }
@@ -866,12 +866,12 @@ function getStatusMessage($services) {
 
 .service-message {
     font-size: 0.875rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .service-latency {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     margin-top: 0.25rem;
 }
 
@@ -898,11 +898,11 @@ function getStatusMessage($services) {
 
 .info-table td {
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .info-table td:first-child {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .info-table td:last-child {

@@ -210,7 +210,7 @@ require_once 'includes/header.php';
 }
 
 .version-count {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .version-timeline {
@@ -237,34 +237,34 @@ require_once 'includes/header.php';
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: var(--border-color);
-    border: 3px solid var(--bg-color);
+    background: var(--color-border);
+    border: 3px solid var(--color-bg);
     z-index: 1;
 }
 
 .version-dot.current {
-    background: var(--accent-color);
-    box-shadow: 0 0 0 4px rgba(var(--accent-color-rgb), 0.2);
+    background: var(--color-primary);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .version-line {
     width: 2px;
     flex: 1;
-    background: var(--border-color);
+    background: var(--color-border);
     min-height: 20px;
 }
 
 .version-content {
     flex: 1;
     background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 1.25rem;
     margin-bottom: 1rem;
 }
 
 .version-item.current .version-content {
-    border-color: var(--accent-color);
+    border-color: var(--color-primary);
 }
 
 .version-header {
@@ -286,7 +286,7 @@ require_once 'includes/header.php';
 }
 
 .version-meta {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
 }
 
@@ -295,7 +295,7 @@ require_once 'includes/header.php';
 }
 
 .version-changelog {
-    background: var(--bg-color);
+    background: var(--color-bg);
     padding: 0.75rem 1rem;
     border-radius: 4px;
     margin-bottom: 0.75rem;
@@ -316,7 +316,7 @@ require_once 'includes/header.php';
 }
 
 .detail-label {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .detail-value.hash {
@@ -384,7 +384,7 @@ require_once 'includes/header.php';
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .modal-header h3 {
@@ -396,7 +396,7 @@ require_once 'includes/header.php';
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .modal-body {
@@ -408,11 +408,11 @@ require_once 'includes/header.php';
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1rem 1.5rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .text-muted {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
 }
 
@@ -423,7 +423,7 @@ require_once 'includes/header.php';
 
 .empty-state p {
     margin-bottom: 1rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 @media (max-width: 768px) {

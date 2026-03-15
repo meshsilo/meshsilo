@@ -34,7 +34,7 @@
             <?php endif; ?>
         </div>
         <?php if (getenv('MESHSILO_ENABLE_QUERY_STATS') === 'true') : ?>
-        <div class="query-stats" style="padding: 10px; margin-top: 10px; background: var(--background-secondary); border-top: 1px solid var(--border-color); font-size: 0.85em; color: var(--text-secondary); text-align: center;">
+        <div class="query-stats" style="padding: 10px; margin-top: 10px; background: var(--color-surface); border-top: 1px solid var(--color-border); font-size: 0.85em; color: var(--color-text-muted); text-align: center;">
             <strong>Query Stats:</strong>
             <?= Database::getQueryCount() ?> queries in <?= number_format(Database::getQueryTime() * 1000, 2) ?>ms |
             Peak Memory: <?= number_format(memory_get_peak_usage(true) / 1024 / 1024, 2) ?>MB |

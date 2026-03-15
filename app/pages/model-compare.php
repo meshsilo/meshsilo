@@ -361,7 +361,7 @@ require_once 'includes/header.php';
     font-weight: 600;
     font-size: 1rem;
     padding: 0.25rem 0.5rem;
-    background: var(--accent-color);
+    background: var(--color-primary);
     color: white;
     border-radius: 4px;
 }

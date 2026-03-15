@@ -277,8 +277,8 @@ require_once __DIR__ . '/../../includes/header.php';
     padding: 2rem;
 }
 .settings-section {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
@@ -287,7 +287,7 @@ require_once __DIR__ . '/../../includes/header.php';
     margin-top: 0;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 .settings-section h3 {
     margin-top: 1.5rem;
@@ -302,7 +302,7 @@ require_once __DIR__ . '/../../includes/header.php';
 }
 .form-hint {
     font-size: 0.8rem;
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     margin-top: 0.25rem;
 }
 .group-list {
@@ -320,7 +320,7 @@ require_once __DIR__ . '/../../includes/header.php';
     font-weight: 500;
 }
 .group-desc {
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     font-size: 0.9rem;
 }
 .permission-list {
@@ -341,14 +341,14 @@ require_once __DIR__ . '/../../includes/header.php';
     color: var(--success);
 }
 .permission-item.no-permission {
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
     opacity: 0.6;
 }
 .permission-status {
     font-weight: bold;
 }
 .text-muted {
-    color: var(--text-secondary);
+    color: var(--color-text-muted);
 }
 </style>
 

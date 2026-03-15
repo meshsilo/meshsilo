@@ -282,15 +282,15 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         }
 
         .header p {
-            color: var(--text-secondary);
+            color: var(--color-text-muted);
         }
 
         .card {
-            background: var(--bg-secondary);
+            background: var(--color-surface);
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--color-border);
         }
 
         .card-header {
@@ -347,7 +347,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
 
         .stat-label {
             font-size: 0.75rem;
-            color: var(--text-muted);
+            color: var(--color-text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-top: 0.25rem;
@@ -369,7 +369,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
             padding: 0.75rem;
             background: var(--bg-tertiary);
             border-radius: 6px;
-            border-left: 3px solid var(--border-color);
+            border-left: 3px solid var(--color-border);
         }
 
         .migration-item.applied {
@@ -395,7 +395,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
 
         .migration-desc {
             font-size: 0.75rem;
-            color: var(--text-muted);
+            color: var(--color-text-muted);
         }
 
         .alert {
@@ -436,7 +436,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 0;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--color-border);
             font-size: 0.875rem;
         }
 
@@ -449,7 +449,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
 
         .result-error {
             font-size: 0.75rem;
-            color: var(--text-muted);
+            color: var(--color-text-muted);
             margin-left: 1.5rem;
         }
 
@@ -488,7 +488,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         }
 
         .btn-secondary:hover {
-            background: var(--border-color);
+            background: var(--color-border);
         }
 
         .actions {
@@ -501,7 +501,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         .footer {
             margin-top: 2rem;
             text-align: center;
-            color: var(--text-muted);
+            color: var(--color-text-muted);
             font-size: 0.75rem;
         }
 
@@ -625,7 +625,7 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
 
             <div style="margin-bottom: 1.5rem;">
                 <h3 style="font-size: 0.875rem; margin-bottom: 0.5rem;">Rate Limits Table</h3>
-                <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;">
+                <p style="color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 0.75rem;">
                     If you encounter "Unknown column 'expires_at'" or similar rate limiting errors, use this to fix the table schema.
                 </p>
                 <form method="post" style="display: inline;" data-confirm="This will drop and recreate the rate_limits table. Continue?">

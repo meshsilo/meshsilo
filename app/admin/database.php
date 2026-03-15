@@ -352,7 +352,7 @@ php cli/migrate.php --dry-run
     padding: 0.75rem;
     background: var(--bg-tertiary);
     border-radius: 6px;
-    border-left: 3px solid var(--border-color);
+    border-left: 3px solid var(--color-border);
 }
 
 .migration-item.applied {
@@ -382,7 +382,7 @@ php cli/migrate.php --dry-run
 }
 
 .migration-desc {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
     margin-left: auto;
 }
@@ -407,7 +407,7 @@ php cli/migrate.php --dry-run
 
 .migration-results li {
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .migration-results li:last-child {
@@ -443,12 +443,12 @@ php cli/migrate.php --dry-run
 .data-table td {
     padding: 0.75rem;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .data-table th {
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     width: 200px;
 }
 

@@ -463,7 +463,7 @@ function parseUserAgent($ua) {
 }
 
 .stat-label {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
 }
 
@@ -519,16 +519,16 @@ function parseUserAgent($ua) {
 .form-control {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     border-radius: 4px;
-    background: var(--bg-color);
+    background: var(--color-bg);
     color: var(--text-color);
 }
 
 .form-help {
     display: block;
     margin-top: 0.25rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.8rem;
 }
 
@@ -541,7 +541,7 @@ function parseUserAgent($ua) {
 
 .empty-row {
     text-align: center;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     padding: 2rem;
 }
 

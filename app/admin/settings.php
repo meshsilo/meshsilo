@@ -392,7 +392,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
 
                         <div id="smtp-settings" style="<?= ($settings['mail_driver'] ?? 'mail') !== 'smtp' ? 'display: none;' : '' ?>">
-                            <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">SMTP Configuration</h3>
+                            <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--color-text-muted);">SMTP Configuration</h3>
 
                             <div class="form-row-grid">
                                 <div class="form-group">
@@ -446,7 +446,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             </details>
                         </div>
 
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-muted);">Sender Information</h3>
+                        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--color-text-muted);">Sender Information</h3>
 
                         <div class="form-row-grid">
                             <div class="form-group">

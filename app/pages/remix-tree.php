@@ -351,7 +351,7 @@ require_once 'includes/header.php';
 }
 
 .remix-info {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .tree-container {
@@ -386,16 +386,16 @@ require_once 'includes/header.php';
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: var(--bg-color);
-    border: 2px solid var(--border-color);
+    background: var(--color-bg);
+    border: 2px solid var(--color-border);
     border-radius: 8px;
     margin: 0.25rem 0;
     position: relative;
 }
 
 .tree-node.current {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.2);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .tree-node.remix {
@@ -421,9 +421,9 @@ require_once 'includes/header.php';
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--border-color);
+    background: var(--color-border);
     font-size: 1.5rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .node-info {
@@ -437,7 +437,7 @@ require_once 'includes/header.php';
 
 .node-author {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .node-external {
@@ -449,7 +449,7 @@ require_once 'includes/header.php';
     position: absolute;
     top: -8px;
     right: -8px;
-    background: var(--accent-color);
+    background: var(--color-primary);
     color: white;
     font-size: 0.7rem;
     padding: 0.2rem 0.4rem;
@@ -459,14 +459,14 @@ require_once 'includes/header.php';
 .tree-connector {
     width: 2px;
     height: 20px;
-    background: var(--border-color);
+    background: var(--color-border);
     margin-left: 24px;
 }
 
 .tree-children {
     margin-left: 2rem;
     padding-left: 1rem;
-    border-left: 2px solid var(--border-color);
+    border-left: 2px solid var(--color-border);
 }
 
 .tree-branch {
@@ -480,13 +480,13 @@ require_once 'includes/header.php';
     top: 50%;
     width: 1rem;
     height: 2px;
-    background: var(--border-color);
+    background: var(--color-border);
 }
 
 .empty-tree {
     text-align: center;
     padding: 3rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .related-remixes {
@@ -496,7 +496,7 @@ require_once 'includes/header.php';
 }
 
 .related-item {
-    background: var(--bg-color);
+    background: var(--color-bg);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -517,9 +517,9 @@ require_once 'includes/header.php';
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--border-color);
+    background: var(--color-border);
     font-size: 2rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .related-info {
@@ -535,13 +535,13 @@ require_once 'includes/header.php';
 .related-author {
     display: block;
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .related-notes {
     display: block;
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-style: italic;
     margin-top: 0.25rem;
 }
@@ -574,7 +574,7 @@ require_once 'includes/header.php';
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .modal-header h3 {
@@ -586,7 +586,7 @@ require_once 'includes/header.php';
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .modal-body {
@@ -598,13 +598,13 @@ require_once 'includes/header.php';
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1rem 1.5rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .search-results {
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     margin-top: 0.5rem;
     display: none;
@@ -620,7 +620,7 @@ require_once 'includes/header.php';
     gap: 0.75rem;
     padding: 0.5rem;
     cursor: pointer;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .search-result-item:last-child {
@@ -628,11 +628,11 @@ require_once 'includes/header.php';
 }
 
 .search-result-item:hover {
-    background: var(--bg-color);
+    background: var(--color-bg);
 }
 
 .search-result-item.selected {
-    background: var(--accent-color);
+    background: var(--color-primary);
     color: white;
 }
 
