@@ -174,7 +174,7 @@ require_once 'includes/header.php';
                     <div class="tree-node <?= $isCurrent ? 'current' : '' ?> <?= $isRemix ? 'remix' : 'original' ?>">
                         <a href="<?= route('model.show', ['id' => $node['id']]) ?>" class="node-link">
                             <?php if ($node['thumbnail']): ?>
-                            <img src="<?= basePath('assets/' . $node['thumbnail']) ?>" alt="" class="node-thumbnail">
+                            <img src="<?= basePath('assets/' . $node['thumbnail']) ?>" alt="" class="node-thumbnail" loading="lazy">
                             <?php else: ?>
                             <div class="node-thumbnail placeholder">&#9653;</div>
                             <?php endif; ?>
@@ -276,7 +276,7 @@ require_once 'includes/header.php';
                 <div class="related-item">
                     <a href="<?= route('model.show', ['id' => $related['related_model_id']]) ?>">
                         <?php if ($related['thumbnail']): ?>
-                        <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="" class="related-thumbnail">
+                        <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="" class="related-thumbnail" loading="lazy">
                         <?php else: ?>
                         <div class="related-thumbnail placeholder">&#9653;</div>
                         <?php endif; ?>
@@ -754,7 +754,7 @@ document.getElementById('save-remix-btn').addEventListener('click', async functi
     this.textContent = 'Saving...';
 
     try {
-        const response = await fetch('<?= basePath('actions/related-models.php') ?>', {
+        const response = await fetch('/actions/related-models', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

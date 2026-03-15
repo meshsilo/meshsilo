@@ -861,7 +861,7 @@ require_once 'includes/header.php';
                 if (tagName) formData.append('tag_name', tagName);
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -898,7 +898,7 @@ require_once 'includes/header.php';
                 formData.append('category_id', categoryId);
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -931,7 +931,7 @@ require_once 'includes/header.php';
                 formData.append('archive', '1');
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -962,7 +962,7 @@ require_once 'includes/header.php';
                 formData.append('creator', creator);
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -993,7 +993,7 @@ require_once 'includes/header.php';
                 formData.append('collection', collection);
                 ids.forEach(id => formData.append('model_ids[]', id));
 
-                const response = await fetch('actions/batch-apply.php', { method: 'POST', body: formData });
+                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {

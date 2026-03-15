@@ -620,7 +620,7 @@ require_once 'includes/header.php';
                     <div class="advanced-content">
                         <div class="form-group">
                             <label for="model-creator">Creator</label>
-                            <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
+                            <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" autocomplete="name" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
                         </div>
 
                         <div class="form-group">

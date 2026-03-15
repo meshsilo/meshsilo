@@ -188,7 +188,7 @@ include __DIR__ . '/../../includes/header.php';
                             <input type="checkbox" name="hsts_preload" <?= $config['hsts']['preload'] ? 'checked' : '' ?>>
                             Enable Preload
                         </label>
-                        <p class="help-text">Submit to <a href="https://hstspreload.org" target="_blank">hstspreload.org</a> after enabling</p>
+                        <p class="help-text">Submit to <a href="https://hstspreload.org" target="_blank" rel="noopener">hstspreload.org</a> after enabling</p>
                     </div>
                 </div>
             </div>
