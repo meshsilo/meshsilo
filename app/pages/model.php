@@ -314,7 +314,7 @@ require_once 'includes/header.php';
                         data-file-type="<?= htmlspecialchars($previewType) ?>"
                         <?php endif; ?>>
                         <?php if ($thumbnailUrl): ?>
-                        <img src="<?= htmlspecialchars($thumbnailUrl) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image">
+                        <img src="<?= htmlspecialchars($thumbnailUrl) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" fetchpriority="high">
                         <?php endif; ?>
                         <?php if ($model['part_count'] > 0): ?>
                         <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
