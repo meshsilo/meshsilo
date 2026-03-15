@@ -272,7 +272,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h3>Event Details</h3>
-            <button type="button" class="modal-close" onclick="closeDetailsModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close" onclick="closeDetailsModal()">&times;</button>
         </div>
         <div class="modal-body" id="details-content">
             Loading...
@@ -285,7 +285,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3>Generate Compliance Report</h3>
-            <button type="button" class="modal-close" onclick="closeComplianceModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close" onclick="closeComplianceModal()">&times;</button>
         </div>
         <form method="GET" class="modal-body">
             <input type="hidden" name="compliance_report" value="1">

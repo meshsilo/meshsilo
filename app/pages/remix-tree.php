@@ -303,7 +303,7 @@ require_once 'includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3>Mark as Remix</h3>
-            <button type="button" class="modal-close" onclick="closeRemixModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close" onclick="closeRemixModal()">&times;</button>
         </div>
         <div class="modal-body">
             <div class="form-group">

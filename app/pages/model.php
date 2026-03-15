@@ -776,7 +776,7 @@ require_once 'includes/header.php';
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3 id="preview-part-name">Part Preview</h3>
-                    <button type="button" class="modal-close" onclick="closePartPreview()">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close" onclick="closePartPreview()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div id="part-preview-container" style="width: 100%; height: 400px;"></div>
@@ -790,7 +790,7 @@ require_once 'includes/header.php';
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3>Share "<?= htmlspecialchars($model['name']) ?>"</h3>
-                    <button type="button" class="modal-close" onclick="closeShareModal()">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close" onclick="closeShareModal()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <!-- Create New Share Link -->
@@ -838,11 +838,11 @@ require_once 'includes/header.php';
 
         <?php if (canEdit() && !empty($parts)): ?>
         <!-- Create Folder Modal -->
-        <div id="create-folder-modal" class="modal-overlay" style="display: none;">
+        <div id="create-folder-modal" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3>Create Folder</h3>
-                    <button type="button" class="modal-close" onclick="closeCreateFolderModal()">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close" onclick="closeCreateFolderModal()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <form id="create-folder-form" onsubmit="submitCreateFolder(event)">
@@ -857,11 +857,11 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Move to Folder Modal -->
-        <div id="move-folder-modal" class="modal-overlay" style="display: none;">
+        <div id="move-folder-modal" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3>Move to Folder</h3>
-                    <button type="button" class="modal-close" onclick="closeMoveFolderModal()">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close" onclick="closeMoveFolderModal()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div id="move-folder-list" class="folder-picker">
@@ -887,11 +887,11 @@ require_once 'includes/header.php';
 
         <?php if ($canManageVersions): ?>
         <!-- Upload New Version Modal -->
-        <div id="upload-version-modal" class="modal-overlay" style="display: none;">
+        <div id="upload-version-modal" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3>Upload New Version</h3>
-                    <button type="button" class="modal-close" onclick="closeUploadVersionModal()">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close" onclick="closeUploadVersionModal()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <form id="upload-version-form" onsubmit="submitUploadVersion(event)">
@@ -910,11 +910,11 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Batch Rename Modal -->
-        <div id="batch-rename-modal" class="modal-overlay" style="display: none;">
+        <div id="batch-rename-modal" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3>Batch Rename Parts</h3>
-                    <button type="button" class="modal-close" onclick="closeBatchRenameModal()">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close" onclick="closeBatchRenameModal()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
