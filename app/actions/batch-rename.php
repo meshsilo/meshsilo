@@ -27,6 +27,12 @@ if (!$input) {
     $input = $_POST;
 }
 
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Security validation failed']);
+    exit;
+}
+
 $parentId = (int)($input['parent_id'] ?? 0);
 $partIds = $input['part_ids'] ?? [];
 $pattern = trim($input['pattern'] ?? '');

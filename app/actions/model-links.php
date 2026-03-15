@@ -29,6 +29,13 @@ if (!$input) {
 }
 
 $action = $input['action'] ?? '';
+
+if (in_array($action, ['add', 'remove']) && !Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Security validation failed']);
+    exit;
+}
+
 $db = getDB();
 
 switch ($action) {

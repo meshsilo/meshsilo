@@ -21,6 +21,12 @@ if (!$input) {
     $input = $_POST;
 }
 
+if (!Csrf::check()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Security validation failed']);
+    exit;
+}
+
 $user = getCurrentUser();
 $modelId = isset($input['model_id']) ? (int)$input['model_id'] : 0;
 $versionNumber = isset($input['version_number']) ? (int)$input['version_number'] : 0;
