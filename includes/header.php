@@ -113,9 +113,9 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 document.body.appendChild(overlay);
                 overlay.querySelector('#confirm-cancel').focus();
                 trapFocus(overlay);
-                overlay.querySelector('#confirm-ok').onclick = function() { overlay.remove(); resolve(true); };
-                overlay.querySelector('#confirm-cancel').onclick = function() { overlay.remove(); resolve(false); };
-                overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(false); } });
+                overlay.querySelector('#confirm-ok').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(true); };
+                overlay.querySelector('#confirm-cancel').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(false); };
+                overlay.addEventListener('click', function(e) { if (e.target === overlay) { releaseFocus(overlay); overlay.remove(); resolve(false); } });
             });
         }
 
@@ -150,11 +150,11 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
                 trapFocus(overlay);
                 input.focus();
                 input.select();
-                function submit() { var v = input.value; overlay.remove(); resolve(v); }
+                function submit() { var v = input.value; releaseFocus(overlay); overlay.remove(); resolve(v); }
                 overlay.querySelector('#prompt-ok').onclick = submit;
-                overlay.querySelector('#prompt-cancel').onclick = function() { overlay.remove(); resolve(null); };
-                input.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { overlay.remove(); resolve(null); } });
-                overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+                overlay.querySelector('#prompt-cancel').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(null); };
+                input.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { releaseFocus(overlay); overlay.remove(); resolve(null); } });
+                overlay.addEventListener('click', function(e) { if (e.target === overlay) { releaseFocus(overlay); overlay.remove(); resolve(null); } });
             });
         }
 

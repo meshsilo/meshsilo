@@ -260,7 +260,7 @@ require_once 'includes/header.php';
             </div>
             <div class="recently-viewed-grid">
                 <?php foreach ($recentlyViewed as $rv): ?>
-                <article class="model-card recently-viewed-card" onclick="window.location='<?= route('model.show', ['id' => $rv['id']]) ?>'">
+                <article class="model-card recently-viewed-card" onclick="window.location='<?= route('model.show', ['id' => $rv['id']]) ?>'" tabindex="0" role="link" aria-label="<?= htmlspecialchars($rv['name']) ?>" onkeydown="if(event.key==='Enter')this.click()">
                     <div class="model-thumbnail"
                         <?php if (empty($rv['thumbnail_path']) && !empty($rv['preview_path']) && ($rv['preview_file_size'] ?? $rv['file_size'] ?? 0) < 5242880): ?>
                         data-model-url="<?= htmlspecialchars($rv['preview_path']) ?>"
@@ -289,7 +289,7 @@ require_once 'includes/header.php';
                     <p class="text-muted">No models yet. <a href="<?= route('upload') ?>">Upload your first model!</a></p>
                 <?php else: ?>
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'">
+                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')this.click()">
                         <div class="model-thumbnail"
                             <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? $model['file_size'] ?? 0) < 5242880): ?>
                             data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
