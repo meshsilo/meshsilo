@@ -52,7 +52,7 @@ require_once 'includes/header.php';
             </div>
 
             <?php if (empty($favorites)): ?>
-                <p class="text-muted" style="text-align: center; padding: 3rem;">
+                <p class="text-muted empty-state-msg">
                     You haven't favorited any models yet.<br>
                     Click the heart icon on any model to add it to your favorites.
                 </p>
@@ -66,7 +66,8 @@ require_once 'includes/header.php';
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
                             <?php if (!empty($model['thumbnail_path'])): ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
+                            <?php $thumbSrcset = function_exists('image_srcset') ? image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]) : ''; ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async"<?= $thumbSrcset ? ' srcset="' . htmlspecialchars($thumbSrcset) . '" sizes="(min-width: 280px) 280px, 100vw"' : '' ?>>
                             <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>

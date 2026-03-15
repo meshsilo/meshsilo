@@ -62,6 +62,9 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $models[] = $row;
 }
 
+// Per-page meta description
+$metaDescription = mb_substr($category['name'] . ' — ' . count($models) . ' 3D models in this category on ' . SITE_NAME, 0, 160);
+
 require_once 'includes/header.php';
 ?>
 
@@ -86,7 +89,8 @@ require_once 'includes/header.php';
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
                             <?php if (!empty($model['thumbnail_path'])): ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
+                            <?php $thumbSrcset = function_exists('image_srcset') ? image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]) : ''; ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async"<?= $thumbSrcset ? ' srcset="' . htmlspecialchars($thumbSrcset) . '" sizes="(min-width: 280px) 280px, 100vw"' : '' ?>>
                             <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>

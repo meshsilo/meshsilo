@@ -379,6 +379,22 @@ function buildUrlWithoutTag($tagId) {
     return '?' . http_build_query($current);
 }
 
+// Per-page meta description based on active filters
+if ($search !== '') {
+    $metaDescription = 'Search results for "' . $search . '" — ' . number_format($totalModels) . ' 3D models on ' . SITE_NAME;
+    $pageTitle = 'Search: ' . $search;
+} elseif ($activeCategory) {
+    $metaDescription = $activeCategory . ' category — ' . number_format($totalModels) . ' 3D models on ' . SITE_NAME;
+} elseif (!empty($activeTags)) {
+    $tagNames = implode(', ', array_column($activeTags, 'name'));
+    $metaDescription = 'Models tagged ' . $tagNames . ' — ' . number_format($totalModels) . ' results on ' . SITE_NAME;
+} elseif ($collection !== '') {
+    $metaDescription = $collection . ' collection — ' . number_format($totalModels) . ' 3D models on ' . SITE_NAME;
+} else {
+    $metaDescription = 'Browse ' . number_format($totalModels) . ' 3D models — STL, 3MF, OBJ and more on ' . SITE_NAME;
+}
+$metaDescription = mb_substr($metaDescription, 0, 160);
+
 require_once 'includes/header.php';
 ?>
 
@@ -579,7 +595,7 @@ require_once 'includes/header.php';
             </div>
 
             <?php if (empty($models)): ?>
-                <p class="text-muted" style="text-align: center; padding: 3rem;">No models found. <?php if (!$search && !$categoryId && empty($tagIds) && $fileType === ''): ?><a href="<?= route('upload') ?>">Upload your first model!</a><?php endif; ?></p>
+                <p class="text-muted empty-state-msg">No models found. <?php if (!$search && !$categoryId && empty($tagIds) && $fileType === ''): ?><a href="<?= route('upload') ?>">Upload your first model!</a><?php endif; ?></p>
             <?php elseif ($view === 'list'): ?>
                 <div class="models-list">
                     <?php foreach ($models as $model): ?>
@@ -595,7 +611,8 @@ require_once 'includes/header.php';
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
                             <?php if (!empty($model['thumbnail_path'])): ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
+                            <?php $thumbSrcset = function_exists('image_srcset') ? image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]) : ''; ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async"<?= $thumbSrcset ? ' srcset="' . htmlspecialchars($thumbSrcset) . '" sizes="(min-width: 280px) 280px, 100vw"' : '' ?>>
                             <?php endif; ?>
                                                     </div>
                         <div class="model-list-info">
@@ -614,7 +631,7 @@ require_once 'includes/header.php';
                                 <?php endif; ?>
                             </div>
                             <?php if (isFeatureEnabled('tags') && !empty($model['tags'])): ?>
-                            <div class="model-tags" style="margin-top: 0.5rem; margin-bottom: 0;">
+                            <div class="model-tags mt-2 mb-0">
                                 <?php foreach ($model['tags'] as $tag): ?>
                                 <span class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>"><?= htmlspecialchars($tag['name']) ?></span>
                                 <?php endforeach; ?>
@@ -642,7 +659,8 @@ require_once 'includes/header.php';
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
                             <?php if (!empty($model['thumbnail_path'])): ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
+                            <?php $thumbSrcset = function_exists('image_srcset') ? image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]) : ''; ?>
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async"<?= $thumbSrcset ? ' srcset="' . htmlspecialchars($thumbSrcset) . '" sizes="(min-width: 280px) 280px, 100vw"' : '' ?>>
                             <?php endif; ?>
                             <?php if (isLoggedIn()): ?>
                             <label class="model-select-checkbox" onclick="event.stopPropagation()">
@@ -663,7 +681,7 @@ require_once 'includes/header.php';
                             <time class="model-date" datetime="<?= htmlspecialchars(date('c', strtotime($model['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></time>
                             <?php endif; ?>
                             <?php if (isFeatureEnabled('download_tracking') && $model['download_count'] > 0): ?>
-                            <p class="download-count" style="margin-top: 0.25rem;"><?= number_format($model['download_count']) ?> downloads</p>
+                            <p class="download-count mt-1"><?= number_format($model['download_count']) ?> downloads</p>
                             <?php endif; ?>
                         </div>
                         <?php if (class_exists('PluginManager')): ?>

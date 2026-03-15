@@ -108,6 +108,40 @@ $pageTitle = $model ? htmlspecialchars($model['name']) . ' - Shared' : 'Shared M
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $pageTitle ?> - <?= htmlspecialchars($siteName) ?></title>
+<?php
+// Build absolute base URL for OG tags
+$_shareScheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+$_shareBase = $_shareScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+$_shareUrl = $_shareBase . ($_SERVER['REQUEST_URI'] ?? '/');
+$_shareTitle = $model ? htmlspecialchars($model['name']) : 'Shared Model';
+if ($model && !empty($model['description'])) {
+    if (!class_exists('Markdown')) {
+        require_once __DIR__ . '/../../includes/Markdown.php';
+    }
+    $_shareDesc = mb_substr(trim(strip_tags(Markdown::render($model['description']))), 0, 160);
+}
+if (empty($_shareDesc)) {
+    $_shareDesc = 'Shared 3D model on ' . $siteName;
+}
+$_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/assets/' . $model['thumbnail_path'] : null;
+?>
+    <meta name="description" content="<?= htmlspecialchars($_shareDesc) ?>">
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="<?= htmlspecialchars($siteName) ?>">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="<?= htmlspecialchars($_shareTitle) ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($_shareDesc) ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($_shareUrl) ?>">
+<?php if ($_shareImage): ?>
+    <meta property="og:image" content="<?= htmlspecialchars($_shareImage) ?>">
+<?php endif; ?>
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="<?= $_shareImage ? 'summary_large_image' : 'summary' ?>">
+    <meta name="twitter:title" content="<?= htmlspecialchars($_shareTitle) ?>">
+    <meta name="twitter:description" content="<?= htmlspecialchars($_shareDesc) ?>">
+<?php if ($_shareImage): ?>
+    <meta name="twitter:image" content="<?= htmlspecialchars($_shareImage) ?>">
+<?php endif; ?>
     <link rel="stylesheet" href="css/style.css">
     <style>
         .share-container {

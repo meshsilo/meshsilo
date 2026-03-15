@@ -21,8 +21,34 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <meta name="color-scheme" content="light dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="<?= htmlspecialchars(getSetting('site_description', 'Digital Asset Manager for 3D print files')) ?>">
+    <meta name="description" content="<?= htmlspecialchars($metaDescription ?? getSetting('site_description', 'Digital Asset Manager for 3D print files')) ?>">
     <title><?= htmlspecialchars($pageTitle ?? SITE_NAME) ?> - <?= htmlspecialchars(SITE_NAME) ?></title>
+<?php
+// Build absolute base URL for OG tags
+$_ogScheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
+$_ogBase = $_ogScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+$_ogUrl = $_ogBase . ($_SERVER['REQUEST_URI'] ?? '/');
+$_ogTitle = $pageTitle ?? SITE_NAME;
+$_ogDescription = $metaDescription ?? getSetting('site_description', 'Digital Asset Manager for 3D print files');
+$_ogType = $ogType ?? 'website';
+$_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
+?>
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="<?= htmlspecialchars(SITE_NAME) ?>">
+    <meta property="og:type" content="<?= htmlspecialchars($_ogType) ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($_ogTitle) ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($_ogDescription) ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($_ogUrl) ?>">
+<?php if ($_ogImageAbsolute): ?>
+    <meta property="og:image" content="<?= htmlspecialchars($_ogImageAbsolute) ?>">
+<?php endif; ?>
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="<?= $_ogImageAbsolute ? 'summary_large_image' : 'summary' ?>">
+    <meta name="twitter:title" content="<?= htmlspecialchars($_ogTitle) ?>">
+    <meta name="twitter:description" content="<?= htmlspecialchars($_ogDescription) ?>">
+<?php if ($_ogImageAbsolute): ?>
+    <meta name="twitter:image" content="<?= htmlspecialchars($_ogImageAbsolute) ?>">
+<?php endif; ?>
     <link rel="manifest" href="<?= basePath('manifest.json') ?>">
     <link rel="icon" type="image/svg+xml" href="<?= basePath('images/icon.svg') ?>">
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">

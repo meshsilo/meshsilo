@@ -281,6 +281,20 @@ if (isset($_SESSION['success'])) {
     unset($_SESSION['error']);
 }
 
+// Per-page meta description and OG image
+if (!empty($model['description'])) {
+    $metaDescription = mb_substr(trim(strip_tags(Markdown::render($model['description']))), 0, 160);
+}
+if (empty($metaDescription)) {
+    $parts_label = $model['part_count'] > 0 ? ' — ' . $model['part_count'] . ' parts' : '';
+    $metaDescription = $model['name'] . $parts_label . ' — 3D model on ' . SITE_NAME;
+    $metaDescription = mb_substr($metaDescription, 0, 160);
+}
+if (!empty($model['thumbnail_path'])) {
+    $ogImage = '/assets/' . $model['thumbnail_path'];
+}
+$ogType = 'article';
+
 require_once 'includes/header.php';
 ?>
 
@@ -302,7 +316,7 @@ require_once 'includes/header.php';
             </nav>
 
             <?php if ($message): ?>
-            <div role="<?= $messageType === 'success' ? 'status' : 'alert' ?>" class="alert alert-<?= $messageType ?>" style="margin-bottom: 1.5rem;"><?= htmlspecialchars($message) ?></div>
+            <div role="<?= $messageType === 'success' ? 'status' : 'alert' ?>" class="alert alert-<?= $messageType ?> mb-4"><?= htmlspecialchars($message) ?></div>
             <?php endif; ?>
 
             <div class="model-detail">
@@ -322,10 +336,10 @@ require_once 'includes/header.php';
 
                     </div>
                     <div class="model-detail-info">
-                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;">
+                        <div class="flex-between">
                             <h1><?= htmlspecialchars($model['name']) ?></h1>
                             <?php if (isLoggedIn()): ?>
-                            <div style="display: flex; gap: 0.5rem;">
+                            <div class="flex-gap-sm">
                                 <?php if (class_exists('PluginManager')): ?>
                                 <?= PluginManager::applyFilter('model_header_actions', '', $model) ?>
                                 <?php endif; ?>
@@ -339,7 +353,7 @@ require_once 'includes/header.php';
                         </div>
 
                         <?php if (!empty($model['is_archived'])): ?>
-                        <span class="archived-badge" style="margin-bottom: 0.5rem;">Archived</span>
+                        <span class="archived-badge mb-2">Archived</span>
                         <?php endif; ?>
 
                         <?php if (!empty($model['creator'])): ?>
@@ -371,7 +385,7 @@ require_once 'includes/header.php';
                         </div>
 
                         <?php if (!empty($model['license'])): ?>
-                        <div style="margin-top: 0.5rem;">
+                        <div class="mt-2">
                             <span class="license-badge"><?= htmlspecialchars(getLicenseName($model['license'])) ?></span>
                         </div>
                         <?php endif; ?>
@@ -518,7 +532,7 @@ require_once 'includes/header.php';
                         <?= PluginManager::applyFilter('model_detail_sidebar', '', $model) ?>
                         <?php endif; ?>
 
-                        <div class="model-actions" style="margin-top: 1rem;">
+                        <div class="model-actions mt-3">
                             <button type="button" class="copy-link-btn" onclick="copyPageUrl()" title="Copy link to clipboard">&#128279; Copy Link</button>
                             <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
                             <button type="button" class="btn btn-secondary btn-small" onclick="openShareModal()">Share</button>

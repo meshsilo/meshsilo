@@ -34,7 +34,7 @@ require_once 'includes/header.php';
             </div>
 
             <?php if (empty($tags)): ?>
-                <p class="text-muted" style="text-align: center; padding: 3rem;">No tags yet. Tags can be added when uploading or editing models.</p>
+                <p class="text-muted empty-state-msg">No tags yet. Tags can be added when uploading or editing models.</p>
             <?php else: ?>
                 <div class="categories-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                     <?php foreach ($tags as $tag): ?>
