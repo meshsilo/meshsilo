@@ -179,7 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         // Get new part count
         $stmt = $db->prepare('SELECT part_count FROM models WHERE id = :id');
         $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
-        $newPartCount = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['part_count'];
+        $execResult = $stmt->execute();
+        $newPartCount = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['part_count'] ?? 0) : 0;
 
         logUpload('Part added to model', [
             'model_id' => $modelId,

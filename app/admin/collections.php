@@ -126,7 +126,8 @@ require_once __DIR__ . '/../../includes/header.php';
                                             <?php
                                             $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE collection = :name');
                                             $stmt->bindValue(':name', $collection['name'], PDO::PARAM_STR);
-                                            $count = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC)['count'];
+                                            $execResult = $stmt->execute();
+                                            $count = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
                                             echo $count;
                                             ?>
                                         </td>

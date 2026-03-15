@@ -411,7 +411,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="form-group">
                                     <label for="s3_secret_key">Secret Key</label>
                                     <input type="password" name="s3_secret_key" id="s3_secret_key" class="form-input"
-                                           placeholder="<?= getSetting('s3_secret_key', '') ? '(saved - leave blank to keep)' : 'Enter secret key' ?>">
+                                           placeholder="<?= getSetting('s3_secret_key', '') ? '(saved - leave blank to keep)' : 'Enter secret key' ?>" autocomplete="off">
                                 </div>
 
                                 <div class="form-group">

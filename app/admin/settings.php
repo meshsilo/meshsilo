@@ -429,7 +429,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="form-group">
                                     <label for="mail_password">SMTP Password</label>
                                     <input type="password" id="mail_password" name="mail_password" class="form-input"
-                                        placeholder="<?= !empty($settings['mail_password']) ? '••••••••' : 'App password or SMTP password' ?>">
+                                        placeholder="<?= !empty($settings['mail_password']) ? '••••••••' : 'App password or SMTP password' ?>" autocomplete="off">
                                     <p class="form-help">Leave blank to keep existing password.</p>
                                 </div>
                             </div>

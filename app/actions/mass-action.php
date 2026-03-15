@@ -101,7 +101,7 @@ try {
                 $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE parent_id = ?');
                 $stmt->bindValue(1, $parentId, PDO::PARAM_INT);
                 $result = $stmt->execute();
-                $count = $result->fetchArray(PDO::FETCH_ASSOC)['count'];
+                $count = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
                 $stmt = $db->prepare('UPDATE models SET part_count = ? WHERE id = ?');
                 $stmt->bindValue(1, $count, PDO::PARAM_INT);
