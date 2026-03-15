@@ -1,4 +1,5 @@
 // Main JavaScript for Silo UI enhancements
+const DEBUG = localStorage.getItem('silo_debug') === '1';
 
 // =====================
 // Lazy Loading for 3D Model Viewers
@@ -38,7 +39,7 @@ class LazyModelLoader {
 
         // Check if required libraries are available
         if (typeof THREE === 'undefined' || typeof ModelViewer === 'undefined') {
-            console.warn('3D viewer libraries not loaded');
+            DEBUG && console.warn('3D viewer libraries not loaded');
             return;
         }
 
@@ -75,7 +76,7 @@ class LazyModelLoader {
                     backgroundColor: bgColor
                 });
             } catch (e) {
-                console.warn('WebGL not available for thumbnail:', e.message);
+                DEBUG && console.warn('WebGL not available for thumbnail:', e.message);
                 thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                 thumbnail.classList.add('no-webgl');
                 viewerContainer.remove();
@@ -84,7 +85,7 @@ class LazyModelLoader {
 
             // Load model with timeout
             const loadTimeout = setTimeout(() => {
-                console.warn('Thumbnail load timed out:', url);
+                DEBUG && console.warn('Thumbnail load timed out:', url);
                 thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                 thumbnail.classList.add('load-error');
                 viewerContainer.remove();
@@ -98,7 +99,7 @@ class LazyModelLoader {
                 })
                 .catch(err => {
                     clearTimeout(loadTimeout);
-                    console.warn('Failed to load thumbnail model:', err);
+                    DEBUG && console.warn('Failed to load thumbnail model:', err);
                     thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                     thumbnail.classList.add('load-error');
                     viewerContainer.remove();
@@ -186,7 +187,7 @@ class SearchHandler {
             const results = await response.json();
             this.renderResults(results, query);
         } catch (err) {
-            console.warn('Search error:', err);
+            DEBUG && console.warn('Search error:', err);
             this.searchResults.innerHTML = '<div class="search-no-results">Search unavailable</div>';
             this.showResults();
         }

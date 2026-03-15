@@ -174,7 +174,7 @@ require_once 'includes/header.php';
                     <div class="tree-node <?= $isCurrent ? 'current' : '' ?> <?= $isRemix ? 'remix' : 'original' ?>">
                         <a href="<?= route('model.show', ['id' => $node['id']]) ?>" class="node-link">
                             <?php if ($node['thumbnail']): ?>
-                            <img src="<?= basePath('assets/' . $node['thumbnail']) ?>" alt="<?= htmlspecialchars($node['name']) ?>" class="node-thumbnail" loading="lazy">
+                            <img src="<?= basePath('assets/' . $node['thumbnail']) ?>" alt="<?= htmlspecialchars($node['name']) ?>" class="node-thumbnail" loading="lazy" decoding="async">
                             <?php else: ?>
                             <div class="node-thumbnail placeholder">&#9653;</div>
                             <?php endif; ?>
@@ -276,7 +276,7 @@ require_once 'includes/header.php';
                 <div class="related-item">
                     <a href="<?= route('model.show', ['id' => $related['related_model_id']]) ?>">
                         <?php if ($related['thumbnail']): ?>
-                        <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="<?= htmlspecialchars($related['name']) ?>" class="related-thumbnail" loading="lazy">
+                        <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="<?= htmlspecialchars($related['name']) ?>" class="related-thumbnail" loading="lazy" decoding="async">
                         <?php else: ?>
                         <div class="related-thumbnail placeholder">&#9653;</div>
                         <?php endif; ?>

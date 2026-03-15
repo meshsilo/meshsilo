@@ -5004,10 +5004,10 @@ body.batch-mode .model-list-item:hover {
 }
 
 /* Activity icons by action type */
-.activity-icon.upload { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
-.activity-icon.download { background-color: rgba(37, 99, 235, 0.2); color: #2563eb; }
-.activity-icon.delete { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.activity-icon.edit { background-color: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.activity-icon.upload { background-color: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
+.activity-icon.download { background-color: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary); }
+.activity-icon.delete { background-color: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
+.activity-icon.edit { background-color: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
 .activity-icon.login { background-color: rgba(168, 85, 247, 0.2); color: #a855f7; }
 
 /* =====================

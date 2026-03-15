@@ -466,7 +466,7 @@ require_once 'includes/header.php';
                                     <div class="attachment-image" data-attachment-id="<?= $att['id'] ?>">
                                         <img src="/assets/<?= htmlspecialchars($att['file_path']) ?>"
                                              alt="<?= htmlspecialchars($att['original_filename']) ?>"
-                                             loading="lazy"
+                                             loading="lazy" decoding="async"
                                              onclick="openImageLightbox(<?= htmlspecialchars(json_encode('/assets/' . $att['file_path'])) ?>, <?= htmlspecialchars(json_encode($att['original_filename'])) ?>)">
                                         <?php if (canEdit()): ?>
                                         <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" onclick="setAttachmentAsThumbnail(<?= $att['id'] ?>)" title="Set as model thumbnail">&#128247;</button>

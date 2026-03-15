@@ -267,7 +267,7 @@ require_once 'includes/header.php';
                         data-file-type="<?= htmlspecialchars($rv['preview_type']) ?>"
                         <?php endif; ?>>
                         <?php if (!empty($rv['thumbnail_path'])): ?>
-                        <img src="/assets/<?= htmlspecialchars($rv['thumbnail_path']) ?>" alt="<?= htmlspecialchars($rv['name']) ?>" class="model-thumbnail-image" loading="lazy">
+                        <img src="/assets/<?= htmlspecialchars($rv['thumbnail_path']) ?>" alt="<?= htmlspecialchars($rv['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
                         <?php endif; ?>
                     </div>
                     <div class="model-info">
@@ -296,7 +296,7 @@ require_once 'includes/header.php';
                             data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
                             <?php endif; ?>>
                             <?php if (!empty($model['thumbnail_path'])): ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy">
+                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
                             <?php endif; ?>
                             <?php if ($model['part_count'] > 0): ?>
                             <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
