@@ -10,7 +10,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="system">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>System</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M3 4.5L6 7.5L9 4.5"/>
                             </svg>
                         </button>
@@ -30,7 +30,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="users">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Users & Auth</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M3 4.5L6 7.5L9 4.5"/>
                             </svg>
                         </button>
@@ -43,7 +43,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="content">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Content</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M3 4.5L6 7.5L9 4.5"/>
                             </svg>
                         </button>
@@ -64,7 +64,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="security">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Security</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M3 4.5L6 7.5L9 4.5"/>
                             </svg>
                         </button>
@@ -88,7 +88,7 @@ if (class_exists('PluginManager')) {
                     <div class="nav-category" data-category="plugin-<?= htmlspecialchars(strtolower(str_replace(' ', '-', $category))) ?>">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span><?= htmlspecialchars($category) ?></span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M3 4.5L6 7.5L9 4.5"/>
                             </svg>
                         </button>

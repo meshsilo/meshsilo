@@ -1032,7 +1032,7 @@ class Debug
             <button type="button" onclick="debugTogglePanel('session')" class="debug-tab-btn" data-panel="session">Session</button>
             <button type="button" onclick="debugTogglePanel('request')" class="debug-tab-btn" data-panel="request">Request</button>
             <button type="button" onclick="debugTogglePanel('config')" class="debug-tab-btn" data-panel="config">Config</button>
-            <button onclick="debugTogglePanel('timeline')" class="debug-tab-btn" data-panel="timeline">Timeline</button>
+            <button type="button" onclick="debugTogglePanel('timeline')" class="debug-tab-btn" data-panel="timeline">Timeline</button>
             <button type="button" onclick="document.getElementById('debug-bar').style.display='none'"
                     style="background: transparent; border: none; color: #888; cursor: pointer; font-size: 16px; margin-left: 10px;">✕</button>
         </div>
