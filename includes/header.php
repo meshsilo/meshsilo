@@ -194,6 +194,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
             input.type = isPassword ? 'text' : 'password';
             btn.textContent = isPassword ? '\u25C9' : '\u25CE';
             btn.title = isPassword ? 'Hide password' : 'Show password';
+            btn.setAttribute('aria-label', btn.title);
         }
 
         // Relative time formatting

@@ -198,7 +198,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <label for="new_password">New Password</label>
                                 <div class="password-wrapper">
                                     <input type="password" id="new_password" name="new_password" class="form-input"
-                                           minlength="8" placeholder="Minimum 8 characters" required autocomplete="new-password">
+                                           minlength="8" placeholder="Minimum 8 characters" required autocomplete="new-password" aria-describedby="pw-strength-text">
                                     <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                                 </div>
                                 <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>

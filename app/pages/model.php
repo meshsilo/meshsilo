@@ -651,7 +651,7 @@ require_once 'includes/header.php';
                         <?php $multiFolder = count($groupedParts) > 1; ?>
                         <?php if ($multiFolder): ?>
                         <h3 class="parts-group-header" onclick="toggleFolder(this.parentElement)" aria-expanded="<?= $autoCollapse ? 'false' : 'true' ?>">
-                            <span class="folder-toggle"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
+                            <span class="folder-toggle" aria-hidden="true"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
                             <input type="checkbox" class="folder-checkbox" onclick="event.stopPropagation(); selectFolderParts(this);" title="Select all parts in this folder" aria-label="Select all parts in this folder">
                             <?php endif; ?>
@@ -686,7 +686,7 @@ require_once 'includes/header.php';
                             <?php foreach ($dirParts as $part): $partIndex++; ?>
                             <div class="part-item<?= ($partIndex > $partLimit && count($dirParts) > $partLimit) ? ' part-hidden' : '' ?>" data-part-id="<?= $part['id'] ?>" data-part-path="/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
                                 <?php if (canEdit()): ?>
-                                <span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
+                                <span class="drag-handle" title="Drag to reorder" aria-hidden="true">&#8942;&#8942;</span>
                                 <?php endif; ?>
                                 <?php if (canEdit() || canDelete()): ?>
                                 <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>" aria-label="Select <?= htmlspecialchars($part['name']) ?>">
