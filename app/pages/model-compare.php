@@ -86,7 +86,7 @@ require_once 'includes/header.php';
     <!-- Version Selectors -->
     <div class="compare-selectors">
         <div class="selector-group">
-            <label>Left (v<?= $v1 ?>)</label>
+            <label for="version-select-1">Left (v<?= $v1 ?>)</label>
             <select id="version-select-1" class="form-control">
                 <?php foreach ($versions as $num => $ver): ?>
                 <option value="<?= $num ?>" <?= $num == $v1 ? 'selected' : '' ?>>
@@ -96,12 +96,12 @@ require_once 'includes/header.php';
             </select>
         </div>
 
-        <button type="button" id="swap-versions" class="btn btn-secondary" title="Swap versions">
-            &#8644;
+        <button type="button" id="swap-versions" class="btn btn-secondary" title="Swap versions" aria-label="Swap versions">
+            <span aria-hidden="true">&#8644;</span>
         </button>
 
         <div class="selector-group">
-            <label>Right (v<?= $v2 ?>)</label>
+            <label for="version-select-2">Right (v<?= $v2 ?>)</label>
             <select id="version-select-2" class="form-control">
                 <?php foreach ($versions as $num => $ver): ?>
                 <option value="<?= $num ?>" <?= $num == $v2 ? 'selected' : '' ?>>

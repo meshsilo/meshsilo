@@ -160,8 +160,11 @@ a {
 }
 
 .search-bar:focus {
-    outline: none;
     border-color: var(--color-primary);
+}
+.search-bar:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
 /* Autocomplete dropdown */
@@ -687,8 +690,12 @@ main {
 
 .form-input:focus,
 .form-control:focus {
-    outline: none;
     border-color: var(--color-primary);
+}
+.form-input:focus-visible,
+.form-control:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
 .form-textarea,
@@ -1060,7 +1067,6 @@ section.settings-section h2 {
 }
 
 .form-control:focus {
-    outline: none;
     border-color: var(--color-primary);
 }
 
@@ -4665,8 +4671,11 @@ body.batch-mode .model-list-item:hover {
 }
 
 .sort-select:focus {
-    outline: none;
     border-color: var(--color-primary);
+}
+.sort-select:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
 /* =====================
@@ -4755,8 +4764,11 @@ body.batch-mode .model-list-item:hover {
 }
 
 .filter-select:focus {
-    outline: none;
     border-color: var(--color-primary);
+}
+.filter-select:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
 .filter-chip {
@@ -5171,8 +5183,11 @@ body.batch-mode .model-list-item:hover {
 }
 
 .share-url-input:focus {
-    outline: none;
     border-color: var(--color-primary);
+}
+.share-url-input:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
 .share-link-meta {
@@ -5282,8 +5297,11 @@ body.batch-mode .model-list-item:hover {
 }
 
 .batch-select:focus {
-    outline: none;
     border-color: var(--color-primary);
+}
+.batch-select:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
 .btn-ghost {
