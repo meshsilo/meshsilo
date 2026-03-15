@@ -417,6 +417,7 @@ main {
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
+    overflow-wrap: anywhere;
 }
 
 .model-creator {
@@ -2713,6 +2714,7 @@ body.mobile-menu-open::before {
     border-radius: var(--radius-lg);
     padding: 1.5rem;
     margin-bottom: 2rem;
+    overflow-wrap: anywhere;
 }
 
 .model-description h2 {
@@ -2721,6 +2723,7 @@ body.mobile-menu-open::before {
 }
 
 /* Markdown Content */
+.markdown-content { overflow-wrap: anywhere; }
 .markdown-content h2 { font-size: 1.25rem; margin: 1.25rem 0 0.5rem; }
 .markdown-content h3 { font-size: 1.125rem; margin: 1rem 0 0.5rem; }
 .markdown-content h4 { font-size: 1rem; margin: 1rem 0 0.5rem; }
