@@ -772,7 +772,7 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Part Preview Modal -->
-        <div id="part-preview-modal" class="modal-overlay" style="display: none;">
+        <div id="part-preview-modal" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3 id="preview-part-name">Part Preview</h3>
@@ -786,7 +786,7 @@ require_once 'includes/header.php';
 
         <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
         <!-- Share Modal -->
-        <div id="share-modal" class="modal-overlay" style="display: none;">
+        <div id="share-modal" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3>Share "<?= htmlspecialchars($model['name']) ?>"</h3>

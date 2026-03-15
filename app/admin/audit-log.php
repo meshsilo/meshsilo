@@ -268,7 +268,7 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <!-- Details Modal -->
-<div id="details-modal" class="modal" style="display: none;">
+<div id="details-modal" class="modal" role="dialog" aria-modal="true" style="display: none;">
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h3>Event Details</h3>
@@ -281,7 +281,7 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <!-- Compliance Report Modal -->
-<div id="compliance-modal" class="modal" style="display: none;">
+<div id="compliance-modal" class="modal" role="dialog" aria-modal="true" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Generate Compliance Report</h3>

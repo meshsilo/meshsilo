@@ -299,7 +299,7 @@ require_once 'includes/header.php';
 </div>
 
 <!-- Mark as Remix Modal -->
-<div id="remix-modal" class="modal" style="display: none;">
+<div id="remix-modal" class="modal" role="dialog" aria-modal="true" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Mark as Remix</h3>
