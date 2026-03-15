@@ -18,6 +18,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#3b82f6">
+    <meta name="color-scheme" content="light dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="<?= htmlspecialchars(getSetting('site_description', 'Digital Asset Manager for 3D print files')) ?>">
@@ -392,21 +393,14 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
         }
 
         function escapeHtml(str) {
-            var d = document.createElement('div');
-            d.textContent = str;
-            return d.innerHTML;
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
         }
 
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                        console.log('SW registered:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('SW registration failed:', error);
-                    });
+                    .catch(function() {});
             });
         }
     </script>
@@ -463,9 +457,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
     var activeIndex = -1;
 
     function escapeHtml(str) {
-        var d = document.createElement('div');
-        d.textContent = str;
-        return d.innerHTML;
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
 
     function highlightMatch(text, query) {
