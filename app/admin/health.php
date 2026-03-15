@@ -432,7 +432,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <h1>System Health</h1>
         <div class="header-actions">
             <span class="last-updated">Last updated: <span id="last-update"><?= date('H:i:s') ?></span></span>
-            <button class="btn btn-secondary" onclick="refreshMetrics()">Refresh</button>
+            <button type="button" class="btn btn-secondary" onclick="refreshMetrics()">Refresh</button>
             <label class="auto-refresh">
                 <input type="checkbox" id="auto-refresh" checked> Auto-refresh (30s)
             </label>

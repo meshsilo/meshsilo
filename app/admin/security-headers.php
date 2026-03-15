@@ -401,16 +401,16 @@ include __DIR__ . '/../../includes/header.php';
             </div>
             <div class="card-body">
                 <div class="tabs">
-                    <button class="tab-btn active" data-tab="apache">Apache (.htaccess)</button>
-                    <button class="tab-btn" data-tab="nginx">Nginx</button>
+                    <button type="button" class="tab-btn active" data-tab="apache">Apache (.htaccess)</button>
+                    <button type="button" class="tab-btn" data-tab="nginx">Nginx</button>
                 </div>
                 <div class="tab-content" id="tab-apache">
                     <pre class="code-block"><?= htmlspecialchars(SecurityHeaders::generateApacheConfig()) ?></pre>
-                    <button class="btn btn-sm" onclick="copyToClipboard(this, 'tab-apache')">Copy</button>
+                    <button type="button" class="btn btn-sm" onclick="copyToClipboard(this, 'tab-apache')">Copy</button>
                 </div>
                 <div class="tab-content" id="tab-nginx" style="display: none;">
                     <pre class="code-block"><?= htmlspecialchars(SecurityHeaders::generateNginxConfig()) ?></pre>
-                    <button class="btn btn-sm" onclick="copyToClipboard(this, 'tab-nginx')">Copy</button>
+                    <button type="button" class="btn btn-sm" onclick="copyToClipboard(this, 'tab-nginx')">Copy</button>
                 </div>
             </div>
         </div>

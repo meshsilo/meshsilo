@@ -440,7 +440,7 @@ require_once 'includes/header.php';
                     </label>
                     <?php endif; ?>
 
-                    <select class="sort-select" onchange="location.href=this.value">
+                    <select class="sort-select" aria-label="Sort by" onchange="location.href=this.value">
                         <option value="<?= buildUrl(['sort' => 'newest', 'page' => 1]) ?>" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
                         <option value="<?= buildUrl(['sort' => 'oldest', 'page' => 1]) ?>" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
                         <option value="<?= buildUrl(['sort' => 'updated', 'page' => 1]) ?>" <?= $sort === 'updated' ? 'selected' : '' ?>>Recently Updated</option>
@@ -465,7 +465,7 @@ require_once 'includes/header.php';
                 <!-- Row 2: inline filter bar with compact add-filter dropdowns and active chips -->
                 <div class="filter-bar">
                     <?php if (isFeatureEnabled('categories') && !empty($categories)): ?>
-                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by category">
+                    <select class="filter-select" aria-label="Filter by category" onchange="if(this.value) location.href=this.value" title="Filter by category">
                         <option value="">+ Category</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= buildUrl(['category' => $cat['id'], 'page' => 1]) ?>" <?= $categoryId == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?> (<?= $cat['model_count'] ?>)</option>
@@ -476,7 +476,7 @@ require_once 'includes/header.php';
                     <?php if (isFeatureEnabled('tags') && !empty($tags)): ?>
                     <?php $unselectedTags = array_filter($tags, fn($t) => !in_array($t['id'], $tagIds)); ?>
                     <?php if (!empty($unselectedTags)): ?>
-                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by tag">
+                    <select class="filter-select" aria-label="Filter by tag" onchange="if(this.value) location.href=this.value" title="Filter by tag">
                         <option value="">+ Tag</option>
                         <?php foreach ($unselectedTags as $tag): ?>
                         <option value="<?= buildUrl(['tags' => array_merge($tagIds, [$tag['id']]), 'page' => 1]) ?>"><?= htmlspecialchars($tag['name']) ?></option>
@@ -486,7 +486,7 @@ require_once 'includes/header.php';
                     <?php endif; ?>
 
                     <?php if (!empty($fileTypes)): ?>
-                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by file type">
+                    <select class="filter-select" aria-label="Filter by file type" onchange="if(this.value) location.href=this.value" title="Filter by file type">
                         <option value="">+ File Type</option>
                         <?php foreach ($fileTypes as $ft): ?>
                         <option value="<?= buildUrl(['file_type' => $ft, 'page' => 1]) ?>" <?= $fileType === $ft ? 'selected' : '' ?>><?= htmlspecialchars(strtoupper($ft)) ?></option>
@@ -495,7 +495,7 @@ require_once 'includes/header.php';
                     <?php endif; ?>
 
                     <?php if (!empty($printTypes)): ?>
-                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by print type">
+                    <select class="filter-select" aria-label="Filter by print type" onchange="if(this.value) location.href=this.value" title="Filter by print type">
                         <option value="">+ Print Type</option>
                         <?php foreach ($printTypes as $pt): ?>
                         <option value="<?= buildUrl(['print_type' => $pt, 'page' => 1]) ?>" <?= $printType === $pt ? 'selected' : '' ?>><?= htmlspecialchars(strtoupper($pt)) ?></option>
@@ -504,7 +504,7 @@ require_once 'includes/header.php';
                     <?php endif; ?>
 
                     <?php if (!empty($collections)): ?>
-                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Filter by collection">
+                    <select class="filter-select" aria-label="Filter by collection" onchange="if(this.value) location.href=this.value" title="Filter by collection">
                         <option value="">+ Collection</option>
                         <?php foreach ($collections as $coll): ?>
                         <option value="<?= buildUrl(['collection' => $coll, 'page' => 1]) ?>" <?= $collection === $coll ? 'selected' : '' ?>><?= htmlspecialchars($coll) ?></option>
@@ -518,7 +518,7 @@ require_once 'includes/header.php';
 
                     <?php if (isLoggedIn()): ?>
                     <?php if (!empty($savedSearches)): ?>
-                    <select class="filter-select" onchange="if(this.value) location.href=this.value" title="Load saved search">
+                    <select class="filter-select" aria-label="Load saved search" onchange="if(this.value) location.href=this.value" title="Load saved search">
                         <option value="">Saved Searches</option>
                         <?php foreach ($savedSearches as $ss): ?>
                         <option value="<?= htmlspecialchars(SavedSearches::toUrl($ss)) ?>"><?= htmlspecialchars($ss['name']) ?></option>

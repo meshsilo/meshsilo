@@ -105,7 +105,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <h1>Audit Log</h1>
         <div class="header-actions">
             <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle">Export</button>
+                <button type="button" class="btn btn-secondary dropdown-toggle">Export</button>
                 <div class="dropdown-menu">
                     <a href="?<?= http_build_query(array_merge($filters, ['export' => 'csv'])) ?>" class="dropdown-item">Export CSV</a>
                     <a href="?<?= http_build_query(array_merge($filters, ['export' => 'json'])) ?>" class="dropdown-item">Export JSON</a>
