@@ -267,7 +267,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         .feature-item.enabled {
             border-color: var(--color-success);
-            background: rgba(34, 197, 94, 0.1);
+            background: color-mix(in srgb, var(--color-success) 10%, transparent);
         }
 
         .feature-toggle {
@@ -367,7 +367,7 @@ require_once __DIR__ . '/../../includes/header.php';
             color: var(--color-warning);
             margin: 0.25rem 0 0;
             padding: 0.25rem 0.5rem;
-            background: rgba(245, 158, 11, 0.1);
+            background: color-mix(in srgb, var(--color-warning) 10%, transparent);
             border-radius: 4px;
         }
 
@@ -376,7 +376,7 @@ require_once __DIR__ . '/../../includes/header.php';
             color: var(--color-primary);
             margin: 0.25rem 0 0;
             padding: 0.25rem 0.5rem;
-            background: rgba(59, 130, 246, 0.1);
+            background: color-mix(in srgb, var(--color-primary) 10%, transparent);
             border-radius: 4px;
         }
 
@@ -431,8 +431,8 @@ require_once __DIR__ . '/../../includes/header.php';
         }
 
         @keyframes save-flash {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-            50% { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4); }
+            0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 0%, transparent); }
+            50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 40%, transparent); }
         }
         </style>
 

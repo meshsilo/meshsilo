@@ -592,7 +592,7 @@ require_once __DIR__ . '/../../includes/header.php';
     color: var(--color-warning);
     margin: 0.25rem 0 0.5rem;
     padding: 0.25rem 0.5rem;
-    background: rgba(245, 158, 11, 0.1);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
     border-radius: 4px;
     display: inline-block;
 }

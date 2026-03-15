@@ -469,17 +469,17 @@ include __DIR__ . '/../../includes/header.php';
 }
 
 .finding-high {
-    background: rgba(239, 68, 68, 0.1);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
     border-color: var(--color-danger);
 }
 
 .finding-medium {
-    background: rgba(245, 158, 11, 0.1);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
     border-color: var(--color-warning);
 }
 
 .finding-low {
-    background: rgba(59, 130, 246, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
     border-color: var(--color-primary);
 }
 

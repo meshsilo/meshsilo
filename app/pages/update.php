@@ -313,12 +313,12 @@ $theme = $_COOKIE['silo_theme'] ?? getSetting('default_theme', 'dark');
         }
 
         .badge-success {
-            background: rgba(34, 197, 94, 0.15);
+            background: color-mix(in srgb, var(--color-success) 15%, transparent);
             color: var(--color-success);
         }
 
         .badge-warning {
-            background: rgba(245, 158, 11, 0.15);
+            background: color-mix(in srgb, var(--color-warning) 15%, transparent);
             color: var(--color-warning);
         }
 

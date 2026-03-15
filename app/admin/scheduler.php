@@ -481,13 +481,13 @@ details[open] summary {
 }
 
 .stat-box.stat-warning {
-    background: rgba(245, 158, 11, 0.15);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 
 .stat-box.stat-info {
-    background: rgba(59, 130, 246, 0.15);
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 .stat-value {

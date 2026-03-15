@@ -161,7 +161,7 @@ $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
 
         .swagger-ui .opblock.opblock-post {
             border-color: #3b82f6;
-            background: rgba(59, 130, 246, 0.05);
+            background: color-mix(in srgb, var(--color-primary) 5%, transparent);
         }
 
         .swagger-ui .opblock.opblock-post .opblock-summary {
@@ -170,7 +170,7 @@ $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
 
         .swagger-ui .opblock.opblock-put {
             border-color: #f59e0b;
-            background: rgba(245, 158, 11, 0.05);
+            background: color-mix(in srgb, var(--color-warning) 5%, transparent);
         }
 
         .swagger-ui .opblock.opblock-put .opblock-summary {
@@ -179,7 +179,7 @@ $siteName = defined('SITE_NAME') ? SITE_NAME : 'Silo';
 
         .swagger-ui .opblock.opblock-delete {
             border-color: #ef4444;
-            background: rgba(239, 68, 68, 0.05);
+            background: color-mix(in srgb, var(--color-danger) 5%, transparent);
         }
 
         .swagger-ui .opblock.opblock-delete .opblock-summary {

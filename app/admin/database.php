@@ -459,19 +459,19 @@ php cli/migrate.php --dry-run
 }
 
 .alert-success {
-    background: rgba(34, 197, 94, 0.1);
+    background: color-mix(in srgb, var(--color-success) 10%, transparent);
     color: var(--success-color, #22c55e);
     border: 1px solid var(--success-color, #22c55e);
 }
 
 .alert-warning {
-    background: rgba(245, 158, 11, 0.1);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
     color: var(--warning-color, #f59e0b);
     border: 1px solid var(--warning-color, #f59e0b);
 }
 
 .alert-error {
-    background: rgba(239, 68, 68, 0.1);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
     color: var(--error-color, #ef4444);
     border: 1px solid var(--error-color, #ef4444);
 }

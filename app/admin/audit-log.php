@@ -444,9 +444,9 @@ document.addEventListener('keydown', function(e) {
 .badge-type-api { background: #1abc9c; color: white; }
 .badge-type-system { background: #95a5a6; color: white; }
 
-tr.severity-warning { background: rgba(243, 156, 18, 0.1); }
-tr.severity-error { background: rgba(231, 76, 60, 0.1); }
-tr.severity-critical { background: rgba(142, 68, 173, 0.15); }
+tr.severity-warning { background: color-mix(in srgb, var(--color-warning) 10%, transparent); }
+tr.severity-error { background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
+tr.severity-critical { background: color-mix(in srgb, #8e44ad 15%, transparent); }
 
 .timestamp { white-space: nowrap; font-family: monospace; font-size: 0.85rem; }
 .ip-address { font-family: monospace; font-size: 0.85rem; }

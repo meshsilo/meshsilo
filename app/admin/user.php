@@ -335,7 +335,7 @@ require_once __DIR__ . '/../../includes/header.php';
 }
 .danger-zone {
     border: 1px solid var(--color-danger);
-    background: rgba(239, 68, 68, 0.05);
+    background: color-mix(in srgb, var(--color-danger) 5%, transparent);
 }
 .danger-zone h2 {
     color: var(--color-danger);

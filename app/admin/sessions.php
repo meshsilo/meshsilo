@@ -489,17 +489,17 @@ function parseUserAgent($ua) {
 }
 
 .badge-admin {
-    background: rgba(239, 68, 68, 0.2);
+    background: color-mix(in srgb, var(--color-danger) 20%, transparent);
     color: var(--color-danger);
 }
 
 .badge-current {
-    background: rgba(34, 197, 94, 0.2);
+    background: color-mix(in srgb, var(--color-success) 20%, transparent);
     color: var(--color-success);
 }
 
 .current-session {
-    background: rgba(59, 130, 246, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .settings-form {

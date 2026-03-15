@@ -703,22 +703,22 @@ function getStatusMessage($services) {
 }
 
 .health-status-banner.status-healthy {
-    background: rgba(34, 197, 94, 0.15);
+    background: color-mix(in srgb, var(--color-success) 15%, transparent);
     color: var(--color-success);
 }
 
 .health-status-banner.status-warning {
-    background: rgba(234, 179, 8, 0.15);
+    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
     color: var(--color-warning);
 }
 
 .health-status-banner.status-critical {
-    background: rgba(239, 68, 68, 0.15);
+    background: color-mix(in srgb, var(--color-danger) 15%, transparent);
     color: var(--color-danger);
 }
 
 .health-status-banner.status-down {
-    background: rgba(239, 68, 68, 0.2);
+    background: color-mix(in srgb, var(--color-danger) 20%, transparent);
     color: var(--color-danger);
 }
 
@@ -858,11 +858,11 @@ function getStatusMessage($services) {
     text-transform: uppercase;
 }
 
-.badge-healthy { background: rgba(34, 197, 94, 0.2); color: var(--color-success); }
-.badge-warning, .badge-degraded { background: rgba(234, 179, 8, 0.2); color: var(--color-warning); }
-.badge-critical, .badge-down { background: rgba(239, 68, 68, 0.2); color: var(--color-danger); }
-.badge-configured { background: rgba(59, 130, 246, 0.2); color: var(--color-primary); }
-.badge-error { background: rgba(239, 68, 68, 0.2); color: var(--color-danger); }
+.badge-healthy { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
+.badge-warning, .badge-degraded { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
+.badge-critical, .badge-down { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
+.badge-configured { background: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary); }
+.badge-error { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
 
 .service-message {
     font-size: 0.875rem;
@@ -932,9 +932,9 @@ function getStatusMessage($services) {
     font-size: 0.85rem;
 }
 
-.severity-error { background: rgba(239, 68, 68, 0.05); }
-.severity-critical { background: rgba(239, 68, 68, 0.1); }
-.severity-warning { background: rgba(234, 179, 8, 0.05); }
+.severity-error { background: color-mix(in srgb, var(--color-danger) 5%, transparent); }
+.severity-critical { background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
+.severity-warning { background: color-mix(in srgb, var(--color-warning) 5%, transparent); }
 
 .section-footer {
     margin-top: 1rem;
