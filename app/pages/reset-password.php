@@ -153,7 +153,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <label for="password">New Password</label>
                         <div class="password-wrapper">
                             <input type="password" id="password" name="password" class="form-input"
-                                   placeholder="Enter new password" required minlength="8">
+                                   placeholder="Enter new password" required minlength="8" autocomplete="new-password">
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                         </div>
                         <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>
@@ -164,7 +164,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <label for="confirm_password">Confirm New Password</label>
                         <div class="password-wrapper">
                             <input type="password" id="confirm_password" name="confirm_password" class="form-input"
-                                   placeholder="Re-enter new password" required>
+                                   placeholder="Re-enter new password" required autocomplete="new-password">
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                         </div>
                     </div>

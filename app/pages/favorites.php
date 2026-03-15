@@ -89,7 +89,7 @@ require_once 'includes/header.php';
         <script>
         async function toggleFavorite(modelId, btn) {
             try {
-                const response = await fetch('actions/favorite.php', {
+                const response = await fetch('/actions/favorite', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'model_id=' + modelId

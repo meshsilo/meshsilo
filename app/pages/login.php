@@ -100,13 +100,13 @@ require_once 'includes/header.php';
                     <?= csrf_field() ?>
                     <div class="form-group">
                         <label for="username">Username or Email</label>
-                        <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username or email" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
+                        <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username or email" required autocomplete="username" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
                     </div>
 
                     <div class="form-group">
                         <label for="password">Password</label>
                         <div class="password-wrapper">
-                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
                             <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                         </div>
                     </div>

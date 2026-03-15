@@ -189,7 +189,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <label for="current_password">Current Password</label>
                             <div class="password-wrapper">
                                 <input type="password" id="current_password" name="current_password" class="form-input"
-                                       placeholder="Enter your current password" required>
+                                       placeholder="Enter your current password" required autocomplete="current-password">
                                 <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                             </div>
                         </div>
@@ -198,7 +198,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <label for="new_password">New Password</label>
                                 <div class="password-wrapper">
                                     <input type="password" id="new_password" name="new_password" class="form-input"
-                                           minlength="8" placeholder="Minimum 8 characters" required>
+                                           minlength="8" placeholder="Minimum 8 characters" required autocomplete="new-password">
                                     <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                                 </div>
                                 <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>
@@ -208,7 +208,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <label for="confirm_password">Confirm New Password</label>
                                 <div class="password-wrapper">
                                     <input type="password" id="confirm_password" name="confirm_password" class="form-input"
-                                           placeholder="Re-enter new password" required>
+                                           placeholder="Re-enter new password" required autocomplete="new-password">
                                     <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" title="Show password">&#9678;</button>
                                 </div>
                             </div>

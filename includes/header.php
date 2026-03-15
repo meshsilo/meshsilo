@@ -631,7 +631,7 @@ endif; ?>
             </nav>
             <div class="header-actions">
                 <div class="search-container" style="position: relative;">
-                    <form id="search-form" action="<?= route('browse') ?>" method="get">
+                    <form id="search-form" action="<?= route('browse') ?>" method="get" role="search">
                         <input type="search" id="search-input" name="q" class="search-bar" placeholder="Search models..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>" autocomplete="off">
                     </form>
                     <div id="search-dropdown" class="search-dropdown" hidden>

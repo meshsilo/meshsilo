@@ -141,7 +141,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <div class="form-group">
                         <label for="email">Email Address</label>
                         <input type="email" id="email" name="email" class="form-input"
-                               placeholder="Enter your email address" required
+                               placeholder="Enter your email address" required autocomplete="email"
                                value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
                     </div>
 
