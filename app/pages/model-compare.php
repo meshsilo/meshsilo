@@ -126,7 +126,7 @@ require_once 'includes/header.php';
             <div class="compare-viewer">
                 <?php if ($version1 && $version1['file_path']): ?>
                 <div class="model-preview-container" id="viewer-1">
-                    <div class="loading-spinner">Loading...</div>
+                    <div class="loading-spinner" role="status">Loading...</div>
                 </div>
                 <?php else: ?>
                 <div class="no-preview">No file available</div>
@@ -170,7 +170,7 @@ require_once 'includes/header.php';
             <div class="compare-viewer">
                 <?php if ($version2 && $version2['file_path']): ?>
                 <div class="model-preview-container" id="viewer-2">
-                    <div class="loading-spinner">Loading...</div>
+                    <div class="loading-spinner" role="status">Loading...</div>
                 </div>
                 <?php else: ?>
                 <div class="no-preview">No file available</div>
@@ -221,7 +221,7 @@ require_once 'includes/header.php';
             <span class="legend-item"><span class="legend-swatch" style="background: var(--color-overlap);"></span> Overlap</span>
         </div>
         <div class="overlay-viewer" id="overlay-viewer">
-            <div class="loading-spinner">Loading overlay...</div>
+            <div class="loading-spinner" role="status">Loading overlay...</div>
         </div>
         <div class="overlay-opacity-control">
             <label>Right model opacity:</label>
@@ -333,7 +333,7 @@ require_once 'includes/header.php';
     background: var(--card-bg);
     border-radius: 8px;
     overflow: hidden;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
 }
 
 .compare-side {
@@ -344,7 +344,7 @@ require_once 'includes/header.php';
 
 .compare-divider {
     width: 4px;
-    background: var(--border-color);
+    background: var(--color-border);
     cursor: col-resize;
 }
 
@@ -353,8 +353,8 @@ require_once 'includes/header.php';
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1rem;
-    background: var(--bg-color);
-    border-bottom: 1px solid var(--border-color);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .version-badge {
@@ -367,13 +367,13 @@ require_once 'includes/header.php';
 }
 
 .version-date {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.875rem;
 }
 
 .compare-viewer {
     height: 400px;
-    background: var(--bg-color);
+    background: var(--color-bg);
     position: relative;
 }
 
@@ -387,7 +387,7 @@ require_once 'includes/header.php';
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .loading-spinner {
@@ -395,12 +395,12 @@ require_once 'includes/header.php';
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: var(--text-muted);
+    color: var(--color-text-muted);
 }
 
 .compare-details {
     padding: 1rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .detail-row {
@@ -415,7 +415,7 @@ require_once 'includes/header.php';
 }
 
 .detail-row .label {
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     min-width: 70px;
 }
 
@@ -434,7 +434,7 @@ require_once 'includes/header.php';
 }
 
 .detail-row.changelog .value {
-    background: var(--bg-color);
+    background: var(--color-bg);
     padding: 0.5rem;
     border-radius: 4px;
     line-height: 1.4;
@@ -489,7 +489,7 @@ require_once 'includes/header.php';
 .overlay-container {
     background: var(--card-bg);
     border-radius: 8px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     overflow: hidden;
     margin-bottom: 1rem;
 }
@@ -498,8 +498,8 @@ require_once 'includes/header.php';
     display: flex;
     gap: 1.5rem;
     padding: 0.75rem 1rem;
-    background: var(--bg-color);
-    border-bottom: 1px solid var(--border-color);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
     font-size: 0.875rem;
 }
 
@@ -518,7 +518,7 @@ require_once 'includes/header.php';
 
 .overlay-viewer {
     height: 500px;
-    background: var(--bg-color);
+    background: var(--color-bg);
     position: relative;
 }
 
@@ -527,7 +527,7 @@ require_once 'includes/header.php';
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
     font-size: 0.875rem;
 }
 
@@ -558,24 +558,24 @@ require_once 'includes/header.php';
 .stats-table th, .stats-table td {
     padding: 0.5rem 0.75rem;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .stats-table th {
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     font-size: 0.8rem;
 }
 
 .stats-table td.label {
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
     min-width: 120px;
 }
 
 .stats-diff-positive { color: var(--warning-color, #f59e0b); }
 .stats-diff-negative { color: var(--success-color, #22c55e); }
-.stats-diff-zero { color: var(--text-muted); }
+.stats-diff-zero { color: var(--color-text-muted); }
 
 @media (max-width: 768px) {
     .compare-selectors {

@@ -292,7 +292,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <th scope="col">Category</th>
                                     <th scope="col">Models</th>
                                     <th scope="col">Size</th>
-                                    <th style="width: 40%;">Usage</th>
+                                    <th scope="col" style="width: 40%;">Usage</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -328,7 +328,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <th scope="col">User</th>
                                     <th scope="col">Models</th>
                                     <th scope="col">Size</th>
-                                    <th style="width: 40%;">Usage</th>
+                                    <th scope="col" style="width: 40%;">Usage</th>
                                 </tr>
                             </thead>
                             <tbody>

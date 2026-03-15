@@ -175,7 +175,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <table class="admin-table" aria-label="Models">
                     <thead>
                         <tr>
-                            <th style="width: 40px;">
+                            <th scope="col" style="width: 40px;">
                                 <input type="checkbox" id="header-select-all" onchange="toggleSelectAll(this)" aria-label="Select all models">
                             </th>
                             <th scope="col">Model</th>
