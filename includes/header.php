@@ -62,6 +62,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
+    <?php if (!empty($needsViewer)): ?>
     <!-- Three.js for 3D model rendering (defer preserves execution order) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js" crossorigin="anonymous" integrity="sha384-eIxjswljUW1AHMlmZkz6yMIzTVOAC/1WfeIlG5Vt70kjZqYo5deE+nMKU/r6GrZR" defer></script>
@@ -76,6 +77,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/AMFLoader.js" crossorigin="anonymous" integrity="sha384-6h4mEeJoEKWavyB6eukhkTtWKr5TarGFVDfb4ZuVMZ043TVZJPHRZst/B8b65web" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" crossorigin="anonymous" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" defer></script>
     <script src="<?= basePath('js/viewer.js') ?>?v=15" defer></script>
+    <?php endif; ?>
     <script src="<?= basePath('js/main.js') ?>?v=8" defer></script>
     <script>
         // Focus trap for modals (accessibility)

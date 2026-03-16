@@ -42,6 +42,7 @@ foreach ($favorites as &$model) {
 }
 unset($model);
 
+$needsViewer = true;
 require_once 'includes/header.php';
 ?>
 

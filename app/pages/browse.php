@@ -395,6 +395,7 @@ if ($search !== '') {
 }
 $metaDescription = mb_substr($metaDescription, 0, 160);
 
+$needsViewer = true;
 require_once 'includes/header.php';
 ?>
 

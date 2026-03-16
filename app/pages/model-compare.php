@@ -67,6 +67,7 @@ $activePage = 'browse';
 
 // formatBytes is defined in includes/helpers.php
 
+$needsViewer = true;
 require_once 'includes/header.php';
 ?>
 

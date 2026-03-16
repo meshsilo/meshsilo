@@ -127,6 +127,7 @@ $modelUser = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 $pageTitle = 'Remix Tree: ' . $model['name'];
 $activePage = 'browse';
 
+$needsViewer = true;
 require_once 'includes/header.php';
 ?>
 

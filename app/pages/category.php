@@ -65,6 +65,7 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
 // Per-page meta description
 $metaDescription = mb_substr($category['name'] . ' — ' . count($models) . ' 3D models in this category on ' . SITE_NAME, 0, 160);
 
+$needsViewer = true;
 require_once 'includes/header.php';
 ?>
 

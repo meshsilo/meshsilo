@@ -77,6 +77,7 @@ foreach ($models as $m) {
     }
 }
 
+$needsViewer = true;
 require_once 'includes/header.php';
 ?>
 

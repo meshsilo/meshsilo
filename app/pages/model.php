@@ -295,6 +295,7 @@ if (!empty($model['thumbnail_path'])) {
 }
 $ogType = 'article';
 
+$needsViewer = true;
 require_once 'includes/header.php';
 ?>
 
