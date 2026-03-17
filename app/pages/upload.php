@@ -224,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
     $name = trim($_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? '');
-    $creator = trim($_POST['author'] ?? '');
+    $creator = trim($_POST['creator'] ?? '');
     $collection = trim($_POST['collection'] ?? '');
     $source_url = trim($_POST['source_url'] ?? '');
     $selectedCategories = $_POST['categories'] ?? [];

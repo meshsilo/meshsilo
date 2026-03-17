@@ -271,32 +271,41 @@ a {
 .btn,
 button.btn {
     padding: 0.5rem 1rem;
-    border: none;
+    background: transparent;
+    border: 1px solid var(--color-border);
     outline: none;
     border-radius: var(--radius);
     font-weight: 500;
+    color: var(--color-text-muted);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
 }
 
+.btn:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
 .btn-primary {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.btn-primary:hover {
     background-color: var(--color-primary);
     color: white;
 }
 
-.btn-primary:hover {
-    background-color: var(--color-primary-hover);
-}
-
 .btn-secondary {
-    background-color: transparent;
+    border-color: var(--color-border);
     color: var(--color-text-muted);
 }
 
 .btn-secondary:hover {
+    background-color: var(--color-surface-hover);
     color: var(--color-text);
 }
 
@@ -1126,30 +1135,33 @@ section.settings-section h2 {
 }
 
 .btn-warning {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+}
+
+.btn-warning:hover {
     background-color: var(--color-warning);
     color: white;
 }
 
-.btn-warning:hover {
-    background-color: var(--color-warning-hover, #d97706);
+.btn-danger {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
 }
 
-.btn-danger {
+.btn-danger:hover {
     background-color: var(--color-danger);
     color: white;
 }
 
-.btn-danger:hover {
-    background-color: var(--color-danger-hover, #dc2626);
-}
-
 .btn-info {
-    background-color: var(--color-info, #3b82f6);
-    color: white;
+    border-color: var(--color-info, #3b82f6);
+    color: var(--color-info, #3b82f6);
 }
 
 .btn-info:hover {
-    background-color: var(--color-primary);
+    background-color: var(--color-info, #3b82f6);
+    color: white;
 }
 
 /* Utility Classes */
@@ -1433,8 +1445,6 @@ section.settings-section h2 {
     width: 100%;
     padding: 0.75rem;
     font-size: 1rem;
-    border: none;
-    cursor: pointer;
 }
 
 /* Auth dividers (used by login page plugin buttons) */
@@ -1696,24 +1706,6 @@ section.settings-section h2 {
 .btn-small {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
-}
-
-.btn-danger {
-    background-color: var(--color-danger);
-    color: white;
-}
-
-.btn-danger:hover {
-    background-color: var(--color-danger-hover, #dc2626);
-}
-
-.btn-warning {
-    background-color: var(--color-warning);
-    color: white;
-}
-
-.btn-warning:hover {
-    background-color: var(--color-warning-hover, #d97706);
 }
 
 /* Stats Grid */
@@ -3938,7 +3930,7 @@ input[type="checkbox"]:disabled {
     left: 50%;
     width: 0;
     height: 0;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(128, 128, 128, 0.15);
     border-radius: 50%;
     transform: translate(-50%, -50%);
     transition: width 0.4s, height 0.4s, opacity 0.4s;
@@ -4314,15 +4306,6 @@ input[type="checkbox"]:disabled {
     font-size: 0.75rem;
     color: var(--color-text-muted);
     margin-left: 0.25rem;
-}
-
-.btn-danger {
-    background: var(--color-danger);
-    color: white;
-}
-
-.btn-danger:hover {
-    background: var(--color-danger-hover, #dc2626);
 }
 
 /* =====================
@@ -5341,15 +5324,6 @@ body.batch-mode .model-list-item:hover {
 .btn-ghost:hover {
     background: var(--color-surface-hover);
     color: var(--color-text);
-}
-
-.btn-warning {
-    background-color: var(--color-warning);
-    color: white;
-}
-
-.btn-warning:hover {
-    background-color: var(--color-warning-hover, #d97706);
 }
 
 @media (max-width: 1200px) {
