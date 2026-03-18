@@ -457,6 +457,6 @@ function initializeDatabase($db)
 }
 
 // Load domain-specific functions from focused sub-files
-require_once __DIR__ . '/schema.php';
+require_once __DIR__ . '/Schema.php';
 require_once __DIR__ . '/settings.php';
 require_once __DIR__ . '/db-helpers.php';
