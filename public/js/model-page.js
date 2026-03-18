@@ -66,7 +66,7 @@
 
         // Add click handlers to part items
         document.querySelectorAll('.part-preview-trigger').forEach(trigger => {
-            trigger.addEventListener('click', function(e) {
+            trigger.addEventListener('click', function() {
                 const partItem = this.closest('.part-item');
                 const path = partItem.dataset.partPath;
                 const type = partItem.dataset.partType;
@@ -483,7 +483,7 @@
             updateCollapseAllToggle();
         }
 
-        function toggleCollapseAllGroups(toggleEl) {
+        function toggleCollapseAllGroups() {
             const groups = document.querySelectorAll('.parts-group[data-folder]');
             const allCollapsed = Array.from(groups).every(g => g.classList.contains('collapsed'));
             groups.forEach(group => {
@@ -1005,7 +1005,7 @@
             }
         }
 
-        async function addTagById(tagId, tagName) {
+        async function addTagById(_tagId, tagName) {
             await addTag(tagName);
         }
 
@@ -1098,7 +1098,6 @@
                         <div class="share-link-info">
                             <div class="share-link-url">
                                 <input type="text" readonly value="${link.share_url}" class="share-url-input" onclick="this.select()">
-                                <button type="button" class="btn btn-small" onclick="copyShareUrl(this.previousElementSibling)" title="Copy URL">Copy</button>
                             </div>
                             <div class="share-link-meta">
                                 ${link.has_password ? '<span class="share-badge">Password</span>' : ''}
@@ -1113,20 +1112,6 @@
                 console.error('Error loading share links:', err);
                 container.innerHTML = '<p class="text-muted">Failed to load share links</p>';
             }
-        }
-
-        function copyShareUrl(input) {
-            input.select();
-            navigator.clipboard.writeText(input.value).then(() => {
-                showToast('Link copied to clipboard', 'success');
-                const btn = input.nextElementSibling;
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = originalText, 1500);
-            }).catch(() => {
-                document.execCommand('copy');
-                showToast('Link copied to clipboard', 'success');
-            });
         }
 
         async function deleteShareLink(linkId) {
@@ -1675,7 +1660,7 @@
                     animation: 150,
                     ghostClass: 'part-item-ghost',
                     chosenClass: 'part-item-chosen',
-                    onEnd: async function(evt) {
+                    onEnd: async function() {
                         // Collect all part IDs in new order
                         const partIds = Array.from(list.querySelectorAll('.part-item'))
                             .map(item => item.dataset.partId);
