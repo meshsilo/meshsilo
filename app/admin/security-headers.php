@@ -406,11 +406,11 @@ include __DIR__ . '/../../includes/header.php';
                 </div>
                 <div class="tab-content" id="tab-apache">
                     <pre class="code-block"><?= htmlspecialchars(SecurityHeaders::generateApacheConfig()) ?></pre>
-                    <button type="button" class="btn btn-sm" onclick="copyToClipboard(this, 'tab-apache')">Copy</button>
+                    <button type="button" class="btn btn-sm" data-action="copy-config" data-tab-id="tab-apache">Copy</button>
                 </div>
                 <div class="tab-content" id="tab-nginx" style="display: none;">
                     <pre class="code-block"><?= htmlspecialchars(SecurityHeaders::generateNginxConfig()) ?></pre>
-                    <button type="button" class="btn btn-sm" onclick="copyToClipboard(this, 'tab-nginx')">Copy</button>
+                    <button type="button" class="btn btn-sm" data-action="copy-config" data-tab-id="tab-nginx">Copy</button>
                 </div>
             </div>
         </div>

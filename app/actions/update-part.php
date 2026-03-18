@@ -7,10 +7,7 @@ requirePermission(PERM_EDIT);
 header('Content-Type: application/json');
 
 // CSRF validation
-if (!Csrf::check()) {
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
-}
+requireCsrfJson();
 
 $db = getDB();
 

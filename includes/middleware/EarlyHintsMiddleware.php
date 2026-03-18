@@ -141,7 +141,7 @@ class EarlyHintsMiddleware
     /**
      * Get default hints for MeshSilo pages
      */
-    public static function getDefaultHints(bool $needsViewer = false): self
+    public static function getDefaultHints(bool $needsViewer = false, bool $isAdmin = false): self
     {
         $middleware = new self();
 
@@ -152,7 +152,11 @@ class EarlyHintsMiddleware
         // Preload critical CSS
         $middleware->preload('/public/css/base.css', 'style');
         $middleware->preload('/public/css/layout.css', 'style');
+        $middleware->preload('/public/css/components.css', 'style');
         $middleware->preload('/public/css/pages.css', 'style');
+        if ($isAdmin) {
+            $middleware->preload('/public/css/admin.css', 'style');
+        }
 
         // Preload main JS
         $middleware->preload('/public/js/main.js', 'script');
@@ -170,7 +174,7 @@ class EarlyHintsMiddleware
 /**
  * Send early hints for the current page
  */
-function sendEarlyHints(bool $needsViewer = false): void
+function sendEarlyHints(bool $needsViewer = false, bool $isAdmin = false): void
 {
-    EarlyHintsMiddleware::getDefaultHints($needsViewer)->send();
+    EarlyHintsMiddleware::getDefaultHints($needsViewer, $isAdmin)->send();
 }

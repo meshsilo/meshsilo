@@ -10,9 +10,7 @@ require_once __DIR__ . '/../../includes/dedup.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    jsonError('Not authenticated', 401);
 }
 
 // Parse JSON body
@@ -21,11 +19,7 @@ if (!$input) {
     $input = $_POST;
 }
 
-if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Security validation failed']);
-    exit;
-}
+requireCsrfJson();
 
 $user = getCurrentUser();
 $modelId = isset($input['model_id']) ? (int)$input['model_id'] : 0;

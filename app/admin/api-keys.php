@@ -96,8 +96,8 @@ include __DIR__ . '/../../includes/header.php';
                 <h3>API Key Created: <?= htmlspecialchars($newKeyName) ?></h3>
                 <p>Your new API key has been created. Copy it now — you won't be able to see it again!</p>
                 <div class="api-key-value-row">
-                    <input type="text" class="api-key-full" id="newKeyValue" value="<?= htmlspecialchars($newKey, ENT_QUOTES) ?>" readonly onclick="this.select()">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="copyFullKey(this)">
+                    <input type="text" class="api-key-full" id="newKeyValue" value="<?= htmlspecialchars($newKey, ENT_QUOTES) ?>" readonly>
+                    <button type="button" class="btn btn-primary btn-sm" data-action="copy-full-key">
                         Copy Key
                     </button>
                 </div>
@@ -187,7 +187,7 @@ include __DIR__ . '/../../includes/header.php';
                                 <div class="api-key-details">
                                     <div class="api-key-prefix-row">
                                         <span class="api-key-label">Key</span>
-                                        <code class="api-key-prefix" title="Click to copy prefix" tabindex="0" role="button" onclick="copyKey('<?= htmlspecialchars($key['key_prefix'], ENT_QUOTES) ?>...', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                                        <code class="api-key-prefix" title="Click to copy prefix" tabindex="0" role="button" data-copy-text="<?= htmlspecialchars($key['key_prefix'], ENT_QUOTES) ?>...">
                                             <?= htmlspecialchars($key['key_prefix']) ?>...
                                         </code>
                                     </div>

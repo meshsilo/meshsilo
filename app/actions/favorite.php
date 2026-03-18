@@ -9,36 +9,23 @@ header('Content-Type: application/json');
 
 // Check if favorites feature is enabled
 if (!isFeatureEnabled('favorites')) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Favorites feature is disabled']);
-    exit;
+    jsonError('Favorites feature is disabled', 403);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-    exit;
+    jsonError('Method not allowed', 405);
 }
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
+    jsonError('Not logged in', 401);
 }
 
-// CSRF validation
-if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-    exit;
-}
+requireCsrfJson();
 
 $modelId = (int)($_POST['model_id'] ?? 0);
 
 if (!$modelId) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid model ID']);
-    exit;
+    jsonError('Invalid model ID');
 }
 
 // Verify model exists
@@ -49,9 +36,7 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Model not found']);
-    exit;
+    jsonError('Model not found', 404);
 }
 
 $result = toggleFavorite($modelId);

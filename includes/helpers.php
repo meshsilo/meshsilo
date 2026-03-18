@@ -463,3 +463,34 @@ if (!function_exists('dd')) {
         exit(1);
     }
 }
+
+/**
+ * Send a JSON success response and exit.
+ */
+function jsonSuccess(array $data = []): never
+{
+    header('Content-Type: application/json');
+    echo json_encode(array_merge(['success' => true], $data));
+    exit;
+}
+
+/**
+ * Send a JSON error response and exit.
+ */
+function jsonError(string $message, int $httpCode = 400): never
+{
+    http_response_code($httpCode);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => $message]);
+    exit;
+}
+
+/**
+ * Require a valid CSRF token for JSON endpoints, or return a 403 JSON error.
+ */
+function requireCsrfJson(): void
+{
+    if (!Csrf::check()) {
+        jsonError('Invalid request token', 403);
+    }
+}

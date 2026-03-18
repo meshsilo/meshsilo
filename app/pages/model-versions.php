@@ -183,7 +183,7 @@ require_once 'includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="revert-modal-title">Revert to Version</h3>
-            <button type="button" class="modal-close" aria-label="Close" onclick="closeRevertModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
             <p>Are you sure you want to revert to <strong>v<span id="revert-version-number"></span></strong>?</p>
@@ -195,7 +195,7 @@ require_once 'includes/header.php';
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeRevertModal()">Cancel</button>
+            <button type="button" class="btn btn-secondary" data-action="close-revert-modal">Cancel</button>
             <button type="button" class="btn btn-warning" id="confirm-revert-btn">Revert</button>
         </div>
     </div>
@@ -458,6 +458,9 @@ function closeRevertModal() {
     revertModelId = null;
     revertVersionNumber = null;
 }
+document.querySelectorAll('#revert-modal .modal-close, #revert-modal [data-action="close-revert-modal"]').forEach(function(btn) {
+    btn.addEventListener('click', closeRevertModal);
+});
 
 document.getElementById('confirm-revert-btn').addEventListener('click', async function() {
     if (!revertModelId || !revertVersionNumber) return;

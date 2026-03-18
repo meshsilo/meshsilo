@@ -121,21 +121,21 @@ require_once __DIR__ . '/../../includes/header.php';
             <div class="browse-controls">
                 <div class="browse-filters">
                     <form method="get" role="search" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-                        <select name="action_filter" class="sort-select" aria-label="Filter by action" onchange="this.form.submit()">
+                        <select name="action_filter" class="sort-select" aria-label="Filter by action">
                             <option value="">All Actions</option>
                             <?php foreach ($actions as $action): ?>
                             <option value="<?= htmlspecialchars($action) ?>" <?= $filterAction === $action ? 'selected' : '' ?>><?= ucfirst($action) ?></option>
                             <?php endforeach; ?>
                         </select>
 
-                        <select name="user_filter" class="sort-select" aria-label="Filter by user" onchange="this.form.submit()">
+                        <select name="user_filter" class="sort-select" aria-label="Filter by user">
                             <option value="">All Users</option>
                             <?php foreach ($users as $user): ?>
                             <option value="<?= $user['id'] ?>" <?= $filterUser == $user['id'] ? 'selected' : '' ?>><?= htmlspecialchars($user['username']) ?></option>
                             <?php endforeach; ?>
                         </select>
 
-                        <select name="entity_filter" class="sort-select" aria-label="Filter by type" onchange="this.form.submit()">
+                        <select name="entity_filter" class="sort-select" aria-label="Filter by type">
                             <option value="">All Types</option>
                             <?php foreach ($entityTypes as $type): ?>
                             <option value="<?= htmlspecialchars($type) ?>" <?= $filterEntity === $type ? 'selected' : '' ?>><?= ucfirst($type) ?></option>

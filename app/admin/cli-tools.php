@@ -264,7 +264,7 @@ include __DIR__ . '/../../includes/header.php';
                         <h3><?= htmlspecialchars($tool['name']) ?></h3>
                         <p><?= htmlspecialchars($tool['description']) ?></p>
                     </div>
-                    <button type="button" class="tool-expand" aria-expanded="false" onclick="toggleTool('<?= $toolKey ?>')">
+                    <button type="button" class="tool-expand" aria-expanded="false" data-action="toggle-tool" data-tool-key="<?= $toolKey ?>">
                         <span class="expand-icon" aria-hidden="true">&#9662;</span>
                     </button>
                 </div>

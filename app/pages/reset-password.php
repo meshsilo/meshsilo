@@ -154,7 +154,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <div class="password-wrapper">
                             <input type="password" id="password" name="password" class="form-input"
                                    placeholder="Enter new password" required minlength="8" autocomplete="new-password" aria-describedby="pw-strength-text">
-                            <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                            <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                         </div>
                         <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>
                         <div class="password-strength-text" id="pw-strength-text">Must be at least 8 characters</div>
@@ -165,7 +165,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <div class="password-wrapper">
                             <input type="password" id="confirm_password" name="confirm_password" class="form-input"
                                    placeholder="Re-enter new password" required autocomplete="new-password">
-                            <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility(this)" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                            <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                         </div>
                     </div>
 

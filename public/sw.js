@@ -29,9 +29,12 @@ const PRECACHE_ASSETS = [
     '/',
     '/public/css/base.css',
     '/public/css/layout.css',
+    '/public/css/components.css',
     '/public/css/pages.css',
+    '/public/css/admin.css',
     '/public/js/main.js',
     '/public/js/viewer.js',
+    '/public/js/browse-page.js',
     '/public/manifest.json',
     '/public/images/icon.svg'
 ];

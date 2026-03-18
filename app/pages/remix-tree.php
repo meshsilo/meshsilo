@@ -304,7 +304,7 @@ require_once 'includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="remix-modal-title">Mark as Remix</h3>
-            <button type="button" class="modal-close" aria-label="Close" onclick="closeRemixModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
@@ -337,7 +337,7 @@ require_once 'includes/header.php';
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeRemixModal()">Cancel</button>
+            <button type="button" class="btn btn-secondary" data-action="close-remix-modal">Cancel</button>
             <button type="button" class="btn btn-primary" id="save-remix-btn">Save</button>
         </div>
     </div>
@@ -663,6 +663,9 @@ document.getElementById('mark-remix-btn')?.addEventListener('click', function() 
 function closeRemixModal() {
     document.getElementById('remix-modal').style.display = 'none';
 }
+document.querySelectorAll('#remix-modal .modal-close, #remix-modal [data-action="close-remix-modal"]').forEach(function(btn) {
+    btn.addEventListener('click', closeRemixModal);
+});
 
 document.getElementById('remix-source-type').addEventListener('change', function() {
     const isInternal = this.value === 'internal';

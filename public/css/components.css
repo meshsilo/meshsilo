@@ -1,0 +1,572 @@
+/* Alerts */
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+.alert-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--color-danger);
+    color: var(--color-danger);
+}
+
+.alert-success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid var(--color-success);
+    color: var(--color-success);
+}
+
+.alert-warning {
+    background-color: rgba(234, 179, 8, 0.1);
+    border: 1px solid var(--color-warning);
+    color: var(--color-warning);
+}
+
+/* User Dropdown Menu */
+.user-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.user-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.user-dropdown-toggle:hover {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-text-muted);
+}
+
+.dropdown-arrow {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    transition: transform 0.2s;
+}
+
+.user-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 180px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+    z-index: 200;
+}
+
+.user-dropdown.open .user-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.user-dropdown-menu a {
+    display: block;
+    padding: 0.625rem 1rem;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    transition: background-color 0.15s;
+}
+
+.user-dropdown-menu a:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--color-border);
+    margin: 0.25rem 0;
+}
+
+/* Queue Indicator */
+.queue-indicator {
+    position: relative;
+    display: inline-block;
+}
+
+.queue-btn {
+    position: relative;
+    font-size: 1rem;
+}
+
+.queue-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background-color: var(--color-primary);
+    color: var(--color-bg);
+    font-size: 0.65rem;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    border-radius: 8px;
+    text-align: center;
+    padding: 0 4px;
+}
+
+.queue-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 280px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-0.5rem);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+    z-index: 1000;
+}
+
+.queue-indicator.open .queue-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.queue-dropdown-header {
+    padding: 0.625rem 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.queue-dropdown-body {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.queue-empty {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.queue-job {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.85rem;
+}
+
+.queue-job:last-child {
+    border-bottom: none;
+}
+
+.queue-job-status {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+}
+
+.queue-job-processing .queue-job-status {
+    color: var(--color-primary);
+}
+
+.queue-job-pending .queue-job-status {
+    color: var(--color-text-muted);
+}
+
+.queue-job-name {
+    flex: 1;
+    color: var(--color-text);
+}
+
+.queue-job-time {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: var(--radius);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-admin {
+    background-color: rgba(37, 99, 235, 0.2);
+    color: var(--color-primary);
+}
+
+.badge-user {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-muted);
+}
+
+/* Batch Rename Modal */
+.rename-preview {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: var(--color-bg-elevated);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+}
+
+.rename-preview ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.25rem;
+    list-style: disc;
+}
+
+.rename-preview li {
+    margin: 0.25rem 0;
+}
+
+.rename-preview .old-name {
+    color: var(--color-text-muted);
+    text-decoration: line-through;
+}
+
+.rename-preview .new-name {
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 2rem;
+}
+
+.modal-content {
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.modal-large {
+    max-width: 800px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--color-text);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+/* Themed Checkboxes */
+input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid var(--color-border);
+    border-radius: 3px;
+    background-color: var(--color-surface);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    flex-shrink: 0;
+}
+
+input[type="checkbox"]:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-surface-hover);
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-primary);
+}
+
+input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* =====================
+   Animations & Transitions
+   ===================== */
+
+/* Responsive adjustments for toasts */
+@media (max-width: 640px) {
+    .toast-container {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+    }
+
+    .toast {
+        max-width: none;
+    }
+}
+
+/* Dropdown Menus */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.dropdown-arrow {
+    font-size: 0.7em;
+    transition: transform 0.15s;
+}
+
+.dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    min-width: 180px;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+
+.dropdown.open .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    font: inherit;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.dropdown-item:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.dropdown-item.active {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+/* Right-aligned dropdown menu */
+.dropdown-menu-right {
+    right: 0;
+    left: auto;
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 8px;
+    background: var(--color-surface-elevated);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Image Lightbox */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 2rem;
+}
+
+.lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.lightbox-content img {
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: var(--radius);
+    transition: transform 0.1s ease;
+    user-select: none;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.lightbox-close:hover {
+    color: var(--color-primary);
+}
+
+.lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    font-size: 3rem;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    line-height: 1;
+    transition: background-color 0.2s;
+    z-index: 1;
+}
+
+.lightbox-nav:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.lightbox-prev {
+    left: -60px;
+}
+
+.lightbox-next {
+    right: -60px;
+}
+
+@media (max-width: 768px) {
+    .lightbox-prev { left: 0; }
+    .lightbox-next { right: 0; }
+    .lightbox-nav { font-size: 2rem; padding: 0.5rem; background: rgba(0, 0, 0, 0.6); }
+}
+
+.lightbox-caption {
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+.lightbox-counter {
+    opacity: 0.6;
+    margin-left: 0.5rem;
+}
+

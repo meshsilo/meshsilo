@@ -5,25 +5,17 @@ require_once __DIR__ . '/../../includes/dedup.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    jsonError('Not authenticated', 401);
 }
 
-// CSRF validation
-if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-    exit;
-}
+requireCsrfJson();
 
 $user = getCurrentUser();
 $action = $_POST['action'] ?? '';
 $modelIds = isset($_POST['model_ids']) ? array_filter(array_map('intval', (array)$_POST['model_ids'])) : [];
 
 if (empty($modelIds)) {
-    echo json_encode(['success' => false, 'error' => 'No models specified']);
-    exit;
+    jsonError('No models specified');
 }
 
 $db = getDB();
@@ -43,16 +35,14 @@ if (!$user['is_admin']) {
     // Check if user is trying to modify models they don't own
     $unauthorizedCount = count(array_diff($modelIds, $ownedModelIds));
     if ($unauthorizedCount > 0 && empty($ownedModelIds)) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied - you can only modify your own models']);
-        exit;
+        jsonError('Permission denied - you can only modify your own models', 403);
     }
 
     // Use only owned model IDs
     $modelIds = $ownedModelIds;
 
     if (empty($modelIds)) {
-        echo json_encode(['success' => false, 'error' => 'No authorized models to modify']);
-        exit;
+        jsonError('No authorized models to modify', 403);
     }
 }
 

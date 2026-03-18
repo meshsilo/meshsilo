@@ -159,7 +159,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
                     <div class="form-actions sticky-actions">
                         <button type="submit" class="btn btn-primary">Save Feature Settings</button>
-                        <button type="button" class="btn btn-secondary" onclick="resetToDefaults()">Reset to Defaults</button>
+                        <button type="button" class="btn btn-secondary" data-action="reset-defaults">Reset to Defaults</button>
                     </div>
                 </form>
             </div>

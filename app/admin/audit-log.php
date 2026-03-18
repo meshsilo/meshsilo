@@ -19,6 +19,7 @@ if (!isLoggedIn() || !canViewAuditLog()) {
 }
 
 $pageTitle = 'Audit Log';
+$adminPage = 'audit-log';
 $activePage = 'admin';
 
 // Handle export
@@ -111,7 +112,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <a href="?<?= http_build_query(array_merge($filters, ['export' => 'json'])) ?>" class="dropdown-item" role="menuitem">Export JSON</a>
                 </div>
             </div>
-            <button type="button" class="btn btn-primary" onclick="showComplianceModal()">Compliance Report</button>
+            <button type="button" class="btn btn-primary" data-action="show-compliance-modal">Compliance Report</button>
         </div>
     </div>
 
@@ -196,7 +197,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
     <!-- Log Table -->
     <div class="table-responsive">
-        <table class="data-table" aria-label="Audit log entries">
+        <table class="data-table audit-log-table" aria-label="Audit log entries">
             <thead>
                 <tr>
                     <th scope="col">Timestamp</th>
@@ -240,7 +241,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </td>
                     <td class="ip-address"><?= htmlspecialchars($log['ip_address'] ?? '-') ?></td>
                     <td>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="showDetails(<?= $log['id'] ?>)">
+                        <button type="button" class="btn btn-sm btn-secondary" data-action="show-details" data-log-id="<?= $log['id'] ?>">
                             Details
                         </button>
                     </td>
@@ -272,7 +273,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h3 id="details-modal-title">Event Details</h3>
-            <button type="button" class="modal-close" aria-label="Close" onclick="closeDetailsModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close" data-action="close-details-modal">&times;</button>
         </div>
         <div class="modal-body" id="details-content">
             Loading...
@@ -285,7 +286,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="compliance-modal-title">Generate Compliance Report</h3>
-            <button type="button" class="modal-close" aria-label="Close" onclick="closeComplianceModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close" data-action="close-compliance-modal">&times;</button>
         </div>
         <form method="GET" class="modal-body">
             <input type="hidden" name="compliance_report" value="1">
@@ -309,7 +310,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeComplianceModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-action="close-compliance-modal">Cancel</button>
                 <button type="submit" class="btn btn-primary">Generate Report</button>
             </div>
         </form>
@@ -318,60 +319,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
 <!-- Log details data -->
 <script>
-const logsData = <?= json_encode(array_combine(array_column($logs, 'id'), $logs)) ?>;
-
-function showDetails(id) {
-    const log = logsData[id];
-    if (!log) return;
-
-    let html = '<div class="detail-grid">';
-    html += `<div class="detail-item"><strong>Timestamp:</strong> ${log.created_at}</div>`;
-    html += `<div class="detail-item"><strong>Event Type:</strong> ${log.event_type}</div>`;
-    html += `<div class="detail-item"><strong>Event Name:</strong> ${log.event_name}</div>`;
-    html += `<div class="detail-item"><strong>Severity:</strong> ${log.severity}</div>`;
-    html += `<div class="detail-item"><strong>User:</strong> ${log.username || 'System'} (ID: ${log.user_id || 'N/A'})</div>`;
-    html += `<div class="detail-item"><strong>IP Address:</strong> ${log.ip_address || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>User Agent:</strong> ${log.user_agent || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Resource:</strong> ${log.resource_type || 'N/A'} #${log.resource_id || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Resource Name:</strong> ${log.resource_name || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Session ID:</strong> ${log.session_id || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Request ID:</strong> ${log.request_id || 'N/A'}</div>`;
-    html += '</div>';
-
-    if (log.old_value) {
-        html += '<h4>Old Value</h4><pre class="json-display">' + JSON.stringify(log.old_value, null, 2) + '</pre>';
-    }
-
-    if (log.new_value) {
-        html += '<h4>New Value</h4><pre class="json-display">' + JSON.stringify(log.new_value, null, 2) + '</pre>';
-    }
-
-    if (log.metadata) {
-        html += '<h4>Metadata</h4><pre class="json-display">' + JSON.stringify(log.metadata, null, 2) + '</pre>';
-    }
-
-    document.getElementById('details-content').innerHTML = html;
-    document.getElementById('details-modal').style.display = 'flex';
-}
-
-function closeDetailsModal() {
-    document.getElementById('details-modal').style.display = 'none';
-}
-
-function showComplianceModal() {
-    document.getElementById('compliance-modal').style.display = 'flex';
-}
-
-function closeComplianceModal() {
-    document.getElementById('compliance-modal').style.display = 'none';
-}
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeDetailsModal();
-        closeComplianceModal();
-    }
-});
+window.AuditLogConfig = { logsData: <?= json_encode(array_combine(array_column($logs, 'id'), $logs)) ?> };
 </script>
 
 <style>

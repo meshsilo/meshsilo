@@ -111,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $licenseOptions = getLicenseOptions();
+$needsEditModelJs = true;
 
 require_once 'includes/header.php';
 ?>
@@ -140,35 +141,6 @@ require_once 'includes/header.php';
                         <summary style="cursor:pointer;color:var(--color-text-muted);font-size:0.85rem">Preview</summary>
                         <div id="md-preview" class="markdown-content" style="padding:1rem;border:1px solid var(--color-border);border-radius:var(--radius);margin-top:0.5rem;min-height:3rem;background:var(--color-surface)"></div>
                     </details>
-                    <script>
-                    (function() {
-                        var ta = document.getElementById('description');
-                        var preview = document.getElementById('md-preview');
-                        var timer = null;
-                        function updatePreview() {
-                            var text = ta.value;
-                            if (!text.trim()) { preview.innerHTML = '<em style="color:var(--color-text-muted)">Nothing to preview</em>'; return; }
-                            // Simple Markdown rendering (client-side)
-                            var html = text
-                                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                                .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-                                .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-                                .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-                                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                                .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                                .replace(/`(.+?)`/g, '<code>$1</code>')
-                                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-                                .replace(/^- (.+)$/gm, '<li>$1</li>')
-                                .replace(/\n/g, '<br>');
-                            preview.innerHTML = html;
-                        }
-                        ta.addEventListener('input', function() {
-                            clearTimeout(timer);
-                            timer = setTimeout(updatePreview, 200);
-                        });
-                        document.querySelector('.markdown-preview-toggle').addEventListener('toggle', updatePreview);
-                    })();
-                    </script>
                 </div>
 
                 <div class="form-group">
@@ -210,7 +182,7 @@ require_once 'includes/header.php';
                         <?php foreach ($modelTags as $tag): ?>
                         <span class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>;" data-tag-id="<?= $tag['id'] ?>">
                             <?= htmlspecialchars($tag['name']) ?>
-                            <button type="button" class="model-tag-remove" aria-label="Remove tag <?= htmlspecialchars($tag['name']) ?>" onclick="removeTag(<?= $modelId ?>, <?= $tag['id'] ?>, this.parentElement)">&times;</button>
+                            <button type="button" class="model-tag-remove" aria-label="Remove tag <?= htmlspecialchars($tag['name']) ?>">&times;</button>
                         </span>
                         <?php endforeach; ?>
                     </div>
@@ -228,102 +200,10 @@ require_once 'includes/header.php';
         </div>
 
         <script>
-        const allTags = <?= json_encode(getAllTags()) ?>;
-        const tagInput = document.getElementById('tag-input');
-        const tagSuggestions = document.getElementById('tag-suggestions');
-        const modelId = <?= $modelId ?>;
-
-        if (tagInput) {
-            tagInput.addEventListener('input', function() {
-                const value = this.value.toLowerCase().trim();
-                if (value.length < 1) {
-                    tagSuggestions.style.display = 'none';
-                    return;
-                }
-
-                const matching = allTags.filter(t => t.name.toLowerCase().includes(value));
-                if (matching.length === 0 && value.length > 0) {
-                    var safeValue = escapeHtml(value);
-                    tagSuggestions.innerHTML =
-                        '<button type="button" class="tag-suggestion" onclick="addTag(this.dataset.name)" data-name="' + safeValue + '">' +
-                            '<span class="tag-color-dot" style="background-color: var(--color-primary);"></span>' +
-                            '<span>Create "' + safeValue + '"</span>' +
-                        '</button>';
-                } else {
-                    tagSuggestions.innerHTML = matching.map(function(t) {
-                        var safeName = escapeHtml(t.name);
-                        return '<button type="button" class="tag-suggestion" onclick="addTag(this.dataset.name)" data-name="' + safeName + '">' +
-                            '<span class="tag-color-dot" style="background-color:' + t.color + ';"></span>' +
-                            '<span>' + safeName + '</span>' +
-                        '</button>';
-                    }).join('');
-                }
-                tagSuggestions.style.display = matching.length > 0 || value.length > 0 ? 'block' : 'none';
-            });
-
-            tagInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const value = this.value.trim();
-                    if (value) addTag(value);
-                }
-            });
-
-            tagInput.addEventListener('blur', function() {
-                setTimeout(() => { tagSuggestions.style.display = 'none'; }, 200);
-            });
-        }
-
-        async function addTag(tagName) {
-            try {
-                const response = await fetch('/actions/tag', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=add&model_id=' + modelId + '&tag_name=' + encodeURIComponent(tagName)
-                });
-                const data = await response.json();
-                if (data.success && data.tag) {
-                    const tagsContainer = document.getElementById('current-tags');
-                    const tagEl = document.createElement('span');
-                    tagEl.className = 'model-tag';
-                    tagEl.style.setProperty('--tag-color', data.tag.color);
-                    tagEl.dataset.tagId = data.tag.id;
-                    tagEl.textContent = data.tag.name + ' ';
-                    const removeBtn = document.createElement('button');
-                    removeBtn.type = 'button';
-                    removeBtn.className = 'model-tag-remove';
-                    removeBtn.innerHTML = '&times;';
-                    removeBtn.setAttribute('aria-label', 'Remove tag ' + data.tag.name);
-                    removeBtn.onclick = function() { removeTag(modelId, data.tag.id, tagEl); };
-                    tagEl.appendChild(removeBtn);
-                    tagsContainer.appendChild(tagEl);
-                    tagInput.value = '';
-                    tagSuggestions.style.display = 'none';
-                } else {
-                    showToast('Failed to add tag: ' + (data.error || 'Unknown error'), 'error');
-                }
-            } catch (err) {
-                console.error('Failed to add tag:', err);
-            }
-        }
-
-        async function removeTag(modelId, tagId, element) {
-            try {
-                const response = await fetch('/actions/tag', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=remove&model_id=' + modelId + '&tag_id=' + tagId
-                });
-                const data = await response.json();
-                if (data.success) {
-                    element.remove();
-                } else {
-                    showToast('Failed to remove tag: ' + (data.error || 'Unknown error'), 'error');
-                }
-            } catch (err) {
-                console.error('Failed to remove tag:', err);
-            }
-        }
+        window.EditModelPageConfig = {
+            allTags: <?= json_encode(getAllTags()) ?>,
+            modelId: <?= $modelId ?>
+        };
         </script>
 
 <?php require_once 'includes/footer.php'; ?>

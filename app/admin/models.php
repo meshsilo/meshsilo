@@ -12,7 +12,6 @@ if (!isLoggedIn() || !isAdmin()) {
 $pageTitle = 'Model Management';
 $activePage = 'admin';
 $adminPage = 'models';
-
 $db = getDB();
 $user = getCurrentUser();
 
@@ -138,35 +137,35 @@ require_once __DIR__ . '/../../includes/header.php';
             <div id="bulk-actions-bar" class="batch-actions-bar" style="display: none;">
                 <div class="batch-actions-left">
                     <label class="batch-select-all">
-                        <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
+                        <input type="checkbox" id="select-all">
                         <span id="selected-count">0</span> selected
                     </label>
                 </div>
                 <div class="batch-actions-right">
-                    <select id="bulk-tag" class="sort-select" style="max-width: 150px;" onchange="bulkAddTag(this.value)" aria-label="Add tag to selected">
+                    <select id="bulk-tag" class="sort-select" style="max-width: 150px;" aria-label="Add tag to selected">
                         <option value="">Add Tag...</option>
                         <?php foreach ($tags as $tag): ?>
                         <option value="<?= $tag['id'] ?>"><?= htmlspecialchars($tag['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select id="bulk-category" class="sort-select" style="max-width: 150px;" onchange="bulkAddCategory(this.value)" aria-label="Add category to selected">
+                    <select id="bulk-category" class="sort-select" style="max-width: 150px;" aria-label="Add category to selected">
                         <option value="">Add Category...</option>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select id="bulk-license" class="sort-select" style="max-width: 150px;" onchange="bulkSetLicense(this.value)" aria-label="Set license for selected">
+                    <select id="bulk-license" class="sort-select" style="max-width: 150px;" aria-label="Set license for selected">
                         <option value="">Set License...</option>
                         <?php foreach (getLicenseOptions() as $key => $label): ?>
                         <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <button type="button" class="btn btn-small" onclick="bulkArchive(true)">Archive</button>
-                    <button type="button" class="btn btn-small" onclick="bulkArchive(false)">Unarchive</button>
-                    <button type="button" class="btn btn-small btn-danger" onclick="bulkDelete()">Delete</button>
+                    <button type="button" class="btn btn-small" data-action="bulk-archive" data-archive="1">Archive</button>
+                    <button type="button" class="btn btn-small" data-action="bulk-archive" data-archive="0">Unarchive</button>
+                    <button type="button" class="btn btn-small btn-danger" data-action="bulk-delete">Delete</button>
                 </div>
             </div>
 
@@ -176,7 +175,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <thead>
                         <tr>
                             <th scope="col" style="width: 40px;">
-                                <input type="checkbox" id="header-select-all" onchange="toggleSelectAll(this)" aria-label="Select all models">
+                                <input type="checkbox" id="header-select-all" aria-label="Select all models">
                             </th>
                             <th scope="col">Model</th>
                             <th scope="col">Uploader</th>
@@ -192,7 +191,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php foreach ($models as $model): ?>
                         <tr data-model-id="<?= $model['id'] ?>">
                             <td>
-                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateSelection()" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
+                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
                             </td>
                             <td>
                                 <a href="<?= route('model.show', ['id' => $model['id']]) ?>" target="_blank" rel="noopener noreferrer">
@@ -213,7 +212,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             </td>
                             <td>
                                 <a href="<?= route('model.edit', ['id' => $model['id']]) ?>" class="btn btn-small">Edit</a>
-                                <button type="button" class="btn btn-small btn-danger" onclick="deleteModel(<?= $model['id'] ?>, '<?= htmlspecialchars(addslashes($model['name'])) ?>')">Delete</button>
+                                <button type="button" class="btn btn-small btn-danger" data-action="delete-model" data-model-id="<?= $model['id'] ?>" data-model-name="<?= htmlspecialchars($model['name']) ?>">Delete</button>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -257,225 +256,5 @@ require_once __DIR__ . '/../../includes/header.php';
             </div><!-- /.admin-content -->
         </div><!-- /.admin-layout -->
 
-        <script>
-        function toggleSelectAll(checkbox) {
-            document.querySelectorAll('.model-checkbox').forEach(cb => {
-                cb.checked = checkbox.checked;
-            });
-            document.getElementById('header-select-all').checked = checkbox.checked;
-            document.getElementById('select-all').checked = checkbox.checked;
-            updateSelection();
-        }
-
-        function updateSelection() {
-            const checked = document.querySelectorAll('.model-checkbox:checked');
-            const countEl = document.getElementById('selected-count');
-            const bar = document.getElementById('bulk-actions-bar');
-
-            countEl.textContent = checked.length;
-            bar.style.display = checked.length > 0 ? 'flex' : 'none';
-
-            // Sync header checkbox
-            const allCheckboxes = document.querySelectorAll('.model-checkbox');
-            const headerCheckbox = document.getElementById('header-select-all');
-            const selectAllCheckbox = document.getElementById('select-all');
-
-            if (checked.length === allCheckboxes.length && allCheckboxes.length > 0) {
-                headerCheckbox.checked = true;
-                headerCheckbox.indeterminate = false;
-                selectAllCheckbox.checked = true;
-            } else if (checked.length > 0) {
-                headerCheckbox.indeterminate = true;
-                selectAllCheckbox.indeterminate = true;
-            } else {
-                headerCheckbox.checked = false;
-                headerCheckbox.indeterminate = false;
-                selectAllCheckbox.checked = false;
-            }
-        }
-
-        function getSelectedIds() {
-            return Array.from(document.querySelectorAll('.model-checkbox:checked')).map(cb => cb.value);
-        }
-
-        async function bulkAddTag(tagId) {
-            const select = document.getElementById('bulk-tag');
-            if (!tagId) return;
-
-            const ids = getSelectedIds();
-            if (ids.length === 0) {
-                showToast('Select models first', 'error');
-                select.value = '';
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'add_tag');
-                formData.append('tag_id', tagId);
-                ids.forEach(id => formData.append('model_ids[]', id));
-
-                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    showToast(`Tagged ${result.updated} model(s)`, 'success');
-                } else {
-                    showToast(result.error || 'Unknown error', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Failed', 'error');
-            }
-            select.value = '';
-        }
-
-        async function bulkAddCategory(categoryId) {
-            const select = document.getElementById('bulk-category');
-            if (!categoryId) return;
-
-            const ids = getSelectedIds();
-            if (ids.length === 0) {
-                showToast('Select models first', 'error');
-                select.value = '';
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'add_category');
-                formData.append('category_id', categoryId);
-                ids.forEach(id => formData.append('model_ids[]', id));
-
-                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    showToast(`Added category to ${result.updated} model(s)`, 'success');
-                } else {
-                    showToast(result.error || 'Unknown error', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Failed', 'error');
-            }
-            select.value = '';
-        }
-
-        async function bulkSetLicense(license) {
-            const select = document.getElementById('bulk-license');
-            if (license === '') return;
-
-            const ids = getSelectedIds();
-            if (ids.length === 0) {
-                showToast('Select models first', 'error');
-                select.value = '';
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'set_license');
-                formData.append('license', license);
-                ids.forEach(id => formData.append('model_ids[]', id));
-
-                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    showToast(`Set license on ${result.updated} model(s)`, 'success');
-                } else {
-                    showToast(result.error || 'Unknown error', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Failed', 'error');
-            }
-            select.value = '';
-        }
-
-        async function bulkArchive(archive) {
-            const ids = getSelectedIds();
-            if (ids.length === 0) {
-                showToast('Select models first', 'error');
-                return;
-            }
-
-            const action = archive ? 'archive' : 'unarchive';
-            if (!await showConfirm(`${archive ? 'Archive' : 'Unarchive'} ${ids.length} model(s)?`)) return;
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'archive');
-                formData.append('archive', archive ? '1' : '0');
-                ids.forEach(id => formData.append('model_ids[]', id));
-
-                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    showToast(`${archive ? 'Archived' : 'Unarchived'} ${result.updated} model(s)`, 'success');
-                    location.reload();
-                } else {
-                    showToast(result.error || 'Unknown error', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Failed', 'error');
-            }
-        }
-
-        async function bulkDelete() {
-            const ids = getSelectedIds();
-            if (ids.length === 0) {
-                showToast('Select models first', 'error');
-                return;
-            }
-
-            if (!await showConfirm(`DELETE ${ids.length} model(s)? This cannot be undone!`)) return;
-            if (!await showConfirm(`Are you sure? All files and data will be permanently deleted.`)) return;
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'delete');
-                ids.forEach(id => formData.append('model_ids[]', id));
-
-                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    showToast(`Deleted ${result.deleted} model(s)`, 'success');
-                    location.reload();
-                } else {
-                    showToast(result.error || 'Unknown error', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Failed', 'error');
-            }
-        }
-
-        async function deleteModel(id, name) {
-            if (!await showConfirm(`Delete "${name}"? This cannot be undone!`)) return;
-
-            try {
-                const formData = new FormData();
-                formData.append('action', 'delete');
-                formData.append('model_ids[]', id);
-
-                const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.success) {
-                    location.reload();
-                } else {
-                    showToast(result.error || 'Unknown error', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Failed', 'error');
-            }
-        }
-        </script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

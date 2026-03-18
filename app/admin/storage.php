@@ -371,7 +371,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <?= csrf_field() ?>
                             <div class="form-group">
                                 <label for="storage_type">Storage Type</label>
-                                <select name="storage_type" id="storage_type" class="form-input" onchange="toggleS3Settings()">
+                                <select name="storage_type" id="storage_type" class="form-input">
                                     <option value="local" <?= $storageType === 'local' ? 'selected' : '' ?>>Local Filesystem</option>
                                     <option value="s3" <?= $storageType === 's3' ? 'selected' : '' ?>>S3-Compatible Object Storage</option>
                                 </select>

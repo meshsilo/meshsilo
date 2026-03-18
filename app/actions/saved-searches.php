@@ -9,25 +9,17 @@ require_once __DIR__ . '/../../includes/SavedSearches.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    jsonError('Not authenticated', 401);
 }
 
 $user = getCurrentUser();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $searches = SavedSearches::getUserSearches($user['id'], 20);
-    echo json_encode(['success' => true, 'searches' => $searches]);
-    exit;
+    jsonSuccess(['searches' => SavedSearches::getUserSearches($user['id'], 20)]);
 }
 
 // POST actions
-if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
-}
+requireCsrfJson();
 
 $action = $_POST['action'] ?? '';
 

@@ -7,28 +7,17 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isFeatureEnabled('tags')) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Tags feature is disabled']);
-    exit;
+    jsonError('Tags feature is disabled', 403);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-    exit;
+    jsonError('Method not allowed', 405);
 }
 
-// CSRF validation
-if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-    exit;
-}
+requireCsrfJson();
 
 if (!canEdit()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 $action = $_POST['action'] ?? '';

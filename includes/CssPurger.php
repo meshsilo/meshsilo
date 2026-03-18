@@ -28,7 +28,9 @@ class CssPurger
         $this->cssPaths = [
             $basePath . '/public/css/base.css',
             $basePath . '/public/css/layout.css',
+            $basePath . '/public/css/components.css',
             $basePath . '/public/css/pages.css',
+            $basePath . '/public/css/admin.css',
         ];
         $this->outputPath = $basePath . '/public/css/style.purged.css';
 

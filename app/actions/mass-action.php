@@ -8,26 +8,18 @@ require_once __DIR__ . '/../../includes/dedup.php';
 header('Content-Type: application/json');
 
 // CSRF validation
-if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-    exit;
-}
+requireCsrfJson();
 
 // Require appropriate permissions
 if (!canEdit() && !canDelete()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 $action = $_POST['action'] ?? '';
 $ids = $_POST['ids'] ?? [];
 
 if (empty($ids) || !is_array($ids)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'No items selected']);
-    exit;
+    jsonError('No items selected');
 }
 
 // Sanitize IDs
