@@ -653,42 +653,15 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="models-grid">
                     <?php foreach ($models as $model): ?>
-                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" data-model-id="<?= $model['id'] ?>" onclick="handleModelCardClick(event, <?= $model['id'] ?>)" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')handleModelCardClick(event,<?= $model['id'] ?>)">
-                        <div class="model-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? $model['file_size'] ?? 0) < 5242880): ?>
-                            data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
-                            data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
-                            <?php endif; ?>>
-                            <?php if (!empty($model['thumbnail_path'])): ?>
-                            <?php $thumbSrcset = function_exists('image_srcset') ? image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]) : ''; ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async"<?= $thumbSrcset ? ' srcset="' . htmlspecialchars($thumbSrcset) . '" sizes="(min-width: 280px) 280px, 100vw"' : '' ?>>
-                            <?php endif; ?>
-                            <?php if (isLoggedIn()): ?>
-                            <label class="model-select-checkbox" onclick="event.stopPropagation()">
-                                <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
-                            </label>
-                            <?php endif; ?>
-                            <?php if ($model['part_count'] > 0): ?>
-                            <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
-                            <?php endif; ?>
-                                                        <?php if ($model['is_archived']): ?>
-                            <span class="archived-badge" style="position: absolute; bottom: 0.5rem; left: 0.5rem;">Archived</span>
-                            <?php endif; ?>
-                        </div>
-                        <div class="model-info">
-                            <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
-                            <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
-                            <?php if (!empty($model['created_at'])): ?>
-                            <time class="model-date" datetime="<?= htmlspecialchars(date('c', strtotime($model['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></time>
-                            <?php endif; ?>
-                            <?php if (isFeatureEnabled('download_tracking') && $model['download_count'] > 0): ?>
-                            <p class="download-count mt-1"><?= number_format($model['download_count']) ?> downloads</p>
-                            <?php endif; ?>
-                        </div>
-                        <?php if (class_exists('PluginManager')): ?>
-                        <?= PluginManager::applyFilter('model_card_extra', '', $model) ?>
-                        <?php endif; ?>
-                    </article>
+                    <?php $cardOptions = [
+                        'archivedClass'   => true,
+                        'batchCheckbox'   => true,
+                        'downloadCount'   => true,
+                        'pluginExtra'     => true,
+                        'fileSizeLimit'   => true,
+                        'customOnClick'   => "handleModelCardClick(event, {$model['id']})",
+                        'customOnKeydown' => "if(event.key==='Enter')handleModelCardClick(event,{$model['id']})",
+                    ]; include 'includes/partials/model-card.php'; ?>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>

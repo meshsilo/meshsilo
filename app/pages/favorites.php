@@ -60,29 +60,7 @@ require_once 'includes/header.php';
             <?php else: ?>
                 <div class="models-grid">
                     <?php foreach ($favorites as $model): ?>
-                    <article class="model-card" data-model-id="<?= $model['id'] ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')this.click()">
-                        <div class="model-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? 0) < 5242880): ?>
-                            data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
-                            data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
-                            <?php endif; ?>>
-                            <?php if (!empty($model['thumbnail_path'])): ?>
-                            <?php $thumbSrcset = function_exists('image_srcset') ? image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]) : ''; ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async"<?= $thumbSrcset ? ' srcset="' . htmlspecialchars($thumbSrcset) . '" sizes="(min-width: 280px) 280px, 100vw"' : '' ?>>
-                            <?php endif; ?>
-                            <?php if ($model['part_count'] > 0): ?>
-                            <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
-                            <?php endif; ?>
-                            <button type="button" class="model-card-favorite favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(<?= $model['id'] ?>, this)" title="Remove from favorites" aria-label="Remove from favorites"><span aria-hidden="true">&#9829;</span></button>
-                        </div>
-                        <div class="model-info">
-                            <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
-                            <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
-                            <?php if (!empty($model['created_at'])): ?>
-                            <time class="model-date" datetime="<?= htmlspecialchars(date('c', strtotime($model['created_at']))) ?>" data-timestamp="<?= htmlspecialchars($model['created_at']) ?>"><?= date('M j, Y', strtotime($model['created_at'])) ?></time>
-                            <?php endif; ?>
-                        </div>
-                    </article>
+                    <?php $cardOptions = ['favoriteButton' => true, 'fileSizeLimit' => true]; include 'includes/partials/model-card.php'; ?>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
