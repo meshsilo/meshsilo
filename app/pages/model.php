@@ -535,7 +535,6 @@ require_once 'includes/header.php';
                         <?php endif; ?>
 
                         <div class="model-actions mt-3">
-                            <button type="button" class="copy-link-btn" title="Copy link to clipboard">&#128279; Copy Link</button>
                             <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
                             <button type="button" class="btn btn-secondary btn-small open-share-modal">Share</button>
                             <?php endif; ?>
