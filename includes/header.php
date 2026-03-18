@@ -78,6 +78,9 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" crossorigin="anonymous" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" defer></script>
     <script src="<?= basePath('js/viewer.js') ?>?v=15" defer></script>
     <?php endif; ?>
+    <?php if (!empty($needsModelPageJs)): ?>
+    <script src="<?= basePath('js/model-page.js') ?>?v=1" defer></script>
+    <?php endif; ?>
     <script src="<?= basePath('js/main.js') ?>?v=8" defer></script>
     <script>
         // Focus trap for modals (accessibility)
