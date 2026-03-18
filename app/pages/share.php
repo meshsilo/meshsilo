@@ -142,7 +142,9 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
 <?php if ($_shareImage): ?>
     <meta name="twitter:image" content="<?= htmlspecialchars($_shareImage) ?>">
 <?php endif; ?>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/pages.css">
     <style>
         .share-container {
             max-width: 800px;

@@ -27,7 +27,9 @@ const CACHE_TTL = {
 // Static assets to precache
 const PRECACHE_ASSETS = [
     '/',
-    '/public/css/style.css',
+    '/public/css/base.css',
+    '/public/css/layout.css',
+    '/public/css/pages.css',
     '/public/js/main.js',
     '/public/js/viewer.js',
     '/public/manifest.json',

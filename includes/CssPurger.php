@@ -18,14 +18,18 @@ class CssPurger
 {
     private array $usedSelectors = [];
     private array $allSelectors = [];
-    private string $cssPath;
+    private array $cssPaths;
     private string $outputPath;
     private array $safelist = [];
 
     public function __construct()
     {
         $basePath = dirname(__DIR__);
-        $this->cssPath = $basePath . '/public/css/style.css';
+        $this->cssPaths = [
+            $basePath . '/public/css/base.css',
+            $basePath . '/public/css/layout.css',
+            $basePath . '/public/css/pages.css',
+        ];
         $this->outputPath = $basePath . '/public/css/style.purged.css';
 
         // Selectors that should never be purged (dynamic classes, JS-added classes)
@@ -133,7 +137,7 @@ class CssPurger
     {
         $analysis = $this->analyze();
 
-        $css = file_get_contents($this->cssPath);
+        $css = $this->readAllCss();
         $originalSize = strlen($css);
 
         // Remove unused rules
@@ -224,9 +228,20 @@ class CssPurger
     /**
      * Parse CSS and extract all selectors
      */
+    private function readAllCss(): string
+    {
+        $parts = [];
+        foreach ($this->cssPaths as $path) {
+            if (file_exists($path)) {
+                $parts[] = file_get_contents($path);
+            }
+        }
+        return implode("\n", $parts);
+    }
+
     private function parseCssSelectors(): array
     {
-        $css = file_get_contents($this->cssPath);
+        $css = $this->readAllCss();
         $selectors = [];
 
         // Remove comments
@@ -349,7 +364,7 @@ class CssPurger
      */
     private function estimateSavings(array $unusedSelectors): string
     {
-        $css = file_get_contents($this->cssPath);
+        $css = $this->readAllCss();
         $totalSize = strlen($css);
 
         $unusedSize = 0;

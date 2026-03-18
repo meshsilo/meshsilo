@@ -54,7 +54,9 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
     <link rel="icon" type="image/png" sizes="16x16" href="<?= basePath('images/favicon-16.png') ?>">
     <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
-    <link rel="stylesheet" href="<?= basePath('css/style.css') ?>?v=8">
+    <link rel="stylesheet" href="<?= basePath('css/base.css') ?>?v=8">
+    <link rel="stylesheet" href="<?= basePath('css/layout.css') ?>?v=8">
+    <link rel="stylesheet" href="<?= basePath('css/pages.css') ?>?v=8">
 
     <!-- CDN preconnect hints (dns-prefetch as fallback for older browsers) -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>

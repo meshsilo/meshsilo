@@ -150,7 +150,9 @@ class EarlyHintsMiddleware
         $middleware->preconnect('https://cdn.jsdelivr.net');
 
         // Preload critical CSS
-        $middleware->preload('/public/css/style.css', 'style');
+        $middleware->preload('/public/css/base.css', 'style');
+        $middleware->preload('/public/css/layout.css', 'style');
+        $middleware->preload('/public/css/pages.css', 'style');
 
         // Preload main JS
         $middleware->preload('/public/js/main.js', 'script');
