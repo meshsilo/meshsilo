@@ -28,7 +28,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public function open(string $path, string $name): bool
     {
         try {
-            $this->db = getDB();
+            $this->db = getDB()->getPDO();
             $this->ensureTable();
             return true;
         } catch (Exception $e) {
@@ -173,7 +173,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public static function getUserSessions(int $userId): array
     {
         try {
-            $db = getDB();
+            $db = getDB()->getPDO();
             $stmt = $db->prepare(
                 "SELECT id, ip_address, user_agent, last_activity, expires_at
                  FROM sessions
@@ -193,7 +193,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public static function destroyUserSessions(int $userId, ?string $exceptSessionId = null): int
     {
         try {
-            $db = getDB();
+            $db = getDB()->getPDO();
             if ($exceptSessionId) {
                 $stmt = $db->prepare("DELETE FROM sessions WHERE user_id = :user_id AND id != :except_id");
                 $stmt->execute([':user_id' => $userId, ':except_id' => $exceptSessionId]);
@@ -213,7 +213,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public static function getStats(): array
     {
         try {
-            $db = getDB();
+            $db = getDB()->getPDO();
             $now = time();
 
             $stmt = $db->query("SELECT COUNT(*) FROM sessions WHERE expires_at > $now");
