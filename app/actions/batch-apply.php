@@ -55,8 +55,7 @@ switch ($action) {
         $tagId = isset($_POST['tag_id']) ? (int)$_POST['tag_id'] : 0;
 
         if (!$tagName && !$tagId) {
-            echo json_encode(['success' => false, 'error' => 'No tag specified']);
-            exit;
+            jsonError('No tag specified');
         }
 
         // Get or create tag
@@ -92,8 +91,7 @@ switch ($action) {
         }
 
         if (!$tagId) {
-            echo json_encode(['success' => false, 'error' => 'Failed to get/create tag']);
-            exit;
+            jsonError('Failed to get/create tag');
         }
 
         foreach ($modelIds as $modelId) {
@@ -105,15 +103,14 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_add_tag', 'models', 0, "Added tag to $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'remove_tag':
         $tagId = isset($_POST['tag_id']) ? (int)$_POST['tag_id'] : 0;
 
         if (!$tagId) {
-            echo json_encode(['success' => false, 'error' => 'No tag specified']);
-            exit;
+            jsonError('No tag specified');
         }
 
         foreach ($modelIds as $modelId) {
@@ -125,15 +122,14 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_remove_tag', 'models', 0, "Removed tag from $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'add_category':
         $categoryId = isset($_POST['category_id']) ? (int)$_POST['category_id'] : 0;
 
         if (!$categoryId) {
-            echo json_encode(['success' => false, 'error' => 'No category specified']);
-            exit;
+            jsonError('No category specified');
         }
 
         foreach ($modelIds as $modelId) {
@@ -148,15 +144,14 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_add_category', 'models', 0, "Added category to $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'remove_category':
         $categoryId = isset($_POST['category_id']) ? (int)$_POST['category_id'] : 0;
 
         if (!$categoryId) {
-            echo json_encode(['success' => false, 'error' => 'No category specified']);
-            exit;
+            jsonError('No category specified');
         }
 
         foreach ($modelIds as $modelId) {
@@ -171,7 +166,7 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_remove_category', 'models', 0, "Removed category from $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'archive':
@@ -190,13 +185,12 @@ switch ($action) {
 
         $action_name = $archive ? 'batch_archive' : 'batch_unarchive';
         logActivity($user['id'], $action_name, 'models', 0, ($archive ? 'Archived' : 'Unarchived') . " $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'delete':
         if (!$user['is_admin']) {
-            echo json_encode(['success' => false, 'error' => 'Admin access required']);
-            exit;
+            jsonError('Admin access required');
         }
 
         foreach ($modelIds as $modelId) {
@@ -271,7 +265,7 @@ switch ($action) {
             }
         }
 
-        echo json_encode(['success' => true, 'deleted' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['deleted' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'set_collection':
@@ -289,7 +283,7 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_set_collection', 'models', 0, "Set collection on $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'set_creator':
@@ -307,7 +301,7 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_set_creator', 'models', 0, "Set creator on $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     case 'set_license':
@@ -325,9 +319,9 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'batch_set_license', 'models', 0, "Set license on $successCount models");
-        echo json_encode(['success' => true, 'updated' => $successCount, 'failed' => $errorCount]);
+        jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
     default:
-        echo json_encode(['success' => false, 'error' => 'Unknown action']);
+        jsonError('Unknown action');
 }

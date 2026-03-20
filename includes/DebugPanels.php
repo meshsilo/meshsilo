@@ -20,7 +20,7 @@ trait DebugPanels
         $warnings = count(array_filter(self::$logs, fn($l) => $l['level'] === 'warning'));
 
         $durationMs = round($metrics['duration'] * 1000);
-        $memory = self::formatBytes($metrics['memory_peak']);
+        $memory = formatBytes($metrics['memory_peak']);
         $queryTime = array_sum(array_column(self::$queries, 'duration'));
         $queryTimeMs = round($queryTime * 1000, 1);
 
@@ -339,7 +339,7 @@ HTML;
                             htmlspecialchars($field),
                             $i,
                             htmlspecialchars($file['name'][$i]),
-                            self::formatBytes($file['size'][$i]),
+                            formatBytes($file['size'][$i]),
                             htmlspecialchars($file['type'][$i]),
                             $file['error'][$i] === 0 ? '✅' : '❌ ' . $file['error'][$i]
                         );
@@ -349,7 +349,7 @@ HTML;
                         '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
                         htmlspecialchars($field),
                         htmlspecialchars($file['name']),
-                        self::formatBytes($file['size']),
+                        formatBytes($file['size']),
                         htmlspecialchars($file['type']),
                         $file['error'] === 0 ? '✅' : '❌ ' . $file['error']
                     );
@@ -425,8 +425,8 @@ HTML;
                     '<tr><td>%s</td><td>+%.3fs</td><td>%s</td><td>%s</td></tr>',
                     htmlspecialchars($label),
                     $snap['time'],
-                    self::formatBytes($snap['current']),
-                    self::formatBytes($snap['peak'])
+                    formatBytes($snap['current']),
+                    formatBytes($snap['peak'])
                 );
             }
             $html .= '</tbody></table>';
@@ -459,17 +459,6 @@ HTML;
     public static function getQueries(): array
     {
         return self::$queries;
-    }
-
-    private static function formatBytes(int $bytes): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $i = 0;
-        while ($bytes >= 1024 && $i < count($units) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
-        return round($bytes, 2) . ' ' . $units[$i];
     }
 
     private static function formatValue($var, int $depth = 0): mixed

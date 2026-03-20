@@ -19,9 +19,7 @@ if (!canEdit()) {
 $modelId = (int)($_POST['model_id'] ?? 0);
 
 if (!$modelId) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid model ID']);
-    exit;
+    jsonError('Invalid model ID', 400);
 }
 
 $db = getDB();
@@ -33,17 +31,13 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Model not found']);
-    exit;
+    jsonError('Model not found', 404);
 }
 
 // Verify ownership - only owner or admin can edit
 $user = getCurrentUser();
 if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
-    exit;
+    jsonError('Permission denied - not model owner', 403);
 }
 
 // Build update query based on provided fields
@@ -114,8 +108,7 @@ if (isset($_POST['is_printed'])) {
 }
 
 if (empty($updates)) {
-    echo json_encode(['success' => false, 'error' => 'No fields to update']);
-    exit;
+    jsonError('No fields to update');
 }
 
 $sql = 'UPDATE models SET ' . implode(', ', $updates) . ' WHERE id = :id';
@@ -134,7 +127,7 @@ if ($stmt->execute()) {
         PluginManager::applyFilter('after_model_update', null, $modelId, $logDetails);
     }
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 } else {
-    echo json_encode(['success' => false, 'error' => 'Database update failed']);
+    jsonError('Database update failed');
 }

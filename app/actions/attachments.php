@@ -15,18 +15,15 @@ header('Content-Type: application/json');
 try {
 
 if (!isFeatureEnabled('attachments')) {
-    echo json_encode(['success' => false, 'error' => 'Attachments feature is disabled']);
-    exit;
+    jsonError('Attachments feature is disabled');
 }
 
 if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
+    jsonError('Not logged in');
 }
 
 if (!canEdit()) {
-    echo json_encode(['success' => false, 'error' => 'Edit permission required']);
-    exit;
+    jsonError('Edit permission required');
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -34,9 +31,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 // CSRF validation for state-changing actions
 if (in_array($action, ['upload', 'delete'])) {
     if (!Csrf::check()) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-        exit;
+        jsonError('Invalid request token', 403);
     }
 }
 
@@ -48,7 +43,7 @@ switch ($action) {
         deleteAttachment();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }
 
 } catch (Throwable $e) {
@@ -56,7 +51,7 @@ switch ($action) {
         logException($e, ['action' => 'attachments']);
     }
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    jsonError($e->getMessage());
 }
 
 /**
@@ -66,12 +61,12 @@ function uploadAttachment() {
     $modelId = (int)($_POST['model_id'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
     if (empty($_FILES['attachment']) || $_FILES['attachment']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['success' => false, 'error' => 'No file uploaded']);
+        jsonError('No file uploaded');
         return;
     }
 
@@ -93,7 +88,7 @@ function uploadAttachment() {
     $isTextByExt = in_array($ext, $textExtensions);
 
     if (!in_array($mimeType, $allowedTypes) && !$isTextByExt) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WebP, PDF, TXT, MD']);
+        jsonError('Invalid file type. Allowed: JPG, PNG, GIF, WebP, PDF, TXT, MD');
         return;
     }
 
@@ -105,7 +100,7 @@ function uploadAttachment() {
     $maxSize = $isImage ? 5 * 1024 * 1024 : ($isText ? 1 * 1024 * 1024 : 20 * 1024 * 1024);
     if ($file['size'] > $maxSize) {
         $maxMB = $maxSize / (1024 * 1024);
-        echo json_encode(['success' => false, 'error' => "File too large (max {$maxMB}MB)"]);
+        jsonError("File too large (max {$maxMB}MB)");
         return;
     }
 
@@ -117,14 +112,14 @@ function uploadAttachment() {
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        jsonError('Model not found');
         return;
     }
 
     // Verify ownership - user must own the model or be an admin
     $user = getCurrentUser();
     if (!$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
-        echo json_encode(['success' => false, 'error' => 'Not authorized to modify this model']);
+        jsonError('Not authorized to modify this model');
         return;
     }
 
@@ -152,7 +147,7 @@ function uploadAttachment() {
 
     // Move uploaded file
     if (!move_uploaded_file($file['tmp_name'], $filePath)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to save file']);
+        jsonError('Failed to save file');
         return;
     }
 
@@ -206,7 +201,7 @@ function uploadAttachment() {
     } else {
         // Clean up file on database error
         @unlink(UPLOAD_PATH . $relativePath);
-        echo json_encode(['success' => false, 'error' => 'Failed to save attachment record']);
+        jsonError('Failed to save attachment record');
     }
 }
 
@@ -217,7 +212,7 @@ function deleteAttachment() {
     $attachmentId = (int)($_POST['attachment_id'] ?? 0);
 
     if (!$attachmentId) {
-        echo json_encode(['success' => false, 'error' => 'Attachment ID required']);
+        jsonError('Attachment ID required');
         return;
     }
 
@@ -230,7 +225,7 @@ function deleteAttachment() {
     $attachment = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$attachment) {
-        echo json_encode(['success' => false, 'error' => 'Attachment not found']);
+        jsonError('Attachment not found');
         return;
     }
 
@@ -242,7 +237,7 @@ function deleteAttachment() {
 
     $user = getCurrentUser();
     if ($model && !$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
-        echo json_encode(['success' => false, 'error' => 'Not authorized to modify this model']);
+        jsonError('Not authorized to modify this model');
         return;
     }
 
@@ -266,9 +261,9 @@ function deleteAttachment() {
             logActivity(getCurrentUser()['id'], 'attachment_delete', 'model', $attachment['model_id'], $attachment['original_filename']);
         }
 
-        echo json_encode(['success' => true]);
+        jsonSuccess();
     } else {
-        echo json_encode(['success' => false, 'error' => 'Failed to delete attachment']);
+        jsonError('Failed to delete attachment');
     }
 }
 

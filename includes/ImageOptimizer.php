@@ -338,20 +338,9 @@ class ImageOptimizer
         return [
             'cached_images' => count($files),
             'cache_size' => $totalSize,
-            'cache_size_human' => $this->formatBytes($totalSize),
+            'cache_size_human' => formatBytes($totalSize),
             'webp_enabled' => $this->webpEnabled,
         ];
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $i = 0;
-        while ($bytes >= 1024 && $i < count($units) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
-        return round($bytes, 2) . ' ' . $units[$i];
     }
 }
 

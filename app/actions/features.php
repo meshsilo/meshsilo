@@ -12,17 +12,14 @@ header('Content-Type: application/json');
 
 // Require admin permission
 if (!isLoggedIn() || !isAdmin()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
+    jsonError('Invalid CSRF token');
 }
 
 switch ($action) {
@@ -31,16 +28,12 @@ switch ($action) {
         $enabled = filter_var($_POST['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if (empty($feature)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Feature key is required']);
-            exit;
+            jsonError('Feature key is required', 400);
         }
 
         $features = getAvailableFeatures();
         if (!isset($features[$feature])) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid feature']);
-            exit;
+            jsonError('Invalid feature', 400);
         }
 
         if ($enabled) {
@@ -65,6 +58,6 @@ switch ($action) {
 
     default:
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
         break;
 }

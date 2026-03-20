@@ -15,13 +15,11 @@ $modelId = isset($_POST['model_id']) ? (int)$_POST['model_id'] : 0;
 $changelog = trim($_POST['changelog'] ?? '');
 
 if (!$modelId) {
-    echo json_encode(['success' => false, 'error' => 'No model specified']);
-    exit;
+    jsonError('No model specified');
 }
 
 if (!isset($_FILES['version_file']) || $_FILES['version_file']['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(['success' => false, 'error' => 'No file uploaded']);
-    exit;
+    jsonError('No file uploaded');
 }
 
 // Verify model exists
@@ -32,14 +30,12 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
-    echo json_encode(['success' => false, 'error' => 'Model not found']);
-    exit;
+    jsonError('Model not found');
 }
 
 // Check permission
 if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied');
 }
 
 $file = $_FILES['version_file'];
@@ -47,8 +43,7 @@ $allowedTypes = ['stl', '3mf', 'gcode'];
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
 if (!in_array($ext, $allowedTypes)) {
-    echo json_encode(['success' => false, 'error' => 'Invalid file type. Only STL, 3MF, and GCODE allowed.']);
-    exit;
+    jsonError('Invalid file type. Only STL, 3MF, and GCODE allowed.');
 }
 
 // Calculate hash
@@ -97,8 +92,7 @@ $versionPath = 'versions/' . $modelId . '/' . $versionFilename;
 $fullPath = $versionDir . '/' . $versionFilename;
 
 if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
-    echo json_encode(['success' => false, 'error' => 'Failed to save file']);
-    exit;
+    jsonError('Failed to save file');
 }
 
 // Add version record
@@ -125,5 +119,5 @@ if ($result) {
 } else {
     // Clean up file on failure
     unlink($fullPath);
-    echo json_encode(['success' => false, 'error' => 'Failed to create version record']);
+    jsonError('Failed to create version record');
 }

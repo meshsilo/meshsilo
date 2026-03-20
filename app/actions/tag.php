@@ -24,9 +24,7 @@ $action = $_POST['action'] ?? '';
 $modelId = (int)($_POST['model_id'] ?? 0);
 
 if (!$modelId) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid model ID']);
-    exit;
+    jsonError('Invalid model ID', 400);
 }
 
 // Verify model exists
@@ -37,9 +35,7 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Model not found']);
-    exit;
+    jsonError('Model not found', 404);
 }
 
 // Verify ownership - only owner or admin can tag
@@ -49,9 +45,7 @@ $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $ownerResult = $stmt->execute();
 $ownerInfo = $ownerResult->fetchArray(PDO::FETCH_ASSOC);
 if ($ownerInfo && $ownerInfo['user_id'] && $ownerInfo['user_id'] !== $user['id'] && !$user['is_admin']) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
-    exit;
+    jsonError('Permission denied - not model owner', 403);
 }
 
 switch ($action) {
@@ -60,15 +54,13 @@ switch ($action) {
         $tagColor = $_POST['tag_color'] ?? '#6366f1';
 
         if (empty($tagName)) {
-            echo json_encode(['success' => false, 'error' => 'Tag name required']);
-            exit;
+            jsonError('Tag name required');
         }
 
         // Get or create the tag
         $tagId = getOrCreateTag($tagName, $tagColor);
         if (!$tagId) {
-            echo json_encode(['success' => false, 'error' => 'Failed to create tag']);
-            exit;
+            jsonError('Failed to create tag');
         }
 
         // Add tag to model
@@ -80,9 +72,9 @@ switch ($action) {
             $tag = $tagResult->fetchArray(PDO::FETCH_ASSOC);
 
             logActivity('add_tag', 'model', $modelId, $model['name'], ['tag' => $tagName]);
-            echo json_encode(['success' => true, 'tag' => $tag]);
+            jsonSuccess(['tag' => $tag]);
         } else {
-            echo json_encode(['success' => false, 'error' => 'Failed to add tag']);
+            jsonError('Failed to add tag');
         }
         break;
 
@@ -90,8 +82,7 @@ switch ($action) {
         $tagId = (int)($_POST['tag_id'] ?? 0);
 
         if (!$tagId) {
-            echo json_encode(['success' => false, 'error' => 'Tag ID required']);
-            exit;
+            jsonError('Tag ID required');
         }
 
         // Get tag name for logging
@@ -102,12 +93,12 @@ switch ($action) {
 
         if (removeTagFromModel($modelId, $tagId)) {
             logActivity('remove_tag', 'model', $modelId, $model['name'], ['tag' => $tagName]);
-            echo json_encode(['success' => true]);
+            jsonSuccess();
         } else {
-            echo json_encode(['success' => false, 'error' => 'Failed to remove tag']);
+            jsonError('Failed to remove tag');
         }
         break;
 
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }

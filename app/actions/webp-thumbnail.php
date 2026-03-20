@@ -9,8 +9,7 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
+    jsonError('Not logged in');
 }
 
 $user = getCurrentUser();
@@ -18,8 +17,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
+    jsonError('Invalid CSRF token');
 }
 
 switch ($action) {
@@ -39,7 +37,7 @@ switch ($action) {
         revertFromWebP();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }
 
 /**
@@ -52,7 +50,7 @@ function convertToWebP() {
     $quality = (int)($_POST['quality'] ?? 80);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
@@ -62,24 +60,24 @@ function convertToWebP() {
     $model = $stmt->fetch();
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        jsonError('Model not found');
         return;
     }
 
     // Check permission
     if (!$user['is_admin'] && $model['uploaded_by'] != $user['id']) {
-        echo json_encode(['success' => false, 'error' => 'Not authorized']);
+        jsonError('Not authorized');
         return;
     }
 
     if (empty($model['thumbnail_path'])) {
-        echo json_encode(['success' => false, 'error' => 'No thumbnail to convert']);
+        jsonError('No thumbnail to convert');
         return;
     }
 
     // Already WebP?
     if (pathinfo($model['thumbnail_path'], PATHINFO_EXTENSION) === 'webp') {
-        echo json_encode(['success' => false, 'error' => 'Already WebP format']);
+        jsonError('Already WebP format');
         return;
     }
 
@@ -98,7 +96,7 @@ function convertToWebP() {
             'new_path' => $result['webp_path']
         ]);
     } else {
-        echo json_encode(['success' => false, 'error' => $result['error']]);
+        jsonError($result['error']);
     }
 }
 
@@ -109,7 +107,7 @@ function convertAllToWebP() {
     global $user;
 
     if (!$user['is_admin']) {
-        echo json_encode(['success' => false, 'error' => 'Admin access required']);
+        jsonError('Admin access required');
         return;
     }
 
@@ -237,7 +235,7 @@ function revertFromWebP() {
     $modelId = (int)($_POST['model_id'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
@@ -247,12 +245,12 @@ function revertFromWebP() {
     $model = $stmt->fetch();
 
     if (!$model || !$user['is_admin'] && $model['uploaded_by'] != $user['id']) {
-        echo json_encode(['success' => false, 'error' => 'Not authorized']);
+        jsonError('Not authorized');
         return;
     }
 
     if (pathinfo($model['thumbnail_path'], PATHINFO_EXTENSION) !== 'webp') {
-        echo json_encode(['success' => false, 'error' => 'Not a WebP thumbnail']);
+        jsonError('Not a WebP thumbnail');
         return;
     }
 
@@ -269,7 +267,7 @@ function revertFromWebP() {
     }
 
     if (!$originalPath) {
-        echo json_encode(['success' => false, 'error' => 'No backup found']);
+        jsonError('No backup found');
         return;
     }
 
@@ -281,7 +279,7 @@ function revertFromWebP() {
     $stmt = $db->prepare('UPDATE models SET thumbnail_path = :path WHERE id = :id');
     $stmt->execute([':path' => $relativePath, ':id' => $modelId]);
 
-    echo json_encode(['success' => true, 'restored_path' => $relativePath]);
+    jsonSuccess(['restored_path' => $relativePath]);
 }
 
 /**

@@ -8,8 +8,7 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
+    jsonError('Not logged in');
 }
 
 $user = getCurrentUser();
@@ -17,8 +16,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
 if (in_array($action, ['create', 'update', 'delete']) && !Csrf::check()) {
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
+    jsonError('Invalid CSRF token');
 }
 
 switch ($action) {
@@ -44,7 +42,7 @@ switch ($action) {
         getFolderTree();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }
 
 function createFolder() {
@@ -56,7 +54,7 @@ function createFolder() {
     $color = $_POST['color'] ?? null;
 
     if (empty($name)) {
-        echo json_encode(['success' => false, 'error' => 'Folder name required']);
+        jsonError('Folder name required');
         return;
     }
 
@@ -67,7 +65,7 @@ function createFolder() {
         $stmt = $db->prepare('SELECT id FROM folders WHERE id = :id AND user_id = :user_id');
         $stmt->execute([':id' => $parentId, ':user_id' => $user['id']]);
         if (!$stmt->fetch()) {
-            echo json_encode(['success' => false, 'error' => 'Parent folder not found']);
+            jsonError('Parent folder not found');
             return;
         }
     }
@@ -103,7 +101,7 @@ function updateFolder() {
 
     $folderId = (int)($_POST['folder_id'] ?? 0);
     if (!$folderId) {
-        echo json_encode(['success' => false, 'error' => 'Folder ID required']);
+        jsonError('Folder ID required');
         return;
     }
 
@@ -115,7 +113,7 @@ function updateFolder() {
     $folder = $stmt->fetch();
 
     if (!$folder || ($folder['user_id'] !== $user['id'] && !$user['is_admin'])) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        jsonError('Permission denied');
         return;
     }
 
@@ -144,7 +142,7 @@ function updateFolder() {
     }
 
     if (empty($updates)) {
-        echo json_encode(['success' => false, 'error' => 'No fields to update']);
+        jsonError('No fields to update');
         return;
     }
 
@@ -152,7 +150,7 @@ function updateFolder() {
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function deleteFolder() {
@@ -162,7 +160,7 @@ function deleteFolder() {
     $moveModelsTo = (int)($_POST['move_models_to'] ?? 0) ?: null;
 
     if (!$folderId) {
-        echo json_encode(['success' => false, 'error' => 'Folder ID required']);
+        jsonError('Folder ID required');
         return;
     }
 
@@ -174,7 +172,7 @@ function deleteFolder() {
     $folder = $stmt->fetch();
 
     if (!$folder || ($folder['user_id'] !== $user['id'] && !$user['is_admin'])) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        jsonError('Permission denied');
         return;
     }
 
@@ -201,7 +199,7 @@ function deleteFolder() {
     $stmt = $db->prepare('DELETE FROM folders WHERE id = :id');
     $stmt->execute([':id' => $folderId]);
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function listFolders() {
@@ -241,7 +239,7 @@ function listFolders() {
         $folders[] = $row;
     }
 
-    echo json_encode(['success' => true, 'folders' => $folders]);
+    jsonSuccess(['folders' => $folders]);
 }
 
 function getFolder() {
@@ -249,7 +247,7 @@ function getFolder() {
 
     $folderId = (int)($_GET['folder_id'] ?? 0);
     if (!$folderId) {
-        echo json_encode(['success' => false, 'error' => 'Folder ID required']);
+        jsonError('Folder ID required');
         return;
     }
 
@@ -259,7 +257,7 @@ function getFolder() {
     $folder = $stmt->fetch();
 
     if (!$folder) {
-        echo json_encode(['success' => false, 'error' => 'Folder not found']);
+        jsonError('Folder not found');
         return;
     }
 
@@ -280,7 +278,7 @@ function getFolder() {
 
     $folder['breadcrumb'] = $breadcrumb;
 
-    echo json_encode(['success' => true, 'folder' => $folder]);
+    jsonSuccess(['folder' => $folder]);
 }
 
 function moveModelToFolder() {
@@ -290,7 +288,7 @@ function moveModelToFolder() {
     $folderId = isset($_POST['folder_id']) ? ((int)$_POST['folder_id'] ?: null) : null;
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
@@ -303,7 +301,7 @@ function moveModelToFolder() {
         $folder = $stmt->fetch();
 
         if (!$folder || ($folder['user_id'] !== $user['id'] && !$user['is_admin'])) {
-            echo json_encode(['success' => false, 'error' => 'Folder not found']);
+            jsonError('Folder not found');
             return;
         }
     }
@@ -311,7 +309,7 @@ function moveModelToFolder() {
     $stmt = $db->prepare('UPDATE models SET folder_id = :folder_id WHERE id = :id');
     $stmt->execute([':folder_id' => $folderId, ':id' => $modelId]);
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function getFolderTree() {
@@ -337,5 +335,5 @@ function getFolderTree() {
         }
     }
 
-    echo json_encode(['success' => true, 'tree' => $tree]);
+    jsonSuccess(['tree' => $tree]);
 }

@@ -225,12 +225,25 @@ class Database
 
         if ($type === 'mysql') {
             $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['name']};charset=utf8mb4";
-            $this->pdo = new PDO($dsn, $config['user'], $config['pass'], [
+            $pdoOptions = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_PERSISTENT => true, // Persistent connections
-                PDO::ATTR_EMULATE_PREPARES => false, // Native prepared statements
-            ]);
+                PDO::ATTR_PERSISTENT => true,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ];
+            // Retry connection up to 3 times for MySQL (handles dropped connections)
+            $maxRetries = 3;
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    $this->pdo = new PDO($dsn, $config['user'], $config['pass'], $pdoOptions);
+                    break;
+                } catch (\PDOException $e) {
+                    if ($attempt === $maxRetries) {
+                        throw $e;
+                    }
+                    sleep(1);
+                }
+            }
             // MySQL-specific optimizations
             $this->pdo->exec("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
         } else {

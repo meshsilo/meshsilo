@@ -9,15 +9,11 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isFeatureEnabled('external_links')) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'External links feature is disabled']);
-    exit;
+    jsonError('External links feature is disabled', 403);
 }
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    jsonError('Not authenticated', 401);
 }
 
 $user = getCurrentUser();
@@ -31,9 +27,7 @@ if (!$input) {
 $action = $input['action'] ?? '';
 
 if (in_array($action, ['add', 'remove']) && !Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Security validation failed']);
-    exit;
+    jsonError('Security validation failed', 403);
 }
 
 $db = getDB();
@@ -49,7 +43,7 @@ switch ($action) {
         reorderLinks($db, $user, $input);
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }
 
 function canManageLinks($db, $user, $modelId) {
@@ -72,13 +66,13 @@ function addLink($db, $user, $input) {
     $linkType = trim($input['link_type'] ?? 'other');
 
     if (!$modelId || !$title || !$url) {
-        echo json_encode(['success' => false, 'error' => 'Model ID, title, and URL are required']);
+        jsonError('Model ID, title, and URL are required');
         return;
     }
 
     // Validate URL
     if (!filter_var($url, FILTER_VALIDATE_URL) && strpos($url, '/') !== 0) {
-        echo json_encode(['success' => false, 'error' => 'Invalid URL']);
+        jsonError('Invalid URL');
         return;
     }
 
@@ -90,7 +84,7 @@ function addLink($db, $user, $input) {
 
     if (!canManageLinks($db, $user, $modelId)) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        jsonError('Permission denied');
         return;
     }
 
@@ -128,7 +122,7 @@ function deleteLink($db, $user, $input) {
     $linkId = (int)($input['link_id'] ?? 0);
 
     if (!$linkId) {
-        echo json_encode(['success' => false, 'error' => 'Link ID required']);
+        jsonError('Link ID required');
         return;
     }
 
@@ -139,13 +133,13 @@ function deleteLink($db, $user, $input) {
     $link = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$link) {
-        echo json_encode(['success' => false, 'error' => 'Link not found']);
+        jsonError('Link not found');
         return;
     }
 
     if (!canManageLinks($db, $user, $link['model_id'])) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        jsonError('Permission denied');
         return;
     }
 
@@ -155,7 +149,7 @@ function deleteLink($db, $user, $input) {
 
     logActivity($user['id'], 'delete_link', 'model', $link['model_id'], $link['title']);
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function reorderLinks($db, $user, $input) {
@@ -163,13 +157,13 @@ function reorderLinks($db, $user, $input) {
     $order = $input['order'] ?? [];
 
     if (!$modelId || empty($order)) {
-        echo json_encode(['success' => false, 'error' => 'Model ID and order required']);
+        jsonError('Model ID and order required');
         return;
     }
 
     if (!canManageLinks($db, $user, $modelId)) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        jsonError('Permission denied');
         return;
     }
 
@@ -181,5 +175,5 @@ function reorderLinks($db, $user, $input) {
         $stmt->execute();
     }
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }

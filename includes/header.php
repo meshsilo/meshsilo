@@ -66,6 +66,8 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="stylesheet" href="<?= basePath('css/browse.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/browse.css') ?>">
     <?php if (!empty($adminPage)): ?>
     <link rel="stylesheet" href="<?= basePath('css/admin.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/admin-stats.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin-stats.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/admin-health.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin-health.css') ?>">
     <?php endif; ?>
 
     <!-- CDN preconnect hints (dns-prefetch as fallback for older browsers) -->
@@ -75,20 +77,9 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
     <?php if (!empty($needsViewer)): ?>
-    <!-- Three.js for 3D model rendering (defer preserves execution order) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js" crossorigin="anonymous" integrity="sha384-eIxjswljUW1AHMlmZkz6yMIzTVOAC/1WfeIlG5Vt70kjZqYo5deE+nMKU/r6GrZR" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js" crossorigin="anonymous" integrity="sha384-QF8EmP6pyNE+i7WmcltzC4ddzFVKDxfn5WD5gXyKTSE4SCw0R25TI+q0LUlnf7tq" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js" crossorigin="anonymous" integrity="sha384-Qf3iW6qbvjv2SYq9fcW25m3HbcU4WOSbvQGkrr4V7LWFhtgBewCtl3w7IMdY8o6o" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js" crossorigin="anonymous" integrity="sha384-UWFC8mrevmKCZhKbJ/8/dqLrRAvHArRwJCKjwruJuXyhsebGMFsIK5zrn+R9r+fT" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js" crossorigin="anonymous" integrity="sha384-TRjDrMoP2Iw2zIithJ7Pm10f16V6yXxbUwTEYL5urkonr6Zr+xZ2WDOj2ONVpnSd" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" crossorigin="anonymous" integrity="sha384-fljlqkjWlmSFjkESkQvm77heIZpoWmXEOzlCA7kOpGUH+95Zk0yGfQieWM2q136E" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/ColladaLoader.js" crossorigin="anonymous" integrity="sha384-ElElVDG/OItkfG6FCh/mbHubpjXL/jWdxkSI0pYvE+aTwfV1Uw3Kq3gZf4qux00x" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js" crossorigin="anonymous" integrity="sha384-2p/UEtsvNhL+wOAYuEC0nPIxmadBIxZnUrgBcwTle8Ur/abmFqGeiNvkFDHGocOM" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TDSLoader.js" crossorigin="anonymous" integrity="sha384-4wpQ8AgXEeR0Ac4yCctD9EllVESYdcfZeCJ1khJD54VCdMMklOF9kiIEh+kE8uKz" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/AMFLoader.js" crossorigin="anonymous" integrity="sha384-6h4mEeJoEKWavyB6eukhkTtWKr5TarGFVDfb4ZuVMZ043TVZJPHRZst/B8b65web" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" crossorigin="anonymous" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" defer></script>
+    <?php include __DIR__ . '/partials/viewer-cdn.php'; ?>
     <script src="<?= basePath('js/viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/viewer.js') ?>" defer></script>
+    <script src="<?= basePath('js/viewer-loaders.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/viewer-loaders.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($needsModelPageJs)): ?>
     <script src="<?= basePath('js/model-parts.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts.js') ?>" defer></script>

@@ -8,23 +8,20 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
+    jsonError('Not logged in');
 }
 
 $user = getCurrentUser();
 
 if (!$user['is_admin']) {
-    echo json_encode(['success' => false, 'error' => 'Admin access required']);
-    exit;
+    jsonError('Admin access required');
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
+    jsonError('Invalid CSRF token');
 }
 
 switch ($action) {
@@ -44,7 +41,7 @@ switch ($action) {
         saveFileTypeConfig();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }
 
 function listFileTypes() {
@@ -100,7 +97,7 @@ function addFileType() {
     $previewHandler = $_POST['preview_handler'] ?? 'none';
 
     if (empty($extension)) {
-        echo json_encode(['success' => false, 'error' => 'Extension required']);
+        jsonError('Extension required');
         return;
     }
 
@@ -109,7 +106,7 @@ function addFileType() {
 
     // Validate extension format
     if (!preg_match('/^[a-z0-9]+$/', $extension)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid extension format']);
+        jsonError('Invalid extension format');
         return;
     }
 
@@ -117,7 +114,7 @@ function addFileType() {
     $extensions = getAllowedExtensions();
 
     if (in_array($extension, $extensions)) {
-        echo json_encode(['success' => false, 'error' => 'Extension already allowed']);
+        jsonError('Extension already allowed');
         return;
     }
 
@@ -134,21 +131,21 @@ function addFileType() {
     ];
     setSetting('file_type_config', json_encode($config));
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function removeFileType() {
     $extension = strtolower(trim($_POST['extension'] ?? ''));
 
     if (empty($extension)) {
-        echo json_encode(['success' => false, 'error' => 'Extension required']);
+        jsonError('Extension required');
         return;
     }
 
     // Prevent removing core built-in types (allow removing extended formats)
     $builtIn = ['stl', '3mf', 'zip'];
     if (in_array($extension, $builtIn)) {
-        echo json_encode(['success' => false, 'error' => 'Cannot remove core built-in file type']);
+        jsonError('Cannot remove core built-in file type');
         return;
     }
 
@@ -161,12 +158,12 @@ function removeFileType() {
     unset($config[$extension]);
     setSetting('file_type_config', json_encode($config));
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function getFileTypeConfig() {
     $config = json_decode(getSetting('file_type_config', '{}'), true) ?: [];
-    echo json_encode(['success' => true, 'config' => $config]);
+    jsonSuccess(['config' => $config]);
 }
 
 function saveFileTypeConfig() {
@@ -176,7 +173,7 @@ function saveFileTypeConfig() {
     $icon = $_POST['icon'] ?? 'file';
 
     if (empty($extension)) {
-        echo json_encode(['success' => false, 'error' => 'Extension required']);
+        jsonError('Extension required');
         return;
     }
 
@@ -188,5 +185,5 @@ function saveFileTypeConfig() {
     ];
     setSetting('file_type_config', json_encode($config));
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }

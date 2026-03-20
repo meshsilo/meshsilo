@@ -34,9 +34,7 @@ function isPartAlreadyQueued(int $partId): bool
 // Require edit permission
 if (!canEdit()) {
     ob_end_clean();
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -45,9 +43,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 if (in_array($action, ['convert', 'batch'])) {
     if (!Csrf::check()) {
         ob_end_clean();
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-        exit;
+        jsonError('Invalid request token', 403);
     }
 }
 
@@ -55,9 +51,7 @@ if ($action === 'estimate') {
     $partId = (int)($_POST['part_id'] ?? $_GET['part_id'] ?? 0);
     if (!$partId) {
         ob_end_clean();
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Part ID required']);
-        exit;
+        jsonError('Part ID required', 400);
     }
 
     $result = estimatePartConversion($partId);
@@ -77,16 +71,14 @@ if ($action === 'estimate') {
         if ($strayOutput) {
             logWarning('Conversion estimate produced unexpected output', ['output' => substr($strayOutput, 0, 500), 'part_id' => $partId]);
         }
-        echo json_encode(['success' => false, 'error' => 'Cannot estimate conversion for this file']);
+        jsonError('Cannot estimate conversion for this file');
     }
 } elseif ($action === 'convert') {
     // Queue a single conversion job
     $partId = (int)($_POST['part_id'] ?? 0);
     if (!$partId) {
         ob_end_clean();
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Part ID required']);
-        exit;
+        jsonError('Part ID required', 400);
     }
 
     ob_end_clean();
@@ -99,27 +91,23 @@ if ($action === 'estimate') {
     $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$part || $part['file_type'] !== 'stl') {
-        echo json_encode(['success' => false, 'error' => 'Only STL files can be converted']);
-        exit;
+        jsonError('Only STL files can be converted');
     }
 
     // Check for duplicate — skip if already queued
     if (isPartAlreadyQueued($partId)) {
-        echo json_encode(['success' => true, 'queued' => 0, 'message' => 'Already queued']);
-        exit;
+        jsonSuccess(['queued' => 0, 'message' => 'Already queued']);
     }
 
     Queue::push('ConvertStlTo3mf', ['model_id' => $partId]);
-    echo json_encode(['success' => true, 'queued' => 1]);
+    jsonSuccess(['queued' => 1]);
 
 } elseif ($action === 'batch') {
     // Queue multiple conversion jobs
     $partIds = $_POST['part_ids'] ?? [];
     if (empty($partIds) || !is_array($partIds)) {
         ob_end_clean();
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'No part IDs provided']);
-        exit;
+        jsonError('No part IDs provided', 400);
     }
 
     ob_end_clean();
@@ -142,7 +130,7 @@ if ($action === 'estimate') {
         }
     }
 
-    echo json_encode(['success' => true, 'queued' => $queued]);
+    jsonSuccess(['queued' => $queued]);
 
 } elseif ($action === 'conversion-progress') {
     // Return conversion job progress
@@ -174,5 +162,5 @@ if ($action === 'estimate') {
 } else {
     ob_end_clean();
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid action. Use "estimate", "convert", "batch", or "conversion-progress"']);
+    jsonError('Invalid action. Use "estimate", "convert", "batch", or "conversion-progress"');
 }

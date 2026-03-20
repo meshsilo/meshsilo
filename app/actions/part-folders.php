@@ -84,23 +84,18 @@ function movePartFile($db, int $partId, string $newOriginalPath): void
 }
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    jsonError('Not authenticated', 401);
 }
 
 if (!canEdit()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 $action = $_POST['action'] ?? '';
 $modelId = (int)($_POST['model_id'] ?? 0);
 
 if (!$modelId && $action !== 'move') {
-    echo json_encode(['success' => false, 'error' => 'Model ID required']);
-    exit;
+    jsonError('Model ID required');
 }
 
 $db = getDB();
@@ -108,9 +103,7 @@ $user = getCurrentUser();
 
 // CSRF protection
 if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
+    jsonError('Invalid CSRF token', 403);
 }
 
 // Verify model ownership (user must own the model or be admin)
@@ -121,14 +114,11 @@ if ($modelId) {
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
-        exit;
+        jsonError('Model not found');
     }
 
     if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You do not own this model']);
-        exit;
+        jsonError('You do not own this model', 403);
     }
 }
 
@@ -138,13 +128,12 @@ switch ($action) {
         $folderName = trim($_POST['folder_name'] ?? '');
         $folderName = trim($folderName, '/');
         if ($folderName === '' || $folderName === 'Root' || strpos($folderName, '\\') !== false) {
-            echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
-            exit;
+            jsonError('Invalid folder name');
         }
 
         // Folder is virtual — it exists once parts are moved into it
         // Return success so the UI can show the empty folder group
-        echo json_encode(['success' => true, 'folder' => $folderName]);
+        jsonSuccess(['folder' => $folderName]);
         break;
 
     case 'rename':
@@ -153,12 +142,10 @@ switch ($action) {
 
         $newFolder = trim($newFolder, '/');
         if ($oldFolder === '' || $newFolder === '' || $newFolder === 'Root') {
-            echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
-            exit;
+            jsonError('Invalid folder name');
         }
         if (strpos($newFolder, '\\') !== false) {
-            echo json_encode(['success' => false, 'error' => 'Folder name cannot contain backslashes']);
-            exit;
+            jsonError('Folder name cannot contain backslashes');
         }
 
         // Update original_path for all parts in this folder
@@ -183,15 +170,14 @@ switch ($action) {
             $updated++;
         }
 
-        echo json_encode(['success' => true, 'updated' => $updated]);
+        jsonSuccess(['updated' => $updated]);
         break;
 
     case 'delete':
         $folderName = trim($_POST['folder_name'] ?? '');
         $folderName = trim($folderName, '/');
         if ($folderName === '' || $folderName === 'Root') {
-            echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
-            exit;
+            jsonError('Invalid folder name');
         }
 
         // Move parts up one level — strip this folder's segment from the path
@@ -220,7 +206,7 @@ switch ($action) {
             $updated++;
         }
 
-        echo json_encode(['success' => true, 'updated' => $updated]);
+        jsonSuccess(['updated' => $updated]);
         break;
 
     case 'move':
@@ -228,13 +214,11 @@ switch ($action) {
         $targetFolder = trim($_POST['target_folder'] ?? '');
 
         if (empty($partIds)) {
-            echo json_encode(['success' => false, 'error' => 'No parts specified']);
-            exit;
+            jsonError('No parts specified');
         }
         $targetFolder = trim($targetFolder, '/');
         if (strpos($targetFolder, '\\') !== false) {
-            echo json_encode(['success' => false, 'error' => 'Invalid folder name']);
-            exit;
+            jsonError('Invalid folder name');
         }
 
         $isRoot = ($targetFolder === '' || $targetFolder === 'Root');
@@ -275,7 +259,7 @@ switch ($action) {
             $updated++;
         }
 
-        echo json_encode(['success' => true, 'updated' => $updated]);
+        jsonSuccess(['updated' => $updated]);
         break;
 
     case 'set_print_type':
@@ -283,8 +267,7 @@ switch ($action) {
         $printType = trim($_POST['print_type'] ?? '');
 
         if ($printType !== '' && !in_array($printType, ['fdm', 'sla'])) {
-            echo json_encode(['success' => false, 'error' => 'Invalid print type']);
-            exit;
+            jsonError('Invalid print type');
         }
 
         $printValue = $printType === '' ? null : $printType;
@@ -331,10 +314,10 @@ switch ($action) {
             'parts_updated' => $updated
         ]);
 
-        echo json_encode(['success' => true, 'updated' => $updated]);
+        jsonSuccess(['updated' => $updated]);
         break;
 
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
         break;
 }

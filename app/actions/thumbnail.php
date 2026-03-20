@@ -8,8 +8,7 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
+    jsonError('Not logged in');
 }
 
 $user = getCurrentUser();
@@ -18,9 +17,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 // CSRF validation for state-changing actions
 if (in_array($action, ['upload', 'delete', 'generate', 'set_from_attachment'])) {
     if (!Csrf::check()) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-        exit;
+        jsonError('Invalid request token', 403);
     }
 }
 
@@ -38,7 +35,7 @@ switch ($action) {
         setFromAttachment();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }
 
 function uploadThumbnail() {
@@ -47,7 +44,7 @@ function uploadThumbnail() {
     $modelId = (int)($_POST['model_id'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
@@ -58,18 +55,18 @@ function uploadThumbnail() {
     $model = $stmt->fetch();
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        jsonError('Model not found');
         return;
     }
 
     $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
     if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
+        jsonError('Permission denied - not model owner');
         return;
     }
 
     if (empty($_FILES['thumbnail']) || $_FILES['thumbnail']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['success' => false, 'error' => 'No thumbnail uploaded']);
+        jsonError('No thumbnail uploaded');
         return;
     }
 
@@ -80,13 +77,13 @@ function uploadThumbnail() {
     finfo_close($finfo);
 
     if (!in_array($mimeType, $allowedTypes)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid image type']);
+        jsonError('Invalid image type');
         return;
     }
 
     // Max 5MB
     if ($file['size'] > 5 * 1024 * 1024) {
-        echo json_encode(['success' => false, 'error' => 'File too large (max 5MB)']);
+        jsonError('File too large (max 5MB)');
         return;
     }
 
@@ -104,7 +101,7 @@ function uploadThumbnail() {
     $relativePath = 'thumbnails/' . $filename;
 
     if (!move_uploaded_file($file['tmp_name'], $filePath)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to save file']);
+        jsonError('Failed to save file');
         return;
     }
 
@@ -140,7 +137,7 @@ function deleteThumbnail() {
     $modelId = (int)($_POST['model_id'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
@@ -150,14 +147,14 @@ function deleteThumbnail() {
     $model = $stmt->fetch();
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        jsonError('Model not found');
         return;
     }
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
     if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
+        jsonError('Permission denied - not model owner');
         return;
     }
 
@@ -171,7 +168,7 @@ function deleteThumbnail() {
     $stmt = $db->prepare('UPDATE models SET thumbnail_path = NULL WHERE id = :id');
     $stmt->execute([':id' => $modelId]);
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function generateThumbnail() {
@@ -182,7 +179,7 @@ function generateThumbnail() {
     $modelId = (int)($_POST['model_id'] ?? $_GET['model_id'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
@@ -192,14 +189,14 @@ function generateThumbnail() {
     $model = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        jsonError('Model not found');
         return;
     }
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
     if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
+        jsonError('Permission denied - not model owner');
         return;
     }
 
@@ -227,7 +224,7 @@ function setFromAttachment() {
     $attachmentId = (int)($_POST['attachment_id'] ?? 0);
 
     if (!$modelId || !$attachmentId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID and attachment ID required']);
+        jsonError('Model ID and attachment ID required');
         return;
     }
 
@@ -239,13 +236,13 @@ function setFromAttachment() {
     $model = $stmt->fetch();
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        jsonError('Model not found');
         return;
     }
 
     $ownerId = $model['user_id'] ?? null;
     if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        jsonError('Permission denied');
         return;
     }
 
@@ -255,18 +252,18 @@ function setFromAttachment() {
     $att = $stmt->fetch();
 
     if (!$att) {
-        echo json_encode(['success' => false, 'error' => 'Attachment not found']);
+        jsonError('Attachment not found');
         return;
     }
 
     if ($att['file_type'] !== 'image') {
-        echo json_encode(['success' => false, 'error' => 'Only image attachments can be used as thumbnails']);
+        jsonError('Only image attachments can be used as thumbnails');
         return;
     }
 
     $sourcePath = UPLOAD_PATH . $att['file_path'];
     if (!file_exists($sourcePath)) {
-        echo json_encode(['success' => false, 'error' => 'Attachment file not found on disk']);
+        jsonError('Attachment file not found on disk');
         return;
     }
 
@@ -288,7 +285,7 @@ function setFromAttachment() {
 
     // Copy the attachment to thumbnails dir
     if (!copy($sourcePath, $destPath)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to copy image']);
+        jsonError('Failed to copy image');
         return;
     }
 

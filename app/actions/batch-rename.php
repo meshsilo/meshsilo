@@ -10,15 +10,11 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    jsonError('Not authenticated', 401);
 }
 
 if (!canEdit()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 // Parse JSON body
@@ -28,9 +24,7 @@ if (!$input) {
 }
 
 if (!Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Security validation failed']);
-    exit;
+    jsonError('Security validation failed', 403);
 }
 
 $parentId = (int)($input['parent_id'] ?? 0);
@@ -40,13 +34,11 @@ $prefix = trim($input['prefix'] ?? '');
 $suffix = trim($input['suffix'] ?? '');
 
 if (!$parentId || empty($partIds)) {
-    echo json_encode(['success' => false, 'error' => 'Parent ID and part IDs required']);
-    exit;
+    jsonError('Parent ID and part IDs required');
 }
 
 if (!$pattern && !$prefix && !$suffix) {
-    echo json_encode(['success' => false, 'error' => 'Pattern, prefix, or suffix required']);
-    exit;
+    jsonError('Pattern, prefix, or suffix required');
 }
 
 // Verify user has permission
@@ -59,16 +51,13 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
-    echo json_encode(['success' => false, 'error' => 'Model not found']);
-    exit;
+    jsonError('Model not found');
 }
 
 // NULL user_id = accessible to all authenticated users (backward compatibility)
 // Cast to int to handle PDO returning strings
 if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 // Get current part info
@@ -89,8 +78,7 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
 }
 
 if (empty($parts)) {
-    echo json_encode(['success' => false, 'error' => 'No valid parts found']);
-    exit;
+    jsonError('No valid parts found');
 }
 
 // Generate new names and update
@@ -157,5 +145,5 @@ try {
 
 } catch (Exception $e) {
     $db->rollBack();
-    echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+    jsonError('Database error: ' . $e->getMessage());
 }

@@ -113,14 +113,14 @@ class MemoryProfiler
         }
 
         return [
-            'start_memory' => $this->formatBytes($this->startMemory),
-            'current_memory' => $this->formatBytes($currentMemory),
-            'peak_memory' => $this->formatBytes($peakMemory),
-            'memory_used' => $this->formatBytes($memoryUsed),
-            'memory_limit' => $this->formatBytes($memoryLimit),
+            'start_memory' => formatBytes($this->startMemory),
+            'current_memory' => formatBytes($currentMemory),
+            'peak_memory' => formatBytes($peakMemory),
+            'memory_used' => formatBytes($memoryUsed),
+            'memory_limit' => formatBytes($memoryLimit),
             'usage_percent' => round(($peakMemory / $memoryLimit) * 100, 1),
             'snapshots' => count($this->snapshots),
-            'largest_growth' => $this->formatBytes($largestGrowth),
+            'largest_growth' => formatBytes($largestGrowth),
             'largest_growth_at' => $largestGrowthLabel,
             'status' => $this->getMemoryStatus($peakMemory),
         ];
@@ -184,7 +184,7 @@ class MemoryProfiler
                 'from' => $prev['label'],
                 'to' => $curr['label'],
                 'memory_change' => $memGrowth,
-                'memory_change_formatted' => ($memGrowth >= 0 ? '+' : '') . $this->formatBytes($memGrowth),
+                'memory_change_formatted' => ($memGrowth >= 0 ? '+' : '') . formatBytes($memGrowth),
                 'duration' => round($timeGrowth * 1000, 2) . 'ms',
                 'location' => $curr['location'],
             ];
@@ -215,7 +215,7 @@ class MemoryProfiler
                 $issues[] = [
                     'type' => 'high_growth',
                     'message' => "Memory grew by {$growthPercent}% during request",
-                    'growth' => $this->formatBytes($growth),
+                    'growth' => formatBytes($growth),
                 ];
             }
         }
@@ -229,8 +229,8 @@ class MemoryProfiler
             $issues[] = [
                 'type' => 'near_limit',
                 'message' => "Peak memory usage at {$usagePercent}% of limit",
-                'peak' => $this->formatBytes($peakMemory),
-                'limit' => $this->formatBytes($memoryLimit),
+                'peak' => formatBytes($peakMemory),
+                'limit' => formatBytes($memoryLimit),
             ];
         }
 
@@ -364,21 +364,6 @@ class MemoryProfiler
         }
 
         return 'unknown';
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        $negative = $bytes < 0;
-        $bytes = abs($bytes);
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $i = 0;
-
-        while ($bytes >= 1024 && $i < count($units) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
-
-        return ($negative ? '-' : '') . round($bytes, 2) . ' ' . $units[$i];
     }
 }
 

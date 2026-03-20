@@ -4,9 +4,7 @@ require_once __DIR__ . '/../../includes/config.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
+    jsonError('Not authenticated', 401);
 }
 
 // Support JSON body
@@ -19,16 +17,14 @@ $action = $_POST['action'] ?? '';
 
 // CSRF validation for state-changing actions
 if (in_array($action, ['add', 'remove']) && !Csrf::check()) {
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
+    jsonError('Invalid CSRF token');
 }
 
 $modelId = isset($_POST['model_id']) ? (int)$_POST['model_id'] : 0;
 $relatedModelId = isset($_POST['related_model_id']) ? (int)$_POST['related_model_id'] : 0;
 
 if (!$modelId) {
-    echo json_encode(['success' => false, 'error' => 'No model specified']);
-    exit;
+    jsonError('No model specified');
 }
 
 $user = getCurrentUser();
@@ -36,8 +32,7 @@ $user = getCurrentUser();
 switch ($action) {
     case 'add':
         if (!$relatedModelId) {
-            echo json_encode(['success' => false, 'error' => 'No related model specified']);
-            exit;
+            jsonError('No related model specified');
         }
 
         $relationshipType = $_POST['relationship_type'] ?? 'related';
@@ -45,39 +40,37 @@ switch ($action) {
 
         if ($result) {
             logActivity($user['id'], 'add_related', 'model', $modelId);
-            echo json_encode(['success' => true]);
+            jsonSuccess();
         } else {
-            echo json_encode(['success' => false, 'error' => 'Failed to add relation']);
+            jsonError('Failed to add relation');
         }
         break;
 
     case 'remove':
         if (!$relatedModelId) {
-            echo json_encode(['success' => false, 'error' => 'No related model specified']);
-            exit;
+            jsonError('No related model specified');
         }
 
         $result = removeRelatedModel($modelId, $relatedModelId);
 
         if ($result) {
             logActivity($user['id'], 'remove_related', 'model', $modelId);
-            echo json_encode(['success' => true]);
+            jsonSuccess();
         } else {
-            echo json_encode(['success' => false, 'error' => 'Failed to remove relation']);
+            jsonError('Failed to remove relation');
         }
         break;
 
     case 'list':
         $related = getRelatedModels($modelId);
-        echo json_encode(['success' => true, 'related' => $related]);
+        jsonSuccess(['related' => $related]);
         break;
 
     case 'search':
         // Search for models to link
         $query = trim($_POST['query'] ?? '');
         if (strlen($query) < 2) {
-            echo json_encode(['success' => true, 'results' => []]);
-            exit;
+            jsonSuccess(['results' => []]);
         }
 
         $db = getDB();
@@ -98,7 +91,7 @@ switch ($action) {
             $results[] = $row;
         }
 
-        echo json_encode(['success' => true, 'results' => $results]);
+        jsonSuccess(['results' => $results]);
         break;
 
     case 'set_remix_source':
@@ -115,29 +108,24 @@ switch ($action) {
         $model = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$model) {
-            echo json_encode(['success' => false, 'error' => 'Model not found']);
-            exit;
+            jsonError('Model not found');
         }
 
         if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Permission denied']);
-            exit;
+            jsonError('Permission denied', 403);
         }
 
         // Prevent circular references
         if ($remixOf) {
             if ($remixOf == $modelId) {
-                echo json_encode(['success' => false, 'error' => 'A model cannot be a remix of itself']);
-                exit;
+                jsonError('A model cannot be a remix of itself');
             }
 
             // Check the remix target exists
             $stmt = $db->prepare('SELECT id FROM models WHERE id = :id AND parent_id IS NULL');
             $stmt->bindValue(':id', $remixOf, PDO::PARAM_INT);
             if (!$stmt->execute()->fetchArray()) {
-                echo json_encode(['success' => false, 'error' => 'Original model not found']);
-                exit;
+                jsonError('Original model not found');
             }
         }
 
@@ -190,11 +178,10 @@ switch ($action) {
 
             logActivity($user['id'], 'set_remix_source', 'model', $modelId, 'Set external source: ' . $externalUrl);
         } else {
-            echo json_encode(['success' => false, 'error' => 'Either remix_of or external_url is required']);
-            exit;
+            jsonError('Either remix_of or external_url is required');
         }
 
-        echo json_encode(['success' => true, 'message' => 'Remix source updated']);
+        jsonSuccess(['message' => 'Remix source updated']);
         break;
 
     case 'clear_remix_source':
@@ -207,14 +194,11 @@ switch ($action) {
         $model = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
 
         if (!$model) {
-            echo json_encode(['success' => false, 'error' => 'Model not found']);
-            exit;
+            jsonError('Model not found');
         }
 
         if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Permission denied']);
-            exit;
+            jsonError('Permission denied', 403);
         }
 
         // Clear remix info
@@ -238,9 +222,9 @@ switch ($action) {
         }
 
         logActivity($user['id'], 'clear_remix_source', 'model', $modelId);
-        echo json_encode(['success' => true, 'message' => 'Remix source cleared']);
+        jsonSuccess(['message' => 'Remix source cleared']);
         break;
 
     default:
-        echo json_encode(['success' => false, 'error' => 'Unknown action']);
+        jsonError('Unknown action');
 }

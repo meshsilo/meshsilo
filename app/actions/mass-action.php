@@ -27,9 +27,7 @@ $ids = array_map('intval', $ids);
 $ids = array_filter($ids, function($id) { return $id > 0; });
 
 if (empty($ids)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid item IDs']);
-    exit;
+    jsonError('Invalid item IDs', 400);
 }
 
 $db = getDB();
@@ -103,7 +101,7 @@ try {
 
             $affected = count($ids);
             logInfo('Mass deleted parts', ['count' => $affected]);
-            echo json_encode(['success' => true, 'affected' => $affected, 'message' => "Deleted $affected parts"]);
+            jsonSuccess(['affected' => $affected, 'message' => "Deleted $affected parts"]);
             break;
 
         case 'delete_models':
@@ -185,7 +183,7 @@ try {
 
             $affected = count($ids);
             logInfo('Mass deleted models', ['count' => $affected]);
-            echo json_encode(['success' => true, 'affected' => $affected, 'message' => "Deleted $affected models"]);
+            jsonSuccess(['affected' => $affected, 'message' => "Deleted $affected models"]);
             break;
 
         case 'set_collection':
@@ -211,7 +209,7 @@ try {
 
             $affected = $db->changes();
             logInfo('Mass set collection', ['count' => $affected, 'collection' => $collection]);
-            echo json_encode(['success' => true, 'affected' => $affected, 'message' => "Updated $affected models"]);
+            jsonSuccess(['affected' => $affected, 'message' => "Updated $affected models"]);
             break;
 
         case 'set_creator':
@@ -230,7 +228,7 @@ try {
 
             $affected = $db->changes();
             logInfo('Mass set creator', ['count' => $affected, 'creator' => $creator]);
-            echo json_encode(['success' => true, 'affected' => $affected, 'message' => "Updated $affected models"]);
+            jsonSuccess(['affected' => $affected, 'message' => "Updated $affected models"]);
             break;
 
         case 'add_category':
@@ -252,7 +250,7 @@ try {
             }
 
             logInfo('Mass added category', ['count' => $added, 'category_id' => $categoryId]);
-            echo json_encode(['success' => true, 'affected' => $added, 'message' => "Added category to $added models"]);
+            jsonSuccess(['affected' => $added, 'message' => "Added category to $added models"]);
             break;
 
         case 'remove_category':
@@ -274,7 +272,7 @@ try {
 
             $affected = $db->changes();
             logInfo('Mass removed category', ['count' => $affected, 'category_id' => $categoryId]);
-            echo json_encode(['success' => true, 'affected' => $affected, 'message' => "Removed category from $affected models"]);
+            jsonSuccess(['affected' => $affected, 'message' => "Removed category from $affected models"]);
             break;
 
         default:
@@ -283,5 +281,5 @@ try {
 } catch (Exception $e) {
     logException($e, ['action' => 'mass_action', 'attempted_action' => $action]);
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    jsonError($e->getMessage());
 }

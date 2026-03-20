@@ -15,8 +15,7 @@ $db = getDB();
 $partId = isset($_POST['part_id']) ? (int)$_POST['part_id'] : 0;
 
 if (!$partId) {
-    echo json_encode(['success' => false, 'error' => 'Part ID required']);
-    exit;
+    jsonError('Part ID required');
 }
 
 // Get part to verify it exists
@@ -26,8 +25,7 @@ $result = $stmt->execute();
 $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$part) {
-    echo json_encode(['success' => false, 'error' => 'Part not found']);
-    exit;
+    jsonError('Part not found');
 }
 
 // Build update query based on provided fields
@@ -39,8 +37,7 @@ $logData = ['part_id' => $partId];
 if (isset($_POST['print_type'])) {
     $printType = trim($_POST['print_type']);
     if ($printType !== '' && !in_array($printType, ['fdm', 'sla'])) {
-        echo json_encode(['success' => false, 'error' => 'Invalid print type']);
-        exit;
+        jsonError('Invalid print type');
     }
     $updates[] = 'print_type = :print_type';
     $params[':print_type'] = $printType === '' ? null : $printType;
@@ -68,8 +65,7 @@ if (isset($_POST['notes'])) {
 }
 
 if (empty($updates)) {
-    echo json_encode(['success' => false, 'error' => 'No fields to update']);
-    exit;
+    jsonError('No fields to update');
 }
 
 try {
@@ -88,8 +84,8 @@ try {
 
     logInfo('Part updated', $logData);
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 } catch (Exception $e) {
     logException($e, ['action' => 'update_part', 'part_id' => $partId]);
-    echo json_encode(['success' => false, 'error' => 'Failed to update']);
+    jsonError('Failed to update');
 }

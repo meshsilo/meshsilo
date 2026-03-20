@@ -27,8 +27,7 @@ $versionNumber = isset($input['version_number']) ? (int)$input['version_number']
 $changelog = trim($input['changelog'] ?? '');
 
 if (!$modelId || !$versionNumber) {
-    echo json_encode(['success' => false, 'error' => 'Model ID and version number are required']);
-    exit;
+    jsonError('Model ID and version number are required');
 }
 
 $db = getDB();
@@ -40,15 +39,12 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$model) {
-    echo json_encode(['success' => false, 'error' => 'Model not found']);
-    exit;
+    jsonError('Model not found');
 }
 
 // Check permission
 if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 // Get the version to revert to
@@ -59,22 +55,19 @@ $result = $stmt->execute();
 $targetVersion = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$targetVersion) {
-    echo json_encode(['success' => false, 'error' => 'Version not found']);
-    exit;
+    jsonError('Version not found');
 }
 
 // Check if already at this version
 $currentVersion = $model['current_version'] ?? 0;
 if ($currentVersion == $versionNumber) {
-    echo json_encode(['success' => false, 'error' => 'Already at this version']);
-    exit;
+    jsonError('Already at this version');
 }
 
 // Get source file path
 $sourceFilePath = __DIR__ . '/../../storage/assets/' . $targetVersion['file_path'];
 if (!is_file($sourceFilePath)) {
-    echo json_encode(['success' => false, 'error' => 'Version file not found']);
-    exit;
+    jsonError('Version file not found');
 }
 
 // Calculate next version number
@@ -96,8 +89,7 @@ $newFilePath = 'versions/' . $modelId . '/' . $newFilename;
 $fullNewPath = $versionDir . '/' . $newFilename;
 
 if (!copy($sourceFilePath, $fullNewPath)) {
-    echo json_encode(['success' => false, 'error' => 'Failed to copy version file']);
-    exit;
+    jsonError('Failed to copy version file');
 }
 
 // Get file info
@@ -118,8 +110,7 @@ $newVersionId = addModelVersion($modelId, $newFilePath, $fileSize, $fileHash, $c
 if (!$newVersionId) {
     // Clean up file
     unlink($fullNewPath);
-    echo json_encode(['success' => false, 'error' => 'Failed to create version record']);
-    exit;
+    jsonError('Failed to create version record');
 }
 
 // Update main model to point to new version

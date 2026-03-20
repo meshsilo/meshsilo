@@ -12,9 +12,7 @@ header('Content-Type: application/json');
 
 // Check if share links feature is enabled
 if (!isFeatureEnabled('share_links')) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Share links feature is disabled']);
-    exit;
+    jsonError('Share links feature is disabled', 403);
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -38,21 +36,18 @@ switch ($action) {
         validateShareLink();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
 }
 
 function requireAuth() {
     if (!isLoggedIn()) {
-        echo json_encode(['success' => false, 'error' => 'Not logged in']);
-        exit;
+        jsonError('Not logged in');
     }
 }
 
 function requireCsrf() {
     if (!Csrf::check()) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-        exit;
+        jsonError('Invalid CSRF token', 403);
     }
 }
 
@@ -65,7 +60,7 @@ function createShareLink() {
     $maxDownloads = (int)($_POST['max_downloads'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
+        jsonError('Model ID required');
         return;
     }
 
@@ -77,12 +72,12 @@ function createShareLink() {
     $model = $result->fetch(PDO::FETCH_ASSOC);
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
+        jsonError('Model not found');
         return;
     }
 
     if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
-        echo json_encode(['success' => false, 'error' => 'You do not own this model']);
+        jsonError('You do not own this model');
         return;
     }
 
@@ -138,7 +133,7 @@ function deleteShareLink() {
 
     $linkId = (int)($_POST['link_id'] ?? 0);
     if (!$linkId) {
-        echo json_encode(['success' => false, 'error' => 'Link ID required']);
+        jsonError('Link ID required');
         return;
     }
 
@@ -150,7 +145,7 @@ function deleteShareLink() {
     $link = $stmt->fetch();
 
     if (!$link || ($link['user_id'] !== $user['id'] && !$user['is_admin'])) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
+        jsonError('Permission denied');
         return;
     }
 
@@ -159,7 +154,7 @@ function deleteShareLink() {
 
     logActivity('delete_share_link', 'model', $link['model_id'], null, ['link_id' => $linkId]);
 
-    echo json_encode(['success' => true]);
+    jsonSuccess();
 }
 
 function listShareLinks() {
@@ -207,7 +202,7 @@ function listShareLinks() {
         $links[] = $row;
     }
 
-    echo json_encode(['success' => true, 'links' => $links]);
+    jsonSuccess(['links' => $links]);
 }
 
 function validateShareLink() {
@@ -215,7 +210,7 @@ function validateShareLink() {
     $password = $_POST['password'] ?? null;
 
     if (empty($token)) {
-        echo json_encode(['success' => false, 'error' => 'Token required']);
+        jsonError('Token required');
         return;
     }
 
@@ -230,30 +225,30 @@ function validateShareLink() {
     $link = $stmt->fetch();
 
     if (!$link) {
-        echo json_encode(['success' => false, 'error' => 'Invalid or expired link']);
+        jsonError('Invalid or expired link');
         return;
     }
 
     // Check expiration
     if ($link['expires_at'] && strtotime($link['expires_at']) < time()) {
-        echo json_encode(['success' => false, 'error' => 'Link has expired']);
+        jsonError('Link has expired');
         return;
     }
 
     // Check download limit
     if ($link['max_downloads'] && $link['download_count'] >= $link['max_downloads']) {
-        echo json_encode(['success' => false, 'error' => 'Download limit reached']);
+        jsonError('Download limit reached');
         return;
     }
 
     // Check password
     if ($link['password_hash']) {
         if (!$password) {
-            echo json_encode(['success' => false, 'error' => 'Password required', 'requires_password' => true]);
+            jsonError('Password required');
             return;
         }
         if (!password_verify($password, $link['password_hash'])) {
-            echo json_encode(['success' => false, 'error' => 'Invalid password']);
+            jsonError('Invalid password');
             return;
         }
     }
@@ -263,7 +258,7 @@ function validateShareLink() {
         $allowed = PluginManager::applyFilter('share_link_access', true, $link, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
         if ($allowed !== true) {
             http_response_code(403);
-            echo json_encode(['success' => false, 'error' => is_string($allowed) ? $allowed : 'Access denied']);
+            jsonError(is_string($allowed) ? $allowed : 'Access denied');
             return;
         }
     }

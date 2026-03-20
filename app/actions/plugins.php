@@ -11,16 +11,12 @@ header('Content-Type: application/json');
 
 // Require admin permission
 if (!isLoggedIn() || !isAdmin()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Permission denied']);
-    exit;
+    jsonError('Permission denied', 403);
 }
 
 // CSRF check for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-    exit;
+    jsonError('Invalid CSRF token', 403);
 }
 
 $action = $_POST['action'] ?? '';
@@ -39,9 +35,7 @@ switch ($action) {
         $pluginId = sanitizePluginId($_POST['plugin_id'] ?? '');
 
         if (empty($pluginId)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Plugin ID is required']);
-            exit;
+            jsonError('Plugin ID is required', 400);
         }
 
         $result = $pluginManager->enablePlugin($pluginId);
@@ -51,10 +45,10 @@ switch ($action) {
                 'plugin_id' => $pluginId,
                 'by' => getCurrentUser()['username']
             ]);
-            echo json_encode(['success' => true, 'message' => 'Plugin enabled']);
+            jsonSuccess(['message' => 'Plugin enabled']);
         } else {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failed to enable plugin']);
+            jsonError('Failed to enable plugin');
         }
         break;
 
@@ -62,9 +56,7 @@ switch ($action) {
         $pluginId = sanitizePluginId($_POST['plugin_id'] ?? '');
 
         if (empty($pluginId)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Plugin ID is required']);
-            exit;
+            jsonError('Plugin ID is required', 400);
         }
 
         $result = $pluginManager->disablePlugin($pluginId);
@@ -74,10 +66,10 @@ switch ($action) {
                 'plugin_id' => $pluginId,
                 'by' => getCurrentUser()['username']
             ]);
-            echo json_encode(['success' => true, 'message' => 'Plugin disabled']);
+            jsonSuccess(['message' => 'Plugin disabled']);
         } else {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failed to disable plugin']);
+            jsonError('Failed to disable plugin');
         }
         break;
 
@@ -85,9 +77,7 @@ switch ($action) {
         $pluginId = sanitizePluginId($_POST['plugin_id'] ?? '');
 
         if (empty($pluginId)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Plugin ID is required']);
-            exit;
+            jsonError('Plugin ID is required', 400);
         }
 
         $result = $pluginManager->uninstallPlugin($pluginId);
@@ -97,27 +87,23 @@ switch ($action) {
                 'plugin_id' => $pluginId,
                 'by' => getCurrentUser()['username']
             ]);
-            echo json_encode(['success' => true, 'message' => 'Plugin uninstalled']);
+            jsonSuccess(['message' => 'Plugin uninstalled']);
         } else {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failed to uninstall plugin']);
+            jsonError('Failed to uninstall plugin');
         }
         break;
 
     case 'install-upload':
         if (!isset($_FILES['plugin_zip']) || $_FILES['plugin_zip']['error'] !== UPLOAD_ERR_OK) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'No valid file uploaded']);
-            exit;
+            jsonError('No valid file uploaded', 400);
         }
 
         $fileName = $_FILES['plugin_zip']['name'];
         $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
         if ($ext !== 'zip') {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Only .zip files are allowed']);
-            exit;
+            jsonError('Only .zip files are allowed', 400);
         }
 
         $result = $pluginManager->installPlugin($_FILES['plugin_zip']['tmp_name']);
@@ -137,15 +123,11 @@ switch ($action) {
         $source = json_decode($_POST['plugin_source'] ?? '{}', true);
 
         if (empty($pluginId)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Plugin ID is required']);
-            exit;
+            jsonError('Plugin ID is required', 400);
         }
 
         if (!is_array($source) || empty($source['repo'])) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Valid source configuration is required']);
-            exit;
+            jsonError('Valid source configuration is required', 400);
         }
 
         $result = $pluginManager->installFromRepo($pluginId, $source);
@@ -165,9 +147,7 @@ switch ($action) {
         $pluginId = sanitizePluginId($_POST['plugin_id'] ?? '');
 
         if (empty($pluginId)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Plugin ID is required']);
-            exit;
+            jsonError('Plugin ID is required', 400);
         }
 
         try {
@@ -177,11 +157,11 @@ switch ($action) {
                 'stats' => $stats,
                 'by' => getCurrentUser()['username']
             ]);
-            echo json_encode(['success' => true, 'stats' => $stats]);
+            jsonSuccess(['stats' => $stats]);
         } catch (Throwable $e) {
             logException($e, ['action' => 'run-migrations', 'plugin_id' => $pluginId]);
             http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Migration failed: ' . $e->getMessage()]);
+            jsonError('Migration failed: ' . $e->getMessage());
         }
         break;
 
@@ -190,15 +170,11 @@ switch ($action) {
         $url = trim($_POST['url'] ?? '');
 
         if (empty($name)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Repository name is required']);
-            exit;
+            jsonError('Repository name is required', 400);
         }
 
         if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'A valid repository URL is required']);
-            exit;
+            jsonError('A valid repository URL is required', 400);
         }
 
         $result = $pluginManager->addRepository($name, $url);
@@ -209,10 +185,10 @@ switch ($action) {
                 'url' => $url,
                 'by' => getCurrentUser()['username']
             ]);
-            echo json_encode(['success' => true, 'message' => 'Repository added']);
+            jsonSuccess(['message' => 'Repository added']);
         } else {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failed to add repository']);
+            jsonError('Failed to add repository');
         }
         break;
 
@@ -220,9 +196,7 @@ switch ($action) {
         $repoId = $_POST['repo_id'] ?? '';
 
         if (empty($repoId) || !is_numeric($repoId)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'A valid numeric repository ID is required']);
-            exit;
+            jsonError('A valid numeric repository ID is required', 400);
         }
 
         $result = $pluginManager->removeRepository((int)$repoId);
@@ -232,10 +206,10 @@ switch ($action) {
                 'repo_id' => (int)$repoId,
                 'by' => getCurrentUser()['username']
             ]);
-            echo json_encode(['success' => true, 'message' => 'Repository removed']);
+            jsonSuccess(['message' => 'Repository removed']);
         } else {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failed to remove repository']);
+            jsonError('Failed to remove repository');
         }
         break;
 
@@ -269,11 +243,11 @@ switch ($action) {
     case 'check-updates':
         $updates = $pluginManager->checkUpdates();
 
-        echo json_encode(['success' => true, 'updates' => $updates]);
+        jsonSuccess(['updates' => $updates]);
         break;
 
     default:
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Unknown action']);
+        jsonError('Unknown action');
         break;
 }

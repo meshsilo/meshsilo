@@ -10,14 +10,14 @@ require_once __DIR__ . '/../../includes/dedup.php';
 // Require authentication
 if (!isLoggedIn()) {
     http_response_code(401);
-    die('Not authenticated');
+    exit('Not authenticated');
 }
 
 $partId = (int)($_GET['id'] ?? 0);
 
 if (!$partId) {
     http_response_code(400);
-    die('Invalid request');
+    exit('Invalid request');
 }
 
 $db = getDB();
@@ -28,7 +28,7 @@ $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
 if (!$part) {
     http_response_code(404);
-    die('File not found');
+    exit('File not found');
 }
 
 // Check ownership - user must own the model or be admin
@@ -51,7 +51,7 @@ if ($part['parent_id']) {
 // Cast to int to handle PDO returning strings depending on configuration
 if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
     http_response_code(403);
-    die('Access denied');
+    exit('Access denied');
 }
 
 // Get the real file path (handles deduplicated files)
@@ -64,7 +64,7 @@ if (class_exists('PluginManager')) {
 
 if (!$filePath || !is_file($filePath)) {
     http_response_code(404);
-    die('File not found on disk');
+    exit('File not found on disk');
 }
 
 // Get the original filename and sanitize for header use

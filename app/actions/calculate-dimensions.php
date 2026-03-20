@@ -13,8 +13,7 @@ requireCsrfJson();
 $modelId = isset($_POST['model_id']) ? (int)$_POST['model_id'] : 0;
 
 if (!$modelId) {
-    echo json_encode(['success' => false, 'error' => 'No model specified']);
-    exit;
+    jsonError('No model specified');
 }
 
 // Calculate dimensions with detailed error reporting
@@ -28,8 +27,7 @@ try {
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found in database']);
-        exit;
+        jsonError('Model not found in database');
     }
 
     $isMultiPart = ($model['part_count'] ?? 0) > 0;
@@ -82,27 +80,23 @@ try {
         // Single model — calculate directly
         $filePath = getAbsoluteFilePath($model);
         if (!$filePath || !is_file($filePath)) {
-            echo json_encode(['success' => false, 'error' => 'File not found on disk', 'debug' => ['resolved_path' => $filePath, 'db_path' => $model['file_path']]]);
-            exit;
+            jsonError('File not found on disk');
         }
 
         $dimensions = parseModelDimensions($filePath, $model['file_type']);
         if (!$dimensions) {
-            echo json_encode(['success' => false, 'error' => 'Could not parse dimensions from file', 'debug' => ['file_type' => $model['file_type'], 'file_size' => filesize($filePath)]]);
-            exit;
+            jsonError('Could not parse dimensions from file');
         }
 
         $stored = updateModelDimensions($modelId, $dimensions['dim_x'], $dimensions['dim_y'], $dimensions['dim_z'], $dimensions['dim_unit']);
         if (!$stored) {
-            echo json_encode(['success' => false, 'error' => 'Failed to save dimensions to database']);
-            exit;
+            jsonError('Failed to save dimensions to database');
         }
     }
 
     $savedDimensions = getModelDimensions($modelId);
     if (!$savedDimensions || $savedDimensions['dim_x'] === null) {
-        echo json_encode(['success' => false, 'error' => 'No dimensions could be calculated from any part']);
-        exit;
+        jsonError('No dimensions could be calculated from any part');
     }
 
     $response = [
@@ -116,5 +110,5 @@ try {
     }
     echo json_encode($response);
 } catch (\Throwable $e) {
-    echo json_encode(['success' => false, 'error' => 'Exception: ' . $e->getMessage(), 'debug' => ['file' => $e->getFile(), 'line' => $e->getLine()]]);
+    jsonError('Exception: ' . $e->getMessage());
 }

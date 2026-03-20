@@ -378,7 +378,7 @@ class CssPurger
         }
 
         $percent = $totalSize > 0 ? round($unusedSize / $totalSize * 100, 1) : 0;
-        return $this->formatBytes($unusedSize) . " (~{$percent}%)";
+        return formatBytes($unusedSize) . " (~{$percent}%)";
     }
 
     /**
@@ -388,16 +388,5 @@ class CssPurger
     {
         $this->safelist[] = $pattern;
         return $this;
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        $units = ['B', 'KB', 'MB'];
-        $i = 0;
-        while ($bytes >= 1024 && $i < count($units) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
-        return round($bytes, 2) . ' ' . $units[$i];
     }
 }

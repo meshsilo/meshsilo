@@ -9,9 +9,7 @@ require_once __DIR__ . '/../../includes/dedup.php';
 if (!canUpload()) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
         header('Content-Type: application/json');
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
-        exit;
+        jsonError('Permission denied', 403);
     }
     header('Location: ../index.php');
     exit;
@@ -25,9 +23,7 @@ $modelId = (int)($_POST['model_id'] ?? $_GET['model_id'] ?? 0);
 if (!$modelId) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json');
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
-        exit;
+        jsonError('Model ID required', 400);
     }
     header('Location: ../index.php');
     exit;
@@ -42,9 +38,7 @@ $model = $result->fetchArray(PDO::FETCH_ASSOC);
 if (!$model) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json');
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
-        exit;
+        jsonError('Model not found', 404);
     }
     header('Location: ../index.php');
     exit;
@@ -56,17 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
 
     // CSRF validation
     if (!Csrf::check()) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-        exit;
+        jsonError('Invalid request token', 403);
     }
 
     // Verify ownership - only owner or admin can add parts
     $user = getCurrentUser();
     if ($model['user_id'] && $model['user_id'] != $user['id'] && !$user['is_admin']) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
-        exit;
+        jsonError('Permission denied - not model owner', 403);
     }
 
     $file = $_FILES['part_file'];
@@ -82,8 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
             UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
             UPLOAD_ERR_EXTENSION => 'Upload stopped by extension'
         ];
-        echo json_encode(['success' => false, 'error' => $errors[$file['error']] ?? 'Upload failed']);
-        exit;
+        jsonError($errors[$file['error']] ?? 'Upload failed');
     }
 
     // Validate file extension
@@ -91,8 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
     if (!in_array($extension, $allowedExtensions)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', $allowedExtensions)]);
-        exit;
+        jsonError('Invalid file type. Allowed: ' . implode(', ', $allowedExtensions));
     }
 
     // Create directory for model if it doesn't exist
@@ -134,8 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
 
     // Move uploaded file
     if (!move_uploaded_file($file['tmp_name'], $destPath)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to save file']);
-        exit;
+        jsonError('Failed to save file');
     }
 
     // Calculate file hash
@@ -202,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         // Clean up file on error
         @unlink($destPath);
         logException($e, ['action' => 'add_part', 'model_id' => $modelId]);
-        echo json_encode(['success' => false, 'error' => 'Failed to save. Please try again.']);
+        jsonError('Failed to save. Please try again.');
     }
     exit;
 }

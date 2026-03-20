@@ -70,7 +70,14 @@ $db = getDB();
 
 // Determine which seeders to run
 $targetSeeder = $options['seeder'] ?? null;
-$count = isset($options['count']) ? (int)$options['count'] : null;
+$count = null;
+if (isset($options['count'])) {
+    $count = filter_var($options['count'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 10000]]);
+    if ($count === false) {
+        echo "Error: --count must be a number between 1 and 10000\n";
+        exit(1);
+    }
+}
 $fresh = isset($options['fresh']);
 
 echo "Silo Database Seeder\n";

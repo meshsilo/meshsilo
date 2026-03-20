@@ -27,8 +27,7 @@ switch ($action) {
     case 'save':
         $name = trim($_POST['name'] ?? '');
         if ($name === '') {
-            echo json_encode(['success' => false, 'error' => 'Name required']);
-            exit;
+            jsonError('Name required');
         }
 
         $searchData = SavedSearches::fromRequest($_POST);
@@ -47,14 +46,13 @@ switch ($action) {
     case 'delete':
         $id = (int)($_POST['id'] ?? 0);
         if (!$id) {
-            echo json_encode(['success' => false, 'error' => 'ID required']);
-            exit;
+            jsonError('ID required');
         }
         $result = SavedSearches::delete($id, $user['id']);
         echo json_encode(['success' => $result]);
         break;
 
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        jsonError('Invalid action');
         break;
 }
