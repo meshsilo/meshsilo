@@ -57,7 +57,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="stylesheet" href="<?= basePath('css/base.css') ?>?v=9">
     <link rel="stylesheet" href="<?= basePath('css/layout.css') ?>?v=9">
     <link rel="stylesheet" href="<?= basePath('css/components.css') ?>?v=9">
-    <link rel="stylesheet" href="<?= basePath('css/pages.css') ?>?v=9">
+    <link rel="stylesheet" href="<?= basePath('css/pages.css') ?>?v=10">
     <?php if (!empty($adminPage)): ?>
     <link rel="stylesheet" href="<?= basePath('css/admin.css') ?>?v=9">
     <?php endif; ?>
