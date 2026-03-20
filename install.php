@@ -365,7 +365,7 @@ function initializeSQLiteDatabase($config) {
 
         // Create admin user
         $admin = $config['admin'];
-        $hash = password_hash($admin['password'], PASSWORD_DEFAULT);
+        $hash = password_hash($admin['password'], PASSWORD_ARGON2ID);
 
         $stmt = $db->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 1)');
         $stmt->bindValue(':username', $admin['username'], SQLITE3_TEXT);
@@ -437,7 +437,7 @@ function initializeMySQLDatabase($config) {
 
         // Create admin user
         $admin = $config['admin'];
-        $hash = password_hash($admin['password'], PASSWORD_DEFAULT);
+        $hash = password_hash($admin['password'], PASSWORD_ARGON2ID);
 
         $stmt = $pdo->prepare('INSERT INTO users (username, email, password, is_admin) VALUES (:username, :email, :password, 1)');
         $stmt->execute([

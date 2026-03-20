@@ -100,7 +100,6 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
 
 require_once 'includes/config.php';
 require_once 'includes/helpers.php';
-require_once 'includes/dedup.php';
 
 // Enable access logging for homepage (optional - can be disabled in settings)
 if (getSetting('enable_access_log', '0') === '1') {

@@ -98,7 +98,7 @@ function createShareLink() {
     // Hash password if provided
     $passwordHash = null;
     if ($password) {
-        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        $passwordHash = password_hash($password, PASSWORD_ARGON2ID);
     }
 
     $db = getDB();

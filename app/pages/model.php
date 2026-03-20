@@ -18,7 +18,7 @@ if (!$modelId) {
 }
 
 // Get model details
-$stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
+$stmt = $db->prepare('SELECT id, name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path, part_count, print_type, original_size, file_hash, dedup_path, created_at, updated_at, is_archived, thumbnail_path, dim_x, dim_y, dim_z, dim_unit, user_id, notes, license, download_count, current_version FROM models WHERE id = :id');
 $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
@@ -75,7 +75,8 @@ $previewType = null;
 
 if ($model['part_count'] > 0) {
     $stmt = $db->prepare('
-        SELECT * FROM models
+        SELECT id, name, filename, file_path, file_size, file_type, print_type, original_size, file_hash, dedup_path, original_path, sort_order, notes, parent_id
+        FROM models
         WHERE parent_id = :parent_id
         ORDER BY sort_order ASC, original_path ASC
     ');
@@ -241,7 +242,7 @@ if (isLoggedIn()) {
 // Get external links
 $modelLinks = [];
 try {
-    $stmt = $db->prepare('SELECT * FROM model_links WHERE model_id = :model_id ORDER BY sort_order, created_at');
+    $stmt = $db->prepare('SELECT id, model_id, title, url, link_type, sort_order, created_at FROM model_links WHERE model_id = :model_id ORDER BY sort_order, created_at');
     $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
@@ -254,7 +255,7 @@ try {
 // Get model attachments (images, PDFs, text files)
 $attachments = ['images' => [], 'documents' => []];
 try {
-    $stmt = $db->prepare('SELECT * FROM model_attachments WHERE model_id = :model_id ORDER BY display_order, created_at');
+    $stmt = $db->prepare('SELECT id, model_id, filename, file_path, file_type, file_size, display_order, created_at FROM model_attachments WHERE model_id = :model_id ORDER BY display_order, created_at');
     $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {

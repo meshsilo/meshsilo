@@ -61,6 +61,8 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="stylesheet" href="<?= basePath('css/upload.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/upload.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/viewer.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/viewer.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/model-detail.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/model-detail.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/annotations.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/annotations.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/lightbox.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/lightbox.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/browse.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/browse.css') ?>">
     <?php if (!empty($adminPage)): ?>
     <link rel="stylesheet" href="<?= basePath('css/admin.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin.css') ?>">
@@ -92,6 +94,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <script src="<?= basePath('js/model-parts.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts.js') ?>" defer></script>
     <script src="<?= basePath('js/model-share.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-share.js') ?>" defer></script>
     <script src="<?= basePath('js/model-attachments.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-attachments.js') ?>" defer></script>
+    <script src="<?= basePath('js/model-actions.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-actions.js') ?>" defer></script>
     <script src="<?= basePath('js/model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-page.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($needsBrowsePageJs)): ?>

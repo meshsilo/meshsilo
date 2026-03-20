@@ -273,7 +273,7 @@ class UserSeeder extends Seeder {
             $username = $faker->username();
             $email = $faker->email();
             $name = $faker->name();
-            $password = password_hash('password123', PASSWORD_DEFAULT);
+            $password = password_hash('password123', PASSWORD_ARGON2ID);
             $createdAt = $this->randomDate('-6 months');
 
             try {

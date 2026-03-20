@@ -17,6 +17,7 @@ $model = null;
 $link = null;
 $requiresPassword = false;
 $passwordError = false;
+$rateLimited = false;
 
 if (empty($token)) {
     $error = 'Invalid share link';
@@ -58,7 +59,13 @@ if (empty($token)) {
             $requiresPassword = true;
 
             if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
-                if (!Csrf::check()) {
+                // Rate limit password attempts to prevent brute force
+                $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                $rateResult = RateLimiter::check($ip, 'anonymous', 'share_password');
+                if (!$rateResult['allowed']) {
+                    $passwordError = true;
+                    $rateLimited = true;
+                } elseif (!Csrf::check()) {
                     $passwordError = true;
                 } elseif (password_verify($_POST['password'], $link['password_hash'])) {
                     // Password correct - allow access
@@ -247,7 +254,9 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
                 </div>
                 <form method="post" class="password-form">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
-                    <?php if ($passwordError): ?>
+                    <?php if ($rateLimited): ?>
+                        <div role="alert" class="alert alert-error" style="margin-bottom: 1rem;">Too many attempts. Please try again later.</div>
+                    <?php elseif ($passwordError): ?>
                         <div role="alert" class="alert alert-error" style="margin-bottom: 1rem;">Incorrect password</div>
                     <?php endif; ?>
                     <div class="form-group">

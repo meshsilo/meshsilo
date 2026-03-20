@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         } elseif ($newPassword !== $confirmPassword) {
             $error = 'Passwords do not match.';
         } else {
-            $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+            $hash = password_hash($newPassword, PASSWORD_ARGON2ID);
             $stmt = $db->prepare('UPDATE users SET password = :password WHERE id = :id');
             $stmt->bindValue(':password', $hash, PDO::PARAM_STR);
             $stmt->bindValue(':id', $userId, PDO::PARAM_INT);

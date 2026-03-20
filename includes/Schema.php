@@ -1,183 +1,117 @@
 <?php
 // Database schema definitions and migration helpers
-function getSQLiteSchema()
+
+/**
+ * Generate database schema for the given database type.
+ * Single source of truth — dialect differences handled via PHP interpolation.
+ */
+function getSchema(string $type = 'sqlite'): string
 {
-    return <<<'SQL'
+    $mysql = $type === 'mysql';
+    $autoId = $mysql ? 'INT AUTO_INCREMENT PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+    $int = $mysql ? 'INT' : 'INTEGER';
+    $tinyint = $mysql ? 'TINYINT' : 'INTEGER';
+    $bigint = $mysql ? 'BIGINT' : 'INTEGER';
+    $varchar = fn(int $len) => $mysql ? "VARCHAR($len)" : 'TEXT';
+    $ts = $mysql ? 'TIMESTAMP' : 'DATETIME';
+    $onUpdate = $mysql ? ' ON UPDATE CURRENT_TIMESTAMP' : '';
+    $engine = $mysql ? ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4' : '';
+    $insertIgnore = $mysql ? 'INSERT IGNORE INTO' : 'INSERT OR IGNORE INTO';
+    $groups = $mysql ? '`groups`' : 'groups';
+    $key = $mysql ? '`key`' : 'key';
+    $value = $mysql ? '`value`' : 'value';
+
+    return "
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    is_admin INTEGER DEFAULT 0,
+    id $autoId,
+    username {$varchar(255)} NOT NULL UNIQUE,
+    email {$varchar(255)} NOT NULL UNIQUE,
+    password {$varchar(255)} NOT NULL,
+    is_admin $tinyint DEFAULT 0,
     permissions TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+    created_at $ts DEFAULT CURRENT_TIMESTAMP
+)$engine;
 
 CREATE TABLE IF NOT EXISTS models (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    filename TEXT,
-    file_path TEXT,
-    file_size INTEGER,
-    file_type TEXT,
+    id $autoId,
+    name {$varchar(255)} NOT NULL,
+    filename {$varchar(255)},
+    file_path {$varchar(500)},
+    file_size $bigint,
+    file_type {$varchar(50)},
     description TEXT,
-    creator TEXT,
-    collection TEXT,
-    source_url TEXT,
-    parent_id INTEGER,
-    original_path TEXT,
-    part_count INTEGER DEFAULT 0,
-    print_type TEXT,
-    original_size INTEGER,
-    file_hash TEXT,
-    dedup_path TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    creator {$varchar(255)},
+    collection {$varchar(255)},
+    source_url {$varchar(500)},
+    parent_id $int,
+    original_path {$varchar(500)},
+    part_count $int DEFAULT 0,
+    print_type {$varchar(50)},
+    original_size $bigint,
+    file_hash {$varchar(64)},
+    dedup_path {$varchar(500)},
+    created_at $ts DEFAULT CURRENT_TIMESTAMP,
+    updated_at $ts DEFAULT CURRENT_TIMESTAMP$onUpdate,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
-);
+)$engine;
 
 CREATE TABLE IF NOT EXISTS categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
-);
+    id $autoId,
+    name {$varchar(255)} NOT NULL UNIQUE
+)$engine;
 
 CREATE TABLE IF NOT EXISTS model_categories (
-    model_id INTEGER,
-    category_id INTEGER,
+    model_id $int,
+    category_id $int,
     PRIMARY KEY (model_id, category_id),
     FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-);
+)$engine;
 
-INSERT OR IGNORE INTO categories (name) VALUES ('Functional');
-INSERT OR IGNORE INTO categories (name) VALUES ('Decorative');
-INSERT OR IGNORE INTO categories (name) VALUES ('Tools');
-INSERT OR IGNORE INTO categories (name) VALUES ('Gaming');
-INSERT OR IGNORE INTO categories (name) VALUES ('Art');
-INSERT OR IGNORE INTO categories (name) VALUES ('Mechanical');
-
-CREATE TABLE IF NOT EXISTS collections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS groups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    description TEXT,
-    permissions TEXT,
-    is_system INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS user_groups (
-    user_id INTEGER,
-    group_id INTEGER,
-    PRIMARY KEY (user_id, group_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
-);
-
-INSERT OR IGNORE INTO groups (name, description, permissions, is_system) VALUES ('Admin', 'Full system access', '["upload","delete","edit","admin","view_stats"]', 1);
-INSERT OR IGNORE INTO groups (name, description, permissions, is_system) VALUES ('Users', 'Default user permissions', '["upload","view_stats"]', 1);
-
-CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-SQL;
-}
-
-// Get MySQL schema
-function getMySQLSchema()
-{
-    return <<<'SQL'
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(255) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    is_admin TINYINT DEFAULT 0,
-    permissions TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS models (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    filename VARCHAR(255),
-    file_path VARCHAR(500),
-    file_size BIGINT,
-    file_type VARCHAR(50),
-    description TEXT,
-    creator VARCHAR(255),
-    collection VARCHAR(255),
-    source_url VARCHAR(500),
-    parent_id INT,
-    original_path VARCHAR(500),
-    part_count INT DEFAULT 0,
-    print_type VARCHAR(50),
-    original_size BIGINT,
-    file_hash VARCHAR(64),
-    dedup_path VARCHAR(500),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS model_categories (
-    model_id INT,
-    category_id INT,
-    PRIMARY KEY (model_id, category_id),
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-INSERT IGNORE INTO categories (name) VALUES ('Functional'), ('Decorative'), ('Tools'), ('Gaming'), ('Art'), ('Mechanical');
+$insertIgnore categories (name) VALUES ('Functional');
+$insertIgnore categories (name) VALUES ('Decorative');
+$insertIgnore categories (name) VALUES ('Tools');
+$insertIgnore categories (name) VALUES ('Gaming');
+$insertIgnore categories (name) VALUES ('Art');
+$insertIgnore categories (name) VALUES ('Mechanical');
 
 CREATE TABLE IF NOT EXISTS collections (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    id $autoId,
+    name {$varchar(255)} NOT NULL UNIQUE,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    created_at $ts DEFAULT CURRENT_TIMESTAMP
+)$engine;
 
-CREATE TABLE IF NOT EXISTS `groups` (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
+CREATE TABLE IF NOT EXISTS $groups (
+    id $autoId,
+    name {$varchar(255)} NOT NULL UNIQUE,
     description TEXT,
     permissions TEXT,
-    is_system TINYINT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    is_system $tinyint DEFAULT 0,
+    created_at $ts DEFAULT CURRENT_TIMESTAMP
+)$engine;
 
 CREATE TABLE IF NOT EXISTS user_groups (
-    user_id INT,
-    group_id INT,
+    user_id $int,
+    group_id $int,
     PRIMARY KEY (user_id, group_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    FOREIGN KEY (group_id) REFERENCES $groups(id) ON DELETE CASCADE
+)$engine;
 
-INSERT IGNORE INTO `groups` (name, description, permissions, is_system) VALUES
-    ('Admin', 'Full system access', '["upload","delete","edit","admin","view_stats"]', 1),
-    ('Users', 'Default user permissions', '["upload","view_stats"]', 1);
+$insertIgnore $groups (name, description, permissions, is_system) VALUES ('Admin', 'Full system access', '[\"upload\",\"delete\",\"edit\",\"admin\",\"view_stats\"]', 1);
+$insertIgnore $groups (name, description, permissions, is_system) VALUES ('Users', 'Default user permissions', '[\"upload\",\"view_stats\"]', 1);
 
 CREATE TABLE IF NOT EXISTS settings (
-    `key` VARCHAR(255) PRIMARY KEY,
-    `value` TEXT,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-SQL;
+    $key {$varchar(255)} PRIMARY KEY,
+    $value TEXT,
+    updated_at $ts DEFAULT CURRENT_TIMESTAMP$onUpdate
+)$engine";
 }
+
+// Backward-compatible wrappers
+function getSQLiteSchema(): string { return getSchema('sqlite'); }
+function getMySQLSchema(): string { return getSchema('mysql'); }
 
 // Get user by username or email
 function columnExists($db, $table, $column)

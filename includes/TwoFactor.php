@@ -164,7 +164,7 @@ class TwoFactor
         return array_map(function ($code) {
             // Remove formatting
             $code = str_replace('-', '', $code);
-            return password_hash($code, PASSWORD_DEFAULT);
+            return password_hash($code, PASSWORD_ARGON2ID);
         }, $codes);
     }
 
