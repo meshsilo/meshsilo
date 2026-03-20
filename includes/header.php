@@ -54,12 +54,16 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
     <link rel="icon" type="image/png" sizes="16x16" href="<?= basePath('images/favicon-16.png') ?>">
     <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
-    <link rel="stylesheet" href="<?= basePath('css/base.css') ?>?v=9">
-    <link rel="stylesheet" href="<?= basePath('css/layout.css') ?>?v=9">
-    <link rel="stylesheet" href="<?= basePath('css/components.css') ?>?v=9">
-    <link rel="stylesheet" href="<?= basePath('css/pages.css') ?>?v=10">
+    <link rel="stylesheet" href="<?= basePath('css/base.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/base.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/layout.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/layout.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/components.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/components.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/pages.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/pages.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/upload.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/upload.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/viewer.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/viewer.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/model-detail.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/model-detail.css') ?>">
+    <link rel="stylesheet" href="<?= basePath('css/browse.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/browse.css') ?>">
     <?php if (!empty($adminPage)): ?>
-    <link rel="stylesheet" href="<?= basePath('css/admin.css') ?>?v=9">
+    <link rel="stylesheet" href="<?= basePath('css/admin.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin.css') ?>">
     <?php endif; ?>
 
     <!-- CDN preconnect hints (dns-prefetch as fallback for older browsers) -->
@@ -82,21 +86,24 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TDSLoader.js" crossorigin="anonymous" integrity="sha384-4wpQ8AgXEeR0Ac4yCctD9EllVESYdcfZeCJ1khJD54VCdMMklOF9kiIEh+kE8uKz" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/AMFLoader.js" crossorigin="anonymous" integrity="sha384-6h4mEeJoEKWavyB6eukhkTtWKr5TarGFVDfb4ZuVMZ043TVZJPHRZst/B8b65web" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" crossorigin="anonymous" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" defer></script>
-    <script src="<?= basePath('js/viewer.js') ?>?v=15" defer></script>
+    <script src="<?= basePath('js/viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/viewer.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($needsModelPageJs)): ?>
-    <script src="<?= basePath('js/model-page.js') ?>?v=1" defer></script>
+    <script src="<?= basePath('js/model-parts.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts.js') ?>" defer></script>
+    <script src="<?= basePath('js/model-share.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-share.js') ?>" defer></script>
+    <script src="<?= basePath('js/model-attachments.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-attachments.js') ?>" defer></script>
+    <script src="<?= basePath('js/model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-page.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($needsBrowsePageJs)): ?>
-    <script src="<?= basePath('js/browse-page.js') ?>?v=1" defer></script>
+    <script src="<?= basePath('js/browse-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/browse-page.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($needsEditModelJs)): ?>
-    <script src="<?= basePath('js/edit-model-page.js') ?>?v=1" defer></script>
+    <script src="<?= basePath('js/edit-model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/edit-model-page.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($adminPage)): ?>
-    <script src="<?= basePath('js/admin-pages.js') ?>?v=1" defer></script>
+    <script src="<?= basePath('js/admin-pages.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/admin-pages.js') ?>" defer></script>
     <?php endif; ?>
-    <script src="<?= basePath('js/main.js') ?>?v=8" defer></script>
+    <script src="<?= basePath('js/main.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/main.js') ?>" defer></script>
     <script>
         // Focus trap for modals (accessibility)
         function trapFocus(el) {

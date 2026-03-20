@@ -259,22 +259,10 @@ require_once 'includes/header.php';
                 <h2>Recently Viewed</h2>
             </div>
             <div class="recently-viewed-grid">
-                <?php foreach ($recentlyViewed as $rv): ?>
-                <article class="model-card recently-viewed-card" onclick="window.location='<?= route('model.show', ['id' => $rv['id']]) ?>'" tabindex="0" role="link" aria-label="<?= htmlspecialchars($rv['name']) ?>" onkeydown="if(event.key==='Enter')this.click()">
-                    <div class="model-thumbnail"
-                        <?php if (empty($rv['thumbnail_path']) && !empty($rv['preview_path']) && ($rv['preview_file_size'] ?? $rv['file_size'] ?? 0) < 5242880): ?>
-                        data-model-url="<?= htmlspecialchars($rv['preview_path']) ?>"
-                        data-file-type="<?= htmlspecialchars($rv['preview_type']) ?>"
-                        <?php endif; ?>>
-                        <?php if (!empty($rv['thumbnail_path'])): ?>
-                        <img src="/assets/<?= htmlspecialchars($rv['thumbnail_path']) ?>" alt="<?= htmlspecialchars($rv['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
-                        <?php endif; ?>
-                    </div>
-                    <div class="model-info">
-                        <h3 class="model-title"><?= htmlspecialchars($rv['name']) ?></h3>
-                    </div>
-                </article>
-                <?php endforeach; ?>
+                <?php foreach ($recentlyViewed as $model):
+                    $cardOptions = ['wrapperClass' => 'recently-viewed-card', 'fileSizeLimit' => true];
+                    include __DIR__ . '/includes/partials/model-card.php';
+                endforeach; ?>
             </div>
         </section>
         <?php endif; ?>
@@ -288,26 +276,10 @@ require_once 'includes/header.php';
                 <?php if (empty($models)): ?>
                     <p class="text-muted">No models yet. <a href="<?= route('upload') ?>">Upload your first model!</a></p>
                 <?php else: ?>
-                    <?php foreach ($models as $model): ?>
-                    <article class="model-card <?= $model['is_archived'] ? 'archived' : '' ?>" onclick="window.location='<?= route('model.show', ['id' => $model['id']]) ?>'" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="if(event.key==='Enter')this.click()">
-                        <div class="model-thumbnail"
-                            <?php if (empty($model['thumbnail_path']) && !empty($model['preview_path']) && ($model['preview_file_size'] ?? $model['file_size'] ?? 0) < 5242880): ?>
-                            data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
-                            data-file-type="<?= htmlspecialchars($model['preview_type']) ?>"
-                            <?php endif; ?>>
-                            <?php if (!empty($model['thumbnail_path'])): ?>
-                            <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async">
-                            <?php endif; ?>
-                            <?php if ($model['part_count'] > 0): ?>
-                            <span class="part-count-badge"><?= $model['part_count'] ?> <?= $model['part_count'] === 1 ? 'part' : 'parts' ?></span>
-                            <?php endif; ?>
-                        </div>
-                        <div class="model-info">
-                            <h3 class="model-title"><?= htmlspecialchars($model['name']) ?></h3>
-                            <p class="model-creator"><?= $model['creator'] ? 'by ' . htmlspecialchars($model['creator']) : '' ?></p>
-                        </div>
-                    </article>
-                    <?php endforeach; ?>
+                    <?php foreach ($models as $model):
+                        $cardOptions = ['archivedClass' => true, 'fileSizeLimit' => true];
+                        include __DIR__ . '/includes/partials/model-card.php';
+                    endforeach; ?>
                 <?php endif; ?>
             </div>
         </section>

@@ -1,0 +1,170 @@
+/* Part Count Badge */
+.part-count-badge {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 10;
+}
+
+/* 3D Viewer Thumbnail */
+.model-thumbnail .thumbnail-viewer,
+.model-detail-thumbnail .thumbnail-viewer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+}
+
+.model-thumbnail .thumbnail-viewer canvas,
+.model-detail-thumbnail .thumbnail-viewer canvas {
+    border-radius: inherit;
+}
+
+/* Detail Page 3D Viewer */
+.model-detail-viewer {
+    width: 100%;
+    height: 400px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+}
+
+.viewer-controls {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 10;
+}
+
+.viewer-controls .btn {
+    background-color: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(4px);
+}
+
+.viewer-controls .btn:hover {
+    background-color: var(--color-surface);
+}
+
+.viewer-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+/* Hide file type badge when 3D viewer is present */
+.model-thumbnail.has-viewer .file-type-badge,
+.model-detail-thumbnail.has-viewer .file-type-badge {
+    display: none;
+}
+
+
+/* Model thumbnail loading state */
+.model-thumbnail.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.model-thumbnail.loaded {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+}
+
+.model-thumbnail.load-error,
+.model-thumbnail.no-webgl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--color-surface);
+}
+
+.model-thumbnail.load-error::before,
+.model-thumbnail.no-webgl::before {
+    content: '⬡';
+    font-size: 2.5rem;
+    color: var(--color-text-muted);
+    opacity: 0.6;
+}
+
+.model-thumbnail.load-error::after,
+.model-thumbnail.no-webgl::after {
+    content: 'Preview unavailable';
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: 0 0.5rem;
+}
+
+.model-thumbnail.load-error::before {
+    content: '⚠';
+}
+
+.model-thumbnail.load-error::after {
+    content: 'Failed to load';
+}
+
+/* Card hover glow effect */
+.model-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.model-card::before {
+    content: '';
+    position: absolute;
+    top: var(--mouse-y, 50%);
+    left: var(--mouse-x, 50%);
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.model-card:hover::before {
+    opacity: 1;
+}
+
+.model-card > * {
+    position: relative;
+    z-index: 1;
+}
+

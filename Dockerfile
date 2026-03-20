@@ -82,7 +82,7 @@ RUN echo "www-data ALL=(ALL) NOPASSWD: /usr/local/bin/meshsilo-reload" > /etc/su
 # Owned by www-data so the admin UI can update them at runtime
 RUN echo "upload_max_filesize = 100M" > /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
     && echo "post_max_size = 105M" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
-    && echo "memory_limit = 4G" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
+    && echo "memory_limit = 1G" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
     && echo "max_execution_time = 300" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
     && echo "upload_max_filesize = 100M" > /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
     && echo "post_max_size = 105M" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \

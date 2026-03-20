@@ -110,28 +110,19 @@ function getCurrentUser()
  */
 function enforceAuthentication(): void
 {
-    // Pages that don't require authentication (old direct-access pattern)
-    $publicPages = ['login.php', 'install.php', 'forgot-password.php', 'reset-password.php'];
-
     // Skip for API requests (API uses its own key-based auth in api/index.php)
     if (defined('API_REQUEST') && API_REQUEST === true) {
         return;
     }
 
-    // Routes that don't require authentication (router pattern)
+    // Routes that don't require authentication
     $publicRoutes = ['/login', '/logout', '/install', '/forgot-password', '/reset-password'];
     if (class_exists('PluginManager')) {
         $publicRoutes = PluginManager::applyFilter('public_routes', $publicRoutes);
     }
 
-    // Get current page filename (for direct access)
-    $currentPage = basename($_SERVER['PHP_SELF']);
-
-    // Get current route (for router access)
+    // Get current route
     $currentRoute = '/' . trim($_GET['route'] ?? '', '/');
-
-    // Determine if current request is to a public page/route
-    $isPublicPage = in_array($currentPage, $publicPages);
     $isPublicRoute = in_array($currentRoute, $publicRoutes);
 
     // Skip for API routes - they handle their own key-based auth in api/index.php
@@ -140,15 +131,13 @@ function enforceAuthentication(): void
     // So we also check the route path directly.
     $isApiRoute = str_starts_with($currentRoute, '/api/') || $currentRoute === '/api';
 
-    // Redirect to login if not authenticated (unless on public page/route or API)
-    if (!isLoggedIn() && !$isPublicPage && !$isPublicRoute && !$isApiRoute) {
+    // Redirect to login if not authenticated (unless on public route or API)
+    if (!isLoggedIn() && !$isPublicRoute && !$isApiRoute) {
         logWarning('Unauthorized access attempt', [
-            'page' => $currentPage,
             'route' => $currentRoute,
             'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
         ]);
-        // Use route helper if available, otherwise fall back to /login
         $loginUrl = function_exists('route') ? route('login') : '/login';
         header('Location: ' . $loginUrl);
         exit;

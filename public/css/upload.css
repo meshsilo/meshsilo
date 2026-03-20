@@ -1,0 +1,317 @@
+/* Upload Form */
+.upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 3rem 2rem;
+    text-align: center;
+    background-color: var(--color-surface);
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.upload-dropzone:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-surface-hover);
+}
+
+.dropzone-icon {
+    font-size: 3rem;
+    color: var(--color-text-muted);
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.dropzone-text {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.dropzone-subtext {
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+}
+
+.file-select-btn {
+    cursor: pointer;
+    display: inline-block;
+}
+
+.dropzone-hint {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.file-name-display {
+    margin-top: 0.75rem;
+    font-weight: 500;
+}
+
+.upload-dropzone.dragover {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+/* Import Section */
+.import-section {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+}
+
+.import-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.import-dropzone {
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    margin-top: 1rem;
+    color: var(--color-text-muted);
+}
+
+.import-dropzone:hover,
+.import-dropzone.dragover {
+    border-color: var(--color-primary);
+    background-color: var(--color-surface-hover);
+}
+
+.import-preview-info {
+    background: var(--color-bg);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.import-preview-info h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.import-preview-info p {
+    margin: 0.25rem 0;
+    font-size: 0.875rem;
+}
+
+.import-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.import-options label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.required {
+    color: var(--color-danger);
+}
+
+
+/* Upload buttons row */
+.upload-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Mobile-only elements (hidden on desktop) */
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-only {
+        display: inline-flex;
+    }
+}
+
+/* Upload progress styles */
+.upload-progress {
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: var(--color-surface);
+    border-radius: var(--radius);
+}
+
+.upload-progress .progress-bar {
+    height: 12px;
+    background: var(--color-bg);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.upload-progress .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), #22c55e);
+    border-radius: 6px;
+    transition: width 0.2s ease;
+}
+
+.progress-text {
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* Advanced options collapsible */
+.advanced-options {
+    margin: 1.5rem 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.advanced-toggle {
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    user-select: none;
+}
+
+.advanced-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.advanced-toggle::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 6px solid var(--color-text-muted);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    transition: transform 0.2s;
+}
+
+.advanced-options[open] .advanced-toggle::before {
+    transform: rotate(90deg);
+}
+
+.advanced-content {
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Mobile upload form optimizations */
+@media (max-width: 768px) {
+    .upload-dropzone {
+        padding: 2rem 1rem;
+    }
+
+    .dropzone-icon {
+        font-size: 2.5rem;
+    }
+
+    .dropzone-text {
+        font-size: 1rem;
+    }
+
+    .form-input,
+    .form-textarea {
+        font-size: 16px; /* Prevents iOS zoom on focus */
+        min-height: 44px; /* Touch-friendly */
+    }
+
+    .btn {
+        min-height: 44px;
+        padding: 0.75rem 1.25rem;
+        font-size: 1rem;
+    }
+
+    .file-select-btn {
+        padding: 0.75rem 1.5rem;
+    }
+
+    .checkbox-label {
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Desktop: Always show advanced options expanded */
+    .advanced-options {
+        border: none;
+        background: transparent;
+    }
+}
+
+/* Desktop: Don't show as collapsible */
+@media (min-width: 769px) {
+    .advanced-options {
+        border: none;
+        background: transparent;
+    }
+
+    .advanced-toggle {
+        display: none;
+    }
+
+    .advanced-content {
+        padding: 0;
+        border-top: none;
+    }
+}
+
+
+/* Upload file preview */
+.file-preview-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+.file-preview-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+.file-preview-details {
+    flex: 1;
+    min-width: 0;
+}
+.file-preview-name {
+    font-weight: 500;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.file-preview-meta {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+

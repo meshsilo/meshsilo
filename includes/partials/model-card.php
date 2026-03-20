@@ -15,6 +15,7 @@
  *     'fileSizeLimit'     (bool, default false) - Skip lazy 3D preview for files > 5MB
  *     'customOnClick'     (string|null)         - Custom onclick attribute value (overrides default)
  *     'customOnKeydown'   (string|null)         - Custom onkeydown attribute value (overrides default)
+ *     'wrapperClass'      (string, default '')  - Additional CSS class(es) to add to the article element
  */
 
 $opts = array_merge([
@@ -26,12 +27,14 @@ $opts = array_merge([
     'fileSizeLimit'   => false,
     'customOnClick'   => null,
     'customOnKeydown' => null,
+    'wrapperClass'    => '',
 ], $cardOptions ?? []);
 
 $cardUrl      = route('model.show', ['id' => $model['id']]);
 $onClickAttr  = $opts['customOnClick']   ?? "window.location='" . $cardUrl . "'";
 $onKeydownAttr = $opts['customOnKeydown'] ?? "if(event.key==='Enter')this.click()";
 $archivedClass = ($opts['archivedClass'] && !empty($model['is_archived'])) ? ' archived' : '';
+$wrapperClass = !empty($opts['wrapperClass']) ? ' ' . $opts['wrapperClass'] : '';
 
 // Determine whether to show lazy 3D preview
 $showLazy3d = empty($model['thumbnail_path']) && !empty($model['preview_path']);
@@ -45,7 +48,7 @@ if (!empty($model['thumbnail_path']) && function_exists('image_srcset')) {
     $thumbSrcset = image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]);
 }
 ?>
-<article class="model-card<?= $archivedClass ?>" data-model-id="<?= $model['id'] ?>" onclick="<?= htmlspecialchars($onClickAttr) ?>" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="<?= htmlspecialchars($onKeydownAttr) ?>">
+<article class="model-card<?= $archivedClass ?><?= $wrapperClass ?>" data-model-id="<?= $model['id'] ?>" onclick="<?= htmlspecialchars($onClickAttr) ?>" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="<?= htmlspecialchars($onKeydownAttr) ?>">
     <div class="model-thumbnail"
         <?php if ($showLazy3d): ?>
         data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
