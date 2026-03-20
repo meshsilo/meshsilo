@@ -155,12 +155,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $siteUrl = trim($_POST['site_url'] ?? '');
     $forceSiteUrl = isset($_POST['force_site_url']) ? '1' : '0';
 
+    $showAdvancedAdmin = isset($_POST['show_advanced_admin']) ? '1' : '0';
+
     setSetting('site_name', $siteName);
     setSetting('site_description', $siteDescription);
     setSetting('auto_convert_stl', $autoConvert);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
     setSetting('allowed_extensions', $allowedExtensions);
+    setSetting('show_advanced_admin', $showAdvancedAdmin);
 
     // Max file size (convert MB to bytes)
     $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
@@ -374,6 +377,19 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span class="toggle-switch"></span>
                                 <span>Require admin approval for new accounts</span>
                             </label>
+                        </div>
+                    </details>
+
+                    <details class="settings-section">
+                        <summary><h2>Admin Panel</h2></summary>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" name="show_advanced_admin" <?= ($settings['show_advanced_admin'] ?? '0') === '1' ? 'checked' : '' ?>>
+                                <span class="toggle-switch"></span>
+                                <span>Show advanced admin pages</span>
+                            </label>
+                            <p class="form-help">Show Routes, CLI Tools, Security Headers, and Sessions in the admin sidebar.</p>
                         </div>
                     </details>
 

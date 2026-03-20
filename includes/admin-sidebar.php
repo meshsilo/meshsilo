@@ -22,8 +22,6 @@ if (!function_exists('isFeatureEnabled')) {
                             <a href="<?= route('admin.database') ?>" <?= ($adminPage ?? '') === 'database' ? 'class="active" aria-current="page"' : '' ?>>Database</a>
                             <a href="<?= route('admin.scheduler') ?>" <?= ($adminPage ?? '') === 'scheduler' ? 'class="active" aria-current="page"' : '' ?>>Scheduled Tasks</a>
                             <a href="<?= route('admin.plugins') ?>" <?= ($adminPage ?? '') === 'plugins' ? 'class="active" aria-current="page"' : '' ?>>Plugins</a>
-                            <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active" aria-current="page"' : '' ?>>Routes</a>
-                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active" aria-current="page"' : '' ?>>CLI Tools</a>
                         </div>
                     </div>
 
@@ -69,8 +67,6 @@ if (!function_exists('isFeatureEnabled')) {
                             </svg>
                         </button>
                         <div class="nav-links">
-                            <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active" aria-current="page"' : '' ?>>Security Headers</a>
-                            <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active" aria-current="page"' : '' ?>>Sessions</a>
                             <?php if (isFeatureEnabled('api_keys')) : ?>
                             <a href="<?= route('admin.api-keys') ?>" <?= ($adminPage ?? '') === 'api-keys' ? 'class="active" aria-current="page"' : '' ?>>API Keys</a>
                             <?php endif; ?>
@@ -80,6 +76,23 @@ if (!function_exists('isFeatureEnabled')) {
                             <?php endif; ?>
                         </div>
                     </div>
+
+                    <?php if (getSetting('show_advanced_admin', '0') === '1') : ?>
+                    <div class="nav-category" data-category="advanced">
+                        <button class="nav-section" type="button" aria-expanded="true">
+                            <span>Advanced</span>
+                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M3 4.5L6 7.5L9 4.5"/>
+                            </svg>
+                        </button>
+                        <div class="nav-links">
+                            <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active" aria-current="page"' : '' ?>>Routes</a>
+                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active" aria-current="page"' : '' ?>>CLI Tools</a>
+                            <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active" aria-current="page"' : '' ?>>Security Headers</a>
+                            <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active" aria-current="page"' : '' ?>>Sessions</a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 <?php
 if (class_exists('PluginManager')) {
     $pluginMenuGroups = PluginManager::getInstance()->getAdminMenuItems();
