@@ -1,11 +1,7 @@
 <?php
 
 // Always use database sessions for persistence across restarts
-// Can be disabled with DB_SESSIONS=false if needed
-$disableDbSessions = getenv('DB_SESSIONS') === 'false' ||
-    (defined('DB_SESSIONS') && DB_SESSIONS === false);
-
-if (!$disableDbSessions && session_status() === PHP_SESSION_NONE) {
+if (session_status() === PHP_SESSION_NONE) {
     require_once __DIR__ . '/DatabaseSessionHandler.php';
     $sessionLifetime = (int)(getenv('SESSION_LIFETIME') ?: 7200);
     $handler = new DatabaseSessionHandler($sessionLifetime);

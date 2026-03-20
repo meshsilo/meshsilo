@@ -79,73 +79,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
     }
 }
 
-// Check if database sessions are enabled
-$useDbSessions = getenv('DB_SESSIONS') === 'true' ||
-    (defined('DB_SESSIONS') && DB_SESSIONS === true) ||
-    getSetting('db_sessions', '0') === '1';
-
 // Get session statistics
 $stats = ['active' => 0, 'expired' => 0, 'unique_users' => 0, 'today' => 0];
 $sessions = [];
 $multiSessionUsers = [];
 $now = time();
 
-if ($useDbSessions) {
-    // Active sessions count
-    $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > :now");
-    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    $stats['active'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
+// Active sessions count
+$stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > :now");
+$stmt->bindValue(':now', $now, PDO::PARAM_INT);
+$result = $stmt->execute();
+$stats['active'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
-    // Expired sessions count
-    $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > 0 AND expires_at <= :now");
-    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    $stats['expired'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
+// Expired sessions count
+$stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE expires_at > 0 AND expires_at <= :now");
+$stmt->bindValue(':now', $now, PDO::PARAM_INT);
+$result = $stmt->execute();
+$stats['expired'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
-    // Unique users with sessions
-    $stmt = $db->prepare("SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE expires_at > :now");
-    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    $stats['unique_users'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
+// Unique users with sessions
+$stmt = $db->prepare("SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE expires_at > :now");
+$stmt->bindValue(':now', $now, PDO::PARAM_INT);
+$result = $stmt->execute();
+$stats['unique_users'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
-    // Sessions created today
-    $stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE last_activity >= :today");
-    $stmt->bindValue(':today', strtotime('today'), PDO::PARAM_INT);
-    $result = $stmt->execute();
-    $stats['today'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
+// Sessions created today
+$stmt = $db->prepare("SELECT COUNT(*) as count FROM sessions WHERE last_activity >= :today");
+$stmt->bindValue(':today', strtotime('today'), PDO::PARAM_INT);
+$result = $stmt->execute();
+$stats['today'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
-    // Get active sessions with user info
-    $stmt = $db->prepare("
-        SELECT s.*, u.username, u.email, u.is_admin
-        FROM sessions s
-        LEFT JOIN users u ON s.user_id = u.id
-        WHERE s.expires_at > :now
-        ORDER BY s.last_activity DESC
-        LIMIT 100
-    ");
-    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $sessions[] = $row;
-    }
+// Get active sessions with user info
+$stmt = $db->prepare("
+    SELECT s.*, u.username, u.email, u.is_admin
+    FROM sessions s
+    LEFT JOIN users u ON s.user_id = u.id
+    WHERE s.expires_at > :now
+    ORDER BY s.last_activity DESC
+    LIMIT 100
+");
+$stmt->bindValue(':now', $now, PDO::PARAM_INT);
+$result = $stmt->execute();
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+    $sessions[] = $row;
+}
 
-    // Get users with multiple sessions
-    $stmt = $db->prepare("
-        SELECT u.id, u.username, COUNT(s.id) as session_count
-        FROM users u
-        JOIN sessions s ON u.id = s.user_id
-        WHERE s.expires_at > :now
-        GROUP BY u.id
-        HAVING session_count > 1
-        ORDER BY session_count DESC
-        LIMIT 20
-    ");
-    $stmt->bindValue(':now', $now, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $multiSessionUsers[] = $row;
-    }
+// Get users with multiple sessions
+$stmt = $db->prepare("
+    SELECT u.id, u.username, COUNT(s.id) as session_count
+    FROM users u
+    JOIN sessions s ON u.id = s.user_id
+    WHERE s.expires_at > :now
+    GROUP BY u.id
+    HAVING session_count > 1
+    ORDER BY session_count DESC
+    LIMIT 20
+");
+$stmt->bindValue(':now', $now, PDO::PARAM_INT);
+$result = $stmt->execute();
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+    $multiSessionUsers[] = $row;
 }
 
 // Get session settings
@@ -186,46 +179,6 @@ require_once __DIR__ . '/../../includes/header.php';
 
     <?php if ($error): ?>
     <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
-
-    <?php if (!$useDbSessions): ?>
-    <div role="alert" class="alert alert-warning">
-        <strong>File-based sessions active.</strong>
-        Database session tracking is not enabled. To track and manage all user sessions here,
-        set <code>DB_SESSIONS=true</code> as an environment variable or enable it in settings.
-    </div>
-
-    <div class="admin-section" style="margin-bottom: 1.5rem;">
-        <h2>Current Session</h2>
-        <div class="table-responsive">
-            <table class="data-table" style="width: 100%; table-layout: fixed;" aria-label="Current session">
-                <thead>
-                    <tr>
-                        <th scope="col">User</th>
-                        <th scope="col">Session ID</th>
-                        <th scope="col">IP Address</th>
-                        <th scope="col">User Agent</th>
-                        <th scope="col">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="current-session">
-                        <td>
-                            <strong><?= htmlspecialchars($_SESSION['username'] ?? 'Unknown') ?></strong>
-                            <?php if (isAdmin()): ?>
-                            <span class="badge badge-admin">Admin</span>
-                            <?php endif; ?>
-                            <span class="badge badge-current">Current</span>
-                        </td>
-                        <td class="ip-address"><?= htmlspecialchars(substr(session_id(), 0, 12)) ?>...</td>
-                        <td class="ip-address"><?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? '-') ?></td>
-                        <td class="user-agent"><?= htmlspecialchars(parseUserAgent($_SERVER['HTTP_USER_AGENT'] ?? '')) ?></td>
-                        <td><span class="badge badge-current">Active</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
     <?php endif; ?>
 
     <!-- Stats -->
