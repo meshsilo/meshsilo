@@ -9,6 +9,7 @@ define('PUBLIC_PAGE', true);
 
 require_once __DIR__ . '/../../includes/logger.php';
 require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 require_once __DIR__ . '/../../includes/Csrf.php';
 
 $token = $_GET['t'] ?? '';
@@ -84,9 +85,9 @@ if (empty($token)) {
 
 // Handle download
 if ($model && !$requiresPassword && isset($_GET['download'])) {
-    $filePath = UPLOAD_PATH . $model['file_path'];
+    $filePath = getAbsoluteFilePath($model);
 
-    if (file_exists($filePath)) {
+    if ($filePath && file_exists($filePath)) {
         // Increment download count
         $stmt = $db->prepare('UPDATE share_links SET download_count = download_count + 1 WHERE token = :token');
         $stmt->execute([':token' => $token]);

@@ -30,6 +30,15 @@ if (!$model) {
     exit;
 }
 
+// Check ownership - user must own the model or be admin
+$user = getCurrentUser();
+$ownerId = $model['user_id'] ?? null;
+if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
+    http_response_code(403);
+    echo 'Access denied';
+    exit;
+}
+
 // Get all parts
 $stmt = $db->prepare('SELECT * FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC');
 $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);

@@ -38,6 +38,20 @@ if (empty($models)) {
     exit;
 }
 
+// Filter to only models the user owns (unless admin)
+if (!isAdmin()) {
+    $models = array_filter($models, function ($m) use ($user) {
+        $ownerId = $m['user_id'] ?? null;
+        return $ownerId === null || (int)$ownerId === (int)$user['id'];
+    });
+    $models = array_values($models);
+    if (empty($models)) {
+        http_response_code(403);
+        echo 'Access denied';
+        exit;
+    }
+}
+
 // Create ZIP file
 $zipName = 'silo-models-' . date('Y-m-d-His') . '.zip';
 $zipPath = sys_get_temp_dir() . '/' . $zipName;
@@ -76,7 +90,7 @@ foreach ($models as $model) {
 
     // Increment download count
     incrementDownloadCount($model['id']);
-    logActivity($user['id'], 'batch_download', 'model', $model['id'], $model['name']);
+    logActivity('batch_download', 'model', $model['id'], $model['name']);
 }
 
 $zip->close();

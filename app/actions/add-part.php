@@ -94,6 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
     $targetFolder = trim($_POST['folder'] ?? '');
     $targetFolder = preg_replace('/[^a-zA-Z0-9._\/ -]/', '_', $targetFolder);
     $targetFolder = trim($targetFolder, '/');
+    // Block path traversal sequences
+    $targetFolder = str_replace(['../', '..\\', '..'], '', $targetFolder);
+    $targetFolder = trim($targetFolder, '/');
 
     // Build storage path with subfolder to prevent name conflicts
     $subDir = '';

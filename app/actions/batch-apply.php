@@ -102,7 +102,7 @@ switch ($action) {
             }
         }
 
-        logActivity($user['id'], 'batch_add_tag', 'models', 0, "Added tag to $successCount models");
+        logActivity('batch_add_tag', 'models', 0, "Added tag to $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
@@ -121,7 +121,7 @@ switch ($action) {
             }
         }
 
-        logActivity($user['id'], 'batch_remove_tag', 'models', 0, "Removed tag from $successCount models");
+        logActivity('batch_remove_tag', 'models', 0, "Removed tag from $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
@@ -143,7 +143,7 @@ switch ($action) {
             }
         }
 
-        logActivity($user['id'], 'batch_add_category', 'models', 0, "Added category to $successCount models");
+        logActivity('batch_add_category', 'models', 0, "Added category to $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
@@ -165,7 +165,7 @@ switch ($action) {
             }
         }
 
-        logActivity($user['id'], 'batch_remove_category', 'models', 0, "Removed category from $successCount models");
+        logActivity('batch_remove_category', 'models', 0, "Removed category from $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
@@ -184,7 +184,7 @@ switch ($action) {
         }
 
         $action_name = $archive ? 'batch_archive' : 'batch_unarchive';
-        logActivity($user['id'], $action_name, 'models', 0, ($archive ? 'Archived' : 'Unarchived') . " $successCount models");
+        logActivity($action_name, 'models', 0, ($archive ? 'Archived' : 'Unarchived') . " $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
@@ -229,7 +229,7 @@ switch ($action) {
                 $stmt->bindValue(':id2', $modelId, PDO::PARAM_INT);
                 if ($stmt->execute()) {
                     $successCount++;
-                    logActivity($user['id'], 'delete', 'model', $modelId, $model['name']);
+                    logActivity('delete', 'model', $modelId, $model['name']);
 
                     // Delete regular files
                     $foldersToCheck = [];
@@ -282,7 +282,7 @@ switch ($action) {
             }
         }
 
-        logActivity($user['id'], 'batch_set_collection', 'models', 0, "Set collection on $successCount models");
+        logActivity('batch_set_collection', 'models', 0, "Set collection on $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
@@ -300,7 +300,7 @@ switch ($action) {
             }
         }
 
-        logActivity($user['id'], 'batch_set_creator', 'models', 0, "Set creator on $successCount models");
+        logActivity('batch_set_creator', 'models', 0, "Set creator on $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
@@ -318,7 +318,7 @@ switch ($action) {
             }
         }
 
-        logActivity($user['id'], 'batch_set_license', 'models', 0, "Set license on $successCount models");
+        logActivity('batch_set_license', 'models', 0, "Set license on $successCount models");
         jsonSuccess(['updated' => $successCount, 'failed' => $errorCount]);
         break;
 
