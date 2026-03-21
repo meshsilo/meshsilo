@@ -79,9 +79,8 @@ if (!$mysqlHost || !$mysqlName || !$mysqlUser) {
     exit(1);
 }
 
-// Load minimal config to get SQLite path
-require_once 'includes/logger.php';
-require_once 'includes/db.php';
+// Load full config to get DB_TYPE and DB_PATH constants
+require_once 'includes/config.php';
 
 // Verify source is SQLite
 if (DB_TYPE !== 'sqlite') {

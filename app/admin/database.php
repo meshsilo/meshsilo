@@ -103,6 +103,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         } else {
             $error = 'Backup from web UI is only supported for SQLite databases.';
         }
+    } elseif (isset($_POST['migrate_to_mysql'])) {
+        if ($dbType !== 'sqlite') {
+            $error = 'Database is already MySQL.';
+        } else {
+            $mHost = trim($_POST['mysql_host'] ?? '');
+            $mPort = trim($_POST['mysql_port'] ?? '3306');
+            $mName = trim($_POST['mysql_name'] ?? '');
+            $mUser = trim($_POST['mysql_user'] ?? '');
+            $mPass = $_POST['mysql_pass'] ?? '';
+
+            if (!$mHost || !$mName || !$mUser) {
+                $error = 'Host, database name, and username are required.';
+            } else {
+                // Run the CLI migration tool in the background
+                $cmd = sprintf(
+                    'php %s --host=%s --port=%s --name=%s --user=%s --pass=%s 2>&1',
+                    escapeshellarg(__DIR__ . '/../../cli/db-migrate.php'),
+                    escapeshellarg($mHost),
+                    escapeshellarg($mPort),
+                    escapeshellarg($mName),
+                    escapeshellarg($mUser),
+                    escapeshellarg($mPass)
+                );
+                $output = [];
+                $exitCode = 0;
+                exec($cmd, $output, $exitCode);
+
+                if ($exitCode === 0) {
+                    $message = 'Migration to MySQL completed successfully. Please restart the application.';
+                    // Redirect after a moment so the user sees the message
+                    header('Refresh: 3; url=' . route('admin.database'));
+                } else {
+                    $error = 'Migration failed: ' . implode("\n", array_slice($output, -5));
+                }
+            }
+        }
     } elseif (isset($_POST['optimize_db'])) {
         try {
             if ($dbType === 'sqlite') {
@@ -337,6 +373,43 @@ php cli/migrate.php --dry-run
                 </details>
             </div>
         </div>
+
+        <?php if ($dbType === 'sqlite'): ?>
+        <div class="admin-section" style="margin-top: 1.5rem;">
+            <h2>Migrate to MySQL</h2>
+            <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+                Transfer all data from SQLite to a MySQL database. Your files on disk are not affected.
+                A backup of the current configuration will be saved automatically.
+            </p>
+            <form method="POST" class="settings-form" style="max-width: 500px;">
+                <?= csrf_field() ?>
+                <div class="form-group">
+                    <label for="mysql_host">MySQL Host</label>
+                    <input type="text" id="mysql_host" name="mysql_host" class="form-control" value="<?= htmlspecialchars(getenv('MESHSILO_DB_HOST') ?: 'localhost') ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="mysql_port">Port</label>
+                    <input type="text" id="mysql_port" name="mysql_port" class="form-control" value="<?= htmlspecialchars(getenv('MESHSILO_DB_PORT') ?: '3306') ?>">
+                </div>
+                <div class="form-group">
+                    <label for="mysql_name">Database Name</label>
+                    <input type="text" id="mysql_name" name="mysql_name" class="form-control" value="<?= htmlspecialchars(getenv('MESHSILO_DB_NAME') ?: 'meshsilo') ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="mysql_user">Username</label>
+                    <input type="text" id="mysql_user" name="mysql_user" class="form-control" value="<?= htmlspecialchars(getenv('MESHSILO_DB_USER') ?: '') ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="mysql_pass">Password</label>
+                    <input type="password" id="mysql_pass" name="mysql_pass" class="form-control" value="<?= htmlspecialchars(getenv('MESHSILO_DB_PASS') ?: '') ?>">
+                </div>
+                <button type="submit" name="migrate_to_mysql" class="btn btn-warning"
+                        data-confirm="This will copy all data to MySQL and switch the database. Continue?">
+                    Migrate to MySQL
+                </button>
+            </form>
+        </div>
+        <?php endif; ?>
 
 <style>
 .migration-list {
