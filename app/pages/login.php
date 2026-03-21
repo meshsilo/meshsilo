@@ -57,6 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Redirect to the page they were trying to access, or home
             $redirect = $_SESSION['redirect_after_login'] ?? null;
             unset($_SESSION['redirect_after_login']);
+            // Prevent open redirect — only allow relative paths starting with /
+            if ($redirect && (!str_starts_with($redirect, '/') || str_starts_with($redirect, '//'))) {
+                $redirect = null;
+            }
             header('Location: ' . ($redirect ?: route('home')));
             exit;
         } else {

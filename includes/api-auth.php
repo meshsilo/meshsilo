@@ -248,15 +248,14 @@ function getApiRequestStats($apiKeyId = null, $days = 30)
     $db = getDB();
     $type = $db->getType();
 
-    $where = $apiKeyId ? 'WHERE api_key_id = :api_key_id' : '';
+    $where = $apiKeyId ? 'WHERE api_key_id = :api_key_id AND' : 'WHERE';
     $params = $apiKeyId ? [':api_key_id' => $apiKeyId] : [];
 
     if ($type === 'mysql') {
         $stmt = $db->prepare("
             SELECT DATE(created_at) as date, COUNT(*) as count
             FROM api_request_log
-            $where
-            AND created_at > DATE_SUB(NOW(), INTERVAL :days DAY)
+            $where created_at > DATE_SUB(NOW(), INTERVAL :days DAY)
             GROUP BY DATE(created_at)
             ORDER BY date DESC
         ");
@@ -265,8 +264,7 @@ function getApiRequestStats($apiKeyId = null, $days = 30)
         $stmt = $db->prepare("
             SELECT DATE(created_at) as date, COUNT(*) as count
             FROM api_request_log
-            $where
-            AND created_at > datetime('now', '-' || :days || ' days')
+            $where created_at > datetime('now', '-' || :days || ' days')
             GROUP BY DATE(created_at)
             ORDER BY date DESC
         ");

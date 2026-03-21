@@ -32,7 +32,7 @@ if (isLoggedIn()) {
         $token = $matches[1];
         // Validate API key
         $db = getDB();
-        $stmt = $db->prepare("SELECT user_id FROM api_keys WHERE key_hash = :hash AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)");
+        $stmt = $db->prepare("SELECT user_id FROM api_keys WHERE key_hash = :hash AND is_active = 1 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)");
         $stmt->execute([':hash' => hash('sha256', $token)]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row) {
