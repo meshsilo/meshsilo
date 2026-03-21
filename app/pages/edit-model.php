@@ -25,6 +25,14 @@ if (!$model) {
     exit;
 }
 
+// Check ownership - must be owner or admin (matches update-model.php validation)
+$user = getCurrentUser();
+if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+    $_SESSION['error'] = 'You can only edit your own models.';
+    header('Location: ' . route('model.show', ['id' => $modelId]));
+    exit;
+}
+
 $pageTitle = 'Edit: ' . $model['name'];
 $activePage = 'browse';
 

@@ -564,6 +564,9 @@ class GraphQL
             if (!$userId) {
                 throw new Exception('Authentication required');
             }
+            if (!function_exists('canEdit') || !canEdit()) {
+                throw new Exception('Edit permission required');
+            }
 
             $modelId = $args['modelId'] ?? null;
             $tagName = $args['tag'] ?? null;
@@ -600,6 +603,10 @@ class GraphQL
 
         // Increment download count
         self::$mutations['trackDownload'] = function ($args, $selections, $userId) {
+            if (!$userId) {
+                throw new Exception('Authentication required');
+            }
+
             $modelId = $args['modelId'] ?? null;
             if (!$modelId) {
                 throw new Exception('modelId is required');

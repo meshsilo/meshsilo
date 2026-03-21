@@ -79,7 +79,7 @@ foreach ($parts as $part) {
 $zip->close();
 
 // Send the ZIP file
-if (file_exists($zipPath)) {
+if (file_exists($zipPath) && filesize($zipPath) > 22) { // ZIP header is 22 bytes minimum; empty ZIPs are useless
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="' . $zipFilename . '"');
     header('Content-Length: ' . filesize($zipPath));
@@ -93,7 +93,9 @@ if (file_exists($zipPath)) {
     logInfo('Download all parts', ['model_id' => $modelId, 'parts' => count($parts)]);
     exit;
 } else {
-    logError('Download ZIP not found', ['model_id' => $modelId, 'zip_path' => $zipPath]);
-    header('Location: ../model.php?id=' . $modelId);
+    if (file_exists($zipPath)) unlink($zipPath);
+    logError('Download ZIP empty or not found', ['model_id' => $modelId, 'zip_path' => $zipPath]);
+    $_SESSION['error'] = 'No downloadable files found for this model.';
+    header('Location: ' . route('model.show', ['id' => $modelId]));
     exit;
 }
