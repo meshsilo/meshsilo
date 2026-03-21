@@ -88,7 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             }
 
             if (!$hasRows) break;
-            $offset += $batchSize;
+            // Only advance offset by rows NOT deleted — deleted rows shift subsequent rows
+            $offset += $batchSize - count($idsToDelete);
         }
 
         $message = "Removed $deletedCount missing file entries from database.";

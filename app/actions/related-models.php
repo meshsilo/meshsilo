@@ -39,7 +39,7 @@ switch ($action) {
         $result = addRelatedModel($modelId, $relatedModelId, $relationshipType);
 
         if ($result) {
-            logActivity($user['id'], 'add_related', 'model', $modelId);
+            logActivity('add_related', 'model', $modelId);
             jsonSuccess();
         } else {
             jsonError('Failed to add relation');
@@ -54,7 +54,7 @@ switch ($action) {
         $result = removeRelatedModel($modelId, $relatedModelId);
 
         if ($result) {
-            logActivity($user['id'], 'remove_related', 'model', $modelId);
+            logActivity('remove_related', 'model', $modelId);
             jsonSuccess();
         } else {
             jsonError('Failed to remove relation');
@@ -152,7 +152,7 @@ switch ($action) {
             $stmt->bindValue(':user_id', $user['id'], PDO::PARAM_INT);
             $stmt->execute();
 
-            logActivity($user['id'], 'set_remix_source', 'model', $modelId, 'Set as remix of model #' . $remixOf);
+            logActivity('set_remix_source', 'model', $modelId, 'Set as remix of model #' . $remixOf);
         } elseif ($externalUrl) {
             // Extract external source ID if possible
             $externalId = null;
@@ -176,7 +176,7 @@ switch ($action) {
             $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
-            logActivity($user['id'], 'set_remix_source', 'model', $modelId, 'Set external source: ' . $externalUrl);
+            logActivity('set_remix_source', 'model', $modelId, 'Set external source: ' . $externalUrl);
         } else {
             jsonError('Either remix_of or external_url is required');
         }
@@ -221,7 +221,7 @@ switch ($action) {
             $stmt->execute();
         }
 
-        logActivity($user['id'], 'clear_remix_source', 'model', $modelId);
+        logActivity('clear_remix_source', 'model', $modelId);
         jsonSuccess(['message' => 'Remix source cleared']);
         break;
 

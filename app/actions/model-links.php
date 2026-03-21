@@ -104,7 +104,7 @@ function addLink($db, $user, $input) {
 
     $linkId = $db->lastInsertRowID();
 
-    logActivity($user['id'], 'add_link', 'model', $modelId, $title);
+    logActivity('add_link', 'model', $modelId, $title);
 
     echo json_encode([
         'success' => true,
@@ -147,7 +147,7 @@ function deleteLink($db, $user, $input) {
     $stmt->bindValue(':id', $linkId, PDO::PARAM_INT);
     $stmt->execute();
 
-    logActivity($user['id'], 'delete_link', 'model', $link['model_id'], $link['title']);
+    logActivity('delete_link', 'model', $link['model_id'], $link['title']);
 
     jsonSuccess();
 }

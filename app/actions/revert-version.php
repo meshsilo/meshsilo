@@ -130,7 +130,7 @@ $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $stmt->execute();
 
 // Log activity
-logActivity($user['id'], 'revert_version', 'model', $modelId, $model['name'] . ' reverted to v' . $versionNumber);
+logActivity('revert_version', 'model', $modelId, $model['name'] . ' reverted to v' . $versionNumber);
 
 echo json_encode([
     'success' => true,

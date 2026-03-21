@@ -135,7 +135,7 @@ try {
 
     $db->commit();
 
-    logActivity($user['id'], 'batch_rename', 'model', $parentId, count($renamed) . ' parts renamed');
+    logActivity('batch_rename', 'model', $parentId, count($renamed) . ' parts renamed');
 
     echo json_encode([
         'success' => true,

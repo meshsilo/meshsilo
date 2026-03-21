@@ -109,10 +109,9 @@ if ($result) {
     $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $stmt->execute();
 
-    logActivity($user['id'], 'upload_version', 'model', $modelId, $model['name'] . ' v' . $result);
+    logActivity('upload_version', 'model', $modelId, $model['name'] . ' v' . $result);
 
-    echo json_encode([
-        'success' => true,
+    jsonSuccess([
         'version' => $result,
         'message' => 'Version ' . $result . ' uploaded successfully'
     ]);

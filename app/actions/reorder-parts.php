@@ -32,7 +32,7 @@ if (!$model || ($model['user_id'] != $user['id'] && !$user['is_admin'])) {
 $result = reorderParts($parentId, $partIds);
 
 if ($result) {
-    logActivity($user['id'], 'reorder_parts', 'model', $parentId);
+    logActivity('reorder_parts', 'model', $parentId);
     jsonSuccess();
 } else {
     jsonError('Failed to reorder parts');
