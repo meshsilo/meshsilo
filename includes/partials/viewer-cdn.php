@@ -8,7 +8,7 @@
 }
 </script>
 <script type="module">
-import * as THREE from 'three';
+import * as THREE_MODULE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
@@ -20,8 +20,8 @@ import { TDSLoader } from 'three/addons/loaders/TDSLoader.js';
 import { AMFLoader } from 'three/addons/loaders/AMFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Expose to global scope for existing viewer.js and viewer-loaders.js
-window.THREE = THREE;
+// Spread into mutable object (ES module namespace is frozen)
+const THREE = { ...THREE_MODULE };
 THREE.STLLoader = STLLoader;
 THREE.ThreeMFLoader = ThreeMFLoader;
 THREE.OBJLoader = OBJLoader;
@@ -33,7 +33,25 @@ THREE.TDSLoader = TDSLoader;
 THREE.AMFLoader = AMFLoader;
 THREE.OrbitControls = OrbitControls;
 
-// Signal that Three.js is ready
+// Expose to global scope
+window.THREE = THREE;
+
+// Load viewer scripts now that THREE is available
+// Uses dynamic script injection to guarantee execution order
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+await loadScript('<?= basePath('js/viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/viewer.js') ?>');
+await loadScript('<?= basePath('js/viewer-loaders.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/viewer-loaders.js') ?>');
+
+// Signal ready after viewer is fully loaded
 window.THREE_READY = true;
 window.dispatchEvent(new Event('three-ready'));
 </script>

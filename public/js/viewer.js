@@ -1,20 +1,5 @@
 // 3D Model Viewer using Three.js
 
-// Shared default material — reused across all loaders to reduce GPU objects
-// Using MeshStandardMaterial (PBR) — better optimized on modern GPUs than legacy Phong
-ModelViewer.DEFAULT_MATERIAL = null;
-ModelViewer.getDefaultMaterial = function() {
-    if (!ModelViewer.DEFAULT_MATERIAL) {
-        ModelViewer.DEFAULT_MATERIAL = new THREE.MeshStandardMaterial({
-            color: 0x888888,
-            roughness: 0.6,
-            metalness: 0.1
-        });
-        ModelViewer.DEFAULT_MATERIAL.needsUpdate = false;
-    }
-    return ModelViewer.DEFAULT_MATERIAL.clone();
-};
-
 class ModelViewer {
     constructor(container, options = {}) {
         this.container = container;
@@ -121,9 +106,22 @@ class ModelViewer {
         // Render one frame with just the background
         this.renderer.render(this.scene, this.camera);
     }
-
-
 }
+
+// Shared default material — set AFTER class declaration
+// Using MeshStandardMaterial (PBR) — better optimized on modern GPUs
+ModelViewer.DEFAULT_MATERIAL = null;
+ModelViewer.getDefaultMaterial = function() {
+    if (!ModelViewer.DEFAULT_MATERIAL) {
+        ModelViewer.DEFAULT_MATERIAL = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            roughness: 0.6,
+            metalness: 0.1
+        });
+        ModelViewer.DEFAULT_MATERIAL.needsUpdate = false;
+    }
+    return ModelViewer.DEFAULT_MATERIAL.clone();
+};
 
 // Expose to global scope for viewer-loaders.js and other scripts
 window.ModelViewer = ModelViewer;

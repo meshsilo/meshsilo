@@ -612,6 +612,19 @@ window.CompareConfig = {
     version2Type: <?= json_encode($version2 ? strtolower(pathinfo($version2['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>
 };
 </script>
-<script src="<?= basePath('js/compare-viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/compare-viewer.js') ?>" type="module"></script>
+<script>
+// Load compare-viewer after Three.js is ready
+if (window.THREE_READY) {
+    var s = document.createElement('script');
+    s.src = '<?= basePath('js/compare-viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/compare-viewer.js') ?>';
+    document.head.appendChild(s);
+} else {
+    window.addEventListener('three-ready', function() {
+        var s = document.createElement('script');
+        s.src = '<?= basePath('js/compare-viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/compare-viewer.js') ?>';
+        document.head.appendChild(s);
+    });
+}
+</script>
 
 <?php require_once 'includes/footer.php'; ?>

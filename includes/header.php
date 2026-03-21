@@ -76,8 +76,6 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
 
     <?php if (!empty($needsViewer)): ?>
     <?php include __DIR__ . '/partials/viewer-cdn.php'; ?>
-    <script src="<?= basePath('js/viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/viewer.js') ?>" type="module"></script>
-    <script src="<?= basePath('js/viewer-loaders.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/viewer-loaders.js') ?>" type="module"></script>
     <?php endif; ?>
     <?php if (!empty($needsModelPageJs)): ?>
     <script src="<?= basePath('js/model-parts.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts.js') ?>" defer></script>
