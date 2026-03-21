@@ -325,15 +325,26 @@ echo "  Done.\n";
 
 // Phase 4: Update config.local.php
 echo "\nPhase 4: Updating configuration...\n";
-$configPath = 'storage/db/config.local.php';
-if (!file_exists($configPath)) {
-    // Try alternate locations
-    foreach (['config.local.php', 'db/config.local.php'] as $alt) {
-        if (file_exists($alt)) {
-            $configPath = $alt;
-            break;
-        }
+
+// Find config file using absolute paths (same logic as includes/config.php)
+$projectRoot = dirname(__DIR__);
+$configPath = null;
+$searchPaths = [
+    $projectRoot . '/storage/db/config.local.php',
+    $projectRoot . '/db/config.local.php',
+    $projectRoot . '/config.local.php',
+];
+foreach ($searchPaths as $path) {
+    if (file_exists($path)) {
+        $configPath = $path;
+        break;
     }
+}
+
+if (!$configPath) {
+    echo "  Warning: Could not find config.local.php — creating at default location\n";
+    $configPath = $projectRoot . '/storage/db/config.local.php';
+    @mkdir(dirname($configPath), 0755, true);
 }
 
 $configContent = "<?php\n";
@@ -351,10 +362,18 @@ $configContent .= "define('INSTALLED', true);\n";
 
 // Backup old config
 $backupPath = $configPath . '.sqlite.bak';
-copy($configPath, $backupPath);
-echo "  Backed up old config to {$backupPath}\n";
+if (!copy($configPath, $backupPath)) {
+    echo "  Warning: Could not create backup at {$backupPath}\n";
+} else {
+    echo "  Backed up old config to {$backupPath}\n";
+}
 
-file_put_contents($configPath, $configContent);
+// Write new config
+if (file_put_contents($configPath, $configContent) === false) {
+    echo "  ERROR: Failed to write config to {$configPath}\n";
+    echo "  Please update the file manually with the MySQL credentials.\n";
+    exit(1);
+}
 echo "  Updated {$configPath} to use MySQL\n";
 
 // Summary
