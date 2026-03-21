@@ -371,8 +371,6 @@ php cli/migrate.php --dry-run
 # Run via bin/meshsilo
 ./bin/meshsilo migrate</code></pre>
                 </details>
-            </div>
-        </div>
 
         <?php if ($dbType === 'sqlite'): ?>
         <details class="settings-section">
@@ -410,6 +408,9 @@ php cli/migrate.php --dry-run
             </form>
         </details>
         <?php endif; ?>
+
+            </div>
+        </div>
 
 <style>
 .migration-list {
