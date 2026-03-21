@@ -403,6 +403,104 @@
     font-size: 1.125rem;
 }
 
+/* Two-column layout: parts left, sidebar right */
+.model-content-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 2rem;
+    align-items: start;
+    margin-bottom: 2rem;
+}
+
+.model-content-main {
+    min-width: 0;
+}
+
+.model-content-sidebar {
+    position: sticky;
+    top: 1rem;
+}
+
+.model-content-sidebar .model-attachments {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+}
+
+.model-content-sidebar .model-attachments h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.model-content-sidebar .model-attachments h4 {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-text-muted);
+}
+
+.model-content-sidebar .attachment-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+}
+
+.model-content-sidebar .attachment-section {
+    margin-bottom: 1rem;
+}
+
+.model-content-sidebar .attachment-upload {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.model-content-sidebar .attachment-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.model-content-sidebar .attachments-empty {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Collapsible sections (sidebar) */
+.collapsible-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.collapsible-header .folder-toggle {
+    transition: transform 0.2s;
+    display: inline-block;
+    font-size: 0.65rem;
+    line-height: 1;
+}
+
+.collapsible-section.collapsed .folder-toggle {
+    transform: rotate(-90deg);
+}
+
+.collapsible-body {
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    max-height: 2000px;
+    opacity: 1;
+    overflow: visible;
+}
+
+.collapsible-section.collapsed .collapsible-body {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+}
+
 /* Model Parts */
 .model-parts {
     background-color: var(--color-surface);
@@ -1016,6 +1114,16 @@
     .attachment-document .attachment-actions {
         width: 100%;
         margin-top: 0.5rem;
+    }
+}
+
+@media (max-width: 1024px) {
+    .model-content-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .model-content-sidebar {
+        position: static;
     }
 }
 

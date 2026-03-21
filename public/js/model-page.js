@@ -371,6 +371,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Document preview trigger
+        var previewTrigger = e.target.matches('.attachment-preview-trigger') ? e.target : e.target.closest('.attachment-preview-trigger');
+        if (previewTrigger) {
+            e.preventDefault();
+            openDocumentPreview(previewTrigger.dataset.previewSrc, previewTrigger.dataset.previewType, previewTrigger.dataset.previewName);
+            return;
+        }
+
         // Show more parts
         if (e.target.matches('.show-more-parts')) {
             showMoreParts(e.target);
@@ -395,6 +403,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!e.target.matches('.folder-checkbox') && !e.target.closest('.folder-actions')) {
                 toggleFolder(header.parentElement);
             }
+            return;
+        }
+
+        // Collapsible section toggle (sidebar)
+        if (e.target.matches('.collapsible-header') || e.target.closest('.collapsible-header')) {
+            const header = e.target.matches('.collapsible-header') ? e.target : e.target.closest('.collapsible-header');
+            const section = header.closest('.collapsible-section');
+            section.classList.toggle('collapsed');
+            header.setAttribute('aria-expanded', !section.classList.contains('collapsed'));
             return;
         }
 

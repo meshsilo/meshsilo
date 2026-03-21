@@ -129,6 +129,14 @@
     flex-shrink: 0;
 }
 
+.attachment-preview-trigger {
+    cursor: pointer;
+}
+
+.attachment-preview-trigger:hover {
+    color: var(--color-primary);
+}
+
 .attachment-document .attachment-name {
     flex: 1;
     overflow: hidden;
@@ -167,6 +175,93 @@
 
 .attachment-document .attachment-delete:hover {
     background: var(--color-danger-hover, #dc2626);
+}
+
+/* Document Preview Overlay */
+.doc-preview-container {
+    width: 90vw;
+    max-width: 900px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.doc-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.doc-preview-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.doc-preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.doc-preview-actions .lightbox-close {
+    position: static;
+    font-size: 1.5rem;
+    color: var(--color-text-muted);
+    padding: 0.25rem;
+}
+
+.doc-preview-actions .lightbox-close:hover {
+    color: var(--color-text);
+}
+
+.doc-preview-body {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.doc-preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+}
+
+.doc-preview-text {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 1.5rem;
+}
+
+.doc-preview-text pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+    .doc-preview-container {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+    }
 }
 
 

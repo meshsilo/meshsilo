@@ -181,6 +181,78 @@
             if (e.key === 'ArrowRight') lightboxNav(1);
         }
 
+        // Document Preview
+        function openDocumentPreview(src, type, name) {
+            var existing = document.getElementById('document-preview');
+            if (existing) existing.remove();
+
+            var overlay = document.createElement('div');
+            overlay.id = 'document-preview';
+            overlay.className = 'lightbox-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+
+            var contentHtml = '';
+            if (type === 'pdf') {
+                contentHtml = '<iframe src="' + escapeHtml(src) + '" class="doc-preview-iframe"></iframe>';
+            } else {
+                contentHtml = '<div class="doc-preview-text"><p class="text-muted">Loading...</p></div>';
+            }
+
+            overlay.innerHTML =
+                '<div class="doc-preview-container">' +
+                    '<div class="doc-preview-header">' +
+                        '<span class="doc-preview-name">' + escapeHtml(name) + '</span>' +
+                        '<div class="doc-preview-actions">' +
+                            '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-secondary" title="Open in new tab">Open</a>' +
+                            '<a href="' + escapeHtml(src) + '" download class="btn btn-small btn-secondary" title="Download">Download</a>' +
+                            '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeDocumentPreview()">&times;</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="doc-preview-body">' + contentHtml + '</div>' +
+                '</div>';
+
+            document.body.appendChild(overlay);
+            overlay.style.display = 'flex';
+
+            // For text files, fetch and render content
+            if (type !== 'pdf') {
+                fetch(src)
+                    .then(function(r) { return r.text(); })
+                    .then(function(text) {
+                        var container = overlay.querySelector('.doc-preview-text');
+                        if (!container) return;
+                        if (type === 'md') {
+                            // Render as preformatted text (markdown source)
+                            container.innerHTML = '<pre>' + escapeHtml(text) + '</pre>';
+                        } else {
+                            container.innerHTML = '<pre>' + escapeHtml(text) + '</pre>';
+                        }
+                    })
+                    .catch(function(err) {
+                        var container = overlay.querySelector('.doc-preview-text');
+                        if (container) container.innerHTML = '<p class="text-muted">Failed to load preview.</p>';
+                    });
+            }
+
+            // Close on background click
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) closeDocumentPreview();
+            });
+
+            document.addEventListener('keydown', docPreviewKeyHandler);
+        }
+
+        function closeDocumentPreview() {
+            var preview = document.getElementById('document-preview');
+            if (preview) preview.remove();
+            document.removeEventListener('keydown', docPreviewKeyHandler);
+        }
+
+        function docPreviewKeyHandler(e) {
+            if (e.key === 'Escape') closeDocumentPreview();
+        }
+
         // Attachments - Upload
         async function uploadAttachments(files) {
             if (!files.length) return;
@@ -303,9 +375,10 @@
 
             const link = document.createElement('a');
             link.href = '/assets/' + att.file_path;
-            link.target = '_blank';
-            link.rel = 'noopener';
-            link.className = 'attachment-doc-name';
+            link.className = 'attachment-doc-name attachment-preview-trigger';
+            link.dataset.previewSrc = '/assets/' + att.file_path;
+            link.dataset.previewType = docExt;
+            link.dataset.previewName = att.original_filename;
             link.textContent = att.original_filename;
 
             const sizeSpan = document.createElement('span');

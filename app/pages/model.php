@@ -471,66 +471,6 @@ require_once 'includes/header.php';
                         </div>
                         <?php endif; ?>
 
-                        <?php if (isFeatureEnabled('attachments') && (!empty($attachments['images']) || !empty($attachments['documents']) || canEdit())): ?>
-                        <div class="model-attachments">
-                            <h3>Attachments</h3>
-
-                            <?php if (!empty($attachments['images'])): ?>
-                            <div class="attachment-section">
-                                <h4>Images</h4>
-                                <div class="attachment-grid" id="attachment-images">
-                                    <?php foreach ($attachments['images'] as $att): ?>
-                                    <div class="attachment-image" data-attachment-id="<?= $att['id'] ?>">
-                                        <img src="/assets/<?= htmlspecialchars($att['file_path']) ?>"
-                                             alt="<?= htmlspecialchars($att['original_filename']) ?>"
-                                             loading="lazy" decoding="async"
-                                             tabindex="0" role="button" class="attachment-image-trigger"
-                                             data-lightbox-src="<?= htmlspecialchars('/assets/' . $att['file_path']) ?>" data-lightbox-alt="<?= htmlspecialchars($att['original_filename']) ?>"
-                                            >
-                                        <?php if (canEdit()): ?>
-                                        <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" title="Set as model thumbnail">&#128247;</button>
-                                        <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
-                                        <?php endif; ?>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-
-                            <?php if (!empty($attachments['documents'])): ?>
-                            <div class="attachment-section">
-                                <h4>Documents</h4>
-                                <div class="attachment-documents" id="attachment-documents">
-                                    <?php foreach ($attachments['documents'] as $att): ?>
-                                    <div class="attachment-document" data-attachment-id="<?= $att['id'] ?>">
-                                        <span class="file-type-badge">.<?= htmlspecialchars(pathinfo($att['original_filename'], PATHINFO_EXTENSION) ?: $att['file_type']) ?></span>
-                                        <a href="/assets/<?= htmlspecialchars($att['file_path']) ?>" target="_blank" rel="noopener noreferrer" class="attachment-doc-name">
-                                            <?= htmlspecialchars($att['original_filename']) ?>
-                                        </a>
-                                        <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>
-                                        <?php if (canEdit()): ?>
-                                        <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
-                                        <?php endif; ?>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-
-                            <?php if (empty($attachments['images']) && empty($attachments['documents'])): ?>
-                            <p class="attachments-empty" id="attachments-empty">No attachments yet.</p>
-                            <?php endif; ?>
-
-                            <?php if (canEdit()): ?>
-                            <div class="attachment-upload">
-                                <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" multiple style="display:none" aria-label="Upload attachments">
-                                <button type="button" class="btn btn-secondary btn-small trigger-attachment-upload">Add Attachment</button>
-                                <span class="attachment-hint">Images, PDFs &amp; Text Files</span>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <?php endif; ?>
-
                         <?php if (class_exists('PluginManager')): ?>
                         <?= PluginManager::applyFilter('model_detail_sidebar', '', $model) ?>
                         <?php endif; ?>
@@ -631,6 +571,8 @@ require_once 'includes/header.php';
                 </div>
                 <?php endif; ?>
 
+                <div class="model-content-layout">
+                <div class="model-content-main">
                 <?php if (!empty($parts)): ?>
                 <div class="model-parts">
                     <div class="parts-header">
@@ -786,6 +728,77 @@ require_once 'includes/header.php';
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                 </div>
                 <?php endif; ?>
+                </div>
+
+                <div class="model-content-sidebar">
+                    <?php if (isFeatureEnabled('attachments') && (!empty($attachments['images']) || !empty($attachments['documents']) || canEdit())): ?>
+                    <div class="model-attachments collapsible-section">
+                        <h3 class="collapsible-header" tabindex="0" role="button" aria-expanded="true">
+                            <span class="folder-toggle" aria-hidden="true">&#9660;</span>
+                            Attachments
+                        </h3>
+                        <div class="collapsible-body">
+
+                        <?php if (!empty($attachments['images'])): ?>
+                        <div class="attachment-section">
+                            <h4>Images</h4>
+                            <div class="attachment-grid" id="attachment-images">
+                                <?php foreach ($attachments['images'] as $att): ?>
+                                <div class="attachment-image" data-attachment-id="<?= $att['id'] ?>">
+                                    <img src="/assets/<?= htmlspecialchars($att['file_path']) ?>"
+                                         alt="<?= htmlspecialchars($att['original_filename']) ?>"
+                                         loading="lazy" decoding="async"
+                                         tabindex="0" role="button" class="attachment-image-trigger"
+                                         data-lightbox-src="<?= htmlspecialchars('/assets/' . $att['file_path']) ?>" data-lightbox-alt="<?= htmlspecialchars($att['original_filename']) ?>"
+                                        >
+                                    <?php if (canEdit()): ?>
+                                    <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" title="Set as model thumbnail">&#128247;</button>
+                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($attachments['documents'])): ?>
+                        <div class="attachment-section">
+                            <h4>Documents</h4>
+                            <div class="attachment-documents" id="attachment-documents">
+                                <?php foreach ($attachments['documents'] as $att): ?>
+                                <?php $docExt = strtolower(pathinfo($att['original_filename'], PATHINFO_EXTENSION) ?: $att['file_type']); ?>
+                                <div class="attachment-document" data-attachment-id="<?= $att['id'] ?>">
+                                    <span class="file-type-badge">.<?= htmlspecialchars($docExt) ?></span>
+                                    <a href="/assets/<?= htmlspecialchars($att['file_path']) ?>" class="attachment-doc-name attachment-preview-trigger" data-preview-src="/assets/<?= htmlspecialchars($att['file_path']) ?>" data-preview-type="<?= htmlspecialchars($docExt) ?>" data-preview-name="<?= htmlspecialchars($att['original_filename']) ?>">
+                                        <?= htmlspecialchars($att['original_filename']) ?>
+                                    </a>
+                                    <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>
+                                    <?php if (canEdit()): ?>
+                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (empty($attachments['images']) && empty($attachments['documents'])): ?>
+                        <p class="attachments-empty" id="attachments-empty">No attachments yet.</p>
+                        <?php endif; ?>
+
+                        <?php if (canEdit()): ?>
+                        <div class="attachment-upload">
+                            <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" multiple style="display:none" aria-label="Upload attachments">
+                            <button type="button" class="btn btn-secondary btn-small trigger-attachment-upload">Add Attachment</button>
+                            <span class="attachment-hint">Images, PDFs &amp; Text Files</span>
+                        </div>
+                        <?php endif; ?>
+
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                </div>
             </div>
         </div>
 
