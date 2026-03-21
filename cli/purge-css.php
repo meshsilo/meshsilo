@@ -1,4 +1,9 @@
 <?php
+
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    die("This script must be run from the command line.\n");
+}
 /**
  * CSS Purger CLI
  *

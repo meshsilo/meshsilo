@@ -326,15 +326,15 @@ function generateConfigFile($config) {
 
     // Database configuration only
     $content .= "// Database Type: sqlite or mysql\n";
-    $content .= "define('DB_TYPE', '{$dbType}');\n";
+    $content .= "define('DB_TYPE', '" . addslashes($dbType) . "');\n";
 
     if ($dbType === 'mysql') {
         $db = $config['db_config'];
         $content .= "\n// MySQL Connection Settings\n";
-        $content .= "define('DB_HOST', '{$db['host']}');\n";
-        $content .= "define('DB_PORT', '{$db['port']}');\n";
-        $content .= "define('DB_NAME', '{$db['name']}');\n";
-        $content .= "define('DB_USER', '{$db['user']}');\n";
+        $content .= "define('DB_HOST', '" . addslashes($db['host']) . "');\n";
+        $content .= "define('DB_PORT', '" . addslashes($db['port']) . "');\n";
+        $content .= "define('DB_NAME', '" . addslashes($db['name']) . "');\n";
+        $content .= "define('DB_USER', '" . addslashes($db['user']) . "');\n";
         $content .= "define('DB_PASS', '" . addslashes($db['pass']) . "');\n";
     }
 
