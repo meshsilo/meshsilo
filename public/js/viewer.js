@@ -113,3 +113,7 @@ class ModelViewer {
 
 }
 
+
+// Expose to global scope for viewer-loaders.js and other scripts
+window.ModelViewer = ModelViewer;
+

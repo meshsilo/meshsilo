@@ -1,13 +1,39 @@
-<!-- Three.js r147 for 3D model rendering (defer preserves execution order) -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js" crossorigin="anonymous" integrity="sha384-vV17nr/rMaJqmeZkFUzXLpHdQ+ME5QHKdydaqqN+3Ga39RJlNrTatJxHwGV4ml2C" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous" integrity="sha384-DT0Ls0mO7JmjTnT+oBuMhEJzYJO1zUqzuuMXNdnOmOQRIpN2BgSjvBV/j50NngIT" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js" crossorigin="anonymous" integrity="sha384-z6Lbfx7Kh5dVdhEISsKE58gMRQj53xGx7jmDq6OgcXZ0UPVWLe1y46AZhp7DsiL1" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/3MFLoader.js" crossorigin="anonymous" integrity="sha384-UL/Fc3GfON8Fbqy3nEb7BxUqP+RaT9QTR5pwUDqd/q98qMX9mKuyvFV8zBtvQZ6x" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/OBJLoader.js" crossorigin="anonymous" integrity="sha384-zfBxZaiI8ZUg+I969NX47atW0LUUD1FLZxHlKLXLBAV8auKwVZCrF4i2BmMYdD89" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/PLYLoader.js" crossorigin="anonymous" integrity="sha384-x/OGTkSpz1WlDE1PQP23g7F3M7d+R0Fl2B2gb6O6vs5utUzVC2Yw8PvDMHtbi7EX" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js" crossorigin="anonymous" integrity="sha384-FassWWYNEPQsuRQm+59KIMcDetEc30bNyE9yfx16Ok8lvoowyH81LtrPmLWltJMh" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/ColladaLoader.js" crossorigin="anonymous" integrity="sha384-aQ0WOyhTmLSJzCm2jPTsh3W71SsXMDUgFqfH9zyMbTWTce/Cb6KyMX+xMe3FFzvn" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/FBXLoader.js" crossorigin="anonymous" integrity="sha384-EozoM3loWIoL1O7kvWjrs4nSeqFuV6Dmx2DUZXX9PT2IabU3HxJEi9VbrSt3c2xr" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/TDSLoader.js" crossorigin="anonymous" integrity="sha384-snw6HywUiWko/zCBkQ0RilhNCTDBQUSuTuBoOsPnEYVU0+RDCQmDivJEyafHqctv" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/AMFLoader.js" crossorigin="anonymous" integrity="sha384-sRKmTl9czGrDQeh8yZVl96uZpCfO5UuHF5XpaN84Gp0QfuIc6to6zXfWAcLhDgp7" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js" crossorigin="anonymous" integrity="sha384-I0DMsfimAPIqWT8lF+oA997gRgdUi3jhidoTq3fN0zmn35smXZukD01FLnsPRU9i" defer></script>
+<!-- Three.js r183 via ES modules with import map -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.min.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/"
+    }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { TDSLoader } from 'three/addons/loaders/TDSLoader.js';
+import { AMFLoader } from 'three/addons/loaders/AMFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Expose to global scope for existing viewer.js and viewer-loaders.js
+window.THREE = THREE;
+THREE.STLLoader = STLLoader;
+THREE.ThreeMFLoader = ThreeMFLoader;
+THREE.OBJLoader = OBJLoader;
+THREE.PLYLoader = PLYLoader;
+THREE.GLTFLoader = GLTFLoader;
+THREE.ColladaLoader = ColladaLoader;
+THREE.FBXLoader = FBXLoader;
+THREE.TDSLoader = TDSLoader;
+THREE.AMFLoader = AMFLoader;
+THREE.OrbitControls = OrbitControls;
+
+// Signal that Three.js is ready
+window.THREE_READY = true;
+window.dispatchEvent(new Event('three-ready'));
+</script>

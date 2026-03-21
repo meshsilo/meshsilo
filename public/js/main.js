@@ -38,7 +38,7 @@ class LazyModelLoader {
         if (!url || !fileType) return;
 
         // Check if required libraries are available
-        if (typeof THREE === 'undefined' || typeof ModelViewer === 'undefined') {
+        if (typeof THREE === 'undefined' || typeof window.ModelViewer === 'undefined') {
             DEBUG && console.warn('3D viewer libraries not loaded');
             return;
         }
@@ -70,7 +70,7 @@ class LazyModelLoader {
             // Initialize viewer - wrap in try-catch for WebGL errors
             let viewer;
             try {
-                viewer = new ModelViewer(viewerContainer, {
+                viewer = new window.ModelViewer(viewerContainer, {
                     autoRotate: true,
                     interactive: false,
                     backgroundColor: bgColor

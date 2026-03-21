@@ -1,8 +1,15 @@
 /**
  * Compare Viewer — Side-by-side 3D model version comparison
- * Uses Three.js for rendering. Loaded after viewer.js.
- * Expects global variables: version1Path, version2Path, version1Type, version2Type, viewer1, viewer2
+ * Uses Three.js for rendering. Loaded as module after viewer.js.
+ * Reads config from window.CompareConfig (set by model-compare.php).
  */
+const { version1Path, version2Path, version1Type, version2Type } = window.CompareConfig || {};
+let viewer1 = null;
+let viewer2 = null;
+let overlayViewer = null;
+let syncCameras = true;
+let overlayActive = false;
+const geoStats = { 1: null, 2: null };
 
 function initCompareViewers() {
     if (version1Path && document.getElementById('viewer-1')) {
@@ -348,3 +355,39 @@ function resetViews() {
         viewer.controls.update();
     });
 }
+
+// Initialize when DOM is ready (this module loads after Three.js module)
+document.addEventListener('DOMContentLoaded', function() {
+    initCompareViewers();
+
+    document.getElementById('version-select-1')?.addEventListener('change', updateComparison);
+    document.getElementById('version-select-2')?.addEventListener('change', updateComparison);
+
+    document.getElementById('swap-versions')?.addEventListener('click', function() {
+        const sel1 = document.getElementById('version-select-1');
+        const sel2 = document.getElementById('version-select-2');
+        const temp = sel1.value;
+        sel1.value = sel2.value;
+        sel2.value = temp;
+        updateComparison();
+    });
+
+    document.getElementById('sync-cameras')?.addEventListener('change', function() {
+        syncCameras = this.checked;
+    });
+
+    document.getElementById('show-wireframe')?.addEventListener('change', function() {
+        toggleWireframe(this.checked);
+    });
+
+    document.getElementById('reset-views')?.addEventListener('click', resetViews);
+
+    document.getElementById('overlay-mode')?.addEventListener('change', function() {
+        toggleOverlayMode(this.checked);
+    });
+
+    document.getElementById('overlay-opacity')?.addEventListener('input', function() {
+        document.getElementById('overlay-opacity-value').textContent = this.value + '%';
+        updateOverlayOpacity(this.value / 100);
+    });
+});

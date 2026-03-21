@@ -604,59 +604,14 @@ require_once 'includes/header.php';
 </style>
 
 <script>
-// Version data
-const version1Path = <?= json_encode($version1 && $version1['file_path'] ? basePath('assets/' . $version1['file_path']) : null) ?>;
-const version2Path = <?= json_encode($version2 && $version2['file_path'] ? basePath('assets/' . $version2['file_path']) : null) ?>;
-const version1Type = <?= json_encode($version1 ? strtolower(pathinfo($version1['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>;
-const version2Type = <?= json_encode($version2 ? strtolower(pathinfo($version2['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>;
-
-let viewer1 = null;
-let viewer2 = null;
-let overlayViewer = null;
-let syncCameras = true;
-let overlayActive = false;
-
-// Geometry stats storage
-const geoStats = { 1: null, 2: null };
-
-document.addEventListener('DOMContentLoaded', function() {
-    initCompareViewers();
-
-    document.getElementById('version-select-1').addEventListener('change', updateComparison);
-    document.getElementById('version-select-2').addEventListener('change', updateComparison);
-
-    document.getElementById('swap-versions').addEventListener('click', function() {
-        const sel1 = document.getElementById('version-select-1');
-        const sel2 = document.getElementById('version-select-2');
-        const temp = sel1.value;
-        sel1.value = sel2.value;
-        sel2.value = temp;
-        updateComparison();
-    });
-
-    document.getElementById('sync-cameras').addEventListener('change', function() {
-        syncCameras = this.checked;
-    });
-
-    document.getElementById('show-wireframe').addEventListener('change', function() {
-        toggleWireframe(this.checked);
-    });
-
-    document.getElementById('reset-views').addEventListener('click', resetViews);
-
-    // Overlay mode toggle
-    document.getElementById('overlay-mode').addEventListener('change', function() {
-        toggleOverlayMode(this.checked);
-    });
-
-    // Overlay opacity slider
-    document.getElementById('overlay-opacity').addEventListener('input', function() {
-        document.getElementById('overlay-opacity-value').textContent = this.value + '%';
-        updateOverlayOpacity(this.value / 100);
-    });
-});
-
+// Version data — exposed globally for compare-viewer.js module
+window.CompareConfig = {
+    version1Path: <?= json_encode($version1 && $version1['file_path'] ? basePath('assets/' . $version1['file_path']) : null) ?>,
+    version2Path: <?= json_encode($version2 && $version2['file_path'] ? basePath('assets/' . $version2['file_path']) : null) ?>,
+    version1Type: <?= json_encode($version1 ? strtolower(pathinfo($version1['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>,
+    version2Type: <?= json_encode($version2 ? strtolower(pathinfo($version2['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>
+};
 </script>
-<script src="<?= basePath('js/compare-viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/compare-viewer.js') ?>" defer></script>
+<script src="<?= basePath('js/compare-viewer.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/compare-viewer.js') ?>" type="module"></script>
 
 <?php require_once 'includes/footer.php'; ?>
