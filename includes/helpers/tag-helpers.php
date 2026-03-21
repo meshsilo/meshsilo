@@ -34,12 +34,6 @@ function invalidateTagsCache()
     Cache::getInstance()->forget('all_tags');
 }
 
-// Invalidate categories cache (call after modifying categories)
-function invalidateCategoriesCache()
-{
-    Cache::getInstance()->forget('all_categories');
-}
-
 // Get tags for a model
 function getModelTags($modelId)
 {
