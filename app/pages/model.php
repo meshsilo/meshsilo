@@ -255,7 +255,7 @@ try {
 // Get model attachments (images, PDFs, text files)
 $attachments = ['images' => [], 'documents' => []];
 try {
-    $stmt = $db->prepare('SELECT id, model_id, filename, file_path, file_type, file_size, display_order, created_at FROM model_attachments WHERE model_id = :model_id ORDER BY display_order, created_at');
+    $stmt = $db->prepare('SELECT id, model_id, filename, original_filename, file_path, file_type, file_size, display_order, created_at FROM model_attachments WHERE model_id = :model_id ORDER BY display_order, created_at');
     $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {

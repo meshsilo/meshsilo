@@ -47,7 +47,8 @@ $preloadFiles = [
     $basePath . '/includes/Search.php',
     $basePath . '/includes/ThumbnailGenerator.php',
 
-    // Middleware
+    // Middleware (interface must load before implementations)
+    $basePath . '/includes/middleware/MiddlewareInterface.php',
     $basePath . '/includes/middleware/AuthMiddleware.php',
     $basePath . '/includes/middleware/RateLimitMiddleware.php',
 ];
