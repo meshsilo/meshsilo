@@ -57,67 +57,6 @@
     background-color: rgba(37, 99, 235, 0.1);
 }
 
-/* Import Section */
-.import-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-}
-
-.import-section h2 {
-    font-size: 1.25rem;
-    margin-bottom: 0.5rem;
-}
-
-.import-dropzone {
-    border: 2px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background-color 0.2s;
-    margin-top: 1rem;
-    color: var(--color-text-muted);
-}
-
-.import-dropzone:hover,
-.import-dropzone.dragover {
-    border-color: var(--color-primary);
-    background-color: var(--color-surface-hover);
-}
-
-.import-preview-info {
-    background: var(--color-bg);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
-.import-preview-info h3 {
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.import-preview-info p {
-    margin: 0.25rem 0;
-    font-size: 0.875rem;
-}
-
-.import-options {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.import-options label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-}
-
 .required {
     color: var(--color-danger);
 }
