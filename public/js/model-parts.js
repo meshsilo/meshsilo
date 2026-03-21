@@ -24,7 +24,7 @@
             container.innerHTML = '';
 
             // Create new viewer
-            partPreviewViewer = new ModelViewer(container, {
+            partPreviewViewer = new window.ModelViewer(container, {
                 autoRotate: false,
                 interactive: true,
                 backgroundColor: 0x1e293b

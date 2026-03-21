@@ -350,22 +350,6 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
     })();
     </script>
 
-    <?php if ($model && in_array($model['file_type'], ['stl', '3mf'])): ?>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="js/viewer.js"></script>
-    <script>
-        // Initialize 3D preview if applicable
-        document.addEventListener('DOMContentLoaded', function() {
-            const container = document.getElementById('preview-container');
-            const canvas = document.getElementById('model-preview');
-
-            if (typeof initModelViewer === 'function') {
-                // Would need to expose file path for public preview
-                // For security, you might want to generate a temporary signed URL
-            }
-        });
-    </script>
-    <?php endif; ?>
 </body>
 </html>
 

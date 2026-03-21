@@ -164,7 +164,7 @@ class EarlyHintsMiddleware
         // Preload viewer if needed
         if ($needsViewer) {
             $middleware->preload('/public/js/viewer.js', 'script');
-            $middleware->preload('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'script', ['crossorigin' => true]);
+            $middleware->preload('https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.min.js', 'script', ['crossorigin' => true]);
         }
 
         return $middleware;

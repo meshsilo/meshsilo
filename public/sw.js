@@ -39,14 +39,13 @@ const PRECACHE_ASSETS = [
     '/public/images/icon.svg'
 ];
 
-// CDN resources to precache
+// CDN resources to precache (Three.js r183 via ES modules)
 const CDN_ASSETS = [
-    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
-    'https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js',
-    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js',
-    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js',
-    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js',
-    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'
+    'https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.min.js',
+    'https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/loaders/STLLoader.js',
+    'https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/loaders/3MFLoader.js',
+    'https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/loaders/OBJLoader.js',
+    'https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/controls/OrbitControls.js'
 ];
 
 // Install event - precache essential assets

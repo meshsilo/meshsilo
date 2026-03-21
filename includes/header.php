@@ -70,9 +70,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="stylesheet" href="<?= basePath('css/admin-health.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin-health.css') ?>">
     <?php endif; ?>
 
-    <!-- CDN preconnect hints (dns-prefetch as fallback for older browsers) -->
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <!-- CDN preconnect hint (dns-prefetch as fallback for older browsers) -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
