@@ -375,8 +375,8 @@ php cli/migrate.php --dry-run
         </div>
 
         <?php if ($dbType === 'sqlite'): ?>
-        <div class="admin-section" style="margin-top: 1.5rem;">
-            <h2>Migrate to MySQL</h2>
+        <details class="settings-section">
+            <summary><h2>Migrate to MySQL</h2></summary>
             <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
                 Transfer all data from SQLite to a MySQL database. Your files on disk are not affected.
                 A backup of the current configuration will be saved automatically.
@@ -408,7 +408,7 @@ php cli/migrate.php --dry-run
                     Migrate to MySQL
                 </button>
             </form>
-        </div>
+        </details>
         <?php endif; ?>
 
 <style>
