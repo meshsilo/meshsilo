@@ -25,37 +25,13 @@ done
 chown -R www-data:www-data /var/www/meshsilo/storage/logs/
 chmod 664 /var/www/meshsilo/storage/logs/*.log
 
-# Auto-generate config.local.php from environment variables if not present
-if [ ! -f "$CONFIG_FILE" ] && [ "$MESHSILO_DB_TYPE" = "mysql" ]; then
-    echo "Generating MySQL configuration from environment variables..."
-
-    DB_HOST="${MESHSILO_DB_HOST:-db}"
-    DB_PORT="${MESHSILO_DB_PORT:-3306}"
-    DB_NAME="${MESHSILO_DB_NAME:-meshsilo}"
-    DB_USER="${MESHSILO_DB_USER:-meshsilo}"
-    DB_PASS="${MESHSILO_DB_PASS:-}"
-
-    cat > "$CONFIG_FILE" <<PHPEOF
-<?php
-/**
- * MeshSilo Database Configuration
- * Auto-generated from Docker environment variables
- * Generated: $(date '+%Y-%m-%d %H:%M:%S')
- */
-
-define('DB_TYPE', 'mysql');
-define('DB_HOST', '${DB_HOST}');
-define('DB_PORT', '${DB_PORT}');
-define('DB_NAME', '${DB_NAME}');
-define('DB_USER', '${DB_USER}');
-define('DB_PASS', '${DB_PASS}');
-define('INSTALLED', true);
-PHPEOF
-
-    chown www-data:www-data "$CONFIG_FILE"
-    echo "MySQL configuration written to $CONFIG_FILE"
-elif [ ! -f "$CONFIG_FILE" ]; then
+# If no config exists, the install wizard will handle setup on first visit
+# When MESHSILO_DB_* env vars are set, the wizard auto-fills the database fields
+if [ ! -f "$CONFIG_FILE" ]; then
     echo "No configuration found. The install wizard will run on first visit."
+    if [ "$MESHSILO_DB_TYPE" = "mysql" ]; then
+        echo "MySQL environment variables detected — database fields will be pre-filled in the install wizard."
+    fi
 fi
 
 # Export environment variables for PHP to read

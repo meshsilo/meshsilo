@@ -63,6 +63,34 @@ $step = $_SESSION['install']['step'];
 $error = '';
 $success = '';
 
+// Auto-configure database from Docker env vars when arriving at step 2
+// This skips the database form entirely if env vars provide a working connection
+if ($step === 2 && !isset($_SESSION['install']['db_auto_configured'])) {
+    $envDbType = getenv('MESHSILO_DB_TYPE') ?: '';
+    $envDbHost = getenv('MESHSILO_DB_HOST') ?: '';
+    $envDbUser = getenv('MESHSILO_DB_USER') ?: '';
+
+    if ($envDbType === 'mysql' && $envDbHost && $envDbUser) {
+        $autoConfig = [
+            'host' => $envDbHost,
+            'port' => getenv('MESHSILO_DB_PORT') ?: '3306',
+            'name' => getenv('MESHSILO_DB_NAME') ?: 'meshsilo',
+            'user' => $envDbUser,
+            'pass' => getenv('MESHSILO_DB_PASS') ?: ''
+        ];
+        $testResult = testMySQLConnection($autoConfig);
+        if ($testResult === true) {
+            $_SESSION['install']['db_type'] = 'mysql';
+            $_SESSION['install']['db_config'] = $autoConfig;
+            $_SESSION['install']['db_auto_configured'] = true;
+            $step = 3;
+            $_SESSION['install']['step'] = $step;
+            $success = 'MySQL database configured automatically from environment variables.';
+        }
+        // If connection fails, fall through to manual form with pre-filled fields
+    }
+}
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
