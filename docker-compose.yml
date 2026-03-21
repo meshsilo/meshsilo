@@ -18,14 +18,14 @@ services:
       # Set this to your external URL if using reverse proxy
       # - MESHSILO_SITE_URL=https://meshsilo.example.com
 
-      # Database — defaults to SQLite (no config needed)
-      # To use MySQL, uncomment the db service below and set these:
-      # - MESHSILO_DB_TYPE=mysql
-      # - MESHSILO_DB_HOST=db
-      # - MESHSILO_DB_PORT=3306
-      # - MESHSILO_DB_NAME=meshsilo
-      # - MESHSILO_DB_USER=meshsilo
-      # - MESHSILO_DB_PASS=meshsilo_password
+      # Database — MySQL (default)
+      # The install wizard will auto-detect these and skip the database step
+      - MESHSILO_DB_TYPE=mysql
+      - MESHSILO_DB_HOST=db
+      - MESHSILO_DB_PORT=3306
+      - MESHSILO_DB_NAME=meshsilo
+      - MESHSILO_DB_USER=meshsilo
+      - MESHSILO_DB_PASS=meshsilo_password
 
       # File Upload Settings (in bytes, default 100MB)
       - MESHSILO_MAX_UPLOAD_SIZE=104857600
@@ -43,30 +43,32 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
+    depends_on:
+      db:
+        condition: service_healthy
 
-  # MySQL database — uncomment to use MySQL instead of SQLite
-  # Also uncomment the MESHSILO_DB_* environment variables above
-  # and the depends_on section
-  #
-  # db:
-  #   image: mysql:8.0
-  #   container_name: meshsilo-db
-  #   restart: unless-stopped
-  #   environment:
-  #     - MYSQL_ROOT_PASSWORD=root_password_change_me
-  #     - MYSQL_DATABASE=meshsilo
-  #     - MYSQL_USER=meshsilo
-  #     - MYSQL_PASSWORD=meshsilo_password
-  #   volumes:
-  #     - meshsilo_mysql:/var/lib/mysql
-  #   healthcheck:
-  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  db:
+    image: mysql:8.0
+    container_name: meshsilo-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password_change_me
+      - MYSQL_DATABASE=meshsilo
+      - MYSQL_USER=meshsilo
+      - MYSQL_PASSWORD=meshsilo_password
+    volumes:
+      - meshsilo_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# To use SQLite instead of MySQL:
+#   1. Remove or comment out the db service above
+#   2. Remove or comment out the MESHSILO_DB_* environment variables
+#   3. Remove or comment out the depends_on section
+#   The install wizard will default to SQLite when no MySQL env vars are set.
 
 volumes:
   meshsilo_assets:
@@ -77,5 +79,5 @@ volumes:
     driver: local
   meshsilo_cache:
     driver: local
-  # meshsilo_mysql:
-  #   driver: local
+  meshsilo_mysql:
+    driver: local
