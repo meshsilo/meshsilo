@@ -925,5 +925,34 @@ function getMigrationList()
                 }
             }
         ],
+
+        // Fix jobs table TEXT columns with defaults for MySQL compatibility
+        [
+            'name' => 'Fix jobs table VARCHAR columns',
+            'description' => 'Convert TEXT columns with defaults to VARCHAR for MySQL strict mode',
+            'check' => function ($db) {
+                if ($db->getType() !== 'mysql' || !tableExists($db, 'jobs')) {
+                    return true; // Only needed for MySQL, skip if not applicable
+                }
+                try {
+                    $result = $db->query("SHOW COLUMNS FROM jobs WHERE Field = 'queue'");
+                    $col = $result->fetch();
+                    return $col && stripos($col['Type'], 'varchar') !== false;
+                } catch (Exception $e) {
+                    return true;
+                }
+            },
+            'apply' => function ($db) {
+                if ($db->getType() !== 'mysql') return;
+                try {
+                    $db->exec("ALTER TABLE jobs MODIFY COLUMN queue VARCHAR(255) NOT NULL DEFAULT 'default'");
+                    $db->exec("ALTER TABLE jobs MODIFY COLUMN job_class VARCHAR(255) NOT NULL");
+                    $db->exec("ALTER TABLE jobs MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending'");
+                    logInfo('Migration: Fixed jobs table VARCHAR columns for MySQL');
+                } catch (Exception $e) {
+                    logWarning('Migration: Fix jobs VARCHAR skipped', ['error' => $e->getMessage()]);
+                }
+            }
+        ],
     ];
 }
