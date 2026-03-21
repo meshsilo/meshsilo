@@ -231,6 +231,11 @@ function runMigrations($db)
 {
     $type = $db->getType();
 
+    // Set busy timeout for SQLite to wait for locks instead of failing immediately
+    if ($type === 'sqlite') {
+        $db->exec('PRAGMA busy_timeout = 10000'); // 10 seconds
+    }
+
     // Ensure tables exist
     if (!tableExists($db, 'users')) {
         initializeDatabase($db);
