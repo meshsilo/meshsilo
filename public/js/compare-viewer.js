@@ -25,7 +25,7 @@ function loadModelByType(modelPath, modelType, onLoad, onError) {
 
     if (ext === 'stl') {
         new THREE.STLLoader().load(modelPath, function(geometry) {
-            const material = new THREE.MeshPhongMaterial({ color: 0x3498db, specular: 0x111111, shininess: 100 });
+            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
             onLoad(new THREE.Mesh(geometry, material));
         }, undefined, onError);
     } else if (ext === '3mf') {
@@ -39,7 +39,7 @@ function loadModelByType(modelPath, modelType, onLoad, onError) {
     } else if (ext === 'ply') {
         new THREE.PLYLoader().load(modelPath, function(geometry) {
             geometry.computeVertexNormals();
-            const material = new THREE.MeshPhongMaterial({ color: 0x3498db, specular: 0x111111, shininess: 100 });
+            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
             onLoad(new THREE.Mesh(geometry, material));
         }, undefined, onError);
     } else if (ext === 'glb' || ext === 'gltf') {
@@ -57,7 +57,7 @@ function loadModelByType(modelPath, modelType, onLoad, onError) {
     } else {
         // Fallback: try STL loader
         new THREE.STLLoader().load(modelPath, function(geometry) {
-            const material = new THREE.MeshPhongMaterial({ color: 0x3498db, specular: 0x111111, shininess: 100 });
+            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
             onLoad(new THREE.Mesh(geometry, material));
         }, undefined, onError);
     }
@@ -299,10 +299,10 @@ function initOverlayViewer() {
 }
 
 function applyMaterialOverride(object, color, opacity) {
-    const mat = new THREE.MeshPhongMaterial({
+    const mat = new THREE.MeshStandardMaterial({
         color: color,
-        specular: 0x111111,
-        shininess: 60,
+        roughness: 0.5,
+        metalness: 0.1,
         transparent: true,
         opacity: opacity,
         depthWrite: false,

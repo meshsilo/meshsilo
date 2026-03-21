@@ -306,10 +306,10 @@ ModelViewer.prototype.loadPLY = async function(url) {
                 this.clearModel();
                 geometry.computeVertexNormals();
 
-                const material = new THREE.MeshPhongMaterial({
+                const material = new THREE.MeshStandardMaterial({
                     color: 0x888888,
-                    specular: 0x222222,
-                    shininess: 20,
+                    roughness: 0.6,
+                    metalness: 0.1,
                     vertexColors: geometry.hasAttribute('color')
                 });
 
@@ -545,10 +545,10 @@ ModelViewer.prototype.convertOCCTToThree = function(result) {
                 geometry.setIndex(mesh.index.array);
             }
 
-            const material = new THREE.MeshPhongMaterial({
+            const material = new THREE.MeshStandardMaterial({
                 color: 0x888888,
-                specular: 0x222222,
-                shininess: 20,
+                roughness: 0.6,
+                metalness: 0.1,
                 side: THREE.DoubleSide
             });
 
@@ -692,6 +692,13 @@ ModelViewer.prototype.animate = function() {
     }
 
     this.animationId = requestAnimationFrame(() => this.animate());
+
+    // Throttle non-interactive thumbnails to 30fps (saves ~50% GPU)
+    if (!this.controls) {
+        var now = performance.now();
+        if (now - this.lastFrameTime < 33) return; // ~30fps
+        this.lastFrameTime = now;
+    }
 
     // Auto-rotate if no controls (rotate pivot so it orbits around model center)
     if (!this.controls && this.pivot && this.options.autoRotate) {

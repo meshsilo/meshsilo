@@ -1,14 +1,16 @@
 // 3D Model Viewer using Three.js
 
 // Shared default material — reused across all loaders to reduce GPU objects
+// Using MeshStandardMaterial (PBR) — better optimized on modern GPUs than legacy Phong
 ModelViewer.DEFAULT_MATERIAL = null;
 ModelViewer.getDefaultMaterial = function() {
     if (!ModelViewer.DEFAULT_MATERIAL) {
-        ModelViewer.DEFAULT_MATERIAL = new THREE.MeshPhongMaterial({
+        ModelViewer.DEFAULT_MATERIAL = new THREE.MeshStandardMaterial({
             color: 0x888888,
-            specular: 0x222222,
-            shininess: 20
+            roughness: 0.6,
+            metalness: 0.1
         });
+        ModelViewer.DEFAULT_MATERIAL.needsUpdate = false;
     }
     return ModelViewer.DEFAULT_MATERIAL.clone();
 };
@@ -35,6 +37,7 @@ class ModelViewer {
         this.animationId = null;
         this.isReady = false;
         this.isVisible = true;
+        this.lastFrameTime = 0;
         this.loadProgress = 0;
         this.onProgress = options.onProgress || null;
 
@@ -49,13 +52,16 @@ class ModelViewer {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(this.options.backgroundColor);
 
-        // Camera
-        this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        // Camera — tighter near/far for better depth precision
+        this.camera = new THREE.PerspectiveCamera(45, width / height, 1, 500);
         this.camera.position.set(0, 0, 100);
 
-        // Renderer - wrap in try-catch for WebGL context errors
+        // Renderer — use discrete GPU, skip antialias on non-interactive thumbnails
         try {
-            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+            this.renderer = new THREE.WebGLRenderer({
+                antialias: this.options.interactive,
+                powerPreference: 'high-performance'
+            });
             if (!this.renderer.getContext()) {
                 throw new Error('WebGL context not available');
             }
@@ -64,10 +70,16 @@ class ModelViewer {
             throw new Error('WebGL not available: ' + e.message);
         }
         this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.options.interactive ? 2 : 1.5));
+
+        // Skip object sorting for simple single-model scenes
+        if (!this.options.interactive) {
+            this.renderer.sortObjects = false;
+        }
+
         this.container.appendChild(this.renderer.domElement);
 
-        // Lighting - brighter for white models
+        // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         this.scene.add(ambientLight);
 
@@ -113,7 +125,5 @@ class ModelViewer {
 
 }
 
-
 // Expose to global scope for viewer-loaders.js and other scripts
 window.ModelViewer = ModelViewer;
-
