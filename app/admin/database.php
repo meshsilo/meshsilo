@@ -131,9 +131,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 exec($cmd, $output, $exitCode);
 
                 if ($exitCode === 0) {
-                    $message = 'Migration to MySQL completed successfully. Please restart the application.';
-                    // Redirect after a moment so the user sees the message
-                    header('Refresh: 3; url=' . route('admin.database'));
+                    $_SESSION['success'] = 'Migration to MySQL completed successfully. The application is now using MySQL.';
+                    header('Location: ' . route('admin.database'));
+                    exit;
                 } else {
                     $error = 'Migration failed: ' . implode("\n", array_slice($output, -5));
                 }
@@ -203,6 +203,12 @@ require_once __DIR__ . '/../../includes/header.php';
                     <p>Manage database migrations and maintenance</p>
                 </div>
 
+        <?php
+        if (isset($_SESSION['success'])) {
+            $message = $_SESSION['success'];
+            unset($_SESSION['success']);
+        }
+        ?>
         <?php if ($message): ?>
             <div role="status" class="alert alert-success"><?= htmlspecialchars($message) ?></div>
         <?php endif; ?>
