@@ -16,11 +16,7 @@ ModelViewer.prototype.loadSTL = async function(url) {
                     // Ensure normals are computed correctly
                     geometry.computeVertexNormals();
 
-                    const material = new THREE.MeshPhongMaterial({
-                        color: 0x888888,
-                        specular: 0x222222,
-                        shininess: 20
-                    });
+                    const material = ModelViewer.getDefaultMaterial();
 
                     this.model = new THREE.Mesh(geometry, material);
                     this.centerAndScaleModel();
@@ -62,11 +58,7 @@ ModelViewer.prototype.load3MF = async function(url) {
                                 if (child.geometry) {
                                     child.geometry.computeVertexNormals();
                                 }
-                                child.material = new THREE.MeshPhongMaterial({
-                                    color: 0x888888,
-                                    specular: 0x222222,
-                                    shininess: 20
-                                });
+                                child.material = ModelViewer.getDefaultMaterial();
                             }
                         });
 
@@ -89,7 +81,7 @@ ModelViewer.prototype.load3MF = async function(url) {
     });
 };
 
-startAnimation() {
+ModelViewer.prototype.startAnimation = function() {
     if (!this.isReady) {
         this.isReady = true;
         this.animate();
@@ -154,7 +146,7 @@ ModelViewer.prototype.loadGCODE = async function(url) {
     });
 };
 
-parseGCODE(gcodeText) {
+ModelViewer.prototype.parseGCODE = function(gcodeText) {
     const lines = gcodeText.split('\n');
     const printVertices = [];
     const printColors = [];
@@ -290,11 +282,7 @@ ModelViewer.prototype.loadOBJ = async function(url) {
                         if (child.geometry) {
                             child.geometry.computeVertexNormals();
                         }
-                        child.material = new THREE.MeshPhongMaterial({
-                            color: 0x888888,
-                            specular: 0x222222,
-                            shininess: 20
-                        });
+                        child.material = ModelViewer.getDefaultMaterial();
                     }
                 });
 
@@ -451,11 +439,7 @@ ModelViewer.prototype.loadAMF = async function(url) {
                             child.geometry.computeVertexNormals();
                         }
                         if (!child.material) {
-                            child.material = new THREE.MeshPhongMaterial({
-                                color: 0x888888,
-                                specular: 0x222222,
-                                shininess: 20
-                            });
+                            child.material = ModelViewer.getDefaultMaterial();
                         }
                     }
                 });
@@ -533,7 +517,7 @@ ModelViewer.prototype.loadOpenCascade = async function() {
     });
 };
 
-convertOCCTToThree(result) {
+ModelViewer.prototype.convertOCCTToThree = function(result) {
     const group = new THREE.Group();
 
     // OCCT result typically contains meshes with vertices and triangles
@@ -615,7 +599,7 @@ ModelViewer.prototype.loadModel = async function(url, fileType) {
     }
 };
 
-centerAndScaleModel() {
+ModelViewer.prototype.centerAndScaleModel = function() {
     if (!this.model) return;
 
     // Reset transforms before measuring
@@ -661,24 +645,29 @@ centerAndScaleModel() {
     }
 };
 
-clearModel() {
+ModelViewer.prototype.clearModel = function() {
     if (this.pivot) {
         this.scene.remove(this.pivot);
         this.pivot = null;
     }
     if (this.model) {
         this.scene.remove(this.model);
-        if (this.model.geometry) {
-            this.model.geometry.dispose();
-        }
-        if (this.model.material) {
-            this.model.material.dispose();
-        }
+        // Dispose all geometries and materials in the tree (handles Group/multi-mesh models)
+        this.model.traverse(function(child) {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(function(m) { m.dispose(); });
+                } else {
+                    child.material.dispose();
+                }
+            }
+        });
         this.model = null;
     }
 };
 
-onResize() {
+ModelViewer.prototype.onResize = function() {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
 
@@ -694,7 +683,13 @@ onResize() {
     }
 };
 
-animate() {
+ModelViewer.prototype.animate = function() {
+    // Stop animation loop when scrolled off-screen
+    if (!this.isVisible) {
+        this.animationId = null;
+        return;
+    }
+
     this.animationId = requestAnimationFrame(() => this.animate());
 
     // Auto-rotate if no controls (rotate pivot so it orbits around model center)
@@ -709,13 +704,17 @@ animate() {
     this.renderer.render(this.scene, this.camera);
 };
 
-dispose() {
+ModelViewer.prototype.dispose = function() {
     if (this.animationId) {
         cancelAnimationFrame(this.animationId);
     }
 
     if (this.resizeObserver) {
         this.resizeObserver.disconnect();
+    }
+
+    if (this.visibilityObserver) {
+        this.visibilityObserver.disconnect();
     }
 
     this.clearModel();
@@ -788,11 +787,7 @@ ModelViewer.prototype.loadSTLProgressive = async function(url) {
             const geometry = loader.parse(arrayBuffer);
             geometry.computeVertexNormals();
 
-            const material = new THREE.MeshPhongMaterial({
-                color: 0x888888,
-                specular: 0x222222,
-                shininess: 20
-            });
+            const material = ModelViewer.getDefaultMaterial();
 
             this.model = new THREE.Mesh(geometry, material);
             this.centerAndScaleModel();

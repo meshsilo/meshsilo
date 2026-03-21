@@ -1,4 +1,18 @@
 // 3D Model Viewer using Three.js
+
+// Shared default material — reused across all loaders to reduce GPU objects
+ModelViewer.DEFAULT_MATERIAL = null;
+ModelViewer.getDefaultMaterial = function() {
+    if (!ModelViewer.DEFAULT_MATERIAL) {
+        ModelViewer.DEFAULT_MATERIAL = new THREE.MeshPhongMaterial({
+            color: 0x888888,
+            specular: 0x222222,
+            shininess: 20
+        });
+    }
+    return ModelViewer.DEFAULT_MATERIAL.clone();
+};
+
 class ModelViewer {
     constructor(container, options = {}) {
         this.container = container;
@@ -20,6 +34,7 @@ class ModelViewer {
 
         this.animationId = null;
         this.isReady = false;
+        this.isVisible = true;
         this.loadProgress = 0;
         this.onProgress = options.onProgress || null;
 
@@ -80,6 +95,15 @@ class ModelViewer {
         // Handle resize
         this.resizeObserver = new ResizeObserver(() => this.onResize());
         this.resizeObserver.observe(this.container);
+
+        // Pause animation when scrolled off-screen to save GPU
+        this.visibilityObserver = new IntersectionObserver((entries) => {
+            this.isVisible = entries[0].isIntersecting;
+            if (this.isVisible && this.isReady && !this.animationId) {
+                this.animate();
+            }
+        }, { threshold: 0 });
+        this.visibilityObserver.observe(this.container);
 
         // Don't start animation until model is loaded to prevent flashing
         // Render one frame with just the background
