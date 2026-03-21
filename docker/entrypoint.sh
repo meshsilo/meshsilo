@@ -25,8 +25,36 @@ done
 chown -R www-data:www-data /var/www/meshsilo/storage/logs/
 chmod 664 /var/www/meshsilo/storage/logs/*.log
 
-# If no config exists, the install wizard will handle setup on first visit
-if [ ! -f "$CONFIG_FILE" ]; then
+# Auto-generate config.local.php from environment variables if not present
+if [ ! -f "$CONFIG_FILE" ] && [ "$MESHSILO_DB_TYPE" = "mysql" ]; then
+    echo "Generating MySQL configuration from environment variables..."
+
+    DB_HOST="${MESHSILO_DB_HOST:-db}"
+    DB_PORT="${MESHSILO_DB_PORT:-3306}"
+    DB_NAME="${MESHSILO_DB_NAME:-meshsilo}"
+    DB_USER="${MESHSILO_DB_USER:-meshsilo}"
+    DB_PASS="${MESHSILO_DB_PASS:-}"
+
+    cat > "$CONFIG_FILE" <<PHPEOF
+<?php
+/**
+ * MeshSilo Database Configuration
+ * Auto-generated from Docker environment variables
+ * Generated: $(date '+%Y-%m-%d %H:%M:%S')
+ */
+
+define('DB_TYPE', 'mysql');
+define('DB_HOST', '${DB_HOST}');
+define('DB_PORT', '${DB_PORT}');
+define('DB_NAME', '${DB_NAME}');
+define('DB_USER', '${DB_USER}');
+define('DB_PASS', '${DB_PASS}');
+define('INSTALLED', true);
+PHPEOF
+
+    chown www-data:www-data "$CONFIG_FILE"
+    echo "MySQL configuration written to $CONFIG_FILE"
+elif [ ! -f "$CONFIG_FILE" ]; then
     echo "No configuration found. The install wizard will run on first visit."
 fi
 
@@ -38,12 +66,18 @@ export MESHSILO_SITE_URL="${MESHSILO_SITE_URL:-}"
 # Initialize database settings from environment variables (only if already installed)
 if [ -f "$CONFIG_FILE" ]; then
     # Wait for database to be ready (for MySQL)
-    if [ "$MESHSILO_DB_TYPE" = "mysql" ]; then
-        echo "Waiting for MySQL to be ready..."
+    if [ "$MESHSILO_DB_TYPE" = "mysql" ] || grep -q "DB_TYPE.*mysql" "$CONFIG_FILE" 2>/dev/null; then
+        DB_HOST="${MESHSILO_DB_HOST:-$(grep -oP "DB_HOST.*'\\K[^']*" "$CONFIG_FILE" 2>/dev/null || echo localhost)}"
+        DB_NAME="${MESHSILO_DB_NAME:-$(grep -oP "DB_NAME.*'\\K[^']*" "$CONFIG_FILE" 2>/dev/null || echo meshsilo)}"
+        DB_USER="${MESHSILO_DB_USER:-$(grep -oP "DB_USER.*'\\K[^']*" "$CONFIG_FILE" 2>/dev/null || echo meshsilo)}"
+        DB_PASS="${MESHSILO_DB_PASS:-$(grep -oP "DB_PASS.*'\\K[^']*" "$CONFIG_FILE" 2>/dev/null || echo '')}"
+        DB_PORT="${MESHSILO_DB_PORT:-$(grep -oP "DB_PORT.*'\\K[^']*" "$CONFIG_FILE" 2>/dev/null || echo 3306)}"
+
+        echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."
         for i in $(seq 1 30); do
-            if MYSQL_DSN="mysql:host=${MESHSILO_DB_HOST:-localhost};dbname=${MESHSILO_DB_NAME:-meshsilo}" \
-               MYSQL_USER="${MESHSILO_DB_USER:-meshsilo}" \
-               MYSQL_PASS="${MESHSILO_DB_PASS:-}" \
+            if MYSQL_DSN="mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_NAME}" \
+               MYSQL_USER="${DB_USER}" \
+               MYSQL_PASS="${DB_PASS}" \
                php -r "
                 try {
                     new PDO(getenv('MYSQL_DSN'), getenv('MYSQL_USER'), getenv('MYSQL_PASS'));

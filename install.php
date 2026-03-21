@@ -1035,26 +1035,34 @@ foreach ($requirements as $req) {
                 </label>
             </div>
 
+            <?php
+            // Pre-fill from Docker environment variables if available
+            $envDbHost = getenv('MESHSILO_DB_HOST') ?: null;
+            $envDbPort = getenv('MESHSILO_DB_PORT') ?: null;
+            $envDbName = getenv('MESHSILO_DB_NAME') ?: null;
+            $envDbUser = getenv('MESHSILO_DB_USER') ?: null;
+            $envDbPass = getenv('MESHSILO_DB_PASS') ?: null;
+            ?>
             <div id="mysql-fields" style="display: <?= ($_SESSION['install']['db_type'] ?? 'mysql') === 'mysql' ? 'block' : 'none' ?>;">
                 <div class="form-group">
                     <label for="db_host">Host</label>
-                    <input type="text" id="db_host" name="db_host" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['host'] ?? 'localhost') ?>">
+                    <input type="text" id="db_host" name="db_host" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['host'] ?? $envDbHost ?? 'localhost') ?>">
                 </div>
                 <div class="form-group">
                     <label for="db_port">Port</label>
-                    <input type="text" id="db_port" name="db_port" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['port'] ?? '3306') ?>">
+                    <input type="text" id="db_port" name="db_port" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['port'] ?? $envDbPort ?? '3306') ?>">
                 </div>
                 <div class="form-group">
                     <label for="db_name">Database Name</label>
-                    <input type="text" id="db_name" name="db_name" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['name'] ?? 'silo') ?>">
+                    <input type="text" id="db_name" name="db_name" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['name'] ?? $envDbName ?? 'silo') ?>">
                 </div>
                 <div class="form-group">
                     <label for="db_user">Username</label>
-                    <input type="text" id="db_user" name="db_user" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['user'] ?? '') ?>">
+                    <input type="text" id="db_user" name="db_user" class="form-input" value="<?= htmlspecialchars($_SESSION['install']['db_config']['user'] ?? $envDbUser ?? '') ?>">
                 </div>
                 <div class="form-group">
                     <label for="db_pass">Password</label>
-                    <input type="password" id="db_pass" name="db_pass" class="form-input">
+                    <input type="password" id="db_pass" name="db_pass" class="form-input" value="<?= htmlspecialchars($envDbPass ?? '') ?>">
                 </div>
             </div>
 
