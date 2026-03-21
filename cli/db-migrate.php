@@ -25,7 +25,7 @@ if (php_sapi_name() !== 'cli') {
 chdir(dirname(__DIR__));
 
 // Parse options
-$options = getopt('', ['host:', 'port:', 'name:', 'user:', 'pass:', 'dry-run', 'help', 'batch-size:']);
+$options = getopt('', ['host:', 'port:', 'name:', 'user:', 'pass:', 'dry-run', 'force', 'help', 'batch-size:']);
 
 if (isset($options['help'])) {
     echo <<<HELP
@@ -127,7 +127,8 @@ try {
 
 // Check if MySQL database has existing tables
 $existingTables = $mysql->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-if (!empty($existingTables)) {
+$force = isset($options['force']);
+if (!empty($existingTables) && !$force) {
     echo "\nWarning: MySQL database '{$mysqlName}' already has " . count($existingTables) . " tables.\n";
     echo "This tool will DROP and recreate all MeshSilo tables.\n";
     echo "Continue? [y/N] ";

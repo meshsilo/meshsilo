@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             } else {
                 // Run the CLI migration tool in the background
                 $cmd = sprintf(
-                    'php %s --host=%s --port=%s --name=%s --user=%s --pass=%s 2>&1',
+                    'php %s --host=%s --port=%s --name=%s --user=%s --pass=%s --force 2>&1',
                     escapeshellarg(__DIR__ . '/../../cli/db-migrate.php'),
                     escapeshellarg($mHost),
                     escapeshellarg($mPort),
