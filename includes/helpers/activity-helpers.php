@@ -170,7 +170,7 @@ function getRecentlyViewed($limit = 10)
             $stmt = $db->prepare('
                 SELECT m.* FROM models m
                 JOIN recently_viewed rv ON m.id = rv.model_id
-                WHERE rv.user_id = :user_id AND m.parent_id IS NULL
+                WHERE rv.user_id = :user_id AND m.parent_id IS NULL AND m.is_archived = 0
                 ORDER BY rv.viewed_at DESC
                 LIMIT :limit
             ');
@@ -179,7 +179,7 @@ function getRecentlyViewed($limit = 10)
             $stmt = $db->prepare('
                 SELECT m.* FROM models m
                 JOIN recently_viewed rv ON m.id = rv.model_id
-                WHERE rv.session_id = :session_id AND m.parent_id IS NULL
+                WHERE rv.session_id = :session_id AND m.parent_id IS NULL AND m.is_archived = 0
                 ORDER BY rv.viewed_at DESC
                 LIMIT :limit
             ');

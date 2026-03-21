@@ -223,8 +223,9 @@ class AuditLogger
         }
 
         if (!empty($filters['search'])) {
-            $where[] = '(event_name LIKE :search OR resource_name LIKE :search)';
-            $params[':search'] = '%' . $filters['search'] . '%';
+            $where[] = '(event_name LIKE :search1 OR resource_name LIKE :search2)';
+            $params[':search1'] = '%' . $filters['search'] . '%';
+            $params[':search2'] = '%' . $filters['search'] . '%';
         }
 
         $whereClause = implode(' AND ', $where);

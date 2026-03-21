@@ -79,11 +79,12 @@ switch ($action) {
             FROM models
             WHERE parent_id IS NULL
             AND id != :model_id
-            AND (name LIKE :query OR description LIKE :query)
+            AND (name LIKE :query1 OR description LIKE :query2)
             LIMIT 10
         ');
         $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-        $stmt->bindValue(':query', '%' . $query . '%', PDO::PARAM_STR);
+        $stmt->bindValue(':query1', '%' . $query . '%', PDO::PARAM_STR);
+        $stmt->bindValue(':query2', '%' . $query . '%', PDO::PARAM_STR);
         $result = $stmt->execute();
 
         $results = [];

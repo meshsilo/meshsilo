@@ -60,8 +60,10 @@ function listModels($apiUser) {
 
     // Search filter
     if (!empty($_GET['q'])) {
-        $where[] = '(m.name LIKE :search OR m.description LIKE :search OR m.creator LIKE :search)';
-        $params[':search'] = '%' . $_GET['q'] . '%';
+        $where[] = '(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3)';
+        $params[':search1'] = '%' . $_GET['q'] . '%';
+        $params[':search2'] = '%' . $_GET['q'] . '%';
+        $params[':search3'] = '%' . $_GET['q'] . '%';
     }
 
     // Category filter

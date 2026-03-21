@@ -116,7 +116,7 @@ $db = getDB();
 // Get recent models (only parent/standalone models, not parts)
 // Wrapped in try/catch to gracefully handle MySQL query differences
 try {
-    $result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, creator, created_at, is_archived, thumbnail_path FROM models WHERE parent_id IS NULL ORDER BY created_at DESC LIMIT 8');
+    $result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, creator, created_at, is_archived, thumbnail_path FROM models WHERE parent_id IS NULL AND is_archived = 0 ORDER BY created_at DESC LIMIT 8');
     $models = [];
     $modelIds = [];
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {

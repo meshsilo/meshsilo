@@ -69,7 +69,7 @@ function getUserFavorites($userId = null, $limit = 50)
         $stmt = $db->prepare('
             SELECT m.* FROM models m
             JOIN favorites f ON m.id = f.model_id
-            WHERE f.user_id = :user_id AND m.parent_id IS NULL
+            WHERE f.user_id = :user_id AND m.parent_id IS NULL AND m.is_archived = 0
             ORDER BY f.created_at DESC
             LIMIT :limit
         ');

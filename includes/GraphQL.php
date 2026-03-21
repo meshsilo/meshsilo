@@ -392,8 +392,9 @@ class GraphQL
             }
 
             if ($search) {
-                $where[] = '(m.name LIKE :search OR m.description LIKE :search)';
-                $params[':search'] = '%' . $search . '%';
+                $where[] = '(m.name LIKE :search1 OR m.description LIKE :search2)';
+                $params[':search1'] = '%' . $search . '%';
+                $params[':search2'] = '%' . $search . '%';
             }
 
             $allowedSort = ['created_at', 'updated_at', 'name', 'download_count'];

@@ -84,10 +84,11 @@ if (empty($token)) {
 }
 
 // Handle download
+$isMultiPart = $model && ($model['part_count'] ?? 0) > 0 && ($model['file_type'] === 'parent' || empty($model['file_path']));
 if ($model && !$requiresPassword && isset($_GET['download'])) {
-    $filePath = getAbsoluteFilePath($model);
-
-    if ($filePath && file_exists($filePath)) {
+    if ($isMultiPart) {
+        $error = 'This is a multi-part model. Individual file downloads are not available via share links.';
+    } elseif (($filePath = getAbsoluteFilePath($model)) && file_exists($filePath)) {
         // Increment download count
         $stmt = $db->prepare('UPDATE share_links SET download_count = download_count + 1 WHERE token = :token');
         $stmt->execute([':token' => $token]);
@@ -311,9 +312,13 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
                 <?php endif; ?>
 
                 <div class="share-actions">
+                    <?php if (!$isMultiPart): ?>
                     <a href="?t=<?= htmlspecialchars($token) ?>&download=1" class="btn btn-primary btn-lg">
                         Download <?= strtoupper($model['file_type']) ?>
                     </a>
+                    <?php else: ?>
+                    <p style="color: var(--color-text-muted);">This is a multi-part model with <?= $model['part_count'] ?> parts. Downloads are not available via share links.</p>
+                    <?php endif; ?>
                     <?php if ($link['max_downloads']): ?>
                     <div class="downloads-remaining">
                         <?= $link['max_downloads'] - $link['download_count'] ?> downloads remaining
