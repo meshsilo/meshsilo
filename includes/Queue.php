@@ -50,12 +50,12 @@ class Queue
         $db->exec("
             CREATE TABLE IF NOT EXISTS jobs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                queue TEXT NOT NULL DEFAULT 'default',
-                job_class TEXT NOT NULL,
+                queue VARCHAR(255) NOT NULL DEFAULT 'default',
+                job_class VARCHAR(255) NOT NULL,
                 payload TEXT NOT NULL,
                 attempts INTEGER DEFAULT 0,
                 max_attempts INTEGER DEFAULT 3,
-                status TEXT DEFAULT 'pending',
+                status VARCHAR(50) DEFAULT 'pending',
                 available_at DATETIME NOT NULL,
                 reserved_at DATETIME,
                 completed_at DATETIME,
