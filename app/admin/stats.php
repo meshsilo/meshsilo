@@ -440,7 +440,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <span class="conversion-stat-label">Total Space Saved</span>
                     </div>
                     <div class="conversion-stat">
-                        <span class="conversion-stat-value"><?= round(($conversionStats['total_savings'] / $conversionStats['total_original_size']) * 100, 1) ?>%</span>
+                        <span class="conversion-stat-value"><?= $conversionStats['total_original_size'] > 0 ? round(($conversionStats['total_savings'] / $conversionStats['total_original_size']) * 100, 1) : 0 ?>%</span>
                         <span class="conversion-stat-label">Average Reduction</span>
                     </div>
                     <?php endif; ?>

@@ -236,7 +236,7 @@ function checkStorageHealth() {
         ];
     }
 
-    $percentFree = ($diskFree / $diskTotal) * 100;
+    $percentFree = $diskTotal > 0 ? ($diskFree / $diskTotal) * 100 : 0;
 
     if ($percentFree < 5) {
         return [

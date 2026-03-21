@@ -44,9 +44,14 @@ function getFirstPartsForModels(array $modelIds)
 }
 
 // Get absolute file path for a model/part
+// Delegates to getAbsoluteFilePath (dedup.php) when available for consistent path resolution
 function getModelFilePath($model)
 {
-    $basePath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../storage/assets/';
+    // Prefer the canonical path resolver if available (handles assets/ prefix correctly)
+    if (function_exists('getAbsoluteFilePath')) {
+        return getAbsoluteFilePath($model);
+    }
+    $basePath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../../storage/assets/';
     $filePath = $model['dedup_path'] ?? $model['file_path'] ?? '';
     if (empty($filePath)) {
         return null;
@@ -54,6 +59,10 @@ function getModelFilePath($model)
     // Handle both relative and absolute paths
     if (strpos($filePath, '/') === 0 || strpos($filePath, ':\\') !== false) {
         return $filePath;
+    }
+    // Strip assets/ prefix if present — UPLOAD_PATH already points to storage/assets/
+    if (strpos($filePath, 'assets/') === 0) {
+        $filePath = substr($filePath, 7);
     }
     return rtrim($basePath, '/') . '/' . ltrim($filePath, '/');
 }

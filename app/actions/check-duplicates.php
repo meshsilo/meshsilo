@@ -8,6 +8,10 @@ require_once __DIR__ . '/../../includes/dedup.php';
 
 header('Content-Type: application/json');
 
+if (!isLoggedIn()) {
+    jsonError('Not authenticated', 401);
+}
+
 if (!isFeatureEnabled('duplicate_detection')) {
     jsonSuccess(['duplicates' => []]);
 }

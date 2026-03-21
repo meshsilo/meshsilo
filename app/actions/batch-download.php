@@ -97,6 +97,7 @@ $zip->close();
 
 // Check if ZIP was created successfully
 if (!file_exists($zipPath) || filesize($zipPath) === 0) {
+    if (file_exists($zipPath)) unlink($zipPath);
     http_response_code(500);
     echo 'Failed to create ZIP file';
     exit;
