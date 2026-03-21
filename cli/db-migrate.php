@@ -272,6 +272,7 @@ foreach ($migrationOrder as $table) {
     // Copy in batches
     $offset = 0;
     $inserted = 0;
+    $skippedRows = 0;
     $selectColumns = implode(', ', array_map(function($c) { return "\"{$c}\""; }, $columns));
 
     while ($offset < $count) {
@@ -284,17 +285,27 @@ foreach ($migrationOrder as $table) {
         foreach ($rows as $row) {
             $values = [];
             foreach ($columns as $col) {
-                $values[] = $row[$col];
+                $val = $row[$col];
+                // Fix type mismatches: MySQL INT columns reject string values
+                // SQLite doesn't enforce types so strings can end up in integer columns
+                if ($val !== null && is_string($val) && preg_match('/^(entity_id|model_id|user_id|parent_id|group_id|category_id|tag_id|part_count|file_size|original_size|download_count|sort_order|display_order|version_number|max_downloads|download_count|request_count|attempts|max_attempts)$/', $col)) {
+                    $val = is_numeric($val) ? (int)$val : null;
+                }
+                $values[] = $val;
             }
-            $stmt->execute($values);
-            $inserted++;
+            try {
+                $stmt->execute($values);
+                $inserted++;
+            } catch (PDOException $rowErr) {
+                $skippedRows++;
+            }
         }
 
         $mysql->commit();
         $offset += $batchSize;
     }
 
-    echo "  {$table}: {$inserted} rows copied\n";
+    echo "  {$table}: {$inserted} rows copied" . ($skippedRows > 0 ? " ({$skippedRows} skipped due to type errors)" : "") . "\n";
     $totalRows += $inserted;
     $tablesMigrated++;
 }
