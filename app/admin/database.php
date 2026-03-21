@@ -116,26 +116,149 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             if (!$mHost || !$mName || !$mUser) {
                 $error = 'Host, database name, and username are required.';
             } else {
-                // Run the CLI migration tool in the background
-                $cmd = sprintf(
-                    'php %s --host=%s --port=%s --name=%s --user=%s --pass=%s --force 2>&1',
-                    escapeshellarg(__DIR__ . '/../../cli/db-migrate.php'),
-                    escapeshellarg($mHost),
-                    escapeshellarg($mPort),
-                    escapeshellarg($mName),
-                    escapeshellarg($mUser),
-                    escapeshellarg($mPass)
-                );
-                $output = [];
-                $exitCode = 0;
-                exec($cmd, $output, $exitCode);
+                set_time_limit(300);
 
-                if ($exitCode === 0) {
-                    $_SESSION['success'] = 'Migration to MySQL completed successfully. The application is now using MySQL.';
-                    header('Location: ' . route('admin.database'));
-                    exit;
-                } else {
-                    $error = 'Migration failed: ' . implode("\n", array_slice($output, -5));
+                try {
+                    // Connect to MySQL
+                    $mysqlDsn = "mysql:host={$mHost};port={$mPort};dbname={$mName};charset=utf8mb4";
+                    $mysql = new PDO($mysqlDsn, $mUser, $mPass, [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    ]);
+
+                    // Connect to SQLite source
+                    $sqlite = new PDO('sqlite:' . DB_PATH, null, null, [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    ]);
+
+                    // Create MySQL schema
+                    $mysqlDb = new Database('mysql', [
+                        'host' => $mHost, 'port' => $mPort,
+                        'name' => $mName, 'user' => $mUser, 'pass' => $mPass,
+                    ]);
+
+                    // Get SQLite tables
+                    $sqliteTables = [];
+                    $result = $sqlite->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'models_fts%'");
+                    while ($row = $result->fetch()) {
+                        $sqliteTables[] = $row['name'];
+                    }
+
+                    // Drop existing MySQL tables
+                    $mysql->exec("SET FOREIGN_KEY_CHECKS = 0");
+                    foreach ($sqliteTables as $t) {
+                        $qt = ($t === 'groups') ? '`groups`' : $t;
+                        try { $mysql->exec("DROP TABLE IF EXISTS {$qt}"); } catch (PDOException $e) {}
+                    }
+
+                    // Initialize schema + migrations
+                    initializeDatabase($mysqlDb);
+                    require_once __DIR__ . '/../../includes/migrations.php';
+                    runMigrations($mysqlDb);
+
+                    // Copy data table by table
+                    $totalRows = 0;
+                    foreach ($sqliteTables as $table) {
+                        $qt = ($table === 'groups') ? '`groups`' : $table;
+
+                        $count = (int)$sqlite->query("SELECT COUNT(*) FROM \"{$table}\"")->fetchColumn();
+                        if ($count === 0) continue;
+
+                        // Get columns that exist in both
+                        $sqliteCols = [];
+                        $colResult = $sqlite->query("PRAGMA table_info(\"{$table}\")");
+                        while ($c = $colResult->fetch()) { $sqliteCols[] = $c['name']; }
+
+                        $mysqlCols = [];
+                        try {
+                            $mcResult = $mysql->query("DESCRIBE {$qt}");
+                            while ($c = $mcResult->fetch()) { $mysqlCols[] = $c['Field']; }
+                        } catch (PDOException $e) { continue; }
+
+                        $columns = array_values(array_intersect($sqliteCols, $mysqlCols));
+                        if (empty($columns)) continue;
+
+                        $colList = implode(', ', array_map(function($c) { return "`{$c}`"; }, $columns));
+                        $ph = implode(', ', array_fill(0, count($columns), '?'));
+                        $selCols = implode(', ', array_map(function($c) { return "\"{$c}\""; }, $columns));
+
+                        $mysql->exec("DELETE FROM {$qt}");
+
+                        // Get MySQL column types for type coercion
+                        $mysqlTypes = [];
+                        try {
+                            $typeResult = $mysql->query("DESCRIBE {$qt}");
+                            while ($c = $typeResult->fetch()) { $mysqlTypes[$c['Field']] = $c['Type']; }
+                        } catch (PDOException $e) {}
+
+                        $rows = $sqlite->query("SELECT {$selCols} FROM \"{$table}\"")->fetchAll();
+                        if (empty($rows)) continue;
+
+                        $stmt = $mysql->prepare("INSERT INTO {$qt} ({$colList}) VALUES ({$ph})");
+                        foreach ($rows as $row) {
+                            $values = [];
+                            foreach ($columns as $col) {
+                                $val = $row[$col];
+                                // Coerce strings to null for integer columns
+                                if ($val !== null && isset($mysqlTypes[$col]) && preg_match('/^(int|tinyint|bigint|smallint)/i', $mysqlTypes[$col]) && !is_numeric($val)) {
+                                    $val = null;
+                                }
+                                $values[] = $val;
+                            }
+                            try { $stmt->execute($values); $totalRows++; } catch (PDOException $e) {}
+                        }
+                    }
+
+                    // Reset auto-increment
+                    foreach ($sqliteTables as $table) {
+                        $qt = ($table === 'groups') ? '`groups`' : $table;
+                        try {
+                            $maxId = $mysql->query("SELECT MAX(id) FROM {$qt}")->fetchColumn();
+                            if ($maxId) $mysql->exec("ALTER TABLE {$qt} AUTO_INCREMENT = " . ($maxId + 1));
+                        } catch (PDOException $e) {}
+                    }
+
+                    $mysql->exec("SET FOREIGN_KEY_CHECKS = 1");
+
+                    // Update config.local.php
+                    $projectRoot = dirname(__DIR__, 2);
+                    $configPath = null;
+                    foreach ([
+                        $projectRoot . '/storage/db/config.local.php',
+                        $projectRoot . '/db/config.local.php',
+                        $projectRoot . '/config.local.php',
+                    ] as $p) {
+                        if (file_exists($p)) { $configPath = $p; break; }
+                    }
+                    if (!$configPath) {
+                        $configPath = $projectRoot . '/storage/db/config.local.php';
+                    }
+
+                    // Backup
+                    @copy($configPath, $configPath . '.sqlite.bak');
+
+                    $cfg = "<?php\n";
+                    $cfg .= "// Migrated from SQLite to MySQL on " . date('Y-m-d H:i:s') . "\n";
+                    $cfg .= "define('DB_TYPE', 'mysql');\n";
+                    $cfg .= "define('DB_HOST', '" . addslashes($mHost) . "');\n";
+                    $cfg .= "define('DB_PORT', '" . addslashes($mPort) . "');\n";
+                    $cfg .= "define('DB_NAME', '" . addslashes($mName) . "');\n";
+                    $cfg .= "define('DB_USER', '" . addslashes($mUser) . "');\n";
+                    $cfg .= "define('DB_PASS', '" . addslashes($mPass) . "');\n";
+                    $cfg .= "define('INSTALLED', true);\n";
+
+                    if (file_put_contents($configPath, $cfg) === false) {
+                        $error = "Migration completed ({$totalRows} rows) but failed to update config file. Please update {$configPath} manually.";
+                    } else {
+                        $_SESSION['success'] = "Migration to MySQL completed successfully. {$totalRows} rows copied.";
+                        header('Location: ' . route('admin.database'));
+                        exit;
+                    }
+                } catch (PDOException $e) {
+                    $error = 'Migration failed: ' . $e->getMessage();
+                } catch (Exception $e) {
+                    $error = 'Migration failed: ' . $e->getMessage();
                 }
             }
         }
