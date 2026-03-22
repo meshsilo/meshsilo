@@ -243,6 +243,7 @@ function getMigrationList()
             'dim_x DECIMAL(10,2)',
             'dim_y DECIMAL(10,2)',
             'dim_z DECIMAL(10,2)',
+            'dim_unit VARCHAR(10) DEFAULT \'mm\'',
             'volume DECIMAL(15,2)',
         ]),
         // API
