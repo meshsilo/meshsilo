@@ -64,7 +64,11 @@ class Queue
             )
         ");
 
-        $db->exec("CREATE INDEX IF NOT EXISTS idx_jobs_queue_status ON jobs(queue, status, available_at)");
+        try {
+            $db->exec("CREATE INDEX idx_jobs_queue_status ON jobs(queue, status, available_at)");
+        } catch (\PDOException $e) {
+            // Index already exists — ignore
+        }
     }
 
     /**
