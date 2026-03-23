@@ -3,7 +3,6 @@
  * Loader methods for various 3D file formats (STL, 3MF, OBJ, PLY, GLTF, etc.)
  * Extends ModelViewer class via prototype. Load AFTER viewer.js.
  */
-const ModelViewer = window.ModelViewer;
 
 ModelViewer.prototype.loadSTL = async function(url) {
     return new Promise(async (resolve, reject) => {
