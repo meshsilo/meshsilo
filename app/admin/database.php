@@ -103,6 +103,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         } else {
             $error = 'Backup from web UI is only supported for SQLite databases.';
         }
+    } elseif (isset($_POST['resync_from_sqlite'])) {
+        // Re-copy a specific table from the SQLite backup after a MySQL migration
+        $sqlitePath = defined('DB_PATH') ? DB_PATH : (dirname(__DIR__, 2) . '/storage/db/meshsilo.db');
+        if (!file_exists($sqlitePath)) {
+            // Try backup path
+            $configBackup = dirname(__DIR__, 2) . '/storage/db/config.local.php.sqlite.bak';
+            if (file_exists($configBackup)) {
+                $bak = file_get_contents($configBackup);
+                if (preg_match("/DB_PATH.*'([^']+)'/", $bak, $m)) {
+                    $sqlitePath = $m[1];
+                }
+            }
+        }
+        // Also check default location
+        if (!file_exists($sqlitePath)) {
+            $sqlitePath = dirname(__DIR__, 2) . '/storage/db/meshsilo.db';
+        }
+        if (!file_exists($sqlitePath)) {
+            $error = 'SQLite database file not found. Cannot re-sync.';
+        } else {
+            try {
+                $sqlite = new PDO('sqlite:' . $sqlitePath, null, null, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                ]);
+                $mysqlPdo = $db->getPDO();
+                $tableName = $_POST['sync_table'] ?? '';
+                $allowedTables = ['model_attachments', 'model_links', 'model_annotations', 'share_links', 'model_versions', 'related_models', 'activity_log'];
+                if (!in_array($tableName, $allowedTables)) {
+                    $error = 'Invalid table for re-sync.';
+                } else {
+                    $quotedTable = $tableName;
+                    // Get existing count in MySQL
+                    $mysqlCount = (int)$mysqlPdo->query("SELECT COUNT(*) FROM {$quotedTable}")->fetchColumn();
+
+                    // Get SQLite data
+                    $sqliteRows = $sqlite->query("SELECT * FROM \"{$tableName}\"")->fetchAll();
+                    $sqliteCount = count($sqliteRows);
+
+                    if ($sqliteCount === 0) {
+                        $error = "No data found in SQLite table '{$tableName}'.";
+                    } elseif ($mysqlCount >= $sqliteCount) {
+                        $message = "MySQL already has {$mysqlCount} rows (SQLite has {$sqliteCount}). No sync needed.";
+                    } else {
+                        // Get columns that exist in both
+                        $sqliteCols = array_keys($sqliteRows[0]);
+                        $mysqlCols = [];
+                        $colResult = $mysqlPdo->query("DESCRIBE {$quotedTable}");
+                        while ($c = $colResult->fetch()) { $mysqlCols[] = $c['Field']; }
+                        $columns = array_values(array_intersect($sqliteCols, $mysqlCols));
+
+                        // Get MySQL column types for type coercion
+                        $mysqlTypes = [];
+                        $typeResult = $mysqlPdo->query("DESCRIBE {$quotedTable}");
+                        while ($c = $typeResult->fetch()) { $mysqlTypes[$c['Field']] = $c['Type']; }
+
+                        $colList = implode(', ', array_map(fn($c) => "`{$c}`", $columns));
+                        $ph = implode(', ', array_fill(0, count($columns), '?'));
+
+                        $mysqlPdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+                        $mysqlPdo->exec("DELETE FROM {$quotedTable}");
+                        $stmt = $mysqlPdo->prepare("INSERT INTO {$quotedTable} ({$colList}) VALUES ({$ph})");
+                        $copied = 0;
+                        foreach ($sqliteRows as $row) {
+                            $values = [];
+                            foreach ($columns as $col) {
+                                $val = $row[$col] ?? null;
+                                if ($val !== null && isset($mysqlTypes[$col]) && preg_match('/^(int|tinyint|bigint|smallint)/i', $mysqlTypes[$col]) && !is_numeric($val)) {
+                                    $val = null;
+                                }
+                                $values[] = $val;
+                            }
+                            try { $stmt->execute($values); $copied++; } catch (PDOException $e) {}
+                        }
+                        $mysqlPdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+                        $message = "Re-synced {$copied} rows from SQLite '{$tableName}' to MySQL.";
+                    }
+                }
+            } catch (Exception $e) {
+                $error = 'Re-sync failed: ' . $e->getMessage();
+            }
+        }
     } elseif (isset($_POST['migrate_to_mysql'])) {
         if ($dbType !== 'sqlite') {
             $error = 'Database is already MySQL.';
@@ -533,6 +615,47 @@ php cli/migrate.php --dry-run
                 <button type="submit" name="migrate_to_mysql" class="btn btn-warning"
                         data-confirm="This will copy all data to MySQL and switch the database. Continue?">
                     Migrate to MySQL
+                </button>
+            </form>
+        </details>
+        <?php endif; ?>
+
+        <?php
+        $sqliteBackupExists = false;
+        if ($dbType === 'mysql') {
+            $sqlitePaths = [
+                dirname(__DIR__, 2) . '/storage/db/meshsilo.db',
+                dirname(__DIR__, 2) . '/storage/db/silo.db',
+            ];
+            foreach ($sqlitePaths as $p) {
+                if (file_exists($p)) { $sqliteBackupExists = true; break; }
+            }
+        }
+        ?>
+        <?php if ($sqliteBackupExists): ?>
+        <details class="settings-section">
+            <summary><h2>Re-sync from SQLite</h2></summary>
+            <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+                If data was lost during the SQLite-to-MySQL migration, you can re-copy specific tables from the original SQLite file.
+            </p>
+            <form method="POST" style="max-width: 400px;">
+                <?= csrf_field() ?>
+                <input type="hidden" name="resync_from_sqlite" value="1">
+                <div class="form-group">
+                    <label for="sync_table">Table to re-sync</label>
+                    <select id="sync_table" name="sync_table" class="form-control">
+                        <option value="model_attachments">Attachments</option>
+                        <option value="model_links">External Links</option>
+                        <option value="model_versions">Version History</option>
+                        <option value="share_links">Share Links</option>
+                        <option value="related_models">Related Models</option>
+                        <option value="model_annotations">Annotations</option>
+                        <option value="activity_log">Activity Log</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-secondary"
+                        data-confirm="This will replace the selected MySQL table data with data from SQLite. Continue?">
+                    Re-sync Table
                 </button>
             </form>
         </details>
