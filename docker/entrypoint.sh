@@ -13,9 +13,9 @@ CONFIG_FILE="/var/www/meshsilo/storage/db/config.local.php"
 mkdir -p /var/log/supervisor
 
 # Ensure writable directories exist and have correct permissions
-mkdir -p /var/www/meshsilo/storage/assets /var/www/meshsilo/storage/logs /var/www/meshsilo/storage/db /var/www/meshsilo/storage/cache
-chown -R www-data:www-data /var/www/meshsilo/storage
-chmod -R 775 /var/www/meshsilo/storage
+mkdir -p /var/www/meshsilo/storage/assets /var/www/meshsilo/storage/logs /var/www/meshsilo/storage/db /var/www/meshsilo/storage/cache /var/www/meshsilo/plugins
+chown -R www-data:www-data /var/www/meshsilo/storage /var/www/meshsilo/plugins
+chmod -R 775 /var/www/meshsilo/storage /var/www/meshsilo/plugins
 
 # Create all log files if they don't exist (so tail doesn't fail)
 LOG_FILES="php-error.log app.log security.log access.log database.log"

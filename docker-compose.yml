@@ -11,6 +11,7 @@ services:
       - meshsilo_db:/var/www/meshsilo/storage/db
       - meshsilo_logs:/var/www/meshsilo/storage/logs
       - meshsilo_cache:/var/www/meshsilo/storage/cache
+      - meshsilo_plugins:/var/www/meshsilo/plugins
     environment:
       # Site Configuration
       - MESHSILO_SITE_NAME=MeshSilo
@@ -78,6 +79,8 @@ volumes:
   meshsilo_logs:
     driver: local
   meshsilo_cache:
+    driver: local
+  meshsilo_plugins:
     driver: local
   meshsilo_mysql:
     driver: local
