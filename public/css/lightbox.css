@@ -108,7 +108,8 @@
 }
 
 /* Document List */
-.attachment-list {
+.attachment-list,
+.attachment-documents {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -122,11 +123,19 @@
     background-color: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
+    min-width: 0;
 }
 
 .attachment-document .file-type-badge {
     position: static;
     flex-shrink: 0;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius);
+    color: var(--color-text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .attachment-preview-trigger {
@@ -137,18 +146,24 @@
     color: var(--color-primary);
 }
 
-.attachment-document .attachment-name {
+/* Support both class naming conventions */
+.attachment-document .attachment-name,
+.attachment-document .attachment-doc-name {
     flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-weight: 500;
+    font-size: 0.875rem;
 }
 
-.attachment-document .attachment-size {
+.attachment-document .attachment-size,
+.attachment-document .attachment-doc-size {
     color: var(--color-text-muted);
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .attachment-document .attachment-actions {
@@ -170,6 +185,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     flex-shrink: 0;
 }
 
