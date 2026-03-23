@@ -244,6 +244,11 @@ class PluginManager
             return ['success' => false, 'error' => 'ZipArchive extension not available'];
         }
 
+        // Limit plugin ZIP to 50MB
+        if (filesize($zipPath) > 50 * 1024 * 1024) {
+            return ['success' => false, 'error' => 'Plugin ZIP exceeds 50MB size limit'];
+        }
+
         $zip = new \ZipArchive();
         $openResult = $zip->open($zipPath);
         if ($openResult !== true) {
@@ -879,14 +884,15 @@ class PluginManager
                 return $stats;
             }
 
+            $db = getDB();
             foreach ($migrations as $migration) {
                 if (!isset($migration['check'], $migration['apply'])) {
                     continue;
                 }
 
-                $needed = !($migration['check'])();
+                $needed = !($migration['check'])($db);
                 if ($needed) {
-                    ($migration['apply'])();
+                    ($migration['apply'])($db);
                     $stats['run']++;
                 } else {
                     $stats['skipped']++;

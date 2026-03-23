@@ -374,7 +374,13 @@ $router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
         exit;
     }
 
+    // Block server-side script files from being served
     $ext = strtolower(pathinfo($realFile, PATHINFO_EXTENSION));
+    if (in_array($ext, ['php', 'phtml', 'phar', 'sh', 'py', 'pl', 'rb'], true)) {
+        http_response_code(403);
+        exit;
+    }
+
     $mimeTypes = [
         'css' => 'text/css',
         'js' => 'application/javascript',
