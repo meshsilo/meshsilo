@@ -927,6 +927,11 @@ function getMigrationList()
             }
         ],
 
+        // Add dim_unit column (may have been missed if dim_x already existed)
+        addColumnsMigration('Models: dim_unit column', 'Add dimension unit to models', 'models', 'dim_unit', [
+            'dim_unit VARCHAR(10) DEFAULT \'mm\'',
+        ]),
+
         // Fix jobs table TEXT columns with defaults for MySQL compatibility
         [
             'name' => 'Fix jobs table VARCHAR columns',
