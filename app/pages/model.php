@@ -266,7 +266,7 @@ try {
         }
     }
 } catch (Throwable $e) {
-    // model_attachments table may not exist yet
+    logError('Failed to load attachments', ['model_id' => $modelId, 'error' => $e->getMessage()]);
 }
 
 // Check for session messages
