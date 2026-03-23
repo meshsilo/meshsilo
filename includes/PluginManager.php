@@ -19,6 +19,7 @@ class PluginManager
     private array $styles = [];
     private array $scripts = [];
     private array $filters = [];
+    private array $actions = [];
     private string $pluginsDir;
     private string $currentPluginId = '';
 
@@ -435,8 +436,108 @@ class PluginManager
 
     public function addFilter(string $hook, callable $callback, int $priority = 10): void
     {
-        $this->filters[$hook][] = ['callback' => $callback, 'priority' => $priority];
+        $this->filters[$hook][] = ['callback' => $callback, 'priority' => $priority, 'plugin' => $this->currentPluginId];
         usort($this->filters[$hook], fn(array $a, array $b) => $b['priority'] <=> $a['priority']);
+    }
+
+    /**
+     * Register an action hook (event listener).
+     * Unlike filters, actions don't return/modify a value — they just execute.
+     */
+    public function addAction(string $event, callable $callback, int $priority = 10): void
+    {
+        $this->actions[$event][] = ['callback' => $callback, 'priority' => $priority, 'plugin' => $this->currentPluginId];
+        usort($this->actions[$event], fn(array $a, array $b) => $b['priority'] <=> $a['priority']);
+    }
+
+    /**
+     * Fire an action event. All registered listeners are called.
+     */
+    public static function doAction(string $event, mixed ...$args): void
+    {
+        $instance = self::getInstance();
+        if (empty($instance->actions[$event])) {
+            return;
+        }
+
+        foreach ($instance->actions[$event] as $action) {
+            try {
+                ($action['callback'])(...$args);
+            } catch (\Throwable $e) {
+                logError("Plugin action error on '{$event}'", [
+                    'plugin' => $action['plugin'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Get a plugin setting value.
+     */
+    public function getSetting(string $pluginId, string $key, mixed $default = null): mixed
+    {
+        try {
+            $db = getDB();
+            $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
+            $stmt->execute([':id' => $pluginId]);
+            $row = $stmt->fetch();
+            if (!$row || empty($row['settings'])) {
+                return $default;
+            }
+            $settings = json_decode($row['settings'], true);
+            return $settings[$key] ?? $default;
+        } catch (\Exception $e) {
+            return $default;
+        }
+    }
+
+    /**
+     * Set a plugin setting value.
+     */
+    public function setSetting(string $pluginId, string $key, mixed $value): bool
+    {
+        try {
+            $db = getDB();
+            $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
+            $stmt->execute([':id' => $pluginId]);
+            $row = $stmt->fetch();
+            $settings = ($row && !empty($row['settings'])) ? json_decode($row['settings'], true) : [];
+            if (!is_array($settings)) $settings = [];
+            $settings[$key] = $value;
+
+            $type = $db->getType();
+            if ($type === 'mysql') {
+                $stmt = $db->prepare('UPDATE plugins SET settings = :settings, updated_at = NOW() WHERE id = :id');
+            } else {
+                $stmt = $db->prepare('UPDATE plugins SET settings = :settings, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
+            }
+            $stmt->execute([':settings' => json_encode($settings), ':id' => $pluginId]);
+            return true;
+        } catch (\Exception $e) {
+            logError("Failed to save plugin setting", ['plugin' => $pluginId, 'key' => $key, 'error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Get all settings for a plugin.
+     */
+    public function getSettings(string $pluginId): array
+    {
+        try {
+            $db = getDB();
+            $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
+            $stmt->execute([':id' => $pluginId]);
+            $row = $stmt->fetch();
+            if (!$row || empty($row['settings'])) {
+                return [];
+            }
+            $settings = json_decode($row['settings'], true);
+            return is_array($settings) ? $settings : [];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     // ========================================================================
@@ -475,7 +576,8 @@ class PluginManager
         foreach ($this->styles as $style) {
             $pluginId = htmlspecialchars($style['plugin'], ENT_QUOTES, 'UTF-8');
             $path = htmlspecialchars($style['path'], ENT_QUOTES, 'UTF-8');
-            $html .= '<link rel="stylesheet" href="/plugin-assets/' . $pluginId . '/' . $path . '">' . "\n";
+            $version = $this->getAssetVersion($style['plugin'], $style['path']);
+            $html .= '<link rel="stylesheet" href="/plugin-assets/' . $pluginId . '/' . $path . '?v=' . $version . '">' . "\n";
         }
         return $html;
     }
@@ -486,9 +588,21 @@ class PluginManager
         foreach ($this->scripts as $script) {
             $pluginId = htmlspecialchars($script['plugin'], ENT_QUOTES, 'UTF-8');
             $path = htmlspecialchars($script['path'], ENT_QUOTES, 'UTF-8');
-            $html .= '<script src="/plugin-assets/' . $pluginId . '/' . $path . '"></script>' . "\n";
+            $version = $this->getAssetVersion($script['plugin'], $script['path']);
+            $html .= '<script src="/plugin-assets/' . $pluginId . '/' . $path . '?v=' . $version . '"></script>' . "\n";
         }
         return $html;
+    }
+
+    private function getAssetVersion(string $pluginId, string $relativePath): string
+    {
+        $file = $this->pluginsDir . '/' . ($this->plugins[$pluginId]['_dir'] ?? $pluginId) . '/assets/' . $relativePath;
+        if (file_exists($file)) {
+            return (string)filemtime($file);
+        }
+        // Fall back to plugin directory mtime
+        $dir = $this->pluginsDir . '/' . ($this->plugins[$pluginId]['_dir'] ?? $pluginId);
+        return is_dir($dir) ? (string)filemtime($dir) : '1';
     }
 
     public function getAdminMenuItems(): array
@@ -513,7 +627,15 @@ class PluginManager
         }
 
         foreach ($instance->filters[$hook] as $filter) {
-            $value = ($filter['callback'])($value, ...$args);
+            try {
+                $value = ($filter['callback'])($value, ...$args);
+            } catch (\Throwable $e) {
+                logError("Plugin filter error on '{$hook}'", [
+                    'plugin' => $filter['plugin'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
+                // Continue with unmodified value — don't let one broken plugin crash the page
+            }
         }
 
         return $value;

@@ -30,6 +30,19 @@ function logActivity($action, $entityType, $entityId = null, $entityName = null,
             ':details' => is_array($details) ? json_encode($details) : $details,
             ':ip_address' => $ipAddress
         ]);
+
+        // Fire plugin action hook for every activity event
+        if (class_exists('PluginManager')) {
+            PluginManager::doAction('activity:' . $action, [
+                'action' => $action,
+                'entity_type' => $entityType,
+                'entity_id' => $entityId,
+                'entity_name' => $entityName,
+                'details' => $details,
+                'user_id' => $userId,
+            ]);
+        }
+
         return true;
     } catch (Exception $e) {
         return false;

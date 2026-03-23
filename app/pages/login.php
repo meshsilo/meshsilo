@@ -46,6 +46,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'is_admin' => $user['is_admin']
             ];
 
+            if (class_exists('PluginManager')) {
+                PluginManager::doAction('user:login', ['user_id' => $user['id'], 'username' => $user['username']]);
+            }
+
             logAuthEvent('login', $user['username'], true, [
                 'user_id' => $user['id'],
                 'method' => 'password'

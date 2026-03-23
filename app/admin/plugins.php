@@ -110,6 +110,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             }
             break;
 
+        case 'update-plugin':
+            $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['plugin_id'] ?? ''));
+            $source = json_decode($_POST['plugin_source'] ?? '{}', true);
+            if ($pluginId !== '' && is_array($source) && !empty($source['repo'])) {
+                $wasActive = $pluginManager->isPluginActive($pluginId);
+                $result = $pluginManager->installFromRepo($pluginId, $source);
+                if ($result['success']) {
+                    if ($wasActive) {
+                        $pluginManager->enablePlugin($pluginId);
+                    }
+                    $message = 'Plugin updated successfully.';
+                    logInfo('Plugin updated', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
+                } else {
+                    $error = 'Update failed: ' . ($result['error'] ?? 'Unknown error');
+                }
+            } else {
+                $error = 'Invalid plugin ID or source configuration.';
+            }
+            break;
+
         case 'add-repo':
             $repoName = trim($_POST['repo_name'] ?? '');
             $repoUrl = trim($_POST['repo_url'] ?? '');
@@ -286,6 +306,15 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="hidden" name="action" value="disable">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
                             <button type="submit" class="btn btn-secondary btn-sm">Disable</button>
+                        </form>
+                        <?php endif; ?>
+                        <?php if ($hasUpdate && !empty($updates[$id]['_source'])): ?>
+                        <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="update-plugin">
+                            <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
+                            <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($updates[$id]['_source'])) ?>">
+                            <button type="submit" class="btn btn-warning btn-sm">Update to v<?= htmlspecialchars($updates[$id]['available_version']) ?></button>
                         </form>
                         <?php endif; ?>
                         <?php if ($hasMigrations): ?>
