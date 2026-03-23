@@ -406,7 +406,7 @@
 /* Two-column layout: parts left, sidebar right */
 .model-content-layout {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 1fr 500px;
     gap: 2rem;
     align-items: start;
     margin-bottom: 2rem;
