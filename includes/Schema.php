@@ -1331,7 +1331,8 @@ function runMigrations($db)
     // is not reliable — settings-based versioning avoids the problem entirely.
     // =====================
     try {
-        $ftsVersionStmt = $db->prepare("SELECT value FROM settings WHERE key = 'fts_version'");
+        $keyCol = $type === 'mysql' ? '`key`' : 'key';
+        $ftsVersionStmt = $db->prepare("SELECT value FROM settings WHERE $keyCol = 'fts_version'");
         $ftsVersionStmt->execute();
         $currentFtsVersion = (int)($ftsVersionStmt->fetchColumn() ?: '0');
     } catch (Exception $e) {
