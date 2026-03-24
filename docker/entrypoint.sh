@@ -81,6 +81,15 @@ if [ -f "$CONFIG_FILE" ]; then
     fi
 fi
 
+# Restore persistent PHP config from storage (survives container restarts)
+PERSISTENT_PHP_INI="/var/www/meshsilo/storage/cache/php-meshsilo.ini"
+FPM_INI="/etc/php/8.1/fpm/conf.d/99-meshsilo.ini"
+if [ -f "$PERSISTENT_PHP_INI" ]; then
+    echo "Restoring persistent PHP configuration..."
+    cp "$PERSISTENT_PHP_INI" "$FPM_INI"
+    chown www-data:www-data "$FPM_INI"
+fi
+
 # Update PHP upload limits from environment if specified
 if [ -n "$MESHSILO_MAX_UPLOAD_SIZE" ]; then
     # Convert to MB for PHP config
