@@ -69,7 +69,8 @@ $router->get('/forgot-password', ['file' => 'app/pages/forgot-password.php'], 'p
 $router->post('/forgot-password', ['file' => 'app/pages/forgot-password.php'], 'password.forgot.post')
     ->middleware('ratelimit:3,60,password_reset'); // 3 attempts per minute
 $router->get('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset');
-$router->post('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset.post');
+$router->post('/reset-password', ['file' => 'app/pages/reset-password.php'], 'password.reset.post')
+    ->middleware('ratelimit:3,60,password_reset'); // 3 attempts per minute
 
 $router->get('/install', ['file' => 'install.php'], 'install');
 $router->post('/install', ['file' => 'install.php'], 'install.post');

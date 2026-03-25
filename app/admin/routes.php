@@ -56,6 +56,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         case 'test_url':
             // Handled via JavaScript/AJAX below
             break;
+
+        case 'toggle_caching':
+            $enabled = ($_POST['enabled'] ?? '0') === '1' ? '1' : '0';
+            setSetting('route_caching', $enabled);
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true]);
+                exit;
+            }
+            break;
     }
 }
 
@@ -488,10 +498,10 @@ document.getElementById('route-filter').addEventListener('input', function() {
 // Enable caching toggle
 document.getElementById('enable-caching').addEventListener('change', function() {
     var csrfToken = document.querySelector('meta[name="csrf-token"]');
-    fetch('<?= route('admin.settings') ?>', {
+    fetch('<?= route('admin.routes.action') ?>', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken ? csrfToken.content : '' },
-        body: 'setting_route_caching=' + (this.checked ? '1' : '0')
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken ? csrfToken.content : '', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=toggle_caching&enabled=' + (this.checked ? '1' : '0')
     });
 });
 

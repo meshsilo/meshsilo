@@ -187,7 +187,16 @@ $diskTotal = disk_total_space($assetsPath ?: '.');
 $diskUsedPercent = $diskTotal > 0 ? (($diskTotal - $diskFree) / $diskTotal) * 100 : 0;
 
 // Get database file size
-$dbSize = file_exists(DB_PATH) ? filesize(DB_PATH) : 0;
+if (method_exists($db, 'getType') && $db->getType() === 'mysql') {
+    try {
+        $result = $db->querySingle("SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = DATABASE()");
+        $dbSize = $result ? (int)$result : 0;
+    } catch (Exception $e) {
+        $dbSize = 0;
+    }
+} else {
+    $dbSize = file_exists(DB_PATH) ? filesize(DB_PATH) : 0;
+}
 
 // Get user stats
 $result = $db->query('SELECT COUNT(*) as total, SUM(is_admin) as admins FROM users');

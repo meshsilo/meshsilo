@@ -141,7 +141,10 @@ class Cache
                     return $default;
                 }
                 $unserialized = @unserialize($value);
-                return $unserialized !== false ? $unserialized : $default;
+                if ($unserialized === false && $value !== serialize(false)) {
+                    return $default;
+                }
+                return $unserialized;
 
             case 'file':
                 return $this->getFromFile($prefixedKey, $default);
@@ -258,10 +261,16 @@ class Cache
                 break;
 
             case 'file':
-                $files = glob($this->path . md5($fullPattern) . '*');
+                $files = glob($this->path . '*.cache');
                 foreach ($files as $file) {
-                    if (unlink($file)) {
-                        $count++;
+                    $content = @file_get_contents($file);
+                    if ($content !== false) {
+                        $data = @unserialize($content);
+                        if (is_array($data) && isset($data['key']) && fnmatch($fullPattern, $data['key'])) {
+                            if (@unlink($file)) {
+                                $count++;
+                            }
+                        }
                     }
                 }
                 break;
@@ -325,14 +334,12 @@ class Cache
      */
     public function remember(string $key, $ttl, callable $callback)
     {
-        $value = $this->get($key);
+        $value = $this->get($key, $this);
 
-        if ($value !== null) {
-            return $value;
+        if ($value === $this) {
+            $value = $callback();
+            $this->set($key, $value, is_int($ttl) ? $ttl : $this->defaultTtl);
         }
-
-        $value = $callback();
-        $this->set($key, $value, is_int($ttl) ? $ttl : $this->defaultTtl);
 
         return $value;
     }
@@ -488,6 +495,7 @@ class Cache
         $file = $this->getCacheFile($key);
 
         $data = serialize([
+            'key' => $key,
             'expires' => $expires,
             'value' => $value
         ]);

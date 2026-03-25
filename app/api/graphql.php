@@ -26,11 +26,17 @@ $userId = null;
 if (isLoggedIn()) {
     $userId = getCurrentUserId();
 } else {
-    // Check for API key authentication
-    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    if (preg_match('/Bearer\s+(.+)/', $authHeader, $matches)) {
-        $token = $matches[1];
-        // Validate API key
+    // Check for API key authentication via X-API-Key header or Authorization: Bearer
+    $token = null;
+    if (!empty($_SERVER['HTTP_X_API_KEY'])) {
+        $token = $_SERVER['HTTP_X_API_KEY'];
+    } else {
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        if (preg_match('/Bearer\s+(.+)/', $authHeader, $matches)) {
+            $token = $matches[1];
+        }
+    }
+    if ($token) {
         $db = getDB();
         $stmt = $db->prepare("SELECT user_id FROM api_keys WHERE key_hash = :hash AND is_active = 1 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)");
         $stmt->execute([':hash' => hash('sha256', $token)]);

@@ -321,10 +321,10 @@ function createModel($apiUser) {
     $stmt = $db->prepare('
         INSERT INTO models (name, filename, file_path, file_size, file_type, description,
                            creator, collection, source_url, license, print_type, file_hash,
-                           original_size, created_at, updated_at)
+                           original_size, user_id, created_at, updated_at)
         VALUES (:name, :filename, :file_path, :file_size, :file_type, :description,
                 :creator, :collection, :source_url, :license, :print_type, :file_hash,
-                :original_size, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                :original_size, :user_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ');
     $stmt->execute([
         ':name' => $name,
@@ -339,7 +339,8 @@ function createModel($apiUser) {
         ':license' => $license,
         ':print_type' => $printType,
         ':file_hash' => $fileHash,
-        ':original_size' => $file['size']
+        ':original_size' => $file['size'],
+        ':user_id' => $apiUser['user_id']
     ]);
 
     $modelId = $db->lastInsertId();
@@ -397,7 +398,7 @@ function updateModel($id, $apiUser) {
     }
 
     // Verify ownership - must own the model or be admin
-    if (!$apiUser['is_admin'] && !empty($model['uploaded_by']) && $model['uploaded_by'] != $apiUser['user_id']) {
+    if (!$apiUser['is_admin'] && !empty($model['user_id']) && $model['user_id'] != $apiUser['user_id']) {
         apiError('Not authorized to modify this model', 403);
     }
 
@@ -492,8 +493,19 @@ function deleteModel($id, $apiUser) {
     }
 
     // Verify ownership - must own the model or be admin
-    if (!$apiUser['is_admin'] && !empty($model['uploaded_by']) && $model['uploaded_by'] != $apiUser['user_id']) {
+    if (!$apiUser['is_admin'] && !empty($model['user_id']) && $model['user_id'] != $apiUser['user_id']) {
         apiError('Not authorized to delete this model', 403);
+    }
+
+    // Get child part files before deleting
+    $childStmt = $db->prepare('SELECT file_path FROM models WHERE parent_id = :parent_id');
+    $childStmt->bindValue(':parent_id', $id, PDO::PARAM_INT);
+    $childStmt->execute();
+    $childFiles = [];
+    while ($row = $childStmt->fetch(PDO::FETCH_ASSOC)) {
+        if (!empty($row['file_path'])) {
+            $childFiles[] = $row['file_path'];
+        }
     }
 
     // Delete the file
@@ -510,6 +522,18 @@ function deleteModel($id, $apiUser) {
     // Delete from database (cascades to model_categories, model_tags, etc.)
     $stmt = $db->prepare('DELETE FROM models WHERE id = :id1 OR parent_id = :id2');
     $stmt->execute([':id1' => $id, ':id2' => $id]);
+
+    // Delete child part files
+    foreach ($childFiles as $childFilePath) {
+        $fullChildPath = UPLOAD_PATH . $childFilePath;
+        if (file_exists($fullChildPath)) {
+            unlink($fullChildPath);
+            $childFolder = dirname($fullChildPath);
+            if (is_dir($childFolder) && count(scandir($childFolder)) === 2) {
+                rmdir($childFolder);
+            }
+        }
+    }
 
     // Log activity
     logActivity('delete', 'model', $id, $model['name'], ['via' => 'api']);

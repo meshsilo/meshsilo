@@ -229,23 +229,30 @@ async function deleteModel(id, name) {
 // Admin Audit Log Page
 // ========================
 
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 function showDetails(id) {
     const logsData = window.AuditLogConfig?.logsData || {};
     const log = logsData[id];
     if (!log) return;
 
     let html = '<div class="detail-grid">';
-    html += `<div class="detail-item"><strong>Timestamp:</strong> ${log.created_at}</div>`;
-    html += `<div class="detail-item"><strong>Event Type:</strong> ${log.event_type}</div>`;
-    html += `<div class="detail-item"><strong>Event Name:</strong> ${log.event_name}</div>`;
-    html += `<div class="detail-item"><strong>Severity:</strong> ${log.severity}</div>`;
-    html += `<div class="detail-item"><strong>User:</strong> ${log.username || 'System'} (ID: ${log.user_id || 'N/A'})</div>`;
-    html += `<div class="detail-item"><strong>IP Address:</strong> ${log.ip_address || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>User Agent:</strong> ${log.user_agent || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Resource:</strong> ${log.resource_type || 'N/A'} #${log.resource_id || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Resource Name:</strong> ${log.resource_name || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Session ID:</strong> ${log.session_id || 'N/A'}</div>`;
-    html += `<div class="detail-item"><strong>Request ID:</strong> ${log.request_id || 'N/A'}</div>`;
+    html += `<div class="detail-item"><strong>Timestamp:</strong> ${escapeHtml(log.created_at)}</div>`;
+    html += `<div class="detail-item"><strong>Event Type:</strong> ${escapeHtml(log.event_type)}</div>`;
+    html += `<div class="detail-item"><strong>Event Name:</strong> ${escapeHtml(log.event_name)}</div>`;
+    html += `<div class="detail-item"><strong>Severity:</strong> ${escapeHtml(log.severity)}</div>`;
+    html += `<div class="detail-item"><strong>User:</strong> ${escapeHtml(log.username) || 'System'} (ID: ${escapeHtml(String(log.user_id || '')) || 'N/A'})</div>`;
+    html += `<div class="detail-item"><strong>IP Address:</strong> ${escapeHtml(log.ip_address) || 'N/A'}</div>`;
+    html += `<div class="detail-item"><strong>User Agent:</strong> ${escapeHtml(log.user_agent) || 'N/A'}</div>`;
+    html += `<div class="detail-item"><strong>Resource:</strong> ${escapeHtml(log.resource_type) || 'N/A'} #${escapeHtml(String(log.resource_id || '')) || 'N/A'}</div>`;
+    html += `<div class="detail-item"><strong>Resource Name:</strong> ${escapeHtml(log.resource_name) || 'N/A'}</div>`;
+    html += `<div class="detail-item"><strong>Session ID:</strong> ${escapeHtml(log.session_id) || 'N/A'}</div>`;
+    html += `<div class="detail-item"><strong>Request ID:</strong> ${escapeHtml(log.request_id) || 'N/A'}</div>`;
     html += '</div>';
 
     if (log.old_value) {

@@ -46,8 +46,8 @@ $error = '';
 $migrationsRun = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Verify CSRF token if available
-    if (function_exists('verifyCsrfToken') && !verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+    // Verify CSRF token
+    if (!Csrf::validate()) {
         $error = 'Invalid security token. Please try again.';
     } elseif (isset($_POST['repair_rate_limits'])) {
         // Repair rate_limits table schema

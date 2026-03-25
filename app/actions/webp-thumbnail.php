@@ -55,7 +55,7 @@ function convertToWebP() {
     }
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT thumbnail_path, uploaded_by FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT thumbnail_path, user_id FROM models WHERE id = :id');
     $stmt->execute([':id' => $modelId]);
     $model = $stmt->fetch();
 
@@ -65,7 +65,7 @@ function convertToWebP() {
     }
 
     // Check permission
-    if (!$user['is_admin'] && $model['uploaded_by'] != $user['id']) {
+    if (!$user['is_admin'] && $model['user_id'] != $user['id']) {
         jsonError('Not authorized');
         return;
     }
@@ -240,11 +240,11 @@ function revertFromWebP() {
     }
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT thumbnail_path, uploaded_by FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT thumbnail_path, user_id FROM models WHERE id = :id');
     $stmt->execute([':id' => $modelId]);
     $model = $stmt->fetch();
 
-    if (!$model || !$user['is_admin'] && $model['uploaded_by'] != $user['id']) {
+    if (!$model || !$user['is_admin'] && $model['user_id'] != $user['id']) {
         jsonError('Not authorized');
         return;
     }

@@ -35,7 +35,7 @@ if (isset($_GET['force_update_check'])) {
 }
 
 // Handle Email test AJAX request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
+if (empty($error) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_email'])) {
     header('Content-Type: application/json');
 
     $testEmail = trim($_POST['test_email_address'] ?? '');
@@ -133,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
 }
 
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email'])) {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
@@ -164,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     setSetting('require_approval', $requireApproval);
     setSetting('allowed_extensions', $allowedExtensions);
     setSetting('show_advanced_admin', $showAdvancedAdmin);
+    setSetting('models_per_page', (int)($_POST['models_per_page'] ?? 20));
 
     // Max file size (convert MB to bytes)
     $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
@@ -294,7 +295,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
                         <div class="form-group">
                             <label for="models-per-page">Models Per Page</label>
-                            <input type="number" id="models-per-page" name="models_per_page" class="form-input" value="20" min="1" max="100">
+                            <input type="number" id="models-per-page" name="models_per_page" class="form-input" value="<?= htmlspecialchars(getSetting('models_per_page', '20')) ?>" min="1" max="100">
                         </div>
                     </details>
 
@@ -498,7 +499,6 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?php endif; ?>
 
                     <div class="form-actions">
-                        <button type="button" class="btn btn-secondary">Reset to Defaults</button>
                         <button type="submit" class="btn btn-primary">Save Settings</button>
                     </div>
                 </form>

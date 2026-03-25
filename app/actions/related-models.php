@@ -16,7 +16,7 @@ if ($input) {
 $action = $_POST['action'] ?? '';
 
 // CSRF validation for state-changing actions
-if (in_array($action, ['add', 'remove']) && !Csrf::check()) {
+if (in_array($action, ['add', 'remove', 'set_remix_source', 'clear_remix_source']) && !Csrf::check()) {
     jsonError('Invalid CSRF token');
 }
 

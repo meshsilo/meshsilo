@@ -88,6 +88,7 @@ class LazyModelLoader {
                 DEBUG && console.warn('Thumbnail load timed out:', url);
                 thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                 thumbnail.classList.add('load-error');
+                viewer.dispose();
                 viewerContainer.remove();
             }, 15000); // 15 second timeout
 
@@ -102,6 +103,7 @@ class LazyModelLoader {
                     DEBUG && console.warn('Failed to load thumbnail model:', err);
                     thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                     thumbnail.classList.add('load-error');
+                    viewer.dispose();
                     viewerContainer.remove();
                 });
         }, 200); // 200ms delay
@@ -332,7 +334,6 @@ class CardEffects {
     init() {
         document.querySelectorAll('.model-card').forEach(card => {
             card.addEventListener('mouseenter', (e) => this.handleMouseEnter(e));
-            card.addEventListener('mouseleave', (e) => this.handleMouseLeave(e));
         });
     }
 
@@ -345,8 +346,6 @@ class CardEffects {
         card.style.setProperty('--mouse-x', `${x}px`);
         card.style.setProperty('--mouse-y', `${y}px`);
     }
-
-    handleMouseLeave(e) {}
 }
 
 // =====================

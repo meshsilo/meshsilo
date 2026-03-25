@@ -30,8 +30,10 @@ class SignedUrl
         }
 
         if (empty($salt)) {
-            // Generate from database path (unique per installation)
-            $salt = defined('DB_PATH') ? md5(DB_PATH) : md5(__DIR__);
+            $salt = bin2hex(random_bytes(32));
+            if (function_exists('setSetting')) {
+                setSetting('signed_url_secret', $salt);
+            }
         }
 
         return $salt;

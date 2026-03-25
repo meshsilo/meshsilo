@@ -529,6 +529,13 @@ function copyKey(text, btn) {
         }
     });
 }
+
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action="copy-full-key"]');
+    if (btn) { copyFullKey(btn); return; }
+    var btn2 = e.target.closest('[data-action="copy-key"]');
+    if (btn2) { copyKey(btn2.dataset.key, btn2); }
+});
 </script>
 
 <?php include __DIR__ . '/../../includes/footer.php'; ?>

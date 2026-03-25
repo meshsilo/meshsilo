@@ -82,15 +82,17 @@ $startTime = time();
 
 // Handle shutdown
 $running = true;
-pcntl_async_signals(true);
-pcntl_signal(SIGTERM, function() use (&$running) {
-    echo "\nReceived SIGTERM, shutting down...\n";
-    $running = false;
-});
-pcntl_signal(SIGINT, function() use (&$running) {
-    echo "\nReceived SIGINT, shutting down...\n";
-    $running = false;
-});
+if (function_exists('pcntl_async_signals')) {
+    pcntl_async_signals(true);
+    pcntl_signal(SIGTERM, function() use (&$running) {
+        echo "\nReceived SIGTERM, shutting down...\n";
+        $running = false;
+    });
+    pcntl_signal(SIGINT, function() use (&$running) {
+        echo "\nReceived SIGINT, shutting down...\n";
+        $running = false;
+    });
+}
 
 while ($running) {
     // Release stale jobs

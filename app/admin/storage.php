@@ -19,7 +19,7 @@ $db = getDB();
 $storageType = getSetting('storage_type', 'local');
 
 // Calculate storage stats
-$assetsPath = realpath(__DIR__ . '/../../storage/assets');
+$assetsPath = realpath(defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../../storage/assets');
 $dbPath = realpath(DB_PATH);
 
 function getDirectorySize($path) {
@@ -371,7 +371,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <?= csrf_field() ?>
                             <div class="form-group">
                                 <label for="storage_type">Storage Type</label>
-                                <select name="storage_type" id="storage_type" class="form-input">
+                                <select name="storage_type" id="storage_type" class="form-input" onchange="toggleS3Settings()">
                                     <option value="local" <?= $storageType === 'local' ? 'selected' : '' ?>>Local Filesystem</option>
                                     <option value="s3" <?= $storageType === 's3' ? 'selected' : '' ?>>S3-Compatible Object Storage</option>
                                 </select>

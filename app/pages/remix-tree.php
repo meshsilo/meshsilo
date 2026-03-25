@@ -41,7 +41,7 @@ function getOriginalChain($db, $modelId, $visited = []) {
     $node = [
         'id' => $model['id'],
         'name' => $model['name'],
-        'thumbnail' => $model['thumbnail'],
+        'thumbnail' => $model['thumbnail_path'],
         'created_at' => $model['created_at'],
         'user_id' => $model['user_id'],
         'external_source' => $model['external_source_url'] ?? null,
@@ -653,6 +653,11 @@ require_once 'includes/header.php';
 </style>
 
 <script>
+window.RemixTreeConfig = {
+    apiModelsUrl: '<?= basePath('api/models') ?>',
+    assetsPath: '<?= basePath('assets/') ?>',
+    placeholderImage: '<?= basePath('images/placeholder.png') ?>'
+};
 const modelId = <?= $modelId ?>;
 let searchTimeout = null;
 

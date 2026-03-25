@@ -114,7 +114,11 @@ class LocalStorage implements StorageInterface
 
     private function fullPath($path)
     {
-        return $this->basePath . '/' . ltrim($path, '/');
+        $path = ltrim($path, '/');
+        if (str_contains($path, '..')) {
+            throw new \InvalidArgumentException('Invalid path');
+        }
+        return $this->basePath . '/' . $path;
     }
 
     public function getBasePath()

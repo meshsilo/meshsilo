@@ -15,7 +15,7 @@ $user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
-if (in_array($action, ['create', 'update', 'delete']) && !Csrf::check()) {
+if (in_array($action, ['create', 'update', 'delete', 'move_model']) && !Csrf::check()) {
     jsonError('Invalid CSRF token');
 }
 

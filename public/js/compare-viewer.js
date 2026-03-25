@@ -158,9 +158,16 @@ function createScene(container) {
     scene.add(dl2);
 
     function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
-        renderer.render(scene, camera);
+        if (!document.hidden) {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        } else {
+            document.addEventListener('visibilitychange', function onVisible() {
+                document.removeEventListener('visibilitychange', onVisible);
+                requestAnimationFrame(animate);
+            });
+        }
     }
     animate();
 
@@ -330,7 +337,7 @@ function updateOverlayOpacity(value) {
 function updateComparison() {
     const v1 = document.getElementById('version-select-1').value;
     const v2 = document.getElementById('version-select-2').value;
-    window.location.href = '<?= route('model.compare', ['id' => $modelId]) ?>&v1=' + v1 + '&v2=' + v2;
+    window.location.href = window.CompareConfig.compareUrl + '&v1=' + v1 + '&v2=' + v2;
 }
 
 function toggleWireframe(enabled) {

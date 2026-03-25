@@ -609,7 +609,8 @@ window.CompareConfig = {
     version1Path: <?= json_encode($version1 && $version1['file_path'] ? basePath('assets/' . $version1['file_path']) : null) ?>,
     version2Path: <?= json_encode($version2 && $version2['file_path'] ? basePath('assets/' . $version2['file_path']) : null) ?>,
     version1Type: <?= json_encode($version1 ? strtolower(pathinfo($version1['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>,
-    version2Type: <?= json_encode($version2 ? strtolower(pathinfo($version2['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>
+    version2Type: <?= json_encode($version2 ? strtolower(pathinfo($version2['file_path'] ?? '', PATHINFO_EXTENSION)) : null) ?>,
+    compareUrl: '<?= route('model.compare', ['id' => $model['id']]) ?>'
 };
 </script>
 <script>

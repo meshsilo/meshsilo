@@ -44,10 +44,15 @@ class Search
         }
 
         try {
-            // Check if FTS5 is compiled in
-            $result = $this->db->query("SELECT sqlite_compileoption_used('ENABLE_FTS5')");
-            $row = $result->fetchArray();
-            $this->ftsAvailable = ($row[0] ?? 0) == 1;
+            $type = method_exists($this->db, 'getType') ? $this->db->getType() : 'sqlite';
+            if ($type === 'mysql') {
+                $this->ftsAvailable = true; // MySQL has built-in fulltext
+            } else {
+                // Check if FTS5 is compiled in
+                $result = $this->db->query("SELECT sqlite_compileoption_used('ENABLE_FTS5')");
+                $row = $result->fetchArray();
+                $this->ftsAvailable = ($row[0] ?? 0) == 1;
+            }
         } catch (Exception $e) {
             $this->ftsAvailable = false;
         }

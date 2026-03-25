@@ -242,7 +242,12 @@ class Events
             $db = getDB();
 
             // Check if event_log table exists
-            $tableCheck = $db->querySingle("SELECT name FROM sqlite_master WHERE type='table' AND name='event_log'");
+            $type = method_exists($db, 'getType') ? $db->getType() : 'sqlite';
+            if ($type === 'mysql') {
+                $tableCheck = $db->querySingle("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'event_log'");
+            } else {
+                $tableCheck = $db->querySingle("SELECT name FROM sqlite_master WHERE type='table' AND name='event_log'");
+            }
             if (!$tableCheck) {
                 return; // Table doesn't exist yet
             }

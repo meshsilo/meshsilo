@@ -257,11 +257,10 @@ class Csrf
     };
 
     // Add to all XMLHttpRequest
-    const originalOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function() {
-        const result = originalOpen.apply(this, arguments);
+    const originalSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function() {
         this.setRequestHeader('X-CSRF-Token', csrfToken);
-        return result;
+        return originalSend.apply(this, arguments);
     };
 
     // Add to jQuery if present
@@ -284,23 +283,6 @@ class CsrfException extends Exception
     public function __construct(string $message = 'CSRF validation failed', int $code = 403)
     {
         parent::__construct($message, $code);
-    }
-}
-
-/**
- * Helper functions for templates
- */
-if (!function_exists('csrf_field')) {
-    function csrf_field(): string
-    {
-        return Csrf::field();
-    }
-}
-
-if (!function_exists('csrf_token')) {
-    function csrf_token(): string
-    {
-        return Csrf::getToken();
     }
 }
 

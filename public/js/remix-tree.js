@@ -29,7 +29,7 @@ document.getElementById('remix-model-search').addEventListener('input', function
 
     searchTimeout = setTimeout(async function() {
         try {
-            const response = await fetch('<?= basePath('api/models') ?>?q=' + encodeURIComponent(query) + '&limit=10');
+            const response = await fetch(window.RemixTreeConfig.apiModelsUrl + '?q=' + encodeURIComponent(query) + '&limit=10');
             const data = await response.json();
 
             const results = document.getElementById('model-search-results');
@@ -43,7 +43,7 @@ document.getElementById('remix-model-search').addEventListener('input', function
                     item.className = 'search-result-item';
                     item.dataset.id = model.id;
                     item.innerHTML = `
-                        <img src="${model.thumbnail ? '<?= basePath('assets/') ?>' + model.thumbnail : '<?= basePath('images/placeholder.png') ?>'}" alt="${escapeHtml(model.name)}">
+                        <img src="${model.thumbnail ? window.RemixTreeConfig.assetsPath + model.thumbnail : window.RemixTreeConfig.placeholderImage}" alt="${escapeHtml(model.name)}">
                         <span>${escapeHtml(model.name)}</span>
                     `;
                     item.addEventListener('click', function() {

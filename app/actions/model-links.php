@@ -26,7 +26,7 @@ if (!$input) {
 
 $action = $input['action'] ?? '';
 
-if (in_array($action, ['add', 'remove']) && !Csrf::check()) {
+if (in_array($action, ['add', 'delete', 'reorder']) && !Csrf::check()) {
     jsonError('Security validation failed', 403);
 }
 

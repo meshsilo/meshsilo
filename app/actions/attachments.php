@@ -186,7 +186,7 @@ function uploadAttachment() {
 
         // Log activity
         if (function_exists('logActivity')) {
-            logActivity(getCurrentUser()['id'], 'attachment_upload', 'model', $modelId, $originalFilename);
+            logActivity('attachment_upload', 'model', $modelId, $originalFilename);
         }
 
         echo json_encode([
@@ -258,7 +258,7 @@ function deleteAttachment() {
     if ($stmt->execute()) {
         // Log activity
         if (function_exists('logActivity')) {
-            logActivity(getCurrentUser()['id'], 'attachment_delete', 'model', $attachment['model_id'], $attachment['original_filename']);
+            logActivity('attachment_delete', 'model', $attachment['model_id'], $attachment['original_filename']);
         }
 
         jsonSuccess();

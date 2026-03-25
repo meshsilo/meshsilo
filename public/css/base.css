@@ -369,21 +369,6 @@ textarea.form-control {
 .badge-primary { background: var(--color-primary); color: white; }
 .badge-info { background: var(--color-info, #3b82f6); color: white; }
 
-/* Form Components */
-.form-control {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text);
-    font-size: 0.9rem;
-}
-
-.form-control:focus {
-    border-color: var(--color-primary);
-}
-
 .form-row {
     display: flex;
     gap: 1rem;

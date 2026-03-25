@@ -50,7 +50,7 @@ function uploadThumbnail() {
 
     // Verify model ownership
     $db = getDB();
-    $stmt = $db->prepare('SELECT user_id, uploaded_by FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
     $stmt->execute([':id' => $modelId]);
     $model = $stmt->fetch();
 
@@ -59,7 +59,7 @@ function uploadThumbnail() {
         return;
     }
 
-    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
+    $ownerId = $model['user_id'] ?? null;
     if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
         jsonError('Permission denied - not model owner');
         return;
@@ -142,7 +142,7 @@ function deleteThumbnail() {
     }
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT thumbnail_path, user_id, uploaded_by FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT thumbnail_path, user_id FROM models WHERE id = :id');
     $stmt->execute([':id' => $modelId]);
     $model = $stmt->fetch();
 
@@ -152,7 +152,7 @@ function deleteThumbnail() {
     }
 
     // Verify model ownership
-    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
+    $ownerId = $model['user_id'] ?? null;
     if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
         jsonError('Permission denied - not model owner');
         return;
@@ -194,7 +194,7 @@ function generateThumbnail() {
     }
 
     // Verify model ownership
-    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
+    $ownerId = $model['user_id'] ?? null;
     if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
         jsonError('Permission denied - not model owner');
         return;
