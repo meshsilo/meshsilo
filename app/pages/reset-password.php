@@ -34,7 +34,7 @@ if (empty($token)) {
           AND pr.used_at IS NULL
           AND pr.expires_at > :now
     ');
-    $stmt->bindValue(':token', $token, PDO::PARAM_STR);
+    $stmt->bindValue(':token', hash('sha256', $token), PDO::PARAM_STR);
     $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
     $result = $stmt->execute();
     $tokenData = $result->fetchArray(PDO::FETCH_ASSOC);
@@ -42,7 +42,7 @@ if (empty($token)) {
     if (!$tokenData) {
         // Check if token exists but is expired or used
         $stmt = $db->prepare('SELECT * FROM password_resets WHERE token = :token');
-        $stmt->bindValue(':token', $token, PDO::PARAM_STR);
+        $stmt->bindValue(':token', hash('sha256', $token), PDO::PARAM_STR);
         $result = $stmt->execute();
         $expiredToken = $result->fetchArray(PDO::FETCH_ASSOC);
 

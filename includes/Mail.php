@@ -185,7 +185,7 @@ class Mail
      */
     public function subject(string $subject): self
     {
-        $this->subject = $subject;
+        $this->subject = $this->sanitizeHeaderValue($subject);
         return $this;
     }
 
@@ -297,7 +297,7 @@ class Mail
      */
     public function header(string $name, string $value): self
     {
-        $this->headers[$name] = $value;
+        $this->headers[$this->sanitizeHeaderValue($name)] = $this->sanitizeHeaderValue($value);
         return $this;
     }
 

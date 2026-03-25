@@ -197,7 +197,7 @@ include __DIR__ . '/../../includes/header.php';
                                             <span class="api-key-label">Permissions</span>
                                             <span class="api-key-perms">
                                                 <?php foreach ($key['permissions_array'] as $perm): ?>
-                                                    <span class="perm-badge perm-<?= $perm ?>"><?= $perm ?></span>
+                                                    <span class="perm-badge perm-<?= htmlspecialchars($perm) ?>"><?= htmlspecialchars($perm) ?></span>
                                                 <?php endforeach; ?>
                                             </span>
                                         </div>

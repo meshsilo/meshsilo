@@ -665,7 +665,7 @@ require_once 'includes/header.php';
                                         <option value="sla"<?= ($part['print_type'] ?? '') === 'sla' ? ' selected' : '' ?>>SLA</option>
                                     </select>
                                     <?php elseif (!empty($part['print_type'])): ?>
-                                    <span class="print-type-badge"><?= strtoupper($part['print_type']) ?></span>
+                                    <span class="print-type-badge"><?= htmlspecialchars(strtoupper($part['print_type'])) ?></span>
                                     <?php endif; ?>
                                     <span class="part-size"<?php if (($part['file_type'] ?? '') === 'stl'): ?> title="STL file — converting to 3MF could save ~<?= formatBytes(($part['file_size'] ?? 0) * 0.65) ?>"<?php endif; ?>><?= formatBytes($part['file_size'] ?? 0) ?></span>
                                     <?php if (!empty($part['original_size']) && $part['file_type'] === '3mf'): ?>

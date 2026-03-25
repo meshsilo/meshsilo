@@ -253,7 +253,7 @@ function deleteIfOrphaned($dedupPath)
         $result = $stmt->execute();
         $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
-        if ($row['count'] > 1) {
+        if ($row['count'] > 0) {
             // Other references still exist — do not delete.
             $pdo->rollBack();
             return false;

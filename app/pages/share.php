@@ -285,7 +285,7 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
                 <div class="share-details">
                     <div class="detail-item">
                         <div class="detail-label">File Type</div>
-                        <div class="detail-value"><?= strtoupper($model['file_type']) ?></div>
+                        <div class="detail-value"><?= htmlspecialchars(strtoupper($model['file_type'])) ?></div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">File Size</div>
@@ -298,7 +298,7 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
                             <?= number_format($model['dim_x'], 1) ?> x
                             <?= number_format($model['dim_y'], 1) ?> x
                             <?= number_format($model['dim_z'], 1) ?>
-                            <?= $model['dim_unit'] ?>
+                            <?= htmlspecialchars($model['dim_unit'] ?? 'mm') ?>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -314,7 +314,7 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
                 <div class="share-actions">
                     <?php if (!$isMultiPart): ?>
                     <a href="?t=<?= htmlspecialchars($token) ?>&download=1" class="btn btn-primary btn-lg">
-                        Download <?= strtoupper($model['file_type']) ?>
+                        Download <?= htmlspecialchars(strtoupper($model['file_type'])) ?>
                     </a>
                     <?php else: ?>
                     <p style="color: var(--color-text-muted);">This is a multi-part model with <?= $model['part_count'] ?> parts. Downloads are not available via share links.</p>

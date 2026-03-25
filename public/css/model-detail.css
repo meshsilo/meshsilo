@@ -33,11 +33,6 @@
     flex-shrink: 0;
 }
 
-.file-type-badge-large {
-    font-size: 2rem;
-    padding: 1rem 1.5rem;
-}
-
 .model-detail-info {
     flex: 1;
 }
@@ -921,11 +916,6 @@
     margin-right: 0.5rem;
 }
 
-.form-input-small {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-
 .part-checkbox {
     width: 1rem;
     height: 1rem;
@@ -948,25 +938,7 @@
 
 
 /* Code blocks */
-.code-block {
-    display: block;
-    background-color: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    padding: 0.75rem 1rem;
-    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-    font-size: 0.8125rem;
-    color: var(--color-text);
-    overflow-x: auto;
-    margin-top: 0.5rem;
-    white-space: nowrap;
-}
-
-/* Form value display */
-.form-value {
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
-}
+.code-block { margin-top: 0.5rem; }
 
 /* Part actions dropdown - uses fixed positioning to avoid clipping */
 .part-actions-dropdown {

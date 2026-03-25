@@ -217,14 +217,14 @@ require_once __DIR__ . '/../../includes/header.php';
                 </tr>
                 <?php else: ?>
                 <?php foreach ($logs as $log): ?>
-                <tr class="severity-<?= $log['severity'] ?>">
+                <tr class="severity-<?= htmlspecialchars($log['severity']) ?>">
                     <td class="timestamp">
                         <span title="<?= htmlspecialchars($log['created_at']) ?>">
                             <?= date('M j, H:i:s', strtotime($log['created_at'])) ?>
                         </span>
                     </td>
                     <td>
-                        <span class="badge badge-type-<?= $log['event_type'] ?>"><?= htmlspecialchars($log['event_type']) ?></span>
+                        <span class="badge badge-type-<?= htmlspecialchars($log['event_type']) ?>"><?= htmlspecialchars($log['event_type']) ?></span>
                     </td>
                     <td class="event-name"><?= htmlspecialchars($log['event_name']) ?></td>
                     <td>

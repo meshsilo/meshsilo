@@ -20,7 +20,7 @@ class RateLimitMiddleware implements MiddlewareInterface
     private const DEFAULT_WINDOW_SECONDS = 60;
 
     // Storage directory for rate limit data
-    private const STORAGE_DIR = __DIR__ . '/../../cache/ratelimit';
+    private const STORAGE_DIR = __DIR__ . '/../../storage/cache/ratelimit';
 
     // Flag to track if database storage failed (use file fallback)
     private static bool $databaseFailed = false;

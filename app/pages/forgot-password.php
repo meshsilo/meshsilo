@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Insert new token
             $stmt = $db->prepare('INSERT INTO password_resets (email, token, expires_at) VALUES (:email, :token, :expires_at)');
             $stmt->bindValue(':email', $email, PDO::PARAM_STR);
-            $stmt->bindValue(':token', $token, PDO::PARAM_STR);
+            $stmt->bindValue(':token', hash('sha256', $token), PDO::PARAM_STR);
             $stmt->bindValue(':expires_at', $expiresAt, PDO::PARAM_STR);
             $stmt->execute();
 

@@ -502,13 +502,17 @@ function deleteModel($id, $apiUser) {
     }
 
     // Get child part files before deleting
-    $childStmt = $db->prepare('SELECT file_path FROM models WHERE parent_id = :parent_id');
+    $childStmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = :parent_id');
     $childStmt->bindValue(':parent_id', $id, PDO::PARAM_INT);
     $childStmt->execute();
     $childFiles = [];
+    $childDedupPaths = [];
     while ($row = $childStmt->fetch(PDO::FETCH_ASSOC)) {
         if (!empty($row['file_path'])) {
             $childFiles[] = $row['file_path'];
+        }
+        if (!empty($row['dedup_path'])) {
+            $childDedupPaths[] = $row['dedup_path'];
         }
     }
 
@@ -536,6 +540,13 @@ function deleteModel($id, $apiUser) {
             if (is_dir($childFolder) && count(scandir($childFolder)) === 2) {
                 rmdir($childFolder);
             }
+        }
+    }
+
+    // Clean up dedup files for child parts
+    if (function_exists('deleteIfOrphaned')) {
+        foreach ($childDedupPaths as $dedupPath) {
+            deleteIfOrphaned($dedupPath);
         }
     }
 

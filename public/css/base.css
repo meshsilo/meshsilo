@@ -26,6 +26,12 @@ img {
     --color-version-1: #3498db;
     --color-version-2: #e74c3c;
     --color-overlap: #9b59b6;
+    --color-surface-elevated: #2d3a4f;
+    --color-bg-elevated: #1a2540;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    --color-primary-bg: rgba(37, 99, 235, 0.1);
     color-scheme: dark;
 }
 
@@ -43,6 +49,12 @@ img {
     --color-success: #16a34a;
     --color-warning: #ca8a04;
     --color-danger: #dc2626;
+    --color-surface-elevated: #f8fafc;
+    --color-bg-elevated: #f1f5f9;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    --color-primary-bg: rgba(37, 99, 235, 0.05);
 }
 
 /* Ensure proper contrast for specific elements in light mode */
@@ -353,14 +365,6 @@ textarea.form-control {
     background-color: var(--color-surface-hover);
 }
 
-/* Badge color variants — base .badge class is in components.css */
-.badge-success { background: var(--color-success); color: white; }
-.badge-danger { background: var(--color-danger); color: white; }
-.badge-warning { background: var(--color-warning); color: white; }
-.badge-secondary { background: #6b7280; color: white; }
-.badge-primary { background: var(--color-primary); color: white; }
-.badge-info { background: var(--color-info, #3b82f6); color: white; }
-
 .form-row {
     display: flex;
     gap: 1rem;
@@ -369,24 +373,6 @@ textarea.form-control {
 
 .form-row .form-group {
     flex: 1;
-    margin-bottom: 0;
-}
-
-.form-inline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.form-inline .form-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0;
-}
-
-.form-inline label {
     margin-bottom: 0;
 }
 
@@ -413,16 +399,6 @@ textarea.form-control {
 
 .btn-danger:hover {
     background-color: var(--color-danger);
-    color: white;
-}
-
-.btn-info {
-    border-color: var(--color-info, #3b82f6);
-    color: var(--color-info, #3b82f6);
-}
-
-.btn-info:hover {
-    background-color: var(--color-info, #3b82f6);
     color: white;
 }
 
@@ -485,32 +461,6 @@ textarea.form-control {
     align-items: center;
     justify-content: center;
     z-index: 1000;
-}
-
-/* Status Grid */
-.status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.status-item {
-    background: var(--color-surface-hover);
-    padding: 1rem;
-    border-radius: var(--radius);
-}
-
-.status-label {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-    margin-bottom: 0.25rem;
-}
-
-.status-value {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 500;
 }
 
 /* Toggle Switch */

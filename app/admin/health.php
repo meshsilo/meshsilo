@@ -523,10 +523,10 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="services-grid" id="services-container">
             <?php foreach ($services as $name => $service): ?>
             <?php if (is_array($service) && isset($service['status'])): ?>
-            <div class="service-card status-<?= $service['status'] ?>">
+            <div class="service-card status-<?= htmlspecialchars($service['status']) ?>">
                 <div class="service-name"><?= ucfirst($name) ?></div>
                 <div class="service-status">
-                    <span class="status-badge badge-<?= $service['status'] ?>"><?= ucfirst($service['status']) ?></span>
+                    <span class="status-badge badge-<?= htmlspecialchars($service['status']) ?>"><?= htmlspecialchars(ucfirst($service['status'])) ?></span>
                 </div>
                 <div class="service-message"><?= htmlspecialchars($service['message']) ?></div>
                 <?php if (isset($service['latency_ms'])): ?>
@@ -535,10 +535,10 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
             <?php elseif (is_array($service)): ?>
                 <?php foreach ($service as $subName => $subService): ?>
-                <div class="service-card status-<?= $subService['status'] ?? 'unknown' ?>">
+                <div class="service-card status-<?= htmlspecialchars($subService['status'] ?? 'unknown') ?>">
                     <div class="service-name"><?= htmlspecialchars($subService['name'] ?? ucfirst($subName)) ?></div>
                     <div class="service-status">
-                        <span class="status-badge badge-<?= $subService['status'] ?? 'unknown' ?>"><?= ucfirst($subService['status'] ?? 'Unknown') ?></span>
+                        <span class="status-badge badge-<?= htmlspecialchars($subService['status'] ?? 'unknown') ?>"><?= htmlspecialchars(ucfirst($subService['status'] ?? 'Unknown')) ?></span>
                     </div>
                     <div class="service-message"><?= htmlspecialchars($subService['message'] ?? '') ?></div>
                 </div>
@@ -619,10 +619,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 </thead>
                 <tbody>
                     <?php foreach ($recentErrors as $error): ?>
-                    <tr class="severity-<?= $error['severity'] ?>">
+                    <tr class="severity-<?= htmlspecialchars($error['severity']) ?>">
                         <td class="timestamp"><?= date('M j H:i', strtotime($error['created_at'])) ?></td>
                         <td>
-                            <span class="badge badge-<?= $error['severity'] ?>"><?= $error['severity'] ?></span>
+                            <span class="badge badge-<?= htmlspecialchars($error['severity']) ?>"><?= htmlspecialchars($error['severity']) ?></span>
                         </td>
                         <td><?= htmlspecialchars($error['event_name']) ?></td>
                         <td>

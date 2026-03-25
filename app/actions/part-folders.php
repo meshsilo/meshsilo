@@ -127,7 +127,7 @@ switch ($action) {
         // Validate folder name (allow / for nested folders, block \)
         $folderName = trim($_POST['folder_name'] ?? '');
         $folderName = trim($folderName, '/');
-        if ($folderName === '' || $folderName === 'Root' || strpos($folderName, '\\') !== false) {
+        if ($folderName === '' || $folderName === 'Root' || strpos($folderName, '\\') !== false || strpos($folderName, '..') !== false) {
             jsonError('Invalid folder name');
         }
 
@@ -144,8 +144,8 @@ switch ($action) {
         if ($oldFolder === '' || $newFolder === '' || $newFolder === 'Root') {
             jsonError('Invalid folder name');
         }
-        if (strpos($newFolder, '\\') !== false) {
-            jsonError('Folder name cannot contain backslashes');
+        if (strpos($newFolder, '\\') !== false || strpos($newFolder, '..') !== false) {
+            jsonError('Invalid folder name');
         }
 
         // Update original_path for all parts in this folder
@@ -217,7 +217,7 @@ switch ($action) {
             jsonError('No parts specified');
         }
         $targetFolder = trim($targetFolder, '/');
-        if (strpos($targetFolder, '\\') !== false) {
+        if (strpos($targetFolder, '\\') !== false || strpos($targetFolder, '..') !== false) {
             jsonError('Invalid folder name');
         }
 
