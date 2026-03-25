@@ -12,13 +12,8 @@ require_once __DIR__ . '/../../includes/dedup.php';
  */
 function deleteModelFile(?string $filePath, ?string $dedupPath): void {
     if (!empty($dedupPath)) {
-        // File is deduplicated - only delete if no other parts reference it
-        if (canDeleteDedupFile($dedupPath)) {
-            $fullPath = getAbsoluteFilePath(['file_path' => $filePath, 'dedup_path' => $dedupPath]);
-            if (file_exists($fullPath)) {
-                unlink($fullPath);
-            }
-        }
+        // File is deduplicated - atomically check reference count and delete
+        deleteIfOrphaned($dedupPath);
     } elseif (!empty($filePath)) {
         // Non-deduplicated file
         $fullPath = getAbsoluteFilePath(['file_path' => $filePath, 'dedup_path' => null]);
@@ -55,14 +50,9 @@ function cleanupModelFiles(array $filesToDelete, array $dedupFilesToCheck): void
         }
     }
 
-    // Delete deduplicated files only if no other parts reference them
+    // Delete deduplicated files only if no other parts reference them (atomic check+delete)
     foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
-        if (canDeleteDedupFile($dedupPath)) {
-            $fullPath = getAbsoluteFilePath(['file_path' => null, 'dedup_path' => $dedupPath]);
-            if (file_exists($fullPath)) {
-                unlink($fullPath);
-            }
-        }
+        deleteIfOrphaned($dedupPath);
     }
 
     // Clean up empty folders
@@ -96,6 +86,14 @@ $model = $result->fetchArray(PDO::FETCH_ASSOC);
 if (!$model) {
     $_SESSION['error'] = 'Model not found.';
     header('Location: ../index.php');
+    exit;
+}
+
+// Ownership check: only the owner or an admin may delete
+$user = getCurrentUser();
+if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'You do not own this model']);
     exit;
 }
 

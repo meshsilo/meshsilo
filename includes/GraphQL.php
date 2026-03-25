@@ -382,7 +382,7 @@ class GraphQL
             $params = [];
 
             if ($category) {
-                $where[] = 'm.category_id = :category';
+                $where[] = 'm.id IN (SELECT model_id FROM model_categories WHERE category_id = :category)';
                 $params[':category'] = $category;
             }
 
@@ -429,7 +429,7 @@ class GraphQL
             $where = $parent === null ? 'parent_id IS NULL' : 'parent_id = :parent';
             $params = $parent === null ? [] : [':parent' => $parent];
 
-            $stmt = $db->prepare("SELECT c.*, (SELECT COUNT(*) FROM models WHERE category_id = c.id AND parent_id IS NULL) as model_count FROM categories c WHERE $where ORDER BY name");
+            $stmt = $db->prepare("SELECT c.*, (SELECT COUNT(*) FROM model_categories mc WHERE mc.category_id = c.id) as model_count FROM categories c WHERE $where ORDER BY name");
             if ($params) {
                 $stmt->execute($params);
             } else {
@@ -577,6 +577,20 @@ class GraphQL
             }
 
             $db = self::$db;
+            $isAdmin = function_exists('isAdmin') && isAdmin();
+
+            // Fetch model to verify ownership
+            $stmt = $db->prepare("SELECT id, user_id FROM models WHERE id = :id");
+            $stmt->execute([':id' => $modelId]);
+            $model = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$model) {
+                return ['success' => false, 'message' => 'Model not found'];
+            }
+
+            if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$userId && !$isAdmin) {
+                return ['success' => false, 'message' => 'Permission denied'];
+            }
 
             // Get or create tag
             $stmt = $db->prepare("SELECT id FROM tags WHERE name = :name");
@@ -634,13 +648,9 @@ class GraphQL
 
             switch ($name) {
                 case 'category':
-                    if ($model['category_id']) {
-                        $stmt = $db->prepare("SELECT * FROM categories WHERE id = :id");
-                        $stmt->execute([':id' => $model['category_id']]);
-                        $result['category'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-                    } else {
-                        $result['category'] = null;
-                    }
+                    $stmt = $db->prepare("SELECT c.* FROM categories c JOIN model_categories mc ON c.id = mc.category_id WHERE mc.model_id = :id LIMIT 1");
+                    $stmt->execute([':id' => $model['id']]);
+                    $result['category'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
                     break;
 
                 case 'tags':

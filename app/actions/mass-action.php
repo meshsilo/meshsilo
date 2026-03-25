@@ -32,6 +32,23 @@ if (empty($ids)) {
 
 $db = getDB();
 
+// For non-admin users, filter IDs to only models they own
+$user = getCurrentUser();
+if (!$user['is_admin']) {
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $filterStmt = $db->prepare("SELECT id FROM models WHERE id IN ($placeholders) AND (user_id = ? OR user_id IS NULL)");
+    $filterParams = array_merge($ids, [(int)$user['id']]);
+    foreach ($filterParams as $i => $v) {
+        $filterStmt->bindValue($i + 1, $v);
+    }
+    $filterStmt->execute();
+    $ids = array_column($filterStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+    if (empty($ids)) {
+        echo json_encode(['success' => false, 'error' => 'No authorized models found']);
+        exit;
+    }
+}
+
 try {
     switch ($action) {
         case 'delete_parts':
@@ -59,9 +76,6 @@ try {
                 $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
                 if ($part) {
-                    // Check if file can be deleted before removing from DB
-                    $canDeleteDedup = !empty($part['dedup_path']) && canDeleteDedupFile($part['dedup_path']);
-
                     // Delete from database first
                     $stmt = $db->prepare('DELETE FROM models WHERE id = ?');
                     $stmt->bindValue(1, $id, PDO::PARAM_INT);
@@ -69,13 +83,8 @@ try {
 
                     // Now delete the file
                     if (!empty($part['dedup_path'])) {
-                        // Deduplicated file - only delete if no other references
-                        if ($canDeleteDedup) {
-                            $absPath = getAbsoluteFilePath($part);
-                            if (file_exists($absPath)) {
-                                unlink($absPath);
-                            }
-                        }
+                        // Deduplicated file - atomically check reference count and delete
+                        deleteIfOrphaned($part['dedup_path']);
                     } elseif ($part['file_path']) {
                         // Regular file
                         $absPath = getAbsoluteFilePath($part);
@@ -163,14 +172,9 @@ try {
                     }
                 }
 
-                // Delete dedup files only if no other parts reference them
+                // Delete dedup files only if no other parts reference them (atomic check+delete)
                 foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
-                    if (canDeleteDedupFile($dedupPath)) {
-                        $fullPath = getAbsoluteFilePath(['file_path' => null, 'dedup_path' => $dedupPath]);
-                        if (file_exists($fullPath)) {
-                            unlink($fullPath);
-                        }
-                    }
+                    deleteIfOrphaned($dedupPath);
                 }
 
                 // Clean up empty folders

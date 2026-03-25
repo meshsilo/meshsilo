@@ -225,7 +225,7 @@ function getCachedModelCount(?int $categoryId = null): int
         $params = [];
 
         if ($categoryId) {
-            $sql .= ' AND category_id = ?';
+            $sql .= ' AND id IN (SELECT model_id FROM model_categories WHERE category_id = ?)';
             $params[] = $categoryId;
         }
 
@@ -245,9 +245,9 @@ function getCachedCategories(): array
     return $cache->remember('categories_with_counts', 600, function () {
         $db = getDB();
         $stmt = $db->query('
-            SELECT c.*, COUNT(m.id) as model_count
+            SELECT c.*, COUNT(mc.model_id) as model_count
             FROM categories c
-            LEFT JOIN models m ON m.category_id = c.id AND m.parent_id IS NULL
+            LEFT JOIN model_categories mc ON mc.category_id = c.id
             GROUP BY c.id
             ORDER BY c.name
         ');

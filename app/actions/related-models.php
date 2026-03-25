@@ -35,6 +35,18 @@ switch ($action) {
             jsonError('No related model specified');
         }
 
+        // Ownership check
+        $db = getDB();
+        $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id AND parent_id IS NULL');
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $model = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
+        if (!$model) {
+            jsonError('Model not found');
+        }
+        if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+            jsonError('Permission denied', 403);
+        }
+
         $relationshipType = $_POST['relationship_type'] ?? 'related';
         $result = addRelatedModel($modelId, $relatedModelId, $relationshipType);
 
@@ -49,6 +61,18 @@ switch ($action) {
     case 'remove':
         if (!$relatedModelId) {
             jsonError('No related model specified');
+        }
+
+        // Ownership check
+        $db = getDB();
+        $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id AND parent_id IS NULL');
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $model = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
+        if (!$model) {
+            jsonError('Model not found');
+        }
+        if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+            jsonError('Permission denied', 403);
         }
 
         $result = removeRelatedModel($modelId, $relatedModelId);

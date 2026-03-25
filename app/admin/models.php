@@ -64,6 +64,7 @@ $countStmt = $db->prepare($countSql);
 foreach ($params as $key => $value) {
     $countStmt->bindValue($key, $value);
 }
+$countStmt->execute();
 $totalModels = (int)$countStmt->fetchColumn();
 $totalPages = ceil($totalModels / $perPage);
 

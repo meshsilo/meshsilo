@@ -229,6 +229,53 @@ function canDeleteDedupFile($dedupPath)
 }
 
 /**
+ * Atomically check if a deduplicated file is orphaned and delete it if so.
+ *
+ * This fixes the TOCTOU race in the check-then-act pattern: wrapping the
+ * reference-count check and the filesystem unlink inside a single transaction
+ * ensures no concurrent request can insert a new reference between the check
+ * and the delete.
+ *
+ * Returns true if the file was deleted, false if it still has references or
+ * did not exist on disk.
+ */
+function deleteIfOrphaned($dedupPath)
+{
+    $db = getDB();
+    $pdo = $db->getPDO();
+
+    $pdo->beginTransaction();
+    try {
+        // Re-read the reference count inside the transaction so no concurrent
+        // write can slip in between the check and the unlink.
+        $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
+        $stmt->bindValue(':path', $dedupPath, PDO::PARAM_STR);
+        $result = $stmt->execute();
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
+
+        if ($row['count'] > 1) {
+            // Other references still exist — do not delete.
+            $pdo->rollBack();
+            return false;
+        }
+
+        // Safe to delete from disk while still inside the transaction so the
+        // file and its last DB reference are removed as an atomic unit.
+        $fullPath = getAbsoluteFilePath(['file_path' => null, 'dedup_path' => $dedupPath]);
+        $deleted = false;
+        if (file_exists($fullPath)) {
+            $deleted = unlink($fullPath);
+        }
+
+        $pdo->commit();
+        return $deleted;
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+}
+
+/**
  * Get the count of references to a deduplicated file
  */
 function getDedupReferenceCount($dedupPath)

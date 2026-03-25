@@ -76,9 +76,16 @@ function createShareLink() {
         return;
     }
 
-    if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
+    if ((int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
         jsonError('You do not own this model');
         return;
+    }
+
+    // Validate expiration period against whitelist before passing to strtotime
+    $allowedDurations = ['1 hour', '1 day', '7 days', '30 days', '90 days', '1 year'];
+    if ($expiresIn && !in_array($expiresIn, $allowedDurations)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid expiration period']);
+        exit;
     }
 
     // Generate unique token
@@ -144,7 +151,7 @@ function deleteShareLink() {
     $stmt->execute([':id' => $linkId]);
     $link = $stmt->fetch();
 
-    if (!$link || ($link['user_id'] !== $user['id'] && !$user['is_admin'])) {
+    if (!$link || ((int)$link['user_id'] !== (int)$user['id'] && !$user['is_admin'])) {
         jsonError('Permission denied');
         return;
     }

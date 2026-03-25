@@ -153,12 +153,13 @@ class Search
             SELECT m.id, m.name, m.description, m.notes,
                    c.name as category_name,
                    GROUP_CONCAT(DISTINCT t.name) as tags,
-                   GROUP_CONCAT(DISTINCT p.filename) as file_names
+                   GROUP_CONCAT(DISTINCT p.name) as file_names
             FROM models m
-            LEFT JOIN categories c ON m.category_id = c.id
+            LEFT JOIN model_categories mc ON m.id = mc.model_id
+            LEFT JOIN categories c ON mc.category_id = c.id
             LEFT JOIN model_tags mt ON m.id = mt.model_id
             LEFT JOIN tags t ON mt.tag_id = t.id
-            LEFT JOIN parts p ON m.id = p.model_id
+            LEFT JOIN models p ON m.id = p.parent_id AND p.parent_id IS NOT NULL
             WHERE m.id = :id
             GROUP BY m.id
         ");
@@ -306,18 +307,19 @@ class Search
         $ftsQuery = $this->prepareFtsQuery($query);
 
         $sql = "
-            SELECT s.model_id, m.name, m.description, m.thumbnail, m.created_at,
+            SELECT s.model_id, m.name, m.description, m.thumbnail_path, m.created_at,
                    c.name as category_name, c.id as category_id,
                    bm25(search_index) as rank
             FROM search_index s
             JOIN models m ON s.model_id = m.id
-            LEFT JOIN categories c ON m.category_id = c.id
+            LEFT JOIN model_categories mc ON m.id = mc.model_id
+            LEFT JOIN categories c ON mc.category_id = c.id
             WHERE search_index MATCH :query
             AND m.is_archived = 0
         ";
 
         if ($categoryId !== null) {
-            $sql .= " AND m.category_id = :category_id";
+            $sql .= " AND m.id IN (SELECT model_id FROM model_categories WHERE category_id = :category_id)";
         }
 
         $sql .= " ORDER BY rank LIMIT :limit OFFSET :offset";
@@ -346,7 +348,7 @@ class Search
                 AND m.is_archived = 0
             ";
             if ($categoryId !== null) {
-                $countSql .= " AND m.category_id = :category_id";
+                $countSql .= " AND m.id IN (SELECT model_id FROM model_categories WHERE category_id = :category_id)";
             }
 
             $stmt = $this->db->prepare($countSql);
@@ -394,17 +396,18 @@ class Search
         }
 
         $sql = "
-            SELECT s.model_id, m.name, m.description, m.thumbnail, m.created_at,
+            SELECT s.model_id, m.name, m.description, m.thumbnail_path, m.created_at,
                    c.name as category_name, c.id as category_id
             FROM search_index s
             JOIN models m ON s.model_id = m.id
-            LEFT JOIN categories c ON m.category_id = c.id
+            LEFT JOIN model_categories mc ON m.id = mc.model_id
+            LEFT JOIN categories c ON mc.category_id = c.id
             WHERE (" . implode(' AND ', $conditions) . ")
             AND m.is_archived = 0
         ";
 
         if ($categoryId !== null) {
-            $sql .= " AND m.category_id = :category_id";
+            $sql .= " AND m.id IN (SELECT model_id FROM model_categories WHERE category_id = :category_id)";
             $params[':category_id'] = $categoryId;
         }
 
@@ -434,7 +437,7 @@ class Search
                 AND m.is_archived = 0
             ";
             if ($categoryId !== null) {
-                $countSql .= " AND m.category_id = :category_id";
+                $countSql .= " AND m.id IN (SELECT model_id FROM model_categories WHERE category_id = :category_id)";
             }
 
             $stmt = $this->db->prepare($countSql);

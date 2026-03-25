@@ -28,6 +28,16 @@ if (!$part) {
     jsonError('Part not found');
 }
 
+// Ownership check: verify the user owns the parent model
+$user = getCurrentUser();
+$parentStmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
+$parentStmt->bindValue(':id', $part['parent_id'] ?? $part['id'], PDO::PARAM_INT);
+$parentStmt->execute();
+$parent = $parentStmt->fetch(PDO::FETCH_ASSOC);
+if ($parent && $parent['user_id'] !== null && (int)$parent['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+    jsonError('Permission denied', 403);
+}
+
 // Build update query based on provided fields
 $updates = [];
 $params = [':id' => $partId];

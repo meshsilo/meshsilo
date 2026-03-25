@@ -111,7 +111,8 @@ function getStorageUsageByCategory()
                    COUNT(m.id) as model_count,
                    SUM(m.original_size) as total_size
             FROM categories c
-            LEFT JOIN models m ON m.category_id = c.id AND m.parent_id IS NULL
+            LEFT JOIN model_categories mc ON mc.category_id = c.id
+            LEFT JOIN models m ON m.id = mc.model_id AND m.parent_id IS NULL
             GROUP BY c.id, c.name
             ORDER BY total_size DESC
         ');

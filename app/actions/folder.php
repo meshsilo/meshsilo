@@ -112,7 +112,7 @@ function updateFolder() {
     $stmt->execute([':id' => $folderId]);
     $folder = $stmt->fetch();
 
-    if (!$folder || ($folder['user_id'] !== $user['id'] && !$user['is_admin'])) {
+    if (!$folder || ((int)$folder['user_id'] !== (int)$user['id'] && !$user['is_admin'])) {
         jsonError('Permission denied');
         return;
     }
@@ -171,7 +171,7 @@ function deleteFolder() {
     $stmt->execute([':id' => $folderId]);
     $folder = $stmt->fetch();
 
-    if (!$folder || ($folder['user_id'] !== $user['id'] && !$user['is_admin'])) {
+    if (!$folder || ((int)$folder['user_id'] !== (int)$user['id'] && !$user['is_admin'])) {
         jsonError('Permission denied');
         return;
     }
@@ -300,7 +300,7 @@ function moveModelToFolder() {
         $stmt->execute([':id' => $folderId]);
         $folder = $stmt->fetch();
 
-        if (!$folder || ($folder['user_id'] !== $user['id'] && !$user['is_admin'])) {
+        if (!$folder || ((int)$folder['user_id'] !== (int)$user['id'] && !$user['is_admin'])) {
             jsonError('Folder not found');
             return;
         }

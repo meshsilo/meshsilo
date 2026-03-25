@@ -4,6 +4,13 @@
  * Loaded on the model detail page before model-page.js.
  */
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         // Share Modal Functions
         function openShareModal() {
             var modal = document.getElementById('share-modal');
@@ -74,7 +81,7 @@
                     <div class="share-link-item ${link.is_expired ? 'expired' : ''}">
                         <div class="share-link-info">
                             <div class="share-link-url">
-                                <input type="text" readonly value="${link.share_url}" class="share-url-input" onclick="this.select()">
+                                <input type="text" readonly value="${escapeHtml(link.share_url)}" class="share-url-input" onclick="this.select()">
                                 <button type="button" class="btn btn-small" onclick="copyShareUrl(this.previousElementSibling)" title="Copy URL">Copy</button>
                             </div>
                             <div class="share-link-meta">

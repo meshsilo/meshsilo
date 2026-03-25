@@ -322,7 +322,7 @@ async function saveCurrentSearch() {
     });
 
     try {
-        var resp = await fetch('/saved-searches', { method: 'POST', body: formData });
+        var resp = await fetch('/actions/saved-searches', { method: 'POST', body: formData });
         var data = await resp.json();
         if (data.success) {
             location.reload();

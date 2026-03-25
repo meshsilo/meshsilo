@@ -75,7 +75,7 @@ function getRemixes($db, $modelId, $depth = 0, $maxDepth = 5) {
         $remixes[] = [
             'id' => $row['id'],
             'name' => $row['name'],
-            'thumbnail' => $row['thumbnail'],
+            'thumbnail' => $row['thumbnail_path'],
             'created_at' => $row['created_at'],
             'user_id' => $row['user_id'],
             'username' => $row['username'],
@@ -89,7 +89,7 @@ function getRemixes($db, $modelId, $depth = 0, $maxDepth = 5) {
 // Get related models marked as remixes (manual relationships)
 function getRelatedRemixes($db, $modelId) {
     $stmt = $db->prepare('
-        SELECT rm.*, m.name, m.thumbnail, m.created_at, u.username,
+        SELECT rm.*, m.name, m.thumbnail_path, m.created_at, u.username,
                rm.remix_notes, rm.is_remix
         FROM related_models rm
         JOIN models m ON rm.related_model_id = m.id

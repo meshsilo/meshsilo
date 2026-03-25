@@ -56,6 +56,7 @@ $countStmt = $db->prepare($countSql);
 foreach ($countParams as $key => $value) {
     $countStmt->bindValue($key, $value);
 }
+$countStmt->execute();
 $totalActivities = (int)$countStmt->fetchColumn();
 $totalPages = ceil($totalActivities / $perPage);
 

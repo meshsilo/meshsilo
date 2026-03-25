@@ -256,15 +256,15 @@ function showDetails(id) {
     html += '</div>';
 
     if (log.old_value) {
-        html += '<h4>Old Value</h4><pre class="json-display">' + JSON.stringify(log.old_value, null, 2) + '</pre>';
+        html += '<h4>Old Value</h4><pre class="json-display">' + escapeHtml(JSON.stringify(log.old_value, null, 2)) + '</pre>';
     }
 
     if (log.new_value) {
-        html += '<h4>New Value</h4><pre class="json-display">' + JSON.stringify(log.new_value, null, 2) + '</pre>';
+        html += '<h4>New Value</h4><pre class="json-display">' + escapeHtml(JSON.stringify(log.new_value, null, 2)) + '</pre>';
     }
 
     if (log.metadata) {
-        html += '<h4>Metadata</h4><pre class="json-display">' + JSON.stringify(log.metadata, null, 2) + '</pre>';
+        html += '<h4>Metadata</h4><pre class="json-display">' + escapeHtml(JSON.stringify(log.metadata, null, 2)) + '</pre>';
     }
 
     document.getElementById('details-content').innerHTML = html;

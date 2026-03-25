@@ -53,32 +53,8 @@
         }
 
         async function calculatePartVolume(partId, linkEl) {
-            const originalText = 'Calculate Volume';
-            linkEl.textContent = 'Calculating...';
-            try {
-                const formData = new FormData();
-                formData.append('model_id', partId);
-                const response = await fetch('/actions/calculate-volume', { method: 'POST', body: formData });
-                const data = await response.json();
-                if (data.success && data.volume_cm3) {
-                    // Store the calculated value
-                    if (!partCalculatedData[partId]) partCalculatedData[partId] = {};
-                    partCalculatedData[partId].volume = data.volume_cm3;
-                    partCalculatedData[partId].costEstimate = data.cost_estimate;
-                    let volumeText = 'Volume: ' + data.volume_cm3.toFixed(1) + ' cm\u00B3';
-                    if (data.cost_estimate) {
-                        volumeText += ' (~$' + data.cost_estimate.estimated_cost.toFixed(2) + ')';
-                    }
-                    linkEl.textContent = volumeText;
-                } else {
-                    showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
-                    linkEl.textContent = originalText;
-                }
-            } catch (err) {
-                console.error('Part volume error:', err);
-                showToast('Failed to calculate volume', 'error');
-                linkEl.textContent = originalText;
-            }
+            // Volume calculation is not yet available
+            showToast('This feature is not yet available', 'info');
         }
 
         // Restore calculated data when dropdown opens
@@ -102,34 +78,8 @@
         }
 
         async function analyzePartMesh(partId, linkEl) {
-            const originalText = linkEl.textContent;
-            linkEl.textContent = 'Analyzing...';
-            try {
-                const formData = new FormData();
-                formData.append('action', 'analyze');
-                formData.append('model_id', partId);
-                const response = await fetch('/actions/mesh-repair', { method: 'POST', body: formData });
-                const data = await response.json();
-                if (data.success) {
-                    if (data.analysis && data.analysis.is_manifold) {
-                        linkEl.textContent = 'Mesh OK';
-                        linkEl.style.color = 'var(--color-success, #10b981)';
-                    } else if (data.analysis) {
-                        const issues = data.analysis.issues ? data.analysis.issues.length : 0;
-                        linkEl.textContent = issues + ' issue(s)';
-                        linkEl.style.color = 'var(--color-warning, #f59e0b)';
-                    } else {
-                        linkEl.textContent = 'Analyzed';
-                    }
-                } else {
-                    showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
-                    linkEl.textContent = originalText;
-                }
-            } catch (err) {
-                console.error('Part mesh analysis error:', err);
-                showToast('Failed to analyze mesh', 'error');
-                linkEl.textContent = originalText;
-            }
+            // Mesh analysis/repair is not yet available
+            showToast('This feature is not yet available', 'info');
         }
 
         // Archive toggle
@@ -175,12 +125,15 @@
                         </button>
                     `;
                 } else {
-                    tagSuggestions.innerHTML = matching.map(t => `
+                    tagSuggestions.innerHTML = matching.map(t => {
+                        const safeColor = t.color && /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$/.test(t.color) ? t.color : '#6b7280';
+                        return `
                         <button type="button" class="tag-suggestion" onclick="addTagById(${t.id}, '${t.name.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: ${t.color};"></span>
+                            <span class="tag-color-dot" style="background-color: ${safeColor};"></span>
                             <span>${t.name}</span>
                         </button>
-                    `).join('');
+                    `;
+                    }).join('');
                 }
                 tagSuggestions.style.display = matching.length > 0 || value.length > 0 ? 'block' : 'none';
             });

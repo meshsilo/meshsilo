@@ -306,6 +306,10 @@ function createModel($apiUser) {
         apiError('Failed to create storage folder', 500);
     }
 
+    // Sanitize filename: strip directory components, then remove unsafe characters
+    $filename = basename($filename); // Strip directory components
+    $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename); // Remove unsafe characters
+
     // Move uploaded file
     $destPath = $folderPath . '/' . $filename;
     if (!move_uploaded_file($file['tmp_name'], $destPath)) {

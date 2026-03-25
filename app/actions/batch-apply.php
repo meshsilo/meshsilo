@@ -243,14 +243,9 @@ switch ($action) {
                         }
                     }
 
-                    // Delete dedup files only if no other models reference them
+                    // Delete dedup files only if no other models reference them (atomic check+delete)
                     foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
-                        if (canDeleteDedupFile($dedupPath)) {
-                            $fullPath = getAbsoluteFilePath(['file_path' => null, 'dedup_path' => $dedupPath]);
-                            if (file_exists($fullPath)) {
-                                unlink($fullPath);
-                            }
-                        }
+                        deleteIfOrphaned($dedupPath);
                     }
 
                     // Clean up empty directories

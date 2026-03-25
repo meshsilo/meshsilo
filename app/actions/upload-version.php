@@ -55,48 +55,60 @@ if (!is_dir($versionDir)) {
     mkdir($versionDir, 0755, true);
 }
 
-// Get next version number
-$stmt = $db->prepare('SELECT MAX(version_number) as max_ver FROM model_versions WHERE model_id = :model_id');
-$stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-$row = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
-$nextVersion = ($row && $row['max_ver']) ? $row['max_ver'] + 1 : 1;
-
-// If this is version 1, archive the current file first
-if ($nextVersion === 1 && $model['file_path']) {
-    $currentPath = getAbsoluteFilePath($model);
-    if ($currentPath && is_file($currentPath)) {
-        $currentHash = calculateContentHash($currentPath, $model['file_type']);
-        $archivePath = 'versions/' . $modelId . '/v0_' . basename($model['file_path']);
-
-        // Copy current file to versions
-        copy($currentPath, $versionDir . '/v0_' . basename($model['file_path']));
-
-        // Add version 0 (original)
-        $stmt = $db->prepare('INSERT INTO model_versions (model_id, version_number, file_path, file_size, file_hash, changelog, created_by, created_at) VALUES (:model_id, 0, :file_path, :file_size, :file_hash, :changelog, :created_by, :created_at)');
-        $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-        $stmt->bindValue(':file_path', $archivePath, PDO::PARAM_STR);
-        $stmt->bindValue(':file_size', $model['file_size'], PDO::PARAM_INT);
-        $stmt->bindValue(':file_hash', $currentHash, PDO::PARAM_STR);
-        $stmt->bindValue(':changelog', 'Original version', PDO::PARAM_STR);
-        $stmt->bindValue(':created_by', $model['user_id'], PDO::PARAM_INT);
-        $stmt->bindValue(':created_at', $model['created_at'], PDO::PARAM_STR);
-        $stmt->execute();
-    }
-}
-
 // Save new version file - sanitize filename to prevent path traversal
 $safeFileName = basename($file['name']);
 $safeFileName = preg_replace('/[^\w\-. ]/', '_', $safeFileName);
-$versionFilename = 'v' . $nextVersion . '_' . $safeFileName;
-$versionPath = 'versions/' . $modelId . '/' . $versionFilename;
-$fullPath = $versionDir . '/' . $versionFilename;
 
-if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
-    jsonError('Failed to save file');
+// We need the version number before we can name the file, so determine it here
+// (the final assignment happens inside the transaction below)
+$db->beginTransaction();
+try {
+    // Get next version number inside the transaction to prevent races
+    $stmt = $db->prepare('SELECT MAX(version_number) as max_ver FROM model_versions WHERE model_id = :model_id');
+    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $row = $stmt->execute()->fetchArray(PDO::FETCH_ASSOC);
+    $nextVersion = ($row && $row['max_ver']) ? $row['max_ver'] + 1 : 1;
+
+    // If this is version 1, archive the current file first
+    if ($nextVersion === 1 && $model['file_path']) {
+        $currentPath = getAbsoluteFilePath($model);
+        if ($currentPath && is_file($currentPath)) {
+            $currentHash = calculateContentHash($currentPath, $model['file_type']);
+            $archivePath = 'versions/' . $modelId . '/v0_' . basename($model['file_path']);
+
+            // Copy current file to versions
+            copy($currentPath, $versionDir . '/v0_' . basename($model['file_path']));
+
+            // Add version 0 (original)
+            $stmt = $db->prepare('INSERT INTO model_versions (model_id, version_number, file_path, file_size, file_hash, changelog, created_by, created_at) VALUES (:model_id, 0, :file_path, :file_size, :file_hash, :changelog, :created_by, :created_at)');
+            $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+            $stmt->bindValue(':file_path', $archivePath, PDO::PARAM_STR);
+            $stmt->bindValue(':file_size', $model['file_size'], PDO::PARAM_INT);
+            $stmt->bindValue(':file_hash', $currentHash, PDO::PARAM_STR);
+            $stmt->bindValue(':changelog', 'Original version', PDO::PARAM_STR);
+            $stmt->bindValue(':created_by', $model['user_id'], PDO::PARAM_INT);
+            $stmt->bindValue(':created_at', $model['created_at'], PDO::PARAM_STR);
+            $stmt->execute();
+        }
+    }
+
+    $versionFilename = 'v' . $nextVersion . '_' . $safeFileName;
+    $versionPath = 'versions/' . $modelId . '/' . $versionFilename;
+    $fullPath = $versionDir . '/' . $versionFilename;
+
+    if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
+        $db->rollBack();
+        jsonError('Failed to save file');
+    }
+
+    // Add version record
+    $result = addModelVersion($modelId, $versionPath, $file['size'], $hash, $changelog, $user['id']);
+
+    $db->commit();
+} catch (Exception $e) {
+    $db->rollBack();
+    throw $e;
 }
-
-// Add version record
-$result = addModelVersion($modelId, $versionPath, $file['size'], $hash, $changelog, $user['id']);
 
 if ($result) {
     // Update main model to point to new file

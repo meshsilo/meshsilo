@@ -30,7 +30,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.+?)\*/g, '<em>$1</em>')
                 .replace(/`(.+?)`/g, '<code>$1</code>')
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
+                    if (/^(https?:\/\/|\/)/i.test(url)) {
+                        return '<a href="' + url + '">' + text + '</a>';
+                    }
+                    return text; // Strip the link if not http/https/relative
+                })
                 .replace(/^- (.+)$/gm, '<li>$1</li>')
                 .replace(/\n/g, '<br>');
             preview.innerHTML = html;
@@ -70,8 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 tagSuggestions.innerHTML = matching.map(function(t) {
                     var safeName = escapeHtml(t.name);
+                    var safeColor = t.color && /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$/.test(t.color) ? t.color : '#6b7280';
                     return '<button type="button" class="tag-suggestion" data-name="' + safeName + '">' +
-                        '<span class="tag-color-dot" style="background-color:' + t.color + ';"></span>' +
+                        '<span class="tag-color-dot" style="background-color:' + safeColor + ';"></span>' +
                         '<span>' + safeName + '</span>' +
                     '</button>';
                 }).join('');

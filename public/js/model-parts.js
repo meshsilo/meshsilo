@@ -126,7 +126,9 @@
                             partEl.dataset.prev = actualType;
                         }
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error('Failed to update print type:', e);
+                }
             }
             selectEl.value = '';
         }
