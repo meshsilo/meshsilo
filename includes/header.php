@@ -67,7 +67,6 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <?php if (!empty($adminPage)): ?>
     <link rel="stylesheet" href="<?= basePath('css/admin.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/admin-stats.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin-stats.css') ?>">
-    <link rel="stylesheet" href="<?= basePath('css/admin-health.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/admin-health.css') ?>">
     <?php endif; ?>
 
     <!-- CDN preconnect hint (dns-prefetch as fallback for older browsers) -->

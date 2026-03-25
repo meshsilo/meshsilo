@@ -134,7 +134,7 @@ section.settings-section h2 {
     gap: 1.25rem;
 }
 
-.form-row {
+.auth-form .form-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -189,17 +189,6 @@ section.settings-section h2 {
 .user-name {
     color: var(--color-text-muted);
     font-size: 0.875rem;
-}
-
-/* Small Buttons */
-.btn-small {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-
-/* Text Utilities */
-.text-muted {
-    color: var(--color-text-muted);
 }
 
 /* Form Row Grid */

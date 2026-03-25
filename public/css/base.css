@@ -353,15 +353,7 @@ textarea.form-control {
     background-color: var(--color-surface-hover);
 }
 
-/* Badge Component */
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border-radius: 4px;
-}
-
+/* Badge color variants — base .badge class is in components.css */
 .badge-success { background: var(--color-success); color: white; }
 .badge-danger { background: var(--color-danger); color: white; }
 .badge-warning { background: var(--color-warning); color: white; }
@@ -399,7 +391,7 @@ textarea.form-control {
 }
 
 /* Button Variants */
-.btn-sm {
+.btn-sm, .btn-small {
     padding: 0.25rem 0.5rem;
     font-size: 0.8rem;
 }
@@ -469,12 +461,16 @@ textarea.form-control {
 
 /* Code Block */
 .code-block {
-    background: var(--color-surface-hover);
-    padding: 0.75rem 1rem;
+    display: block;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    font-family: monospace;
-    font-size: 0.85rem;
+    padding: 0.75rem 1rem;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.8125rem;
+    color: var(--color-text);
     overflow-x: auto;
+    white-space: nowrap;
 }
 
 /* Modal Component */
@@ -489,27 +485,6 @@ textarea.form-control {
     align-items: center;
     justify-content: center;
     z-index: 1000;
-}
-
-.modal-content {
-    background: var(--color-surface);
-    padding: 2rem;
-    border-radius: var(--radius-lg);
-    max-width: 500px;
-    width: 90%;
-    border: 1px solid var(--color-border);
-}
-
-.modal-content h3 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-}
-
-.modal-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    justify-content: flex-end;
 }
 
 /* Status Grid */

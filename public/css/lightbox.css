@@ -49,10 +49,7 @@
     font-size: 0.7rem;
 }
 
-.attachment-image .attachment-delete {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+.attachment-delete {
     background: rgba(239, 68, 68, 0.9);
     color: white;
     border: none;
@@ -60,13 +57,19 @@
     width: 24px;
     height: 24px;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s;
     font-size: 1rem;
     line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.attachment-image .attachment-delete {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s;
     z-index: 20;
 }
 
@@ -173,19 +176,6 @@
 }
 
 .attachment-document .attachment-delete {
-    background: rgba(239, 68, 68, 0.9);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
     flex-shrink: 0;
 }
 

@@ -1,31 +1,3 @@
-/* Stats Grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-}
-
-.stat-card {
-    background-color: var(--color-bg);
-    border-radius: var(--radius);
-    padding: 1.25rem;
-    text-align: center;
-}
-
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--color-primary);
-    margin-bottom: 0.25rem;
-}
-
-.stat-label {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
 /* Stats Page */
 .stats-grid {
     display: grid;
@@ -134,15 +106,17 @@
     border-color: var(--color-success);
 }
 
-/* Conversion Stats Grid */
-.conversion-stats-grid {
+/* Conversion & Deduplication Stats Grids (shared layout) */
+.conversion-stats-grid,
+.dedup-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 1.5rem;
     margin-bottom: 1rem;
 }
 
-.conversion-stat {
+.conversion-stat,
+.dedup-stat {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -153,25 +127,29 @@
     text-align: center;
 }
 
-.conversion-stat-value {
+.conversion-stat-value,
+.dedup-stat-value {
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-text);
 }
 
-.conversion-stat-label {
+.conversion-stat-label,
+.dedup-stat-label {
     font-size: 0.75rem;
     color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
-.conversion-stat-highlight {
+.conversion-stat-highlight,
+.dedup-stat-highlight {
     background-color: rgba(34, 197, 94, 0.1);
     border: 1px solid var(--color-success);
 }
 
-.conversion-stat-highlight .conversion-stat-value {
+.conversion-stat-highlight .conversion-stat-value,
+.dedup-stat-highlight .dedup-stat-value {
     color: var(--color-success);
 }
 
@@ -190,46 +168,6 @@
 /* Deduplication Stats */
 .stats-section-dedup {
     border: 1px solid var(--color-border);
-}
-
-.dedup-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-.dedup-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 1rem;
-    background-color: var(--color-bg);
-    border-radius: var(--radius);
-    text-align: center;
-}
-
-.dedup-stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.dedup-stat-label {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.dedup-stat-highlight {
-    background-color: rgba(34, 197, 94, 0.1);
-    border: 1px solid var(--color-success);
-}
-
-.dedup-stat-highlight .dedup-stat-value {
-    color: var(--color-success);
 }
 
 .dedup-stat-warning {
@@ -255,5 +193,127 @@
     gap: 0.5rem;
     flex-wrap: wrap;
     margin-top: 1rem;
+}
+
+/* Health Dashboard */
+.health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.health-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background-color: var(--color-bg);
+    border-radius: var(--radius);
+}
+
+.health-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.health-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.health-warning .health-value {
+    color: var(--color-warning);
+}
+
+.health-danger .health-value {
+    color: var(--color-danger);
+}
+
+/* Health Bar */
+.health-bar {
+    height: 8px;
+    background-color: var(--color-surface);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.25rem 0;
+}
+
+.health-bar-fill {
+    height: 100%;
+    background-color: var(--color-success);
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.health-bar-warning {
+    background-color: var(--color-warning);
+}
+
+.health-bar-danger {
+    background-color: var(--color-danger);
+}
+
+/* Timeline Grid */
+.timeline-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.timeline-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem;
+    background-color: var(--color-bg);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--color-primary);
+}
+
+.timeline-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.timeline-value {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timeline-date {
+    font-size: 0.875rem;
+    color: var(--color-primary);
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .stat-card-large {
+        grid-column: span 1;
+    }
+
+    .stats-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .health-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .timeline-grid {
+        grid-template-columns: 1fr;
+    }
 }
 

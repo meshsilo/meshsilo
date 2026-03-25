@@ -225,6 +225,13 @@
     color: var(--color-text-muted);
 }
 
+.badge-success { background: var(--color-success); color: white; }
+.badge-danger { background: var(--color-danger); color: white; }
+.badge-warning { background: var(--color-warning); color: white; }
+.badge-secondary { background: #6b7280; color: white; }
+.badge-primary { background: var(--color-primary); color: white; }
+.badge-info { background: var(--color-info, #3b82f6); color: white; }
+
 /* Batch Rename Modal */
 .rename-preview {
     margin-top: 1rem;
