@@ -527,6 +527,12 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     is_admin TINYINT DEFAULT 0,
     permissions TEXT,
+    storage_limit_mb INT DEFAULT 0,
+    model_limit INT DEFAULT 0,
+    two_factor_secret VARCHAR(64),
+    two_factor_backup_codes TEXT,
+    two_factor_enabled TINYINT DEFAULT 0,
+    two_factor_enabled_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -648,6 +654,12 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
     permissions TEXT,
+    storage_limit_mb INTEGER DEFAULT 0,
+    model_limit INTEGER DEFAULT 0,
+    two_factor_secret TEXT,
+    two_factor_backup_codes TEXT,
+    two_factor_enabled INTEGER DEFAULT 0,
+    two_factor_enabled_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

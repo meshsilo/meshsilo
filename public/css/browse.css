@@ -294,47 +294,6 @@ body.batch-mode .model-list-item:hover {
     border-color: var(--color-primary);
 }
 
-/* =====================
-   Admin Tables
-   ===================== */
-.admin-table-container {
-    overflow-x: auto;
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-}
-
-.admin-table {
-    font-size: 0.875rem;
-}
-
-.admin-table th,
-.admin-table td {
-    padding: 0.75rem 1rem;
-}
-
-.admin-table th {
-    background: var(--color-surface-elevated);
-    color: var(--color-text);
-    white-space: nowrap;
-}
-
-.admin-table tbody tr:hover {
-    background: var(--color-surface-elevated);
-}
-
-.admin-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.admin-table a {
-    color: var(--color-primary);
-    text-decoration: none;
-}
-
-.admin-table a:hover {
-    text-decoration: underline;
-}
 
 /* =====================
    Keyboard Shortcuts Help
@@ -435,12 +394,6 @@ body.batch-mode .model-list-item:hover {
 /* =====================
    View Toggle (Grid/List)
    ===================== */
-.view-controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-shrink: 0;
-}
 
 .view-toggle {
     display: flex;
@@ -730,35 +683,6 @@ body.batch-mode .model-list-item:hover {
 }
 
 
-/* =====================
-   Recently Viewed Section
-   ===================== */
-.recently-viewed-section {
-    margin-bottom: 2rem;
-}
-
-.recently-viewed-grid {
-    display: flex;
-    gap: 1rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-}
-
-.recently-viewed-card {
-    flex: 0 0 auto;
-    width: 160px;
-}
-
-.recently-viewed-card .model-thumbnail {
-    height: 100px;
-}
-
-.recently-viewed-card .model-title {
-    font-size: 0.875rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
 
 /* =====================
    Activity Log

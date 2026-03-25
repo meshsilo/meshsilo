@@ -107,7 +107,7 @@
 }
 
 .attachment-image .attachment-set-thumb:hover {
-    background: #2563eb;
+    background: var(--color-primary);
 }
 
 /* Document List */

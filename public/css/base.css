@@ -32,6 +32,11 @@ img {
     --radius-md: 6px;
     --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
     --color-primary-bg: rgba(37, 99, 235, 0.1);
+    --color-info: #3b82f6;
+    --color-danger-hover: #dc2626;
+    --color-bg-hover: var(--color-bg);
+    --color-text-inverse: #ffffff;
+    --color-purple: #a855f7;
     color-scheme: dark;
 }
 
@@ -55,6 +60,11 @@ img {
     --radius-md: 6px;
     --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
     --color-primary-bg: rgba(37, 99, 235, 0.05);
+    --color-info: #2563eb;
+    --color-danger-hover: #b91c1c;
+    --color-bg-hover: #f1f5f9;
+    --color-text-inverse: #ffffff;
+    --color-purple: #9333ea;
 }
 
 /* Ensure proper contrast for specific elements in light mode */

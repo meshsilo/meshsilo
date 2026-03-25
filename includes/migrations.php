@@ -224,28 +224,6 @@ function getMigrationList()
             'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
             'FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE',
         ]),
-        // Model columns
-        addColumnsMigration('Models: download_count column', 'Track download counts per model', 'models', 'download_count', [
-            'download_count INT DEFAULT 0',
-        ]),
-        addColumnsMigration('Models: license column', 'Store license type for models', 'models', 'license', [
-            'license VARCHAR(50)',
-        ]),
-        addColumnsMigration('Models: is_archived column', 'Soft archive models without deletion', 'models', 'is_archived', [
-            'is_archived TINYINT DEFAULT 0',
-        ]),
-        addColumnsMigration('Models: print tracking columns', 'Track printed status and notes per part', 'models', 'is_printed', [
-            'is_printed TINYINT DEFAULT 0',
-            'printed_at TIMESTAMP NULL',
-            'notes TEXT',
-        ]),
-        addColumnsMigration('Models: dimension columns', 'Store calculated model dimensions', 'models', 'dim_x', [
-            'dim_x DECIMAL(10,2)',
-            'dim_y DECIMAL(10,2)',
-            'dim_z DECIMAL(10,2)',
-            'dim_unit VARCHAR(10) DEFAULT \'mm\'',
-            'volume DECIMAL(15,2)',
-        ]),
         // API
         createTableMigration('API keys table', 'Store API keys for programmatic access', 'api_keys', [
             'id INT AUTO_INCREMENT PRIMARY KEY',
@@ -330,36 +308,7 @@ function getMigrationList()
             'FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE',
             'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         ]),
-        addColumnsMigration('Models: folder_id column', 'Link models to folders', 'models', 'folder_id', [
-            'folder_id INT',
-        ]),
-        addColumnsMigration('Models: approval columns', 'Support upload approval workflow', 'models', 'approval_status', [
-            "approval_status VARCHAR(20) DEFAULT 'approved'",
-            'approved_by INT',
-            'approved_at TIMESTAMP NULL',
-        ]),
-        // Users: storage limit columns (same SQL for both engines)
-        [
-            'name' => 'Users: storage limit columns',
-            'description' => 'Per-user storage and model limits',
-            'check' => fn($db) => columnExists($db, 'users', 'storage_limit_mb'),
-            'apply' => function ($db) {
-                $db->exec('ALTER TABLE users ADD COLUMN storage_limit_mb INTEGER DEFAULT 0');
-                $db->exec('ALTER TABLE users ADD COLUMN model_limit INTEGER DEFAULT 0');
-            }
-        ],
-        // Two-Factor Authentication
-        addColumnsMigration('Users: two-factor authentication columns', 'TOTP-based 2FA with backup codes', 'users', 'two_factor_enabled', [
-            'two_factor_secret VARCHAR(64)',
-            'two_factor_backup_codes TEXT',
-            'two_factor_enabled TINYINT DEFAULT 0',
-            'two_factor_enabled_at TIMESTAMP NULL',
-        ]),
         // File Integrity
-        addColumnsMigration('Models: integrity hash columns', 'SHA-256 checksums for file integrity verification', 'models', 'integrity_hash', [
-            'integrity_hash VARCHAR(64)',
-            'integrity_checked_at TIMESTAMP NULL',
-        ]),
         createTableMigration('Integrity log table', 'Log file integrity issues (missing/corrupted files)', 'integrity_log', [
             'id INT AUTO_INCREMENT PRIMARY KEY',
             'model_id INT NOT NULL',
@@ -421,12 +370,14 @@ function getMigrationList()
             'ip_address VARCHAR(45)',
             'user_agent VARCHAR(500)',
             'last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+            'expires_at INT NOT NULL DEFAULT 0',
             'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
         ], [
             'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         ], [
             'idx_sessions_user' => 'user_id',
             'idx_sessions_activity' => 'last_activity',
+            'idx_sessions_expires' => 'expires_at',
         ]),
         // Model Analysis
         createTableMigration('Model analysis table', 'Store automated model analysis results (overhangs, printability)', 'model_analysis', [
@@ -447,16 +398,19 @@ function getMigrationList()
             'idx_model_analysis_score' => 'printability_score',
         ]),
         // Remix/Fork Tracking
-        addColumnsMigration('Related models: remix columns', 'Track remix/fork relationships between models', 'related_models', 'is_remix', [
+        createTableMigration('Related models table', 'Track relationships and remix/fork links between models', 'related_models', [
+            'id INT AUTO_INCREMENT PRIMARY KEY',
+            'model_id INT NOT NULL',
+            'related_model_id INT NOT NULL',
+            'relationship_type VARCHAR(50) DEFAULT "related"',
             'is_remix TINYINT DEFAULT 0',
             'remix_notes TEXT',
             'created_by INT',
-        ]),
-        addColumnsMigration('Models: remix source columns', 'Track original source for remixed models', 'models', 'remix_of', [
-            'remix_of INT',
-            'external_source_url VARCHAR(500)',
-            'external_source_id VARCHAR(100)',
-        ]),
+            'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        ], [
+            'FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE',
+            'FOREIGN KEY (related_model_id) REFERENCES models(id) ON DELETE CASCADE',
+        ], [], ['uniqueKeys' => ['unique_relation' => 'model_id, related_model_id']]),
         // Import Jobs
         createTableMigration('Import jobs table', 'Track bulk import jobs from external sources', 'import_jobs', [
             'id INT AUTO_INCREMENT PRIMARY KEY',
@@ -752,31 +706,6 @@ function getMigrationList()
             'FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE',
             'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         ]),
-        // Special: Sessions table expires_at column (conditional tableExists guard)
-        [
-            'name' => 'Sessions table expires_at column',
-            'description' => 'Add expires_at column to sessions table if missing',
-            'check' => function ($db) {
-                if (!tableExists($db, 'sessions')) {
-                    return true;
-                }
-                return columnExists($db, 'sessions', 'expires_at');
-            },
-            'apply' => function ($db) {
-                if (!tableExists($db, 'sessions')) {
-                    return;
-                }
-                $type = $db->getType();
-                if ($type === 'mysql') {
-                    $db->exec('ALTER TABLE sessions ADD COLUMN expires_at INT NOT NULL DEFAULT 0');
-                } else {
-                    $db->exec('ALTER TABLE sessions ADD COLUMN expires_at INTEGER NOT NULL DEFAULT 0');
-                }
-                if (!indexExists($db, 'sessions', 'idx_sessions_expires')) {
-                    $db->exec('CREATE INDEX idx_sessions_expires ON sessions(expires_at)');
-                }
-            }
-        ],
         // Plugin system
         createTableMigration('Plugins table', 'Plugin system - installed plugins', 'plugins', [
             'id VARCHAR(100) PRIMARY KEY',
@@ -797,12 +726,6 @@ function getMigrationList()
             'last_fetched TIMESTAMP NULL',
             'registry_cache TEXT',
             'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        ]),
-        // Model ownership
-        addColumnsMigration('Models user_id column', 'Add user_id to models for ownership tracking', 'models', 'user_id', [
-            'user_id INT NULL',
-        ], [
-            'idx_models_user_id' => 'user_id',
         ]),
         // Migrate part files into subdirectories matching original_path folders
         [
@@ -926,11 +849,6 @@ function getMigrationList()
                 }
             }
         ],
-
-        // Add dim_unit column (may have been missed if dim_x already existed)
-        addColumnsMigration('Models: dim_unit column', 'Add dimension unit to models', 'models', 'dim_unit', [
-            'dim_unit VARCHAR(10) DEFAULT \'mm\'',
-        ]),
 
         // Fix jobs table TEXT columns with defaults for MySQL compatibility
         [

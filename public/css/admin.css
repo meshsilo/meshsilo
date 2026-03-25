@@ -178,11 +178,15 @@
 
 .admin-table-container {
     overflow-x: auto;
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
 }
 
 .admin-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 0.875rem;
 }
 
 .admin-table th,
@@ -197,6 +201,25 @@
     color: var(--color-text-muted);
     font-size: 0.75rem;
     text-transform: uppercase;
+    background: var(--color-surface-elevated);
+    white-space: nowrap;
+}
+
+.admin-table tbody tr:hover {
+    background: var(--color-surface-elevated);
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.admin-table a:hover {
+    text-decoration: underline;
 }
 
 .admin-form .form-group {
@@ -320,7 +343,7 @@
 .activity-icon.download { background-color: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary); }
 .activity-icon.delete { background-color: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
 .activity-icon.edit { background-color: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
-.activity-icon.login { background-color: rgba(168, 85, 247, 0.2); color: #a855f7; }
+.activity-icon.login { background-color: rgba(168, 85, 247, 0.2); color: var(--color-purple, #a855f7); }
 
 /* =====================
    Lazy Loading Placeholder
@@ -336,48 +359,6 @@
     100% { background-position: -200% 0; }
 }
 
-/* =====================
-   Duplicate Warning
-   ===================== */
-.duplicate-warning {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-    background-color: rgba(245, 158, 11, 0.1);
-    border: 1px solid var(--color-warning);
-    border-radius: var(--radius-lg);
-    margin-bottom: 1rem;
-}
-
-.duplicate-warning-icon {
-    font-size: 1.5rem;
-    color: var(--color-warning);
-}
-
-.duplicate-warning-content h4 {
-    color: var(--color-warning);
-    margin-bottom: 0.25rem;
-}
-
-.duplicate-warning-content p {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-}
-
-.duplicate-list {
-    margin-top: 0.5rem;
-}
-
-.duplicate-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background-color: var(--color-surface);
-    border-radius: var(--radius);
-    margin-top: 0.5rem;
-}
 
 /* =====================
    Responsive Adjustments
