@@ -203,7 +203,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
     <div class="admin-grid">
         <!-- Active Sessions -->
-        <div class="admin-section">
+        <div class="section-card">
             <h2>Active Sessions</h2>
             <div class="table-responsive">
                 <table class="data-table" aria-label="Active sessions">
@@ -264,7 +264,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <!-- Users with Multiple Sessions -->
         <?php if (!empty($multiSessionUsers)): ?>
-        <div class="admin-section">
+        <div class="section-card">
             <h2>Users with Multiple Sessions</h2>
             <div class="table-responsive">
                 <table class="data-table" aria-label="Users with multiple sessions">
@@ -300,7 +300,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <?php endif; ?>
 
         <!-- Session Settings -->
-        <div class="admin-section">
+        <div class="section-card">
             <h2>Session Settings</h2>
             <form method="POST" class="settings-form">
                 <?= csrf_field() ?>

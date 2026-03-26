@@ -99,7 +99,7 @@
 
 /* Groups Admin */
 .badge-system {
-    background-color: rgba(59, 130, 246, 0.2);
+    background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
     color: var(--color-primary);
     padding: 0.125rem 0.5rem;
     border-radius: var(--radius);
@@ -157,68 +157,40 @@
     }
 }
 
-.admin-section {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-}
-
-.admin-section h2 {
-    font-size: 1.125rem;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.admin-section h3 {
+.section-card h3 {
     font-size: 1rem;
     margin-bottom: 0.75rem;
 }
 
-.admin-table-container {
+.data-table-container {
     overflow-x: auto;
     background: var(--color-surface);
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
 }
 
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
+/* Admin-specific table overrides (base in base.css .data-table) */
+.admin-content .data-table {
     font-size: 0.875rem;
 }
 
-.admin-table th,
-.admin-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.admin-table th {
-    font-weight: 600;
-    color: var(--color-text-muted);
+.admin-content .data-table th {
     font-size: 0.75rem;
     text-transform: uppercase;
     background: var(--color-surface-elevated);
     white-space: nowrap;
 }
 
-.admin-table tbody tr:hover {
+.admin-content .data-table tbody tr:hover {
     background: var(--color-surface-elevated);
 }
 
-.admin-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.admin-table a {
+.admin-content .data-table a {
     color: var(--color-primary);
     text-decoration: none;
 }
 
-.admin-table a:hover {
+.admin-content .data-table a:hover {
     text-decoration: underline;
 }
 
@@ -230,13 +202,6 @@
     margin-top: 1.5rem;
 }
 
-/* User Groups Display */
-.user-groups {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-}
-
 .group-badge {
     display: inline-block;
     background-color: var(--color-primary);
@@ -245,40 +210,6 @@
     border-radius: var(--radius);
     font-size: 0.625rem;
     font-weight: 600;
-}
-
-@media (max-width: 1024px) {
-    .model-detail-thumbnail {
-        width: 300px;
-        height: 300px;
-    }
-}
-
-@media (max-width: 768px) {
-    .model-detail-header {
-        flex-direction: column;
-    }
-
-    .model-detail-thumbnail {
-        width: 100%;
-        height: 200px;
-    }
-
-    .model-meta {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .part-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-
-    .part-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
 }
 
 /* Inline form for user groups */
@@ -343,7 +274,7 @@
 .activity-icon.download { background-color: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary); }
 .activity-icon.delete { background-color: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
 .activity-icon.edit { background-color: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
-.activity-icon.login { background-color: rgba(168, 85, 247, 0.2); color: var(--color-purple, #a855f7); }
+.activity-icon.login { background-color: color-mix(in srgb, var(--color-purple) 20%, transparent); color: var(--color-purple); }
 
 /* =====================
    Lazy Loading Placeholder
@@ -359,33 +290,6 @@
     100% { background-position: -200% 0; }
 }
 
-
-/* =====================
-   Responsive Adjustments
-   ===================== */
-@media (max-width: 768px) {
-    .browse-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .browse-filters {
-        flex-wrap: wrap;
-    }
-
-    .filter-bar {
-        flex-wrap: wrap;
-    }
-
-    .model-list-item {
-        flex-direction: column;
-    }
-
-    .model-list-thumbnail {
-        width: 100%;
-        height: 120px;
-    }
-}
 
 /* =====================
    Share Modal Styles
@@ -554,45 +458,18 @@
 
 .batch-select {
     background-color: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
     color: var(--color-text);
     font-size: 0.75rem;
     font-weight: 500;
-    cursor: pointer;
     min-width: auto;
     height: auto;
     line-height: 1.5;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
     background-position: right 0.4rem center;
-    padding-right: 1.5rem;
 }
 
 .batch-select:hover {
     background-color: var(--color-surface-hover);
-    border-color: var(--color-border);
-}
-
-.batch-select:focus {
-    border-color: var(--color-primary);
-}
-.batch-select:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: -2px;
-}
-
-.btn-ghost {
-    background: transparent;
-    color: var(--color-text-muted);
-}
-
-.btn-ghost:hover {
-    background: var(--color-surface-hover);
-    color: var(--color-text);
 }
 
 @media (max-width: 1200px) {
@@ -617,10 +494,6 @@
         justify-content: center;
     }
 }
-
-/* =====================
-   Mobile-Optimized Upload
-   ===================== */
 
 /* Update Checker Styles */
 .update-checker {
@@ -720,44 +593,4 @@
     text-decoration: underline;
 }
 
-/* =====================================================
-   Model Attachments Section
-   ===================================================== */
-.model-attachments {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-top: 1.5rem;
-}
-
-.model-attachments .attachments-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.model-attachments .attachments-header h2 {
-    font-size: 1.125rem;
-    margin: 0;
-}
-
-.attachment-section {
-    margin-bottom: 1.5rem;
-}
-
-.attachment-section:last-child {
-    margin-bottom: 0;
-}
-
-.attachment-section h3 {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-    margin-bottom: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
 

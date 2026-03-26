@@ -115,6 +115,15 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // Skip auth pages — they have CSRF tokens that must be fresh
+    if (url.pathname === '/login' ||
+        url.pathname === '/register' ||
+        url.pathname === '/forgot-password' ||
+        url.pathname === '/reset-password' ||
+        url.pathname === '/2fa-verify') {
+        return;
+    }
+
     // Strategy selection based on resource type
     if (isModelFile(url.pathname)) {
         // 3D models: Cache-first with background refresh

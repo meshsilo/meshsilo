@@ -5,24 +5,24 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    var config = window.EditModelPageConfig || {};
-    var allTags = config.allTags || [];
-    var modelId = config.modelId || 0;
+    const config = window.EditModelPageConfig || {};
+    const allTags = config.allTags || [];
+    const modelId = config.modelId || 0;
 
     // --- Markdown preview ---
-    var ta = document.getElementById('description');
-    var preview = document.getElementById('md-preview');
-    var previewToggle = document.querySelector('.markdown-preview-toggle');
+    const ta = document.getElementById('description');
+    const preview = document.getElementById('md-preview');
+    const previewToggle = document.querySelector('.markdown-preview-toggle');
 
     if (ta && preview) {
-        var mdTimer = null;
+        let mdTimer = null;
         function updatePreview() {
-            var text = ta.value;
+            const text = ta.value;
             if (!text.trim()) {
                 preview.innerHTML = '<em style="color:var(--color-text-muted)">Nothing to preview</em>';
                 return;
             }
-            var html = text
+            const html = text
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/^### (.+)$/gm, '<h4>$1</h4>')
                 .replace(/^## (.+)$/gm, '<h3>$1</h3>')
@@ -50,23 +50,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Tag management ---
-    var tagInput = document.getElementById('tag-input');
-    var tagSuggestions = document.getElementById('tag-suggestions');
-    var tagsContainer = document.getElementById('current-tags');
+    const tagInput = document.getElementById('tag-input');
+    const tagSuggestions = document.getElementById('tag-suggestions');
+    const tagsContainer = document.getElementById('current-tags');
 
     if (tagInput) {
         tagInput.addEventListener('input', function() {
-            var value = this.value.toLowerCase().trim();
+            const value = this.value.toLowerCase().trim();
             if (value.length < 1) {
                 tagSuggestions.style.display = 'none';
                 return;
             }
 
-            var matching = allTags.filter(function(t) {
+            const matching = allTags.filter(function(t) {
                 return t.name.toLowerCase().includes(value);
             });
             if (matching.length === 0 && value.length > 0) {
-                var safeValue = escapeHtml(value);
+                const safeValue = escapeHtml(value);
                 tagSuggestions.innerHTML =
                     '<button type="button" class="tag-suggestion" data-name="' + safeValue + '">' +
                         '<span class="tag-color-dot" style="background-color: var(--color-primary);"></span>' +
@@ -74,8 +74,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     '</button>';
             } else {
                 tagSuggestions.innerHTML = matching.map(function(t) {
-                    var safeName = escapeHtml(t.name);
-                    var safeColor = t.color && /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$/.test(t.color) ? t.color : '#6b7280';
+                    const safeName = escapeHtml(t.name);
+                    const safeColor = t.color && /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$/.test(t.color) ? t.color : '#6b7280';
                     return '<button type="button" class="tag-suggestion" data-name="' + safeName + '">' +
                         '<span class="tag-color-dot" style="background-color:' + safeColor + ';"></span>' +
                         '<span>' + safeName + '</span>' +
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tagInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                var value = this.value.trim();
+                const value = this.value.trim();
                 if (value) addTag(value);
             }
         });
@@ -100,19 +100,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function addTag(tagName) {
         try {
-            var response = await fetch('/actions/tag', {
+            const response = await fetch('/actions/tag', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'action=add&model_id=' + modelId + '&tag_name=' + encodeURIComponent(tagName)
             });
-            var data = await response.json();
+            const data = await response.json();
             if (data.success && data.tag) {
-                var tagEl = document.createElement('span');
+                const tagEl = document.createElement('span');
                 tagEl.className = 'model-tag';
                 tagEl.style.setProperty('--tag-color', data.tag.color);
                 tagEl.dataset.tagId = data.tag.id;
                 tagEl.textContent = data.tag.name + ' ';
-                var removeBtn = document.createElement('button');
+                const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
                 removeBtn.className = 'model-tag-remove';
                 removeBtn.innerHTML = '&times;';
@@ -131,12 +131,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function removeTag(modelId, tagId, element) {
         try {
-            var response = await fetch('/actions/tag', {
+            const response = await fetch('/actions/tag', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'action=remove&model_id=' + modelId + '&tag_id=' + tagId
             });
-            var data = await response.json();
+            const data = await response.json();
             if (data.success) {
                 element.remove();
             } else {
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Delegated: tag suggestion clicks
     if (tagSuggestions) {
         tagSuggestions.addEventListener('click', function(e) {
-            var btn = e.target.closest('.tag-suggestion');
+            const btn = e.target.closest('.tag-suggestion');
             if (btn) addTag(btn.dataset.name);
         });
     }
@@ -158,9 +158,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Delegated: tag remove clicks
     if (tagsContainer) {
         tagsContainer.addEventListener('click', function(e) {
-            var btn = e.target.closest('.model-tag-remove');
+            const btn = e.target.closest('.model-tag-remove');
             if (!btn) return;
-            var tagEl = btn.closest('.model-tag');
+            const tagEl = btn.closest('.model-tag');
             if (tagEl && tagEl.dataset.tagId) {
                 removeTag(modelId, tagEl.dataset.tagId, tagEl);
             }

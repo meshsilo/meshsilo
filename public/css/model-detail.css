@@ -127,11 +127,11 @@
     white-space: nowrap;
 }
 
-.model-link-type.type-documentation { background: rgba(59, 130, 246, 0.15); color: var(--color-primary); }
+.model-link-type.type-documentation { background: color-mix(in srgb, var(--color-primary) 15%, transparent); color: var(--color-primary); }
 .model-link-type.type-video { background: rgba(236, 72, 153, 0.15); color: var(--link-type-video, #ec4899); }
 .model-link-type.type-forum { background: rgba(99, 102, 241, 0.15); color: var(--link-type-forum, #6366f1); }
-.model-link-type.type-repository { background: rgba(34, 197, 94, 0.15); color: var(--color-success); }
-.model-link-type.type-source { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
+.model-link-type.type-repository { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+.model-link-type.type-source { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
 .model-link-type.type-store { background: rgba(139, 92, 246, 0.15); color: var(--link-type-store, #8b5cf6); }
 
 .model-link-title {
@@ -217,10 +217,6 @@
 }
 
 .model-description {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
     margin-bottom: 2rem;
     overflow-wrap: anywhere;
 }
@@ -264,7 +260,7 @@
     padding: 0.15em 0.4em;
     border-radius: var(--radius-sm);
     font-size: 0.875em;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-family: var(--font-mono);
 }
 
 .markdown-content pre {
@@ -317,10 +313,6 @@
 
 /* Compact Version History */
 .model-version-history {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
     margin-bottom: 2rem;
 }
 
@@ -391,6 +383,41 @@
 .btn-large {
     padding: 1rem 2rem;
     font-size: 1.125rem;
+}
+
+/* Model Attachments Section */
+.model-attachments {
+    margin-top: 1.5rem;
+}
+
+.model-attachments .attachments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.model-attachments .attachments-header h2 {
+    font-size: 1.125rem;
+    margin: 0;
+}
+
+.attachment-section {
+    margin-bottom: 1.5rem;
+}
+
+.attachment-section:last-child {
+    margin-bottom: 0;
+}
+
+.attachment-section h3 {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 /* Two-column layout: parts left, sidebar right */
@@ -495,10 +522,6 @@
 
 /* Model Parts */
 .model-parts {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
     overflow: visible;
 }
 
@@ -726,7 +749,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-left: 0.5rem;
-    background-color: rgba(100, 116, 139, 0.2);
+    background-color: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
     color: var(--color-text-muted);
     border: 1px solid var(--color-border);
 }
@@ -738,7 +761,7 @@
     border-radius: var(--radius);
     font-size: 0.625rem;
     font-weight: 700;
-    background-color: rgba(34, 197, 94, 0.2);
+    background-color: color-mix(in srgb, var(--color-success) 20%, transparent);
     color: var(--color-success);
     border: 1px solid var(--color-success);
 }
@@ -887,19 +910,11 @@
 
 .mass-actions select,
 .mass-action-select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
     background-color: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
     padding: 0.25rem 1.75rem 0.25rem 0.5rem;
     font-size: 0.75rem;
     font-weight: 500;
     color: var(--color-text-muted);
-    cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
     background-position: right 0.4rem center;
 }
 
@@ -1083,6 +1098,11 @@
 }
 
 @media (max-width: 1024px) {
+    .model-detail-thumbnail {
+        width: 300px;
+        height: 300px;
+    }
+
     .model-content-layout {
         grid-template-columns: 1fr;
     }
@@ -1094,6 +1114,31 @@
 
 /* Model page mobile improvements */
 @media (max-width: 768px) {
+    .model-detail-header {
+        flex-direction: column;
+    }
+
+    .model-detail-thumbnail {
+        width: 100%;
+        height: 200px;
+    }
+
+    .model-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .part-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .part-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
     .mass-actions {
         flex-direction: column;
         align-items: stretch;

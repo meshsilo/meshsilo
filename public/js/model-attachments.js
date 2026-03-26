@@ -5,15 +5,15 @@
  */
 
         // Attachments - Lightbox
-        var lightboxImages = [];
-        var lightboxIndex = 0;
-        var lbZoom = 1, lbPanX = 0, lbPanY = 0, lbDragging = false, lbDragStart = {};
+        let lightboxImages = [];
+        let lightboxIndex = 0;
+        let lbZoom = 1, lbPanX = 0, lbPanY = 0, lbDragging = false, lbDragStart = {};
 
         function collectLightboxImages() {
             lightboxImages = [];
-            var grid = document.getElementById('attachment-images');
+            const grid = document.getElementById('attachment-images');
             if (!grid) return;
-            var imgs = grid.querySelectorAll('.attachment-image img');
+            const imgs = grid.querySelectorAll('.attachment-image img');
             imgs.forEach(function(img) {
                 lightboxImages.push({ src: img.src, caption: img.alt });
             });
@@ -21,17 +21,17 @@
 
         function lightboxResetZoom() {
             lbZoom = 1; lbPanX = 0; lbPanY = 0;
-            var lightbox = document.getElementById('image-lightbox');
+            const lightbox = document.getElementById('image-lightbox');
             if (lightbox) {
-                var img = lightbox.querySelector('.lightbox-content img');
+                const img = lightbox.querySelector('.lightbox-content img');
                 if (img) { img.style.transform = ''; img.style.cursor = ''; }
             }
         }
 
         function lightboxApplyTransform() {
-            var lightbox = document.getElementById('image-lightbox');
+            const lightbox = document.getElementById('image-lightbox');
             if (!lightbox) return;
-            var img = lightbox.querySelector('.lightbox-content img');
+            const img = lightbox.querySelector('.lightbox-content img');
             if (!img) return;
             if (lbZoom <= 1) {
                 img.style.transform = '';
@@ -48,13 +48,13 @@
             if (lightboxIndex < 0) lightboxIndex = 0;
             lbZoom = 1; lbPanX = 0; lbPanY = 0;
 
-            var existing = document.getElementById('image-lightbox');
+            const existing = document.getElementById('image-lightbox');
             if (existing) existing.remove();
 
-            var hasMultiple = lightboxImages.length > 1;
-            var lightbox = document.createElement('div');
+            const hasMultiple = lightboxImages.length > 1;
+            const lightbox = document.createElement('div');
             lightbox.id = 'image-lightbox';
-            lightbox.className = 'lightbox-overlay';
+            lightbox.className = 'modal lightbox-overlay';
             lightbox.setAttribute('role', 'dialog');
             lightbox.setAttribute('aria-modal', 'true');
             lightbox.innerHTML =
@@ -70,12 +70,12 @@
             document.body.appendChild(lightbox);
             lightbox.style.display = 'flex';
 
-            var lbImg = lightbox.querySelector('.lightbox-content img');
+            const lbImg = lightbox.querySelector('.lightbox-content img');
 
             // Scroll to zoom
             lightbox.addEventListener('wheel', function(e) {
                 e.preventDefault();
-                var delta = e.deltaY > 0 ? -0.2 : 0.2;
+                const delta = e.deltaY > 0 ? -0.2 : 0.2;
                 lbZoom = Math.min(5, Math.max(1, lbZoom + delta));
                 if (lbZoom <= 1) { lbPanX = 0; lbPanY = 0; }
                 lightboxApplyTransform();
@@ -99,7 +99,7 @@
             document.addEventListener('mouseup', lightboxMouseUp);
 
             // Touch zoom/pan
-            var lastTouchDist = 0;
+            let lastTouchDist = 0;
             lightbox.addEventListener('touchstart', function(e) {
                 if (e.touches.length === 2) {
                     lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -111,7 +111,7 @@
             lightbox.addEventListener('touchmove', function(e) {
                 if (e.touches.length === 2) {
                     e.preventDefault();
-                    var dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     if (lastTouchDist > 0) {
                         lbZoom = Math.min(5, Math.max(1, lbZoom * (dist / lastTouchDist)));
                         if (lbZoom <= 1) { lbPanX = 0; lbPanY = 0; }
@@ -145,9 +145,9 @@
         function lightboxMouseUp() {
             if (lbDragging) {
                 lbDragging = false;
-                var lightbox = document.getElementById('image-lightbox');
+                const lightbox = document.getElementById('image-lightbox');
                 if (lightbox) {
-                    var img = lightbox.querySelector('.lightbox-content img');
+                    const img = lightbox.querySelector('.lightbox-content img');
                     if (img && lbZoom > 1) img.style.cursor = 'grab';
                 }
             }
@@ -157,17 +157,17 @@
             if (lightboxImages.length < 2) return;
             lightboxResetZoom();
             lightboxIndex = (lightboxIndex + dir + lightboxImages.length) % lightboxImages.length;
-            var img = lightboxImages[lightboxIndex];
-            var lightbox = document.getElementById('image-lightbox');
+            const img = lightboxImages[lightboxIndex];
+            const lightbox = document.getElementById('image-lightbox');
             if (!lightbox) return;
             lightbox.querySelector('.lightbox-content img').src = img.src;
             lightbox.querySelector('.lightbox-content img').alt = img.caption;
-            var caption = lightbox.querySelector('.lightbox-caption');
+            const caption = lightbox.querySelector('.lightbox-caption');
             caption.innerHTML = escapeHtml(img.caption) + ' <span class="lightbox-counter">' + (lightboxIndex + 1) + ' / ' + lightboxImages.length + '</span>';
         }
 
         function closeLightbox() {
-            var lightbox = document.getElementById('image-lightbox');
+            const lightbox = document.getElementById('image-lightbox');
             if (lightbox) lightbox.remove();
             document.removeEventListener('keydown', lightboxKeyHandler);
             document.removeEventListener('mousemove', lightboxMouseMove);
@@ -183,16 +183,16 @@
 
         // Document Preview
         function openDocumentPreview(src, type, name) {
-            var existing = document.getElementById('document-preview');
+            const existing = document.getElementById('document-preview');
             if (existing) existing.remove();
 
-            var overlay = document.createElement('div');
+            const overlay = document.createElement('div');
             overlay.id = 'document-preview';
-            overlay.className = 'lightbox-overlay';
+            overlay.className = 'modal lightbox-overlay';
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
 
-            var contentHtml = '';
+            let contentHtml = '';
             if (type === 'pdf') {
                 contentHtml = '<iframe src="' + escapeHtml(src) + '" class="doc-preview-iframe"></iframe>';
             } else {
@@ -220,7 +220,7 @@
                 fetch(src)
                     .then(function(r) { return r.text(); })
                     .then(function(text) {
-                        var container = overlay.querySelector('.doc-preview-text');
+                        const container = overlay.querySelector('.doc-preview-text');
                         if (!container) return;
                         if (type === 'md') {
                             // Render as preformatted text (markdown source)
@@ -230,7 +230,7 @@
                         }
                     })
                     .catch(function(err) {
-                        var container = overlay.querySelector('.doc-preview-text');
+                        const container = overlay.querySelector('.doc-preview-text');
                         if (container) container.innerHTML = '<p class="text-muted">Failed to load preview.</p>';
                     });
             }
@@ -244,7 +244,7 @@
         }
 
         function closeDocumentPreview() {
-            var preview = document.getElementById('document-preview');
+            const preview = document.getElementById('document-preview');
             if (preview) preview.remove();
             document.removeEventListener('keydown', docPreviewKeyHandler);
         }

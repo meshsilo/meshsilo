@@ -432,7 +432,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <!-- Conversion Statistics -->
             <?php if ($conversionStats['converted_count'] > 0 || $stlCount > 0): ?>
-            <section class="stats-section stats-section-full stats-section-conversion">
+            <section class="section-card section-card-full section-card-success">
                 <h2>File Conversion</h2>
                 <div class="conversion-stats-grid">
                     <div class="conversion-stat">
@@ -464,7 +464,7 @@ require_once __DIR__ . '/../../includes/header.php';
             <?php endif; ?>
 
             <!-- File Deduplication -->
-            <section class="stats-section stats-section-full stats-section-dedup">
+            <section class="section-card section-card-full section-card-dedup">
                 <h2>File Deduplication</h2>
                 <p class="section-description">
                     Deduplication saves disk space by storing only one copy of identical files.
@@ -536,9 +536,9 @@ require_once __DIR__ . '/../../includes/header.php';
             <!-- System Health -->
             <?php
             $hasIssues = !empty($missingFiles) || !empty($orphanedFiles) || $uncategorizedCount > 0;
-            $issueClass = $hasIssues ? 'stats-section-warning' : 'stats-section-success';
+            $issueClass = $hasIssues ? 'section-card-warning' : 'section-card-success';
             ?>
-            <section class="stats-section stats-section-full <?= $issueClass ?>">
+            <section class="section-card section-card-full <?= $issueClass ?>">
                 <h2>System Health</h2>
                 <div class="health-grid">
                     <div class="health-item">
@@ -577,7 +577,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <!-- Timeline Info -->
             <?php if ($oldestModel || $newestModel): ?>
-            <section class="stats-section stats-section-full">
+            <section class="section-card section-card-full">
                 <h2>Library Timeline</h2>
                 <div class="timeline-grid">
                     <?php if ($oldestModel): ?>
@@ -598,11 +598,11 @@ require_once __DIR__ . '/../../includes/header.php';
             </section>
             <?php endif; ?>
 
-            <div class="stats-sections">
-                <section class="stats-section">
+            <div class="section-cards">
+                <section class="section-card">
                     <h2>Parts by File Type</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Parts by file type">
+                        <table class="data-table" aria-label="Parts by file type">
                             <thead>
                                 <tr>
                                     <th scope="col">Type</th>
@@ -627,10 +627,10 @@ require_once __DIR__ . '/../../includes/header.php';
                     </div>
                 </section>
 
-                <section class="stats-section">
+                <section class="section-card">
                     <h2>Models by Category</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Models by category">
+                        <table class="data-table" aria-label="Models by category">
                             <thead>
                                 <tr>
                                     <th scope="col">Category</th>
@@ -654,10 +654,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 </section>
 
                 <?php if (!empty($collectionStats)): ?>
-                <section class="stats-section">
+                <section class="section-card">
                     <h2>Top Collections</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Top collections">
+                        <table class="data-table" aria-label="Top collections">
                             <thead>
                                 <tr>
                                     <th scope="col">Collection</th>
@@ -680,10 +680,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (!empty($largestModels)): ?>
-                <section class="stats-section">
+                <section class="section-card">
                     <h2>Largest Models</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Largest models">
+                        <table class="data-table" aria-label="Largest models">
                             <thead>
                                 <tr>
                                     <th scope="col">Name</th>
@@ -706,10 +706,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (!empty($creatorStats)): ?>
-                <section class="stats-section">
+                <section class="section-card">
                     <h2>Top Creators</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Top creators">
+                        <table class="data-table" aria-label="Top creators">
                             <thead>
                                 <tr>
                                     <th scope="col">Creator</th>
@@ -732,10 +732,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (!empty($recentUploads)): ?>
-                <section class="stats-section">
+                <section class="section-card">
                     <h2>Recent Upload Activity (7 days)</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Recent upload activity">
+                        <table class="data-table" aria-label="Recent upload activity">
                             <thead>
                                 <tr>
                                     <th scope="col">Date</th>
@@ -756,10 +756,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (!empty($monthlyUploads)): ?>
-                <section class="stats-section">
+                <section class="section-card">
                     <h2>Monthly Trends (12 months)</h2>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Monthly trends">
+                        <table class="data-table" aria-label="Monthly trends">
                             <thead>
                                 <tr>
                                     <th scope="col">Month</th>
@@ -782,7 +782,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (!empty($missingFiles)): ?>
-                <section class="stats-section stats-section-danger">
+                <section class="section-card section-card-danger">
                     <h2>Missing Files</h2>
                     <p class="section-description">These models exist in the database but their files are missing from disk.</p>
                     <?php if (isAdmin()): ?>
@@ -793,7 +793,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </form>
                     <?php endif; ?>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Missing files">
+                        <table class="data-table" aria-label="Missing files">
                             <thead>
                                 <tr>
                                     <th scope="col">ID</th>
@@ -827,7 +827,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (!empty($orphanedFiles)): ?>
-                <section class="stats-section stats-section-warning">
+                <section class="section-card section-card-warning">
                     <h2>Orphaned Files</h2>
                     <p class="section-description">These files exist on disk but have no database entry. They may be safe to delete.</p>
                     <?php if (isAdmin()): ?>
@@ -838,7 +838,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </form>
                     <?php endif; ?>
                     <div class="stats-table-container">
-                        <table class="stats-table" aria-label="Orphaned files">
+                        <table class="data-table" aria-label="Orphaned files">
                             <thead>
                                 <tr>
                                     <th scope="col">Filename</th>

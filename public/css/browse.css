@@ -47,7 +47,7 @@
 }
 
 .search-result-name mark {
-    background-color: rgba(37, 99, 235, 0.3);
+    background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
     color: inherit;
     padding: 0 2px;
     border-radius: 2px;
@@ -489,26 +489,10 @@ body.batch-mode .model-list-item:hover {
    ===================== */
 .sort-select {
     background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
     padding: 0.5rem 2rem 0.5rem 0.75rem;
     color: var(--color-text);
     font-size: 0.875rem;
-    cursor: pointer;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
     background-position: right 0.5rem center;
-}
-
-.sort-select:focus {
-    border-color: var(--color-primary);
-}
-.sort-select:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: -2px;
 }
 
 /* =====================
@@ -537,38 +521,6 @@ body.batch-mode .model-list-item:hover {
     color: var(--color-text-muted);
 }
 
-.active-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.active-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    background-color: var(--color-primary);
-    color: white;
-    border-radius: var(--radius);
-    font-size: 0.75rem;
-}
-
-.active-filter-remove {
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: 0;
-    font-size: 1rem;
-    line-height: 1;
-    opacity: 0.7;
-}
-
-.active-filter-remove:hover {
-    opacity: 1;
-}
-
 /* =====================
    Filter Bar & Chips
    ===================== */
@@ -584,26 +536,10 @@ body.batch-mode .model-list-item:hover {
 
 .filter-select {
     background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
     padding: 0.25rem 1.75rem 0.25rem 0.6rem;
     color: var(--color-text-muted);
     font-size: 0.8rem;
-    cursor: pointer;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
     background-position: right 0.4rem center;
-}
-
-.filter-select:focus {
-    border-color: var(--color-primary);
-}
-.filter-select:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: -2px;
 }
 
 .filter-chip {
@@ -730,5 +666,30 @@ body.batch-mode .model-list-item:hover {
     font-size: 0.75rem;
     color: var(--color-text-muted);
     margin-top: 0.25rem;
+}
+
+/* Browse responsive */
+@media (max-width: 768px) {
+    .browse-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .browse-filters {
+        flex-wrap: wrap;
+    }
+
+    .filter-bar {
+        flex-wrap: wrap;
+    }
+
+    .model-list-item {
+        flex-direction: column;
+    }
+
+    .model-list-thumbnail {
+        width: 100%;
+        height: 120px;
+    }
 }
 

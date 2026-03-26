@@ -161,10 +161,10 @@ require_once __DIR__ . '/../../includes/header.php';
 
                 <div class="admin-grid">
                 <!-- Group List -->
-                <section class="admin-section">
+                <section class="section-card">
                     <h2>Groups</h2>
-                    <div class="admin-table-container">
-                        <table class="admin-table" aria-label="Permission groups">
+                    <div class="data-table-container">
+                        <table class="data-table" aria-label="Permission groups">
                             <thead>
                                 <tr>
                                     <th scope="col">Name</th>
@@ -210,7 +210,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 </section>
 
                 <!-- Create/Edit Group Form -->
-                <section class="admin-section">
+                <section class="section-card">
                     <?php if ($editGroup): ?>
                     <h2>Edit Group: <?= htmlspecialchars($editGroup['name']) ?></h2>
                     <form method="POST" class="admin-form">

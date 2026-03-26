@@ -694,7 +694,7 @@ ModelViewer.prototype.animate = function() {
 
     // Throttle non-interactive thumbnails to 30fps (saves ~50% GPU)
     if (!this.controls) {
-        var now = performance.now();
+        const now = performance.now();
         if (now - this.lastFrameTime < 33) return; // ~30fps
         this.lastFrameTime = now;
     }

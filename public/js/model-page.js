@@ -97,13 +97,13 @@
 
         // Version upload management
         function showUploadVersionModal() {
-            var modal = document.getElementById('upload-version-modal');
+            const modal = document.getElementById('upload-version-modal');
             modal.style.display = 'flex';
             trapFocus(modal);
         }
 
         function closeUploadVersionModal() {
-            var modal = document.getElementById('upload-version-modal');
+            const modal = document.getElementById('upload-version-modal');
             releaseFocus(modal);
             modal.style.display = 'none';
             document.getElementById('upload-version-form').reset();
@@ -180,7 +180,7 @@
                 // Close all other dropdowns
                 document.querySelectorAll('.dropdown.open').forEach(d => {
                     d.classList.remove('open');
-                    var t = d.querySelector('.dropdown-toggle');
+                    const t = d.querySelector('.dropdown-toggle');
                     if (t) t.setAttribute('aria-expanded', 'false');
                 });
 
@@ -209,7 +209,7 @@
         function closeAllDropdowns() {
             document.querySelectorAll('.dropdown.open').forEach(d => {
                 d.classList.remove('open');
-                var t = d.querySelector('.dropdown-toggle');
+                const t = d.querySelector('.dropdown-toggle');
                 if (t) t.setAttribute('aria-expanded', 'false');
             });
         }
@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Document preview trigger
-        var previewTrigger = e.target.matches('.attachment-preview-trigger') ? e.target : e.target.closest('.attachment-preview-trigger');
+        const previewTrigger = e.target.matches('.attachment-preview-trigger') ? e.target : e.target.closest('.attachment-preview-trigger');
         if (previewTrigger) {
             e.preventDefault();
             openDocumentPreview(previewTrigger.dataset.previewSrc, previewTrigger.dataset.previewType, previewTrigger.dataset.previewName);

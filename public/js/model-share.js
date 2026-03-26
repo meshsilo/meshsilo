@@ -4,23 +4,16 @@
  * Loaded on the model detail page before model-page.js.
  */
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
         // Share Modal Functions
         function openShareModal() {
-            var modal = document.getElementById('share-modal');
+            const modal = document.getElementById('share-modal');
             modal.style.display = 'flex';
             trapFocus(modal);
             loadShareLinks();
         }
 
         function closeShareModal() {
-            var modal = document.getElementById('share-modal');
+            const modal = document.getElementById('share-modal');
             releaseFocus(modal);
             modal.style.display = 'none';
         }

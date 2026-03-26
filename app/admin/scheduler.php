@@ -258,7 +258,7 @@ include __DIR__ . '/../../includes/header.php';
                 <h2>Registered Tasks</h2>
             </div>
             <div class="card-body">
-                <table class="table" aria-label="Registered tasks">
+                <table class="data-table" aria-label="Registered tasks">
                     <thead>
                         <tr>
                             <th scope="col">Task</th>
@@ -341,7 +341,7 @@ include __DIR__ . '/../../includes/header.php';
                 <?php if (empty($history)): ?>
                     <p class="text-muted">No task execution history yet.</p>
                 <?php else: ?>
-                    <table class="table" aria-label="Task execution history">
+                    <table class="data-table" aria-label="Task execution history">
                         <thead>
                             <tr>
                                 <th scope="col">Task</th>

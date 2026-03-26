@@ -135,6 +135,12 @@ if (!empty($allowedOrigins)) {
 
 // Only send body for GET requests (not HEAD)
 if ($_SERVER['REQUEST_METHOD'] !== 'HEAD') {
-    readfile($filePath);
+    // Use X-Accel-Redirect in Docker (nginx serves the file directly, bypassing PHP)
+    if (getenv('MESHSILO_DOCKER') === 'true' && defined('UPLOAD_PATH')) {
+        $relativePath = str_replace(realpath(UPLOAD_PATH), '', realpath($filePath));
+        header('X-Accel-Redirect: /assets' . $relativePath);
+    } else {
+        readfile($filePath);
+    }
 }
 exit;

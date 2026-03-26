@@ -63,6 +63,16 @@ $step = $_SESSION['install']['step'];
 $error = '';
 $success = '';
 
+// CSRF protection for install wizard
+if (empty($_SESSION['install_csrf'])) {
+    $_SESSION['install_csrf'] = bin2hex(random_bytes(32));
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!hash_equals($_SESSION['install_csrf'] ?? '', $_POST['_csrf'] ?? '')) {
+        $error = 'Invalid request. Please refresh the page and try again.';
+    }
+}
+
 // Auto-configure database from Docker env vars when arriving at step 2
 // This skips the database form entirely if env vars provide a working connection
 if ($step === 2 && !isset($_SESSION['install']['db_auto_configured'])) {
@@ -92,8 +102,10 @@ if ($step === 2 && !isset($_SESSION['install']['db_auto_configured'])) {
 }
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
     $action = $_POST['action'] ?? '';
+    // Regenerate CSRF token after each successful POST
+    $_SESSION['install_csrf'] = bin2hex(random_bytes(32));
 
     switch ($action) {
         case 'check_requirements':
@@ -1050,6 +1062,7 @@ foreach ($requirements as $req) {
         </ul>
 
         <form method="post">
+                        <input type="hidden" name="_csrf" value="<?= $_SESSION['install_csrf'] ?>">
             <input type="hidden" name="action" value="check_requirements">
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary btn-full" <?= $criticalFailed ? 'disabled' : '' ?>>
@@ -1062,6 +1075,7 @@ foreach ($requirements as $req) {
         <!-- Step 2: Database Configuration -->
         <h2>Database Configuration</h2>
         <form method="post">
+                        <input type="hidden" name="_csrf" value="<?= $_SESSION['install_csrf'] ?>">
             <input type="hidden" name="action" value="configure_database">
 
             <div class="radio-group">
@@ -1123,6 +1137,7 @@ foreach ($requirements as $req) {
         <!-- Step 3: Admin Account -->
         <h2>Create Admin Account</h2>
         <form method="post">
+                        <input type="hidden" name="_csrf" value="<?= $_SESSION['install_csrf'] ?>">
             <input type="hidden" name="action" value="configure_admin">
 
             <div class="form-group">
@@ -1158,6 +1173,7 @@ foreach ($requirements as $req) {
         <!-- Step 4: Site Configuration -->
         <h2>Site Configuration</h2>
         <form method="post">
+                        <input type="hidden" name="_csrf" value="<?= $_SESSION['install_csrf'] ?>">
             <input type="hidden" name="action" value="configure_site">
 
             <div class="form-group">
@@ -1209,6 +1225,7 @@ foreach ($requirements as $req) {
         </ul>
 
         <form method="post">
+                        <input type="hidden" name="_csrf" value="<?= $_SESSION['install_csrf'] ?>">
             <input type="hidden" name="action" value="install">
             <div class="btn-group">
                 <button type="button" class="btn btn-secondary" onclick="goBack(this)">Back</button>

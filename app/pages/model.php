@@ -803,7 +803,7 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Part Preview Modal -->
-        <div id="part-preview-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="preview-part-name" style="display: none;">
+        <div id="part-preview-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="preview-part-name" style="display: none;">
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3 id="preview-part-name">Part Preview</h3>
@@ -817,7 +817,7 @@ require_once 'includes/header.php';
 
         <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
         <!-- Share Modal -->
-        <div id="share-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" style="display: none;">
+        <div id="share-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" style="display: none;">
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3 id="share-modal-title">Share "<?= htmlspecialchars($model['name']) ?>"</h3>
@@ -869,7 +869,7 @@ require_once 'includes/header.php';
 
         <?php if (canEdit() && !empty($parts)): ?>
         <!-- Create Folder Modal -->
-        <div id="create-folder-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-folder-title" style="display: none;">
+        <div id="create-folder-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-folder-title" style="display: none;">
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3 id="create-folder-title">Create Folder</h3>
@@ -888,7 +888,7 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Move to Folder Modal -->
-        <div id="move-folder-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="move-folder-title" style="display: none;">
+        <div id="move-folder-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="move-folder-title" style="display: none;">
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3 id="move-folder-title">Move to Folder</h3>
@@ -918,7 +918,7 @@ require_once 'includes/header.php';
 
         <?php if ($canManageVersions): ?>
         <!-- Upload New Version Modal -->
-        <div id="upload-version-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="upload-version-title" style="display: none;">
+        <div id="upload-version-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="upload-version-title" style="display: none;">
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3 id="upload-version-title">Upload New Version</h3>
@@ -941,7 +941,7 @@ require_once 'includes/header.php';
         </div>
 
         <!-- Batch Rename Modal -->
-        <div id="batch-rename-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="batch-rename-title" style="display: none;">
+        <div id="batch-rename-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="batch-rename-title" style="display: none;">
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3 id="batch-rename-title">Batch Rename Parts</h3>

@@ -102,11 +102,10 @@ class TwoFactor
      */
     public static function getQRCodeUrl(string $secret, string $account, ?string $issuer = null): string
     {
-        $issuer = $issuer ?? (defined('SITE_NAME') ? SITE_NAME : 'Silo');
         $otpUrl = self::getOTPAuthUrl($secret, $account, $issuer);
 
-        // Use Google Charts API for QR code generation
-        return 'https://chart.googleapis.com/chart?chs=200x200&chld=M|0&cht=qr&chl=' . urlencode($otpUrl);
+        require_once __DIR__ . '/QRCode.php';
+        return QRCode::toDataURI($otpUrl);
     }
 
     /**
@@ -450,9 +449,8 @@ class TwoFactor
     {
         $url = self::getOTPAuthUrl($secret, $account, $issuer);
 
-        // Simple QR code generation - for production, use a proper library
-        // This is a placeholder that returns a link instead
-        return '<a href="' . htmlspecialchars(self::getQRCodeUrl($secret, $account, $issuer)) . '" target="_blank" rel="noopener noreferrer">View QR Code</a>';
+        require_once __DIR__ . '/QRCode.php';
+        return QRCode::toSVG($url);
     }
 }
 

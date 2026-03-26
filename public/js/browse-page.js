@@ -129,192 +129,91 @@ function batchDownload() {
 
 async function batchApplyTag(tagId) {
     const select = document.getElementById('batch-tag-select');
-    if (!tagId) {
-        select.value = '';
-        return;
-    }
-
-    const ids = getSelectedModelIds();
-    if (ids.length === 0) {
-        showToast('Please select models first', 'error');
-        select.value = '';
-        return;
-    }
+    if (!tagId) { select.value = ''; return; }
 
     let tagName = '';
     if (tagId === '__new__') {
         tagName = await showPrompt('Enter new tag name:');
-        if (!tagName) {
-            select.value = '';
-            return;
-        }
+        if (!tagName) { select.value = ''; return; }
         tagId = '';
     }
 
-    try {
-        const formData = new FormData();
-        formData.append('action', 'add_tag');
-        if (tagId) formData.append('tag_id', tagId);
-        if (tagName) formData.append('tag_name', tagName);
-        ids.forEach(id => formData.append('model_ids[]', id));
+    const fields = {};
+    if (tagId) fields.tag_id = tagId;
+    if (tagName) fields.tag_name = tagName;
 
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Tagged ${result.updated} model(s)`, 'success');
-            location.reload();
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error('Batch tag error:', err);
-        showToast('Failed to apply tag', 'error');
-    }
-
+    await batchApply('add_tag', fields, {
+        getIds: getSelectedModelIds,
+        successMessage: r => `Tagged ${r.updated} model(s)`,
+        errorMessage: 'Failed to apply tag',
+        reload: true
+    });
     select.value = '';
 }
 
 async function batchApplyCategory(categoryId) {
     const select = document.getElementById('batch-category-select');
-    if (!categoryId) {
-        select.value = '';
-        return;
-    }
+    if (!categoryId) { select.value = ''; return; }
 
-    const ids = getSelectedModelIds();
-    if (ids.length === 0) {
-        showToast('Please select models first', 'error');
-        select.value = '';
-        return;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('action', 'add_category');
-        formData.append('category_id', categoryId);
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Added category to ${result.updated} model(s)`, 'success');
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error('Batch category error:', err);
-        showToast('Failed to apply category', 'error');
-    }
-
+    await batchApply('add_category', { category_id: categoryId }, {
+        getIds: getSelectedModelIds,
+        successMessage: r => `Added category to ${r.updated} model(s)`,
+        errorMessage: 'Failed to apply category'
+    });
     select.value = '';
 }
 
 async function batchArchive() {
     const ids = getSelectedModelIds();
-    if (ids.length === 0) {
-        showToast('Please select models first', 'error');
-        return;
-    }
+    if (ids.length === 0) { showToast('Please select models first', 'error'); return; }
+    if (!await showConfirm(`Archive ${ids.length} selected model(s)?`)) return;
 
-    if (!await showConfirm(`Archive ${ids.length} selected model(s)?`)) {
-        return;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('action', 'archive');
-        formData.append('archive', '1');
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Archived ${result.updated} model(s)`, 'success');
-            location.reload();
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error('Batch archive error:', err);
-        showToast('Failed to archive', 'error');
-    }
+    await batchApply('archive', { archive: '1' }, {
+        getIds: getSelectedModelIds,
+        successMessage: r => `Archived ${r.updated} model(s)`,
+        errorMessage: 'Failed to archive',
+        reload: true
+    });
 }
 
 async function batchSetCreator() {
     const ids = getSelectedModelIds();
-    if (ids.length === 0) {
-        showToast('Please select models first', 'error');
-        return;
-    }
-
+    if (ids.length === 0) { showToast('Please select models first', 'error'); return; }
     const creator = await showPrompt(`Set creator for ${ids.length} selected model(s) (leave empty to clear):`);
-    if (creator === null) return; // Cancelled
+    if (creator === null) return;
 
-    try {
-        const formData = new FormData();
-        formData.append('action', 'set_creator');
-        formData.append('creator', creator);
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Updated creator on ${result.updated} model(s)`, 'success');
-            location.reload();
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error('Batch set creator error:', err);
-        showToast('Failed to set creator', 'error');
-    }
+    await batchApply('set_creator', { creator }, {
+        getIds: getSelectedModelIds,
+        successMessage: r => `Updated creator on ${r.updated} model(s)`,
+        errorMessage: 'Failed to set creator',
+        reload: true
+    });
 }
 
 async function batchSetCollection() {
     const ids = getSelectedModelIds();
-    if (ids.length === 0) {
-        showToast('Please select models first', 'error');
-        return;
-    }
-
+    if (ids.length === 0) { showToast('Please select models first', 'error'); return; }
     const collection = await showPrompt(`Set collection for ${ids.length} selected model(s) (leave empty to clear):`);
-    if (collection === null) return; // Cancelled
+    if (collection === null) return;
 
-    try {
-        const formData = new FormData();
-        formData.append('action', 'set_collection');
-        formData.append('collection', collection);
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Updated collection on ${result.updated} model(s)`, 'success');
-            location.reload();
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error('Batch set collection error:', err);
-        showToast('Failed to set collection', 'error');
-    }
+    await batchApply('set_collection', { collection }, {
+        getIds: getSelectedModelIds,
+        successMessage: r => `Updated collection on ${r.updated} model(s)`,
+        errorMessage: 'Failed to set collection',
+        reload: true
+    });
 }
 
 async function saveCurrentSearch() {
-    var name = await showPrompt('Name for this saved search:');
+    const name = await showPrompt('Name for this saved search:');
     if (!name || !name.trim()) return;
 
-    var formData = new FormData();
+    const formData = new FormData();
     formData.append('action', 'save');
     formData.append('name', name.trim());
     formData.append('csrf_token', window.BrowsePageConfig.csrfToken);
     // Pass current filters
-    var params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.search);
     params.forEach(function(value, key) {
         if (key !== 'page') {
             formData.append(key, value);
@@ -322,8 +221,8 @@ async function saveCurrentSearch() {
     });
 
     try {
-        var resp = await fetch('/actions/saved-searches', { method: 'POST', body: formData });
-        var data = await resp.json();
+        const resp = await fetch('/actions/saved-searches', { method: 'POST', body: formData });
+        const data = await resp.json();
         if (data.success) {
             location.reload();
         } else {

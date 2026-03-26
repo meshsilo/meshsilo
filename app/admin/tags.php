@@ -100,7 +100,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php if (empty($tags)): ?>
                             <p class="text-muted">No tags yet.</p>
                         <?php else: ?>
-                            <table class="admin-table" aria-label="Tags">
+                            <table class="data-table" aria-label="Tags">
                                 <thead>
                                     <tr>
                                         <th scope="col">Color</th>

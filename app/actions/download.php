@@ -129,5 +129,11 @@ header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Content-Length: ' . filesize($filePath));
 header('Cache-Control: no-cache, must-revalidate');
 
-readfile($filePath);
+// Use X-Accel-Redirect in Docker (nginx serves the file directly)
+if (getenv('MESHSILO_DOCKER') === 'true' && defined('UPLOAD_PATH')) {
+    $relativePath = str_replace(realpath(UPLOAD_PATH), '', realpath($filePath));
+    header('X-Accel-Redirect: /assets' . $relativePath);
+} else {
+    readfile($filePath);
+}
 exit;

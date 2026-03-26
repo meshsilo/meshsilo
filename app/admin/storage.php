@@ -205,7 +205,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
                     <details class="settings-section">
                         <summary><h2>File Types</h2></summary>
-                        <table class="admin-table" aria-label="File types">
+                        <table class="data-table" aria-label="File types">
                             <thead>
                                 <tr>
                                     <th scope="col">Type</th>
@@ -286,7 +286,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php if (empty($usageByCategory)): ?>
                         <p class="text-muted">No categories found</p>
                         <?php else: ?>
-                        <table class="admin-table" aria-label="Storage by category">
+                        <table class="data-table" aria-label="Storage by category">
                             <thead>
                                 <tr>
                                     <th scope="col">Category</th>
@@ -322,7 +322,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php if (empty($usageByUser)): ?>
                         <p class="text-muted">No users found</p>
                         <?php else: ?>
-                        <table class="admin-table" aria-label="Storage by user">
+                        <table class="data-table" aria-label="Storage by user">
                             <thead>
                                 <tr>
                                     <th scope="col">User</th>

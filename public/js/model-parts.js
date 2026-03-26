@@ -57,10 +57,10 @@
         // Close any open modal on Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                var modals = document.querySelectorAll('.modal-overlay');
+                const modals = document.querySelectorAll('.modal-overlay');
                 modals.forEach(function(modal) {
                     if (modal.style.display !== 'none' && modal.id !== 'confirm-modal' && modal.id !== 'prompt-modal') {
-                        var closeBtn = modal.querySelector('.modal-close');
+                        const closeBtn = modal.querySelector('.modal-close');
                         if (closeBtn) closeBtn.click();
                     }
                 });
@@ -380,7 +380,7 @@
 
         // Folder management
         function showMoreParts(btn) {
-            var list = btn.closest('.parts-list');
+            const list = btn.closest('.parts-list');
             list.querySelectorAll('.part-hidden').forEach(function(el) {
                 el.classList.remove('part-hidden');
             });
@@ -389,7 +389,7 @@
 
         function toggleFolder(groupEl) {
             groupEl.classList.toggle('collapsed');
-            var header = groupEl.querySelector('.parts-group-header');
+            const header = groupEl.querySelector('.parts-group-header');
             if (header) header.setAttribute('aria-expanded', !groupEl.classList.contains('collapsed'));
             const folder = groupEl.dataset.folder;
             const key = `model_${ModelPageConfig.modelId}_folder_` + folder;
@@ -406,7 +406,7 @@
                 } else {
                     group.classList.add('collapsed');
                 }
-                var header = group.querySelector('.parts-group-header');
+                const header = group.querySelector('.parts-group-header');
                 if (header) header.setAttribute('aria-expanded', allCollapsed);
                 const folder = group.dataset.folder;
                 const key = `model_${ModelPageConfig.modelId}_folder_` + folder;
@@ -429,20 +429,20 @@
             const key = `model_${ModelPageConfig.modelId}_folder_` + folder;
             if (sessionStorage.getItem(key) === '1') {
                 group.classList.add('collapsed');
-                var header = group.querySelector('.parts-group-header');
+                const header = group.querySelector('.parts-group-header');
                 if (header) header.setAttribute('aria-expanded', 'false');
             }
         });
         updateCollapseAllToggle();
 
         function showCreateFolderModal() {
-            var modal = document.getElementById('create-folder-modal');
+            const modal = document.getElementById('create-folder-modal');
             modal.style.display = 'flex';
             trapFocus(modal);
         }
 
         function closeCreateFolderModal() {
-            var modal = document.getElementById('create-folder-modal');
+            const modal = document.getElementById('create-folder-modal');
             releaseFocus(modal);
             modal.style.display = 'none';
             document.getElementById('new-folder-name').value = '';
@@ -527,7 +527,7 @@
         function showMoveFolderModal(partIds) {
             movingPartIds = partIds;
             document.getElementById('move-part-ids').value = partIds.join(',');
-            var modal = document.getElementById('move-folder-modal');
+            const modal = document.getElementById('move-folder-modal');
             modal.style.display = 'flex';
             trapFocus(modal);
             // Uncheck all radios
@@ -535,7 +535,7 @@
         }
 
         function closeMoveFolderModal() {
-            var modal = document.getElementById('move-folder-modal');
+            const modal = document.getElementById('move-folder-modal');
             releaseFocus(modal);
             modal.style.display = 'none';
             movingPartIds = [];
@@ -626,14 +626,14 @@
             document.getElementById('rename-pattern').value = '{name}';
             document.getElementById('rename-prefix').value = '';
             document.getElementById('rename-suffix').value = '';
-            var modal = document.getElementById('batch-rename-modal');
+            const modal = document.getElementById('batch-rename-modal');
             modal.style.display = 'flex';
             trapFocus(modal);
             updateRenamePreview();
         }
 
         function closeBatchRenameModal() {
-            var modal = document.getElementById('batch-rename-modal');
+            const modal = document.getElementById('batch-rename-modal');
             releaseFocus(modal);
             modal.style.display = 'none';
             batchRenamePartIds = [];

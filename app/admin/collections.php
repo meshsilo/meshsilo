@@ -108,7 +108,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php if (empty($collections)): ?>
                             <p class="text-muted">No collections yet.</p>
                         <?php else: ?>
-                            <table class="admin-table" aria-label="Collections">
+                            <table class="data-table" aria-label="Collections">
                                 <thead>
                                     <tr>
                                         <th scope="col">Name</th>

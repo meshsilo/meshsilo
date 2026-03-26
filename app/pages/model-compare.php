@@ -234,7 +234,7 @@ require_once 'includes/header.php';
     <!-- Geometry Stats -->
     <div class="geometry-stats" id="geometry-stats" style="display: none;">
         <h3>Geometry Comparison</h3>
-        <table class="stats-table" aria-label="Geometry comparison">
+        <table class="data-table" aria-label="Geometry comparison">
             <thead>
                 <tr>
                     <th scope="col"></th>

@@ -37,7 +37,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Regenerate session ID to prevent session fixation attacks
             session_regenerate_id(true);
 
-            // Login successful
+            // Check if 2FA is enabled for this user
+            if (class_exists('TwoFactor') && TwoFactor::isEnabled($user['id'])) {
+                // Store pending 2FA state — do NOT grant full session yet
+                $_SESSION['2fa_pending_user_id'] = $user['id'];
+                $_SESSION['2fa_pending_user'] = [
+                    'id' => $user['id'],
+                    'username' => $user['username'],
+                    'email' => $user['email'],
+                    'is_admin' => $user['is_admin']
+                ];
+                // Preserve redirect target for after 2FA
+                if (!empty($_SESSION['redirect_after_login'])) {
+                    $_SESSION['2fa_redirect'] = $_SESSION['redirect_after_login'];
+                    unset($_SESSION['redirect_after_login']);
+                }
+                RateLimiter::reset($ip, 'login');
+                header('Location: ' . route('2fa.verify'));
+                exit;
+            }
+
+            // Login successful (no 2FA)
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user'] = [
                 'id' => $user['id'],

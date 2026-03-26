@@ -64,6 +64,11 @@ $router->post('/login', ['file' => 'app/pages/login.php'], 'login.post')
     ->middleware('ratelimit:5,60,auth'); // 5 attempts per minute
 $router->get('/logout', ['file' => 'app/pages/logout.php'], 'logout');
 
+// Two-Factor Authentication
+$router->get('/2fa-verify', ['file' => 'app/pages/2fa-verify.php'], '2fa.verify');
+$router->post('/2fa-verify', ['file' => 'app/pages/2fa-verify.php'], '2fa.verify.post')
+    ->middleware('ratelimit:5,60,2fa_verify');
+
 // Password Reset
 $router->get('/forgot-password', ['file' => 'app/pages/forgot-password.php'], 'password.forgot');
 $router->post('/forgot-password', ['file' => 'app/pages/forgot-password.php'], 'password.forgot.post')

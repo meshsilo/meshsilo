@@ -54,7 +54,7 @@
 
 .upload-dropzone.dragover {
     border-color: var(--color-primary);
-    background-color: rgba(37, 99, 235, 0.1);
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .required {
@@ -92,14 +92,14 @@
 .upload-progress .progress-bar {
     height: 12px;
     background: var(--color-bg);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
 }
 
 .upload-progress .progress-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--color-primary), var(--color-success));
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     transition: width 0.2s ease;
 }
 

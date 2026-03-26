@@ -50,157 +50,57 @@ function getSelectedIds() {
 async function bulkAddTag(tagId) {
     const select = document.getElementById('bulk-tag');
     if (!tagId) return;
-
-    const ids = getSelectedIds();
-    if (ids.length === 0) {
-        showToast('Select models first', 'error');
-        select.value = '';
-        return;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('action', 'add_tag');
-        formData.append('tag_id', tagId);
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Tagged ${result.updated} model(s)`, 'success');
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('Failed', 'error');
-    }
+    await batchApply('add_tag', { tag_id: tagId }, {
+        getIds: getSelectedIds,
+        successMessage: r => `Tagged ${r.updated} model(s)`,
+        emptyMessage: 'Select models first'
+    });
     select.value = '';
 }
 
 async function bulkAddCategory(categoryId) {
     const select = document.getElementById('bulk-category');
     if (!categoryId) return;
-
-    const ids = getSelectedIds();
-    if (ids.length === 0) {
-        showToast('Select models first', 'error');
-        select.value = '';
-        return;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('action', 'add_category');
-        formData.append('category_id', categoryId);
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Added category to ${result.updated} model(s)`, 'success');
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('Failed', 'error');
-    }
+    await batchApply('add_category', { category_id: categoryId }, {
+        getIds: getSelectedIds,
+        successMessage: r => `Added category to ${r.updated} model(s)`,
+        emptyMessage: 'Select models first'
+    });
     select.value = '';
 }
 
 async function bulkSetLicense(license) {
     const select = document.getElementById('bulk-license');
     if (license === '') return;
-
-    const ids = getSelectedIds();
-    if (ids.length === 0) {
-        showToast('Select models first', 'error');
-        select.value = '';
-        return;
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('action', 'set_license');
-        formData.append('license', license);
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Set license on ${result.updated} model(s)`, 'success');
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('Failed', 'error');
-    }
+    await batchApply('set_license', { license }, {
+        getIds: getSelectedIds,
+        successMessage: r => `Set license on ${r.updated} model(s)`,
+        emptyMessage: 'Select models first'
+    });
     select.value = '';
 }
 
 async function bulkArchive(archive) {
     const ids = getSelectedIds();
-    if (ids.length === 0) {
-        showToast('Select models first', 'error');
-        return;
-    }
-
+    if (ids.length === 0) { showToast('Select models first', 'error'); return; }
     if (!await showConfirm(`${archive ? 'Archive' : 'Unarchive'} ${ids.length} model(s)?`)) return;
-
-    try {
-        const formData = new FormData();
-        formData.append('action', 'archive');
-        formData.append('archive', archive ? '1' : '0');
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`${archive ? 'Archived' : 'Unarchived'} ${result.updated} model(s)`, 'success');
-            location.reload();
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('Failed', 'error');
-    }
+    await batchApply('archive', { archive: archive ? '1' : '0' }, {
+        getIds: getSelectedIds,
+        successMessage: r => `${archive ? 'Archived' : 'Unarchived'} ${r.updated} model(s)`,
+        reload: true
+    });
 }
 
 async function bulkDelete() {
     const ids = getSelectedIds();
-    if (ids.length === 0) {
-        showToast('Select models first', 'error');
-        return;
-    }
-
+    if (ids.length === 0) { showToast('Select models first', 'error'); return; }
     if (!await showConfirm(`DELETE ${ids.length} model(s)? This cannot be undone!`)) return;
     if (!await showConfirm(`Are you sure? All files and data will be permanently deleted.`)) return;
-
-    try {
-        const formData = new FormData();
-        formData.append('action', 'delete');
-        ids.forEach(id => formData.append('model_ids[]', id));
-
-        const response = await fetch('/actions/batch-apply', { method: 'POST', body: formData });
-        const result = await response.json();
-
-        if (result.success) {
-            showToast(`Deleted ${result.deleted} model(s)`, 'success');
-            location.reload();
-        } else {
-            showToast(result.error || 'Unknown error', 'error');
-        }
-    } catch (err) {
-        console.error(err);
-        showToast('Failed', 'error');
-    }
+    await batchApply('delete', {}, {
+        getIds: getSelectedIds,
+        successMessage: r => `Deleted ${r.deleted} model(s)`,
+        reload: true
+    });
 }
 
 async function deleteModel(id, name) {
@@ -228,13 +128,6 @@ async function deleteModel(id, name) {
 // ========================
 // Admin Audit Log Page
 // ========================
-
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
 
 function showDetails(id) {
     const logsData = window.AuditLogConfig?.logsData || {};
@@ -331,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Per-row delete buttons use data-action="delete-model"
-    const modelsTable = document.querySelector('.admin-table');
+    const modelsTable = document.querySelector('.data-table');
     if (modelsTable) {
         modelsTable.addEventListener('click', function(event) {
             const btn = event.target.closest('[data-action="delete-model"]');
@@ -385,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Admin Activity page ---
     // Auto-submit filter form on select change
-    var activityFilterForm = document.querySelector('.browse-filters form[role="search"]');
+    const activityFilterForm = document.querySelector('.browse-filters form[role="search"]');
     if (activityFilterForm) {
         activityFilterForm.addEventListener('change', function(e) {
             if (e.target.matches('select')) {
@@ -395,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Admin API Keys page ---
-    var newKeyInput = document.getElementById('newKeyValue');
+    const newKeyInput = document.getElementById('newKeyValue');
     if (newKeyInput) {
         newKeyInput.addEventListener('click', function() { this.select(); });
     }
@@ -424,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- Admin Storage page ---
-    var storageTypeSelect = document.getElementById('storage_type');
+    const storageTypeSelect = document.getElementById('storage_type');
     if (storageTypeSelect) {
         storageTypeSelect.addEventListener('change', function() {
             if (typeof toggleS3Settings === 'function') toggleS3Settings();
@@ -432,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Admin Health page ---
-    var refreshBtn = document.querySelector('[data-action="refresh-metrics"]');
+    const refreshBtn = document.querySelector('[data-action="refresh-metrics"]');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
             if (typeof refreshMetrics === 'function') refreshMetrics();
@@ -440,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Admin Features page ---
-    var resetDefaultsBtn = document.querySelector('[data-action="reset-defaults"]');
+    const resetDefaultsBtn = document.querySelector('[data-action="reset-defaults"]');
     if (resetDefaultsBtn) {
         resetDefaultsBtn.addEventListener('click', function() {
             if (typeof resetToDefaults === 'function') resetToDefaults();

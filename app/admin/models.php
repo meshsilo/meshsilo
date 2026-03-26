@@ -173,8 +173,8 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <!-- Models Table -->
-            <div class="admin-table-container">
-                <table class="admin-table" aria-label="Models">
+            <div class="data-table-container">
+                <table class="data-table" aria-label="Models">
                     <thead>
                         <tr>
                             <th scope="col" style="width: 40px;">

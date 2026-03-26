@@ -5,14 +5,7 @@
     gap: 2rem;
 }
 
-.settings-section {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-}
-
-/* Support for native <details> element */
+/* Settings section — details/summary overrides (base in .section-card) */
 details.settings-section {
     padding: 0;
 }
@@ -180,6 +173,20 @@ section.settings-section h2 {
     background-color: var(--color-border);
 }
 
+/* 2FA Verification Page */
+.verify-container { max-width: 400px; margin: 4rem auto; padding: 2rem; }
+.verify-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 2rem; }
+.verify-card h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.verify-card p { color: var(--color-text-muted); margin-bottom: 1.5rem; }
+.code-input { width: 100%; padding: 0.75rem 1rem; font-size: 1.5rem; text-align: center; letter-spacing: 0.5em; font-family: monospace; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); color: var(--color-text); }
+.code-input:focus { outline: none; border-color: var(--color-primary); }
+.verify-btn { width: 100%; padding: 0.75rem; margin-top: 1rem; background: var(--color-primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; }
+.verify-btn:hover { opacity: 0.9; }
+.error-msg { background: var(--color-danger); color: white; padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem; }
+.cancel-link { display: block; text-align: center; margin-top: 1rem; color: var(--color-text-muted); text-decoration: none; }
+.cancel-link:hover { color: var(--color-text); }
+.backup-hint { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 1rem; text-align: center; }
+
 /* User Name in Header */
 .user-name {
     color: var(--color-text-muted);
@@ -261,7 +268,6 @@ section.settings-section h2 {
 }
 
 .collection-thumb {
-    width: 100%;
     height: 120px;
     object-fit: cover;
     border-radius: var(--radius) var(--radius) 0 0;
@@ -465,10 +471,6 @@ body.mobile-menu-open::before {
 }
 
 .delete-model-info {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
     margin-bottom: 1.5rem;
 }
 
@@ -630,10 +632,6 @@ body.mobile-menu-open::before {
     font-size: 0.875rem;
 }
 
-.download-count-icon {
-    font-size: 1rem;
-}
-
 /* =====================
    License Badge
    ===================== */
@@ -657,7 +655,7 @@ body.mobile-menu-open::before {
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.5rem;
-    background-color: rgba(245, 158, 11, 0.2);
+    background-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
     border: 1px solid var(--color-warning);
     color: var(--color-warning);
     border-radius: var(--radius);

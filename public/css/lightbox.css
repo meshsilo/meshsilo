@@ -256,7 +256,7 @@
     margin: 0;
     white-space: pre-wrap;
     word-wrap: break-word;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-family: var(--font-mono);
     font-size: 0.85rem;
     line-height: 1.6;
     color: var(--color-text);

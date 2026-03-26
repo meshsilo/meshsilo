@@ -110,10 +110,12 @@ class RateLimiter
         // Create rate_limits table if needed
         self::ensureTable();
 
-        // Clean old entries
-        $stmt = self::$db->prepare('DELETE FROM rate_limit_hits WHERE `timestamp` < :cutoff');
-        $stmt->bindValue(':cutoff', $dayWindow, PDO::PARAM_INT);
-        $stmt->execute();
+        // Probabilistic cleanup — run on ~1% of requests instead of every request
+        if (random_int(1, 100) === 1) {
+            $stmt = self::$db->prepare('DELETE FROM rate_limit_hits WHERE `timestamp` < :cutoff');
+            $stmt->bindValue(':cutoff', $dayWindow, PDO::PARAM_INT);
+            $stmt->execute();
+        }
 
         // Count requests in windows
         $key = hash('sha256', $identifier . ':' . $endpoint);

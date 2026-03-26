@@ -116,7 +116,7 @@ function enforceAuthentication(): void
     }
 
     // Routes that don't require authentication
-    $publicRoutes = ['/login', '/logout', '/install', '/forgot-password', '/reset-password'];
+    $publicRoutes = ['/login', '/logout', '/install', '/forgot-password', '/reset-password', '/2fa-verify'];
     if (class_exists('PluginManager')) {
         $publicRoutes = PluginManager::applyFilter('public_routes', $publicRoutes);
     }
