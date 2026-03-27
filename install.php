@@ -331,7 +331,7 @@ function performInstallation($config) {
         try {
             require_once __DIR__ . '/includes/config.php';
             $db = getDB();
-            runMigrations($db);
+            runAllMigrations($db);
         } catch (Throwable $e) {
             // Log but don't fail - migrations can be run manually
             error_log('Post-install migrations warning: ' . $e->getMessage());

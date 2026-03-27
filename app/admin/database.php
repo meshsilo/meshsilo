@@ -236,8 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
 
                     // Initialize schema + migrations
                     initializeDatabase($mysqlDb);
-                    require_once __DIR__ . '/../../includes/migrations.php';
-                    runMigrations($mysqlDb);
+                    runAllMigrations($mysqlDb);
 
                     // Copy data table by table
                     $totalRows = 0;

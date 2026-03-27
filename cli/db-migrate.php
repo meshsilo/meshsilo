@@ -180,8 +180,7 @@ foreach ($dropOrder as $table) {
 
 // Initialize schema + run migrations
 initializeDatabase($mysqlDb);
-require_once 'includes/migrations.php';
-runMigrations($mysqlDb);
+runAllMigrations($mysqlDb);
 echo "  Schema created and migrations applied.\n";
 
 // Phase 2: Copy data table by table
