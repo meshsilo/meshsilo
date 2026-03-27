@@ -257,7 +257,7 @@ require_once 'includes/header.php';
             <div class="section-header">
                 <h2>Recently Viewed</h2>
             </div>
-            <div class="recently-viewed-grid">
+            <div class="models-grid">
                 <?php foreach ($recentlyViewed as $model):
                     $cardOptions = ['wrapperClass' => 'recently-viewed-card', 'fileSizeLimit' => true];
                     include __DIR__ . '/includes/partials/model-card.php';
