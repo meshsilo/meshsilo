@@ -728,7 +728,9 @@ ModelViewer.prototype.dispose = function() {
 
     if (this.renderer) {
         this.renderer.dispose();
-        this.container.removeChild(this.renderer.domElement);
+        if (this.renderer.domElement.parentNode === this.container) {
+            this.container.removeChild(this.renderer.domElement);
+        }
     }
 
     if (this.controls) {
