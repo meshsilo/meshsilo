@@ -110,6 +110,7 @@ if (getSetting('enable_access_log', '0') === '1') {
 
 $pageTitle = 'Home';
 $activePage = 'browse';
+$needsViewer = true;
 
 $db = getDB();
 
