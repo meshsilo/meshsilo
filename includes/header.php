@@ -726,7 +726,7 @@ endif; ?>
                     <?php endif; ?>
                     <div class="queue-indicator" id="queue-indicator" title="Background Tasks">
                         <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()">
-                            &#9881;<span class="queue-badge" id="queue-badge" style="display:none;">0</span>
+                            &#128339;<span class="queue-badge" id="queue-badge" style="display:none;">0</span>
                         </button>
                         <div class="queue-dropdown" id="queue-dropdown">
                             <div class="queue-dropdown-header">Background Tasks</div>
