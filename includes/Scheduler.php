@@ -528,8 +528,12 @@ class Scheduler
             return "Generated {$results['success']} thumbnails, {$results['failed']} failed";
         }, ['description' => 'Generate thumbnails for new models']);
 
-        // Deduplication scan - daily at 1am
-        self::register(self::TASK_DEDUP_SCAN, '0 1 * * *', function () {
+        // Deduplication scan - every hour
+        self::register(self::TASK_DEDUP_SCAN, '0 * * * *', function () {
+            if (getSetting('auto_deduplication', '0') !== '1') {
+                return 'Auto-deduplication disabled in settings';
+            }
+
             require_once __DIR__ . '/dedup.php';
 
             if (function_exists('runDeduplicationScan')) {
