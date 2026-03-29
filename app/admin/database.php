@@ -519,42 +519,6 @@ require_once __DIR__ . '/../../includes/header.php';
             </table>
         </details>
 
-        <details class="settings-section" open>
-            <summary><h2>Migration Status</h2></summary>
-            <?php if ($pendingCount > 0): ?>
-                <div role="alert" class="alert alert-warning" style="margin-bottom: 1rem;">
-                    <?= $pendingCount ?> migration(s) pending. Run migrations to update your database schema.
-                </div>
-            <?php else: ?>
-                <div role="status" class="alert alert-success" style="margin-bottom: 1rem;">
-                    Database schema is up to date.
-                </div>
-            <?php endif; ?>
-
-            <div class="migration-list">
-                <?php foreach ($migrationStatus as $m): ?>
-                    <div class="migration-item <?= $m['applied'] ? 'applied' : 'pending' ?>">
-                        <span class="migration-status">
-                            <?= $m['applied'] ? '✓' : '○' ?>
-                        </span>
-                        <span class="migration-name"><?= htmlspecialchars($m['name']) ?></span>
-                        <?php if ($m['description']): ?>
-                            <span class="migration-desc"><?= htmlspecialchars($m['description']) ?></span>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-
-            <?php if ($pendingCount > 0): ?>
-                <form method="post" style="margin-top: 1rem;" data-confirm="Run all pending migrations? This will modify your database schema.">
-                    <?= csrf_field() ?>
-                    <button type="submit" name="run_migrations" class="btn btn-primary">
-                        Run <?= $pendingCount ?> Pending Migration(s)
-                    </button>
-                </form>
-            <?php endif; ?>
-        </details>
-
         <details class="settings-section">
             <summary><h2>Database Maintenance</h2></summary>
             <div class="button-group">
@@ -720,89 +684,6 @@ php cli/migrate.php --dry-run
 
 .text-success { color: var(--color-success); }
 .text-warning { color: var(--color-warning); }
-
-.migration-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.migration-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: var(--color-surface-hover);
-    border-radius: 6px;
-    border-left: 3px solid var(--color-border);
-}
-
-.migration-item.applied {
-    border-left-color: var(--color-success, #22c55e);
-}
-
-.migration-item.pending {
-    border-left-color: var(--color-warning, #f59e0b);
-}
-
-.migration-status {
-    font-size: 1rem;
-    min-width: 1.5rem;
-}
-
-.migration-item.applied .migration-status {
-    color: var(--color-success, #22c55e);
-}
-
-.migration-item.pending .migration-status {
-    color: var(--color-warning, #f59e0b);
-}
-
-.migration-name {
-    font-weight: 500;
-    flex-shrink: 0;
-}
-
-.migration-desc {
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
-    margin-left: auto;
-}
-
-.migration-results {
-    background: var(--color-surface-hover);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-}
-
-.migration-results h3 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1rem;
-}
-
-.migration-results ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.migration-results li {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.migration-results li:last-child {
-    border-bottom: none;
-}
-
-.migration-results li.success {
-    color: var(--color-success, #22c55e);
-}
-
-.migration-results li.error {
-    color: var(--color-danger, #ef4444);
-}
 
 .stat-card-warning {
     border-color: var(--color-warning, #f59e0b);
