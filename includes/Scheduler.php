@@ -377,6 +377,9 @@ class Scheduler
             $stmt->bindValue(':output', $output ? substr($output, 0, 10000) : null, PDO::PARAM_STR);
             $stmt->execute();
 
+            // Remove orphaned 'started' entries (from old double-logging bug)
+            $db->exec("DELETE FROM scheduler_log WHERE status = 'started'");
+
             // Cleanup old logs (keep last 1000)
             $count = $db->querySingle('SELECT COUNT(*) FROM scheduler_log');
             if ($count > 1000) {
