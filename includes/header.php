@@ -19,7 +19,7 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="<?= $currentTheme === 'dark' ? '#0f172a' : '#3b82f6' ?>">
     <meta name="color-scheme" content="light dark">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="<?= htmlspecialchars($metaDescription ?? getSetting('site_description', 'Digital Asset Manager for 3D print files')) ?>">
     <title><?= htmlspecialchars($pageTitle ?? SITE_NAME) ?> - <?= htmlspecialchars(SITE_NAME) ?></title>
