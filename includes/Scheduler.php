@@ -132,9 +132,6 @@ class Scheduler
         }
 
         try {
-            // Log task start
-            self::logTaskRun($name, 'started');
-
             // Set timeout
             set_time_limit($task['timeout']);
 
@@ -381,7 +378,10 @@ class Scheduler
             $stmt->execute();
 
             // Cleanup old logs (keep last 1000)
-            $db->exec('DELETE FROM scheduler_log WHERE id NOT IN (SELECT id FROM scheduler_log ORDER BY created_at DESC LIMIT 1000)');
+            $count = $db->querySingle('SELECT COUNT(*) FROM scheduler_log');
+            if ($count > 1000) {
+                $db->exec('DELETE FROM scheduler_log WHERE id IN (SELECT id FROM scheduler_log ORDER BY created_at ASC LIMIT ' . ($count - 1000) . ')');
+            }
         } catch (Exception $e) {
             // Silently fail
         }
@@ -396,10 +396,9 @@ class Scheduler
         self::register(self::TASK_CLEANUP_SESSIONS, '0 * * * *', function () {
             if (function_exists('getDB')) {
                 $db = getDB();
-                // Clean expired sessions (older than 24 hours)
-                $cutoff = date('Y-m-d H:i:s', strtotime('-24 hours'));
-                $stmt = $db->prepare("DELETE FROM sessions WHERE last_activity < :cutoff");
-                $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
+                $now = time();
+                $stmt = $db->prepare("DELETE FROM sessions WHERE expires_at > 0 AND expires_at < :now");
+                $stmt->bindValue(':now', $now, PDO::PARAM_INT);
                 $stmt->execute();
             }
             return 'Sessions cleaned';

@@ -50,6 +50,7 @@ function findDuplicateHashes()
         WHERE file_hash IS NOT NULL
           AND file_hash != ""
           AND file_path IS NOT NULL
+          AND (dedup_path IS NULL OR dedup_path = "")
         GROUP BY file_hash
         HAVING COUNT(*) > 1
         ORDER BY count DESC
