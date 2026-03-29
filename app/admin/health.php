@@ -564,51 +564,30 @@ require_once __DIR__ . '/../../includes/header.php';
         <h2>System Information</h2>
         <div class="info-grid">
             <div class="info-card">
-                <h3>PHP Configuration</h3>
-                <table class="info-table" aria-label="PHP configuration">
-                    <tr>
-                        <td>PHP Version</td>
-                        <td><?= $metrics['php']['version'] ?></td>
-                    </tr>
-                    <tr>
-                        <td>Memory Limit</td>
-                        <td><?= $metrics['php']['memory_limit'] ?></td>
-                    </tr>
-                    <tr>
-                        <td>Max Execution Time</td>
-                        <td><?= $metrics['php']['max_execution_time'] ?>s</td>
-                    </tr>
-                    <tr>
-                        <td>Upload Max Filesize</td>
-                        <td><?= $metrics['php']['upload_max_filesize'] ?></td>
-                    </tr>
-                    <tr>
-                        <td>Post Max Size</td>
-                        <td><?= $metrics['php']['post_max_size'] ?></td>
-                    </tr>
-                </table>
+                <div class="info-card-header">
+                    <span class="info-card-icon" aria-hidden="true">&#9881;</span>
+                    <h3>PHP Configuration</h3>
+                </div>
+                <div class="info-items">
+                    <div class="info-item"><span class="info-label">PHP Version</span><span class="info-value"><?= $metrics['php']['version'] ?></span></div>
+                    <div class="info-item"><span class="info-label">Memory Limit</span><span class="info-value"><?= $metrics['php']['memory_limit'] ?></span></div>
+                    <div class="info-item"><span class="info-label">Max Execution</span><span class="info-value"><?= $metrics['php']['max_execution_time'] ?>s</span></div>
+                    <div class="info-item"><span class="info-label">Upload Limit</span><span class="info-value"><?= $metrics['php']['upload_max_filesize'] ?></span></div>
+                    <div class="info-item"><span class="info-label">Post Max Size</span><span class="info-value"><?= $metrics['php']['post_max_size'] ?></span></div>
+                </div>
             </div>
 
             <div class="info-card">
-                <h3>Application Stats</h3>
-                <table class="info-table" aria-label="Application statistics">
-                    <tr>
-                        <td>Total Models</td>
-                        <td id="model-count"><?= number_format($metrics['model_count']) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Total Users</td>
-                        <td id="user-count"><?= number_format($metrics['user_count']) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Server Uptime</td>
-                        <td><?= $metrics['uptime'] ?></td>
-                    </tr>
-                    <tr>
-                        <td>App Version</td>
-                        <td><?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0' ?></td>
-                    </tr>
-                </table>
+                <div class="info-card-header">
+                    <span class="info-card-icon" aria-hidden="true">&#128202;</span>
+                    <h3>Application</h3>
+                </div>
+                <div class="info-items">
+                    <div class="info-item"><span class="info-label">Models</span><span class="info-value" id="model-count"><?= number_format($metrics['model_count']) ?></span></div>
+                    <div class="info-item"><span class="info-label">Users</span><span class="info-value" id="user-count"><?= number_format($metrics['user_count']) ?></span></div>
+                    <div class="info-item"><span class="info-label">Uptime</span><span class="info-value"><?= $metrics['uptime'] ?></span></div>
+                    <div class="info-item"><span class="info-label">Version</span><span class="info-value"><?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0' ?></span></div>
+                </div>
             </div>
         </div>
     </div>
@@ -851,31 +830,56 @@ function getStatusMessage($services) {
 
 .info-card {
     background: var(--color-surface);
-    padding: 1rem;
-    border-radius: 8px;
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
 }
 
-.info-card h3 {
+.info-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 1rem;
-    font-size: 1rem;
-}
-
-.info-table {
-    width: 100%;
-}
-
-.info-table td {
-    padding: 0.5rem 0;
+    padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--color-border);
 }
 
-.info-table td:first-child {
-    color: var(--color-text-muted);
+.info-card-icon {
+    font-size: 1.25rem;
 }
 
-.info-table td:last-child {
-    text-align: right;
-    font-family: monospace;
+.info-card h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.info-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.info-value {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 600;
 }
 
 .info-table tr:last-child td {
