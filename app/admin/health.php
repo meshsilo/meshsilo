@@ -97,9 +97,9 @@ function getSystemMetrics() {
 
     // Active sessions
     try {
-        $now = date('Y-m-d H:i:s');
+        $now = time();
         $stmt = $db->prepare("SELECT COUNT(DISTINCT user_id) as count FROM sessions WHERE expires_at > :now");
-        $stmt->bindValue(':now', $now, PDO::PARAM_STR);
+        $stmt->bindValue(':now', $now, PDO::PARAM_INT);
         $result = $stmt->execute();
         $metrics['active_sessions'] = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
     } catch (Exception $e) {
@@ -332,25 +332,23 @@ function checkExternalServices() {
         ];
     }
 
-    // Check webhooks
+    // Check webhooks (only if table exists)
     try {
         $db = getDB();
-        if ($db) {
+        if ($db && tableExists($db, 'webhooks')) {
             $result = $db->query("SELECT COUNT(*) as count FROM webhooks WHERE is_active = 1");
             $webhookCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-        } else {
-            $webhookCount = 0;
-        }
 
-        if ($webhookCount > 0) {
-            $services['webhooks'] = [
-                'name' => 'Webhooks',
-                'status' => 'healthy',
-                'message' => "$webhookCount active webhook(s)"
-            ];
+            if ($webhookCount > 0) {
+                $services['webhooks'] = [
+                    'name' => 'Webhooks',
+                    'status' => 'healthy',
+                    'message' => "$webhookCount active webhook(s)"
+                ];
+            }
         }
     } catch (Exception $e) {
-        // Webhooks table might not exist
+        // Safe to ignore
     }
 
     return $services;
@@ -384,7 +382,7 @@ function getRecentErrors() {
     }
 
     // Also check error log file
-    $logFile = __DIR__ . '/../../logs/error.log';
+    $logFile = __DIR__ . '/../../storage/logs/error.log';
     if (file_exists($logFile)) {
         $logLines = array_slice(file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES), -10);
         foreach ($logLines as $line) {
@@ -598,7 +596,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </tr>
                     <tr>
                         <td>App Version</td>
-                        <td><?= defined('APP_VERSION') ? APP_VERSION : '1.0.0' ?></td>
+                        <td><?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0' ?></td>
                     </tr>
                 </table>
             </div>
@@ -832,7 +830,7 @@ function getStatusMessage($services) {
 }
 
 .service-card {
-    background: var(--card-bg);
+    background: var(--color-surface);
     padding: 1rem;
     border-radius: 8px;
     border-left: 4px solid var(--color-border);
@@ -885,7 +883,7 @@ function getStatusMessage($services) {
 }
 
 .info-card {
-    background: var(--card-bg);
+    background: var(--color-surface);
     padding: 1rem;
     border-radius: 8px;
 }
