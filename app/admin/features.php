@@ -82,30 +82,12 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div role="alert" class="alert alert-error"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
-                <div class="presets-section">
-                    <h3>Quick Presets</h3>
-                    <div class="presets-grid">
-                        <?php foreach (getFeaturePresets() as $key => $preset): ?>
-                        <form method="post" class="preset-card">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="apply_preset" value="<?= htmlspecialchars($key) ?>">
-                            <div class="preset-header">
-                                <span class="preset-name"><?= htmlspecialchars($preset['name']) ?></span>
-                                <span class="preset-count"><?= count(array_filter($preset['features'])) ?>/<?= count($preset['features']) ?> features</span>
-                            </div>
-                            <p class="preset-description"><?= htmlspecialchars($preset['description']) ?></p>
-                            <button type="submit" class="btn btn-sm btn-secondary">Apply Preset</button>
-                        </form>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <form method="post" class="features-form">
+                <form method="post" class="features-form settings-form">
                     <?= csrf_field() ?>
                     <div class="features-grid">
                         <?php foreach ($featuresByCategory as $category => $features): ?>
-                        <section class="feature-category">
-                            <h2><?= htmlspecialchars($category) ?></h2>
+                        <details class="settings-section" open>
+                            <summary><h2><?= htmlspecialchars($category) ?></h2></summary>
                             <div class="feature-list">
                                 <?php foreach ($features as $feature):
                                     $missingDeps = getMissingDependencies($feature['key']);
@@ -153,7 +135,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 </label>
                                 <?php endforeach; ?>
                             </div>
-                        </section>
+                        </details>
                         <?php endforeach; ?>
                     </div>
 
@@ -166,80 +148,10 @@ require_once __DIR__ . '/../../includes/header.php';
         </div>
 
         <style>
-        .presets-section {
-            margin-bottom: 2rem;
-        }
-
-        .presets-section h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: var(--color-text);
-        }
-
-        .presets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-        }
-
-        .preset-card {
-            background: var(--color-surface);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            padding: 1rem;
-            transition: border-color 0.2s ease;
-        }
-
-        .preset-card:hover {
-            border-color: var(--color-primary);
-        }
-
-        .preset-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .preset-name {
-            font-weight: 600;
-            color: var(--color-text);
-        }
-
-        .preset-count {
-            font-size: 0.75rem;
-            color: var(--color-text-muted);
-            background: var(--color-border);
-            padding: 0.15rem 0.5rem;
-            border-radius: 10px;
-        }
-
-        .preset-description {
-            font-size: 0.85rem;
-            color: var(--color-text-muted);
-            margin: 0 0 1rem;
-            line-height: 1.4;
-        }
-
-        .btn-sm {
-            padding: 0.35rem 0.75rem;
-            font-size: 0.85rem;
-        }
-
         .features-grid {
             display: flex;
             flex-direction: column;
             gap: 2rem;
-        }
-
-        .feature-category h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--color-border);
-            color: var(--color-text);
         }
 
         .feature-list {
