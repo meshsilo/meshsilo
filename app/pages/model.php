@@ -651,8 +651,9 @@ require_once 'includes/header.php';
                                 <?php if (canEdit() || canDelete()): ?>
                                 <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>" aria-label="Select <?= htmlspecialchars($part['name']) ?>">
                                 <?php endif; ?>
-                                <div class="part-info part-preview-trigger">
-                                    <span class="part-name" title="Click to preview"><?= htmlspecialchars($part['name']) ?><?= !empty($part['file_type']) ? '.' . htmlspecialchars($part['file_type']) : '' ?></span>
+                                <?php $previewableTypes = ['stl', '3mf', 'obj', 'ply', 'gltf', 'glb', 'dae', 'fbx', '3ds', 'amf', 'gcode', 'step', 'stp', 'iges', 'igs']; ?>
+                                <div class="part-info<?= in_array(strtolower($part['file_type'] ?? ''), $previewableTypes) ? ' part-preview-trigger' : '' ?>">
+                                    <span class="part-name"<?= in_array(strtolower($part['file_type'] ?? ''), $previewableTypes) ? ' title="Click to preview"' : '' ?>><?= htmlspecialchars($part['name']) ?><?= !empty($part['file_type']) ? '.' . htmlspecialchars($part['file_type']) : '' ?></span>
                                     <?php if (isFeatureEnabled('model_notes') && !empty($part['notes'])): ?>
                                     <span class="part-notes"><?= htmlspecialchars($part['notes']) ?></span>
                                     <?php endif; ?>
