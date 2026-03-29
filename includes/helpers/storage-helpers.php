@@ -106,13 +106,15 @@ function getStorageUsageByCategory()
 {
     try {
         $db = getDB();
+        // Sum file sizes of parent models AND their parts, grouped by category
         $stmt = $db->query('
             SELECT c.id, c.name,
-                   COUNT(m.id) as model_count,
-                   SUM(m.original_size) as total_size
+                   COUNT(DISTINCT m.id) as model_count,
+                   COALESCE(SUM(COALESCE(all_models.file_size, 0)), 0) as total_size
             FROM categories c
             LEFT JOIN model_categories mc ON mc.category_id = c.id
             LEFT JOIN models m ON m.id = mc.model_id AND m.parent_id IS NULL
+            LEFT JOIN models all_models ON (all_models.id = m.id OR all_models.parent_id = m.id)
             GROUP BY c.id, c.name
             ORDER BY total_size DESC
         ');
@@ -146,10 +148,9 @@ function getTotalStorageUsage()
     try {
         $db = getDB();
         $stmt = $db->query('
-            SELECT COUNT(*) as model_count,
-                   SUM(original_size) as total_size
-            FROM models
-            WHERE parent_id IS NULL
+            SELECT
+                (SELECT COUNT(*) FROM models WHERE parent_id IS NULL) as model_count,
+                COALESCE((SELECT SUM(COALESCE(file_size, 0)) FROM models), 0) as total_size
         ');
         return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
