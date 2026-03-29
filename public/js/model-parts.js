@@ -23,6 +23,13 @@
             }
             container.innerHTML = '';
 
+            // Check if file type supports 3D preview
+            const previewableTypes = ['stl', '3mf', 'obj', 'ply', 'gltf', 'glb', 'dae', 'fbx', '3ds', 'amf', 'gcode', 'step', 'stp', 'iges', 'igs'];
+            if (!previewableTypes.includes(type.toLowerCase())) {
+                container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--color-text-muted);">No preview available for .' + escapeHtml(type) + ' files</p>';
+                return;
+            }
+
             // Create new viewer
             partPreviewViewer = new window.ModelViewer(container, {
                 autoRotate: false,
