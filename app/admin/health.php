@@ -53,11 +53,14 @@ function getSystemMetrics() {
     $memoryPeak = memory_get_peak_usage(true);
     $memoryLimitBytes = convertToBytes($memoryLimit);
 
+    // Handle unlimited memory (-1)
+    $memoryUnlimited = ($memoryLimitBytes <= 0);
     $metrics['memory'] = [
         'used' => $memoryUsed,
         'peak' => $memoryPeak,
         'limit' => $memoryLimitBytes,
-        'percent' => $memoryLimitBytes > 0 ? round(($memoryUsed / $memoryLimitBytes) * 100, 1) : 0
+        'unlimited' => $memoryUnlimited,
+        'percent' => (!$memoryUnlimited && $memoryLimitBytes > 0) ? round(($memoryUsed / $memoryLimitBytes) * 100, 1) : 0
     ];
 
     // Disk usage
@@ -459,7 +462,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
             <div class="metric-detail">
                 <span id="memory-used"><?= formatBytes($metrics['memory']['used']) ?></span> /
-                <span id="memory-limit"><?= formatBytes($metrics['memory']['limit']) ?></span>
+                <span id="memory-limit"><?= $metrics['memory']['unlimited'] ? 'Unlimited' : formatBytes($metrics['memory']['limit']) ?></span>
             </div>
         </div>
 
@@ -964,6 +967,7 @@ function refreshMetrics() {
         .then(data => {
             document.getElementById('memory-percent').textContent = data.memory.percent + '%';
             document.getElementById('memory-used').textContent = formatBytes(data.memory.used);
+            document.getElementById('memory-limit').textContent = data.memory.unlimited ? 'Unlimited' : formatBytes(data.memory.limit);
             document.getElementById('disk-percent').textContent = data.disk.percent + '%';
             document.getElementById('disk-free').textContent = formatBytes(data.disk.free);
             document.getElementById('active-sessions').textContent = data.active_sessions;
