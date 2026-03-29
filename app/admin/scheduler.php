@@ -146,11 +146,8 @@ include __DIR__ . '/../../includes/header.php';
         <?php endif; ?>
 
         <!-- Quick Actions -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h2>Quick Actions</h2>
-            </div>
-            <div class="card-body">
+        <details class="settings-section" open>
+            <summary><h2>Quick Actions</h2></summary>
                 <form method="post" style="display: inline;">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="run_all">
@@ -165,24 +162,11 @@ include __DIR__ . '/../../includes/header.php';
                     <p class="text-muted mt-2">This unified cron handles: scheduler, queue processing, retention, thumbnails, deduplication, and demo reset (if enabled).</p>
 
                 </div>
-            </div>
-        </div>
+        </details>
 
         <!-- Deduplication Status -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-between align-center">
-                <h2>File Deduplication</h2>
-                <div>
-                    <?php if ($dedupTask): ?>
-                        <?php if ($dedupTask['enabled']): ?>
-                            <span class="badge badge-success">Scheduled</span>
-                        <?php else: ?>
-                            <span class="badge badge-secondary">Disabled</span>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <div class="card-body">
+        <details class="settings-section" open>
+            <summary><h2>File Deduplication</h2></summary>
                 <div class="dedup-stats-grid">
                     <div class="stat-box">
                         <div class="stat-value"><?= number_format($dedupStats['dedup_file_count']) ?></div>
@@ -249,15 +233,11 @@ include __DIR__ . '/../../includes/header.php';
                     <?php endif; ?>
                 </p>
                 <?php endif; ?>
-            </div>
-        </div>
+        </details>
 
         <!-- Task List -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h2>Registered Tasks</h2>
-            </div>
-            <div class="card-body">
+        <details class="settings-section" open>
+            <summary><h2>Registered Tasks</h2></summary>
                 <table class="data-table" aria-label="Registered tasks">
                     <thead>
                         <tr>
@@ -329,15 +309,11 @@ include __DIR__ . '/../../includes/header.php';
                         <?php endforeach; ?>
                     </tbody>
                 </table>
-            </div>
-        </div>
+        </details>
 
         <!-- Execution History -->
-        <div class="card">
-            <div class="card-header">
-                <h2>Execution History</h2>
-            </div>
-            <div class="card-body">
+        <details class="settings-section">
+            <summary><h2>Execution History</h2></summary>
                 <?php if (empty($history)): ?>
                     <p class="text-muted">No task execution history yet.</p>
                 <?php else: ?>
@@ -391,13 +367,11 @@ include __DIR__ . '/../../includes/header.php';
                         </tbody>
                     </table>
                 <?php endif; ?>
-            </div>
-        </div>
+        </details>
 
         <!-- Cron Expression Help -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h2>Cron Expression Reference</h2>
+        <details class="settings-section">
+            <summary><h2>Cron Expression Reference</h2></summary>
             </div>
             <div class="card-body">
                 <pre>
@@ -420,8 +394,7 @@ include __DIR__ . '/../../includes/header.php';
                     <tr><td><code>0 0 * * 0</code></td><td>Every Sunday at midnight</td></tr>
                     <tr><td><code>0 0 1 * *</code></td><td>First day of every month</td></tr>
                 </table>
-            </div>
-        </div>
+        </details>
     </div>
 </div>
 
