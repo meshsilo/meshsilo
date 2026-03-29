@@ -59,7 +59,6 @@ $modelCount = $db->querySingle('SELECT COUNT(*) FROM models');
 
 // Get storage usage breakdown
 $usageByCategory = getStorageUsageByCategory();
-$usageByUser = getStorageUsageByUser();
 $totalUsage = getTotalStorageUsage();
 $dedupSavings = getDedupStorageSavings();
 
@@ -305,42 +304,6 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <td><?= htmlspecialchars($cat['name']) ?></td>
                                     <td><?= $cat['model_count'] ?></td>
                                     <td><?= formatBytes($cat['total_size'] ?? 0) ?></td>
-                                    <td>
-                                        <div class="progress-bar" role="progressbar" aria-valuenow="<?= round($percent, 1) ?>" aria-valuemin="0" aria-valuemax="100">
-                                            <div class="progress-bar-fill" style="width: <?= $percent ?>%"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php endif; ?>
-                    </details>
-
-                    <details class="settings-section">
-                        <summary><h2>Storage by User</h2></summary>
-                        <?php if (empty($usageByUser)): ?>
-                        <p class="text-muted">No users found</p>
-                        <?php else: ?>
-                        <table class="data-table" aria-label="Storage by user">
-                            <thead>
-                                <tr>
-                                    <th scope="col">User</th>
-                                    <th scope="col">Models</th>
-                                    <th scope="col">Size</th>
-                                    <th scope="col" style="width: 40%;">Usage</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                $maxUserSize = max(array_column($usageByUser, 'total_size') ?: [1]);
-                                foreach ($usageByUser as $usr):
-                                    $percent = $maxUserSize > 0 ? ($usr['total_size'] / $maxUserSize * 100) : 0;
-                                ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($usr['username'] ?? 'Unknown') ?></td>
-                                    <td><?= $usr['model_count'] ?></td>
-                                    <td><?= formatBytes($usr['total_size'] ?? 0) ?></td>
                                     <td>
                                         <div class="progress-bar" role="progressbar" aria-valuenow="<?= round($percent, 1) ?>" aria-valuemin="0" aria-valuemax="100">
                                             <div class="progress-bar-fill" style="width: <?= $percent ?>%"></div>
