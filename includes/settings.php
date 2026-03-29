@@ -16,7 +16,7 @@ function initializeDefaultSettings($db)
         'require_approval' => '0',
         'allowed_extensions' => DEFAULT_ALLOWED_EXTENSIONS,
         'auto_convert_stl' => '0',
-        'auto_deduplication' => '0',
+        'auto_deduplication' => getenv('MESHSILO_DOCKER') === 'true' ? '1' : '0',
 
         // Feature toggles
         'enable_categories' => '1',
