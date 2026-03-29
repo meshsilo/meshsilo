@@ -459,29 +459,45 @@ require_once __DIR__ . '/../../includes/header.php';
             <?php endif; ?>
         </div>
 
-        <details class="settings-section" open>
-            <summary><h2>Database Information</h2></summary>
-            <table class="data-table" aria-label="Database information">
-                <tr>
-                    <th scope="col">Schema Version</th>
-                    <td><?= htmlspecialchars($schemaVersion) ?></td>
-                </tr>
-                <tr>
-                    <th scope="col">Last Migration</th>
-                    <td><?= htmlspecialchars($lastMigration) ?></td>
-                </tr>
-                <tr>
-                    <th scope="col">Database Type</th>
-                    <td><?= strtoupper($dbType) ?></td>
-                </tr>
+        <div class="metrics-grid" style="margin-bottom: 2rem;">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon" aria-hidden="true">&#128451;</span>
+                    <span class="metric-title">Database Type</span>
+                </div>
+                <div class="metric-value"><?= strtoupper($dbType) ?></div>
                 <?php if ($dbType === 'sqlite' && defined('DB_PATH')): ?>
-                <tr>
-                    <th scope="col">Database Path</th>
-                    <td><code><?= htmlspecialchars(DB_PATH) ?></code></td>
-                </tr>
+                <div class="metric-detail"><code><?= htmlspecialchars(basename(DB_PATH)) ?></code></div>
                 <?php endif; ?>
-            </table>
-        </details>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon" aria-hidden="true">&#128197;</span>
+                    <span class="metric-title">Schema Version</span>
+                </div>
+                <div class="metric-value" style="font-size: 1.25rem;"><?= htmlspecialchars($schemaVersion) ?></div>
+                <div class="metric-detail">Last migration: <?= htmlspecialchars($lastMigration) ?></div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon" aria-hidden="true">&#128203;</span>
+                    <span class="metric-title">Tables</span>
+                </div>
+                <div class="metric-value"><?= count($tableCounts) ?></div>
+                <div class="metric-detail"><?= number_format(array_sum(array_filter($tableCounts, 'is_numeric'))) ?> total rows</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon" aria-hidden="true"><?= $pendingCount > 0 ? '&#9888;' : '&#10004;' ?></span>
+                    <span class="metric-title">Migrations</span>
+                </div>
+                <div class="metric-value <?= $pendingCount > 0 ? 'text-warning' : 'text-success' ?>"><?= $pendingCount > 0 ? $pendingCount . ' Pending' : 'Up to Date' ?></div>
+                <div class="metric-detail"><?= count($migrationStatus) ?> total migrations</div>
+            </div>
+        </div>
 
         <details class="settings-section">
             <summary><h2>Table Statistics</h2></summary>
@@ -664,6 +680,47 @@ php cli/migrate.php --dry-run
         </div>
 
 <style>
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.metric-card {
+    background: var(--color-surface);
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+}
+
+.metric-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.metric-icon { font-size: 1.25rem; }
+
+.metric-title {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.metric-detail {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+
 .migration-list {
     display: flex;
     flex-direction: column;
