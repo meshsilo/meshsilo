@@ -494,30 +494,19 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </details>
 
-                    <?php if (class_exists('PluginManager')): ?>
-                    <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
-                    <?php endif; ?>
+                    <?php
+                    $isDockerEnv = getenv('MESHSILO_DOCKER') === 'true';
+                    if ($isDockerEnv) {
+                        $phpIniPath = __DIR__ . '/../../storage/cache/php-meshsilo.ini';
+                    } else {
+                        $phpIniPath = __DIR__ . '/../.user.ini';
+                    }
+                    $phpIniContent = file_exists($phpIniPath) ? file_get_contents($phpIniPath) : "; Silo PHP Configuration\nupload_max_filesize = 100M\npost_max_size = 105M\nmax_execution_time = 300\nmemory_limit = 2G\n";
+                    $phpIniWritable = is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)));
+                    ?>
 
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">Save Settings</button>
-                    </div>
-                </form>
-
-                <?php
-                $isDockerEnv = getenv('MESHSILO_DOCKER') === 'true';
-                if ($isDockerEnv) {
-                    $phpIniPath = __DIR__ . '/../../storage/cache/php-meshsilo.ini';
-                } else {
-                    $phpIniPath = __DIR__ . '/../.user.ini';
-                }
-                $phpIniContent = file_exists($phpIniPath) ? file_get_contents($phpIniPath) : "; Silo PHP Configuration\nupload_max_filesize = 100M\npost_max_size = 105M\nmax_execution_time = 300\nmemory_limit = 2G\n";
-                $phpIniWritable = is_writable($phpIniPath) || (!file_exists($phpIniPath) && is_writable(dirname($phpIniPath)));
-                ?>
-
-                <form class="settings-form" method="POST" style="margin-top: 2rem;">
-                    <?= csrf_field() ?>
-                    <section class="settings-section">
-                        <h2>PHP Configuration</h2>
+                    <details class="settings-section">
+                        <summary><h2>PHP Configuration</h2></summary>
                         <p class="form-help" style="margin-bottom: 1rem;">
                             <?php if ($isDockerEnv): ?>
                             Edit PHP-FPM configuration for upload limits, memory, and execution time.
@@ -559,7 +548,15 @@ require_once __DIR__ . '/../../includes/header.php';
                                 Save PHP Configuration
                             </button>
                         </div>
-                    </section>
+                    </details>
+
+                    <?php if (class_exists('PluginManager')): ?>
+                    <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
+                    <?php endif; ?>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
                 </form>
 
             </div>
