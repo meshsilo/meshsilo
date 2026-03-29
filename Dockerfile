@@ -124,7 +124,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost/health || exit 1
 
 # Volume for persistent data
-VOLUME ["/var/www/meshsilo/storage/assets", "/var/www/meshsilo/storage/db", "/var/www/meshsilo/storage/logs"]
+VOLUME ["/var/www/meshsilo/storage/assets", "/var/www/meshsilo/storage/db", "/var/www/meshsilo/storage/logs", "/var/www/meshsilo/plugins"]
 
 # Start supervisor (manages nginx and php-fpm)
 ENTRYPOINT ["/entrypoint.sh"]
