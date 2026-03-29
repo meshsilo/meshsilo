@@ -521,27 +521,37 @@ require_once __DIR__ . '/../../includes/header.php';
     <!-- Service Status -->
     <div class="section">
         <h2>Service Status</h2>
-        <div class="services-grid" id="services-container">
+        <div class="metrics-grid" id="services-container">
+            <?php
+            $serviceIcons = ['database' => '&#128451;', 'storage' => '&#128190;', 'cache' => '&#9889;', 'search' => '&#128269;'];
+            $statusIcons = ['healthy' => '&#10004;', 'warning' => '&#9888;', 'degraded' => '&#9888;', 'critical' => '&#10008;', 'down' => '&#10008;', 'configured' => '&#10004;'];
+            ?>
             <?php foreach ($services as $name => $service): ?>
             <?php if (is_array($service) && isset($service['status'])): ?>
-            <div class="service-card status-<?= htmlspecialchars($service['status']) ?>">
-                <div class="service-name"><?= ucfirst($name) ?></div>
-                <div class="service-status">
-                    <span class="status-badge badge-<?= htmlspecialchars($service['status']) ?>"><?= htmlspecialchars(ucfirst($service['status'])) ?></span>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon" aria-hidden="true"><?= $serviceIcons[$name] ?? '&#9881;' ?></span>
+                    <span class="metric-title"><?= ucfirst(htmlspecialchars($name)) ?></span>
                 </div>
-                <div class="service-message"><?= htmlspecialchars($service['message']) ?></div>
+                <div class="metric-value service-status-value status-color-<?= htmlspecialchars($service['status']) ?>">
+                    <?= $statusIcons[$service['status']] ?? '' ?> <?= ucfirst(htmlspecialchars($service['status'])) ?>
+                </div>
+                <div class="metric-detail"><?= htmlspecialchars($service['message']) ?></div>
                 <?php if (isset($service['latency_ms'])): ?>
-                <div class="service-latency"><?= $service['latency_ms'] ?>ms</div>
+                <div class="metric-detail" style="margin-top: 0.25rem;"><?= $service['latency_ms'] ?>ms response time</div>
                 <?php endif; ?>
             </div>
             <?php elseif (is_array($service)): ?>
                 <?php foreach ($service as $subName => $subService): ?>
-                <div class="service-card status-<?= htmlspecialchars($subService['status'] ?? 'unknown') ?>">
-                    <div class="service-name"><?= htmlspecialchars($subService['name'] ?? ucfirst($subName)) ?></div>
-                    <div class="service-status">
-                        <span class="status-badge badge-<?= htmlspecialchars($subService['status'] ?? 'unknown') ?>"><?= htmlspecialchars(ucfirst($subService['status'] ?? 'Unknown')) ?></span>
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-icon" aria-hidden="true">&#9881;</span>
+                        <span class="metric-title"><?= htmlspecialchars($subService['name'] ?? ucfirst($subName)) ?></span>
                     </div>
-                    <div class="service-message"><?= htmlspecialchars($subService['message'] ?? '') ?></div>
+                    <div class="metric-value service-status-value status-color-<?= htmlspecialchars($subService['status'] ?? 'unknown') ?>">
+                        <?= $statusIcons[$subService['status'] ?? ''] ?? '' ?> <?= ucfirst(htmlspecialchars($subService['status'] ?? 'Unknown')) ?>
+                    </div>
+                    <div class="metric-detail"><?= htmlspecialchars($subService['message'] ?? '') ?></div>
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -823,58 +833,15 @@ function getStatusMessage($services) {
     font-size: 1.25rem;
 }
 
-.services-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
+.service-status-value {
+    font-size: 1.5rem;
 }
 
-.service-card {
-    background: var(--color-surface);
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid var(--color-border);
-}
-
-.service-card.status-healthy { border-left-color: var(--color-success); }
-.service-card.status-warning, .service-card.status-degraded { border-left-color: var(--color-warning); }
-.service-card.status-critical, .service-card.status-down { border-left-color: var(--color-danger); }
-.service-card.status-configured { border-left-color: var(--color-primary); }
-
-.service-name {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.service-status {
-    margin-bottom: 0.25rem;
-}
-
-.status-badge {
-    display: inline-block;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-
-.badge-healthy { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
-.badge-warning, .badge-degraded { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
-.badge-critical, .badge-down { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
-.badge-configured { background: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary); }
-.badge-error { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
-
-.service-message {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-}
-
-.service-latency {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    margin-top: 0.25rem;
-}
+.status-color-healthy { color: var(--color-success); }
+.status-color-warning, .status-color-degraded { color: var(--color-warning); }
+.status-color-critical, .status-color-down { color: var(--color-danger); }
+.status-color-configured { color: var(--color-primary); }
+.status-color-unknown { color: var(--color-text-muted); }
 
 .info-grid {
     display: grid;
