@@ -30,7 +30,7 @@ services:
 
       # File Upload Settings (in bytes, default 100MB)
       - MESHSILO_MAX_UPLOAD_SIZE=104857600
-      - MESHSILO_ALLOWED_EXTENSIONS=stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip,lys,ctb,pwmo,sl1,jpg,jpeg,png,gif,webp,pdf,txt,md
+      - MESHSILO_ALLOWED_EXTENSIONS=stl,3mf,obj,ply,amf,gcode,glb,gltf,fbx,dae,blend,step,stp,iges,igs,3ds,dxf,off,x3d,zip,lys,ctb,pwmo,sl1,scad,jpg,jpeg,png,gif,webp,pdf,txt,md
 
       # Deduplication
       - MESHSILO_DEDUP_ENABLED=true
@@ -71,6 +71,19 @@ services:
 #   3. Remove or comment out the depends_on section
 #   The install wizard will default to SQLite when no MySQL env vars are set.
 
+# Optional: OpenSCAD rendering service for .scad file support
+# Uncomment to enable server-side OpenSCAD rendering (STL/3MF export, thumbnails)
+#  openscad:
+#    image: openscad/openscad:latest
+#    container_name: meshsilo-openscad
+#    restart: unless-stopped
+#    volumes:
+#      - meshsilo_assets:/data/assets:ro
+#      - meshsilo_openscad_output:/data/output
+#    command: ["sleep", "infinity"]
+#    # MeshSilo calls: docker exec meshsilo-openscad openscad -o /data/output/out.stl /data/assets/file.scad
+#    # To enable, also set MESHSILO_OPENSCAD_ENABLED=true in the meshsilo service environment
+
 volumes:
   meshsilo_assets:
     driver: local
@@ -84,3 +97,5 @@ volumes:
     driver: local
   meshsilo_mysql:
     driver: local
+#  meshsilo_openscad_output:
+#    driver: local

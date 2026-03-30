@@ -51,10 +51,10 @@ if (!defined('MAX_UPLOAD_SIZE')) {
     define('MAX_UPLOAD_SIZE', 100 * 1024 * 1024); // 100MB (alias)
 }
 if (!defined('MODEL_EXTENSIONS')) {
-    define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'lys', 'ctb', 'pwmo', 'sl1']);
+    define('MODEL_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'lys', 'ctb', 'pwmo', 'sl1', 'scad']);
 }
 if (!defined('ALLOWED_EXTENSIONS')) {
-    define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip', 'lys', 'ctb', 'pwmo', 'sl1', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md']);
+    define('ALLOWED_EXTENSIONS', ['stl', '3mf', 'obj', 'ply', 'amf', 'gcode', 'glb', 'gltf', 'fbx', 'dae', 'blend', 'step', 'stp', 'iges', 'igs', '3ds', 'dxf', 'off', 'x3d', 'zip', 'lys', 'ctb', 'pwmo', 'sl1', 'scad', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md']);
 }
 // Extensions that are attachments (images, documents) rather than 3D models
 if (!defined('ATTACHMENT_EXTENSIONS')) {
