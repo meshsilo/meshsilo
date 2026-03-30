@@ -91,7 +91,8 @@ function getSpecialMigrations(): array
             'check' => fn($db) => indexExists($db, 'plugin_repositories', 'idx_plugin_repositories_url'),
             'apply' => function ($db) {
                 // Delete duplicates, keeping the row with the lowest id
-                $db->exec('DELETE FROM plugin_repositories WHERE id NOT IN (SELECT MIN(id) FROM plugin_repositories GROUP BY url)');
+                // Wrapped in derived table to work around MySQL error 1093
+                $db->exec('DELETE FROM plugin_repositories WHERE id NOT IN (SELECT min_id FROM (SELECT MIN(id) AS min_id FROM plugin_repositories GROUP BY url) AS keep)');
                 // Add unique index to prevent future duplicates
                 $db->exec('CREATE UNIQUE INDEX idx_plugin_repositories_url ON plugin_repositories (url)');
             },
