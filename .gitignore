@@ -51,6 +51,7 @@ docs/
 .playwright-cli/
 todo.txt
 mcp_servers.json
+.nvmrc
 
 # Tests (local development only)
 tests/
