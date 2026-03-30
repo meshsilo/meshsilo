@@ -168,12 +168,17 @@ function uploadAttachment() {
     // Store relative path
     $relativePath = $modelHash . '/attachments/' . $finalFilename;
 
+    // Get next display order
+    $orderStmt = $db->prepare('SELECT COALESCE(MAX(display_order), 0) + 1 FROM model_attachments WHERE model_id = :model_id');
+    $orderStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $orderStmt->execute();
+    $nextOrder = (int)$orderStmt->fetchColumn();
+
     // Insert into database
     $stmt = $db->prepare('INSERT INTO model_attachments (model_id, filename, file_path, file_type, mime_type, file_size, original_filename, display_order)
-                          VALUES (:model_id, :filename, :file_path, :file_type, :mime_type, :file_size, :original_filename,
-                                  (SELECT COALESCE(MAX(display_order), 0) + 1 FROM model_attachments WHERE model_id = :model_id2))');
+                          VALUES (:model_id, :filename, :file_path, :file_type, :mime_type, :file_size, :original_filename, :display_order)');
     $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-    $stmt->bindValue(':model_id2', $modelId, PDO::PARAM_INT);
+    $stmt->bindValue(':display_order', $nextOrder, PDO::PARAM_INT);
     $stmt->bindValue(':filename', $finalFilename, PDO::PARAM_STR);
     $stmt->bindValue(':file_path', $relativePath, PDO::PARAM_STR);
     $stmt->bindValue(':file_type', $fileType, PDO::PARAM_STR);
