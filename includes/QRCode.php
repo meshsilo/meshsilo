@@ -9,7 +9,7 @@
  */
 class QRCode
 {
-    private const EC_LEVEL = 0; // 0=M (15% recovery)
+    // Error correction level M (15% recovery) is hardcoded in the encode logic
 
     // Version capacities for EC level M, byte mode
     private const VERSION_CAPACITY = [
@@ -367,7 +367,7 @@ class QRCode
                 for ($dx = -2; $dx <= 2; $dx++) {
                     $y = $cy + $dy;
                     $x = $cx + $dx;
-                    if ($y < 0 || $y >= $s || $x < 0 || $x >= $s) continue;
+                    if ($y < 0 || $y >= $s || $x < 0 || $x >= $s) continue; /** @phpstan-ignore-line */
                     if (abs($dy) === 2 || abs($dx) === 2 || ($dy === 0 && $dx === 0)) {
                         $m[$y][$x] = 1;
                     } else {
@@ -432,7 +432,7 @@ class QRCode
             foreach ($rows as $row) {
                 for ($c = 0; $c < 2; $c++) {
                     $x = $col - $c;
-                    if ($x < 0 || $r[$row][$x]) continue;
+                    if ($x < 0 || $r[$row][$x]) continue; /** @phpstan-ignore-line */
                     $m[$row][$x] = ($bitIdx < strlen($bits) && $bits[$bitIdx] === '1') ? 1 : 0;
                     $bitIdx++;
                 }
@@ -471,6 +471,7 @@ class QRCode
                     5 => ($y * $x) % 2 + ($y * $x) % 3 === 0,
                     6 => (($y * $x) % 2 + ($y * $x) % 3) % 2 === 0,
                     7 => (($y + $x) % 2 + ($y * $x) % 3) % 2 === 0,
+                    default => false,
                 };
                 if ($flip) {
                     $m[$y][$x] ^= 1;

@@ -584,7 +584,7 @@ class Debug
         self::log("File field: $fieldName", [
             'name' => $file['name'],
             'type' => $file['type'],
-            'size' => self::formatBytes($file['size']),
+            'size' => formatBytes($file['size']),
             'size_bytes' => $file['size'],
             'tmp_name' => $file['tmp_name'],
             'tmp_exists' => !empty($file['tmp_name']) && file_exists($file['tmp_name']),

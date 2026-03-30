@@ -38,7 +38,7 @@ trait DebugProfiler
 
         self::log("Timer '$name' completed", [
             'duration_ms' => round($duration * 1000, 2),
-            'memory_used' => self::formatBytes($memUsed),
+            'memory_used' => formatBytes($memUsed),
         ], 'timer');
 
         return $duration;
@@ -61,8 +61,8 @@ trait DebugProfiler
 
         if (self::$config['verbose']) {
             self::log("Memory snapshot: $label", [
-                'current' => self::formatBytes(memory_get_usage(true)),
-                'peak' => self::formatBytes(memory_get_peak_usage(true)),
+                'current' => formatBytes(memory_get_usage(true)),
+                'peak' => formatBytes(memory_get_peak_usage(true)),
             ], 'memory');
         }
     }
@@ -117,7 +117,7 @@ trait DebugProfiler
             $_SERVER['REQUEST_METHOD'] ?? 'CLI',
             $_SERVER['REQUEST_URI'] ?? '',
             $duration * 1000,
-            self::formatBytes($memory),
+            formatBytes($memory),
             self::$queryCount,
             $errors,
             $warnings,
