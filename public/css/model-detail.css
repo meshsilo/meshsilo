@@ -434,10 +434,6 @@
 }
 
 .model-content-sidebar {
-    position: sticky;
-    top: 1rem;
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
 }
 
 .model-content-sidebar .model-attachments {
@@ -1108,7 +1104,6 @@
     }
 
     .model-content-sidebar {
-        position: static;
     }
 }
 
