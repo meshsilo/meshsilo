@@ -135,6 +135,20 @@ function initializeDefaultSettings($db)
     } catch (Exception $e) {
         logDebug('Settings initialization skipped', ['error' => $e->getMessage()]);
     }
+
+    // Seed official plugin repository
+    try {
+        $repoUrl = 'https://raw.githubusercontent.com/meshsilo/meshsilo-plugins/main/registry.json';
+        if ($type === 'mysql') {
+            $db->prepare('INSERT IGNORE INTO plugin_repositories (name, url, is_official) VALUES (:name, :url, 1)')
+                ->execute([':name' => 'MeshSilo Official', ':url' => $repoUrl]);
+        } else {
+            $db->prepare('INSERT OR IGNORE INTO plugin_repositories (name, url, is_official) VALUES (:name, :url, 1)')
+                ->execute([':name' => 'MeshSilo Official', ':url' => $repoUrl]);
+        }
+    } catch (Exception $e) {
+        // Table may not exist yet
+    }
 }
 
 // Settings cache storage
