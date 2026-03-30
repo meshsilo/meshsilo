@@ -211,6 +211,13 @@ $repositories = [];
 $updates = [];
 
 if ($activeTab === 'browse') {
+    // Auto-fetch registries that have never been fetched
+    $repos = $pluginManager->getRepositories();
+    foreach ($repos as $repo) {
+        if (empty($repo['registry_cache'])) {
+            $pluginManager->fetchRegistry($repo['url']);
+        }
+    }
     $availablePlugins = $pluginManager->getAvailablePlugins();
     $updates = $pluginManager->checkUpdates();
 } elseif ($activeTab === 'repositories') {
