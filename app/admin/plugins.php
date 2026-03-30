@@ -320,11 +320,17 @@ require_once __DIR__ . '/../../includes/header.php';
                             <button type="submit" class="btn btn-primary btn-sm">Enable</button>
                         </form>
                         <?php else: ?>
+                        <?php
+                            $pluginFeatures = $pluginManager->getPluginFeatures($id);
+                            $disableConfirm = !empty($pluginFeatures)
+                                ? 'Disable ' . htmlspecialchars($plugin['name']) . '? This will remove: ' . htmlspecialchars(implode(', ', array_slice($pluginFeatures, 0, 5))) . (count($pluginFeatures) > 5 ? ' and ' . (count($pluginFeatures) - 5) . ' more' : '')
+                                : 'Disable ' . htmlspecialchars($plugin['name']) . '?';
+                        ?>
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="disable">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
-                            <button type="submit" class="btn btn-secondary btn-sm">Disable</button>
+                            <button type="submit" class="btn btn-secondary btn-sm" data-confirm="<?= $disableConfirm ?>">Disable</button>
                         </form>
                         <?php if (!empty($plugin['settings']) && is_array($plugin['settings'])): ?>
                         <a href="?tab=<?= urlencode($activeTab) ?>&settings=<?= urlencode($id) ?>" class="btn btn-secondary btn-sm">Settings</a>
@@ -354,6 +360,18 @@ require_once __DIR__ . '/../../includes/header.php';
                             <button type="submit" class="btn btn-danger btn-sm" data-confirm="Are you sure you want to uninstall this plugin? All plugin files will be removed.">Uninstall</button>
                         </form>
                     </div>
+                    <?php
+                        $changelog = $pluginManager->getChangelog($id);
+                        if ($changelog && isset($_GET['changelog']) && $_GET['changelog'] === $id):
+                    ?>
+                    <div class="plugin-changelog" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <h4 style="margin-bottom: 0.5rem;">Changelog</h4>
+                        <pre style="font-size: 0.8rem; max-height: 200px; overflow-y: auto; background: var(--color-bg); padding: 0.75rem; border-radius: var(--radius); white-space: pre-wrap;"><?= htmlspecialchars($changelog) ?></pre>
+                        <a href="?tab=<?= urlencode($activeTab) ?>" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;">Close</a>
+                    </div>
+                    <?php elseif ($changelog): ?>
+                    <a href="?tab=<?= urlencode($activeTab) ?>&changelog=<?= urlencode($id) ?>" style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.5rem; display: inline-block;">View changelog</a>
+                    <?php endif; ?>
                     <?php if (isset($_GET['settings']) && $_GET['settings'] === $id && $isActive && !empty($plugin['settings'])): ?>
                     <div class="plugin-settings-inline" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>">

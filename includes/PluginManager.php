@@ -156,6 +156,64 @@ class PluginManager
         return $this->bootErrors[$id] ?? null;
     }
 
+    /**
+     * Get changelog content for a plugin (from CHANGELOG.md in plugin directory).
+     */
+    public function getChangelog(string $id): ?string
+    {
+        $dir = $this->pluginsDir . '/' . ($this->plugins[$id]['_dir'] ?? $id);
+        foreach (['CHANGELOG.md', 'changelog.md', 'CHANGES.md'] as $file) {
+            $path = $dir . '/' . $file;
+            if (is_file($path)) {
+                return file_get_contents($path);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get features registered by a plugin (routes, filters, actions, admin pages, styles, scripts).
+     */
+    public function getPluginFeatures(string $id): array
+    {
+        $features = [];
+        foreach ($this->routes as $r) {
+            if (($r['plugin'] ?? '') === $id) {
+                $features[] = 'Route: ' . $r['method'] . ' ' . $r['pattern'];
+            }
+        }
+        foreach ($this->filters as $hook => $callbacks) {
+            foreach ($callbacks as $cb) {
+                if (($cb['plugin'] ?? '') === $id) {
+                    $features[] = 'Filter: ' . $hook;
+                }
+            }
+        }
+        foreach ($this->actions as $event => $callbacks) {
+            foreach ($callbacks as $cb) {
+                if (($cb['plugin'] ?? '') === $id) {
+                    $features[] = 'Action: ' . $event;
+                }
+            }
+        }
+        foreach ($this->adminMenuItems as $item) {
+            if (($item['plugin'] ?? '') === $id) {
+                $features[] = 'Admin menu: ' . $item['label'];
+            }
+        }
+        foreach ($this->styles as $s) {
+            if (($s['plugin'] ?? '') === $id) {
+                $features[] = 'Stylesheet: ' . $s['path'];
+            }
+        }
+        foreach ($this->scripts as $s) {
+            if (($s['plugin'] ?? '') === $id) {
+                $features[] = 'Script: ' . $s['path'];
+            }
+        }
+        return $features;
+    }
+
     // ========================================================================
     // Lifecycle Methods
     // ========================================================================
