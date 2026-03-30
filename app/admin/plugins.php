@@ -61,6 +61,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             }
             break;
 
+        case 'save-settings':
+            $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['plugin_id'] ?? ''));
+            $pluginSettings = $_POST['plugin_settings'] ?? [];
+            if ($pluginId !== '' && $pluginManager->savePluginSettings($pluginId, $pluginSettings)) {
+                $message = 'Plugin settings saved successfully.';
+            } else {
+                $error = 'Failed to save plugin settings.';
+            }
+            break;
+
         case 'install-upload':
             if (isset($_FILES['plugin_zip']) && $_FILES['plugin_zip']['error'] === UPLOAD_ERR_OK) {
                 $tmpPath = $_FILES['plugin_zip']['tmp_name'];
@@ -267,8 +277,9 @@ require_once __DIR__ . '/../../includes/header.php';
                     $isActive = !empty($plugin['is_active']);
                     $hasUpdate = isset($updates[$id]);
                     $hasMigrations = is_file($pluginManager->getPluginsDir() . '/' . ($plugin['_dir'] ?? $id) . '/migrations.php');
+                    $bootError = $pluginManager->getBootError($id);
                 ?>
-                <div class="plugin-card <?= $isActive ? 'active' : 'inactive' ?>">
+                <div class="plugin-card <?= $isActive ? 'active' : 'inactive' ?><?= $bootError ? ' has-error' : '' ?>">
                     <div class="plugin-card-header">
                         <div class="plugin-info">
                             <div class="plugin-title-row">
@@ -277,6 +288,9 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span class="plugin-status-badge <?= $isActive ? 'badge-active' : 'badge-inactive' ?>">
                                     <?= $isActive ? 'Active' : 'Inactive' ?>
                                 </span>
+                                <?php if ($bootError): ?>
+                                <span class="plugin-status-badge badge-danger">Error</span>
+                                <?php endif; ?>
                                 <?php if ($hasUpdate): ?>
                                 <span class="plugin-status-badge badge-update">Update Available (v<?= htmlspecialchars($updates[$id]['available_version']) ?>)</span>
                                 <?php endif; ?>
@@ -291,6 +305,11 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?php endif; ?>
                     <?php if (!empty($plugin['requires_plugins']) && is_array($plugin['requires_plugins'])): ?>
                     <p class="plugin-dependencies">Requires: <?= htmlspecialchars(implode(', ', $plugin['requires_plugins'])) ?></p>
+                    <?php endif; ?>
+                    <?php if ($bootError): ?>
+                    <div class="plugin-error" style="background: color-mix(in srgb, var(--color-danger) 10%, transparent); border: 1px solid var(--color-danger); border-radius: var(--radius); padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--color-danger);">
+                        <strong>Boot Error:</strong> <?= htmlspecialchars($bootError) ?>
+                    </div>
                     <?php endif; ?>
                     <div class="plugin-actions">
                         <?php if (!$isActive): ?>
@@ -307,6 +326,9 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
                             <button type="submit" class="btn btn-secondary btn-sm">Disable</button>
                         </form>
+                        <?php if (!empty($plugin['settings']) && is_array($plugin['settings'])): ?>
+                        <a href="?tab=<?= urlencode($activeTab) ?>&settings=<?= urlencode($id) ?>" class="btn btn-secondary btn-sm">Settings</a>
+                        <?php endif; ?>
                         <?php endif; ?>
                         <?php if ($hasUpdate && !empty($updates[$id]['_source'])): ?>
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
@@ -332,6 +354,20 @@ require_once __DIR__ . '/../../includes/header.php';
                             <button type="submit" class="btn btn-danger btn-sm" data-confirm="Are you sure you want to uninstall this plugin? All plugin files will be removed.">Uninstall</button>
                         </form>
                     </div>
+                    <?php if (isset($_GET['settings']) && $_GET['settings'] === $id && $isActive && !empty($plugin['settings'])): ?>
+                    <div class="plugin-settings-inline" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="save-settings">
+                            <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
+                            <?= $pluginManager->renderPluginSettingsForm($id) ?>
+                            <div class="form-actions" style="margin-top: 1rem; border-top: none; padding-top: 0;">
+                                <button type="submit" class="btn btn-primary btn-sm">Save Settings</button>
+                                <a href="?tab=<?= urlencode($activeTab) ?>" class="btn btn-secondary btn-sm">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -370,28 +406,28 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php if (!empty($plugin['author'])): ?>
                         <span class="plugin-meta-item">by <?= htmlspecialchars($plugin['author']) ?></span>
                         <?php endif; ?>
-                        <?php if (!empty($plugin['category'])): ?>
-                        <span class="plugin-meta-item"><?= htmlspecialchars($plugin['category']) ?></span>
+                        <?php if ($isInstalled): ?>
+                        <span class="plugin-meta-item">Installed: v<?= htmlspecialchars($plugin['_installed_version'] ?? '?') ?></span>
                         <?php endif; ?>
                         <span class="plugin-meta-item">Source: <?= htmlspecialchars($plugin['_repo'] ?? 'Unknown') ?></span>
                     </div>
                     <div class="plugin-browse-actions">
-                        <?php if ($isInstalled && !$hasUpdate): ?>
-                        <span class="plugin-status-badge badge-installed">Installed</span>
-                        <?php elseif ($hasUpdate): ?>
+                        <?php if ($isInstalled && !($plugin['_update_available'] ?? false)): ?>
+                        <span class="plugin-status-badge badge-installed">Up to Date</span>
+                        <?php elseif ($isInstalled && ($plugin['_update_available'] ?? false) && !empty($plugin['_source'])): ?>
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="install-repo">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
-                            <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($plugin['_source'] ?? null)) ?>">
-                            <button type="submit" class="btn btn-primary btn-sm">Update to v<?= htmlspecialchars($updates[$id]['available_version']) ?></button>
+                            <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($plugin['_source'])) ?>">
+                            <button type="submit" class="btn btn-warning btn-sm">Update to v<?= htmlspecialchars($plugin['version'] ?? '') ?></button>
                         </form>
-                        <?php else: ?>
+                        <?php elseif (!$isInstalled && !empty($plugin['_source'])): ?>
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="install-repo">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
-                            <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($plugin['_source'] ?? null)) ?>">
+                            <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($plugin['_source'])) ?>">
                             <button type="submit" class="btn btn-primary btn-sm">Install</button>
                         </form>
                         <?php endif; ?>

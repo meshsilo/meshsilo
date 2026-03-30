@@ -20,6 +20,7 @@ class PluginManager
     private array $scripts = [];
     private array $filters = [];
     private array $actions = [];
+    private array $bootErrors = [];
     private string $pluginsDir;
     private string $currentPluginId = '';
 
@@ -128,6 +129,7 @@ class PluginManager
                 $this->plugins[$id]
             );
         } catch (\Throwable $e) {
+            $this->bootErrors[$id] = $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine();
             logError("Plugin boot failed: $id", [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -136,6 +138,22 @@ class PluginManager
         }
 
         $this->currentPluginId = '';
+    }
+
+    /**
+     * Get all boot errors (plugin_id => error message).
+     */
+    public function getBootErrors(): array
+    {
+        return $this->bootErrors;
+    }
+
+    /**
+     * Get boot error for a specific plugin, or null if none.
+     */
+    public function getBootError(string $id): ?string
+    {
+        return $this->bootErrors[$id] ?? null;
     }
 
     // ========================================================================
@@ -296,10 +314,9 @@ class PluginManager
             return ['success' => false, 'error' => 'Invalid plugin ID: only lowercase alphanumeric and hyphens allowed'];
         }
 
-        if (isset($this->plugins[$pluginId])) {
-            $zip->close();
-            return ['success' => false, 'error' => "Plugin '$pluginId' is already installed"];
-        }
+        $isUpgrade = isset($this->plugins[$pluginId]);
+        $targetDir = $this->pluginsDir . '/' . $pluginId;
+        $backupDir = null;
 
         $tempDir = sys_get_temp_dir() . '/meshsilo_plugin_' . bin2hex(random_bytes(8));
         @mkdir($tempDir, 0755, true);
@@ -310,7 +327,6 @@ class PluginManager
             if ($entryName === false) {
                 continue;
             }
-            // Block path traversal and absolute paths
             if (str_contains($entryName, '..') || str_starts_with($entryName, '/') || str_starts_with($entryName, '\\')) {
                 $zip->close();
                 self::recursiveDelete($tempDir);
@@ -322,44 +338,82 @@ class PluginManager
         $zip->close();
 
         $sourceDir = $prefix !== '' ? $tempDir . '/' . rtrim($prefix, '/') : $tempDir;
-        $targetDir = $this->pluginsDir . '/' . $pluginId;
 
+        // If upgrading, backup existing plugin directory
+        if ($isUpgrade && is_dir($targetDir)) {
+            $backupDir = $this->pluginsDir . '/.backup-' . $pluginId . '-' . time();
+            if (!rename($targetDir, $backupDir)) {
+                self::recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Failed to backup existing plugin for upgrade'];
+            }
+        }
+
+        // Move new files into place
         if (!rename($sourceDir, $targetDir)) {
+            // Restore backup on failure
+            if ($backupDir && is_dir($backupDir)) {
+                rename($backupDir, $targetDir);
+            }
             self::recursiveDelete($tempDir);
             return ['success' => false, 'error' => 'Failed to move plugin to plugins directory'];
         }
 
-        // Clean up temp dir if source was a subdirectory
+        // Clean up temp dir and backup
         if ($prefix !== '' && is_dir($tempDir)) {
             self::recursiveDelete($tempDir);
         }
+        if ($backupDir && is_dir($backupDir)) {
+            self::recursiveDelete($backupDir);
+        }
 
+        // Update database (insert or update)
         try {
             $db = getDB();
             $type = $db->getType();
 
             if ($type === 'mysql') {
                 $stmt = $db->prepare(
-                    'INSERT INTO plugins (id, is_active, installed_at, updated_at) '
-                    . 'VALUES (:id, 0, NOW(), NOW())'
+                    'INSERT INTO plugins (id, name, version, description, author, is_active, installed_at, updated_at) '
+                    . 'VALUES (:id, :name, :version, :desc, :author, ' . ($isUpgrade ? '(SELECT is_active FROM (SELECT is_active FROM plugins WHERE id = :id2) t)' : '0') . ', NOW(), NOW()) '
+                    . 'ON DUPLICATE KEY UPDATE name = :name2, version = :version2, description = :desc2, author = :author2, updated_at = NOW()'
                 );
+                $stmt->execute([
+                    ':id' => $pluginId, ':name' => $manifest['name'], ':version' => $manifest['version'],
+                    ':desc' => $manifest['description'] ?? '', ':author' => $manifest['author'] ?? '',
+                    ':id2' => $pluginId, ':name2' => $manifest['name'], ':version2' => $manifest['version'],
+                    ':desc2' => $manifest['description'] ?? '', ':author2' => $manifest['author'] ?? '',
+                ]);
             } else {
                 $stmt = $db->prepare(
-                    'INSERT INTO plugins (id, is_active, installed_at, updated_at) '
-                    . 'VALUES (:id, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+                    'INSERT INTO plugins (id, name, version, description, author, is_active, installed_at, updated_at) '
+                    . 'VALUES (:id, :name, :version, :desc, :author, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) '
+                    . 'ON CONFLICT(id) DO UPDATE SET name = :name2, version = :version2, description = :desc2, author = :author2, updated_at = CURRENT_TIMESTAMP'
                 );
+                $stmt->execute([
+                    ':id' => $pluginId, ':name' => $manifest['name'], ':version' => $manifest['version'],
+                    ':desc' => $manifest['description'] ?? '', ':author' => $manifest['author'] ?? '',
+                    ':name2' => $manifest['name'], ':version2' => $manifest['version'],
+                    ':desc2' => $manifest['description'] ?? '', ':author2' => $manifest['author'] ?? '',
+                ]);
             }
-            $stmt->execute([':id' => $pluginId]);
         } catch (\Exception $e) {
-            logError("Failed to insert plugin DB row: $pluginId", ['error' => $e->getMessage()]);
+            logError("Failed to upsert plugin DB row: $pluginId", ['error' => $e->getMessage()]);
+        }
+
+        // Run migrations if present
+        if ($isUpgrade) {
+            $migrationsFile = $targetDir . '/migrations.php';
+            if (is_file($migrationsFile)) {
+                $this->runPluginMigrations($pluginId);
+            }
         }
 
         $this->plugins[$pluginId] = $manifest;
         $this->plugins[$pluginId]['_dir'] = $pluginId;
 
-        logInfo("Plugin installed: $pluginId");
+        logInfo($isUpgrade ? "Plugin upgraded: $pluginId" : "Plugin installed: $pluginId");
 
-        return ['success' => true, 'plugin' => $manifest];
+        return ['success' => true, 'plugin' => $manifest, 'upgraded' => $isUpgrade];
     }
 
     public function uninstallPlugin(string $id): bool
@@ -538,6 +592,115 @@ class PluginManager
         } catch (\Exception $e) {
             return [];
         }
+    }
+
+    /**
+     * Get plugins that have settings declarations in their manifest.
+     */
+    public function getPluginsWithSettings(): array
+    {
+        $result = [];
+        foreach ($this->activePlugins as $id => $active) {
+            $manifest = $this->plugins[$id] ?? [];
+            if (!empty($manifest['settings']) && is_array($manifest['settings'])) {
+                $result[$id] = $manifest;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Render settings form HTML for a plugin.
+     * Settings are declared in plugin.json: "settings": [{"key":"x","label":"X","type":"text","default":"","description":"..."}]
+     * Supported types: text, password, textarea, checkbox, select, number
+     */
+    public function renderPluginSettingsForm(string $pluginId): string
+    {
+        $manifest = $this->plugins[$pluginId] ?? [];
+        $fields = $manifest['settings'] ?? [];
+        if (empty($fields) || !is_array($fields)) {
+            return '';
+        }
+
+        $savedSettings = $this->getSettings($pluginId);
+        $html = '';
+
+        foreach ($fields as $field) {
+            $key = $field['key'] ?? '';
+            $label = htmlspecialchars($field['label'] ?? $key);
+            $type = $field['type'] ?? 'text';
+            $default = $field['default'] ?? '';
+            $description = htmlspecialchars($field['description'] ?? '');
+            $value = $savedSettings[$key] ?? $default;
+            $inputName = 'plugin_settings[' . htmlspecialchars($key) . ']';
+
+            $html .= '<div class="form-group">';
+            $html .= '<label for="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '">' . $label . '</label>';
+
+            switch ($type) {
+                case 'textarea':
+                    $html .= '<textarea id="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '" name="' . $inputName . '" class="form-input" rows="4">' . htmlspecialchars($value) . '</textarea>';
+                    break;
+
+                case 'checkbox':
+                    $checked = ($value === '1' || $value === true) ? ' checked' : '';
+                    $html .= '<input type="hidden" name="' . $inputName . '" value="0">';
+                    $html .= '<label class="toggle-label"><input type="checkbox" id="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '" name="' . $inputName . '" value="1"' . $checked . '><span class="toggle-switch"></span><span>' . $label . '</span></label>';
+                    break;
+
+                case 'select':
+                    $html .= '<select id="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '" name="' . $inputName . '" class="form-input">';
+                    foreach (($field['options'] ?? []) as $optVal => $optLabel) {
+                        $selected = ((string)$value === (string)$optVal) ? ' selected' : '';
+                        $html .= '<option value="' . htmlspecialchars($optVal) . '"' . $selected . '>' . htmlspecialchars($optLabel) . '</option>';
+                    }
+                    $html .= '</select>';
+                    break;
+
+                case 'number':
+                    $min = isset($field['min']) ? ' min="' . (int)$field['min'] . '"' : '';
+                    $max = isset($field['max']) ? ' max="' . (int)$field['max'] . '"' : '';
+                    $html .= '<input type="number" id="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '" name="' . $inputName . '" class="form-input" value="' . htmlspecialchars($value) . '"' . $min . $max . '>';
+                    break;
+
+                case 'password':
+                    $html .= '<input type="password" id="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '" name="' . $inputName . '" class="form-input" value="' . htmlspecialchars($value) . '" autocomplete="off">';
+                    break;
+
+                default: // text
+                    $html .= '<input type="text" id="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '" name="' . $inputName . '" class="form-input" value="' . htmlspecialchars($value) . '">';
+                    break;
+            }
+
+            if ($description) {
+                $html .= '<p class="form-help">' . $description . '</p>';
+            }
+            $html .= '</div>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * Save plugin settings from form POST data.
+     */
+    public function savePluginSettings(string $pluginId, array $postData): bool
+    {
+        $manifest = $this->plugins[$pluginId] ?? [];
+        $fields = $manifest['settings'] ?? [];
+        if (empty($fields)) {
+            return false;
+        }
+
+        // Only save declared fields (prevent arbitrary key injection)
+        $allowedKeys = array_column($fields, 'key');
+        foreach ($allowedKeys as $key) {
+            if (array_key_exists($key, $postData)) {
+                $this->setSetting($pluginId, $key, $postData[$key]);
+            }
+        }
+
+        return true;
     }
 
     // ========================================================================
@@ -756,6 +919,17 @@ class PluginManager
                 }
                 $plugin['_installed'] = isset($this->plugins[$plugin['id']]);
                 $plugin['_repo'] = $repo['name'] ?? $repo['url'];
+
+                // Version comparison
+                if ($plugin['_installed']) {
+                    $installedVersion = $this->plugins[$plugin['id']]['version'] ?? '0.0.0';
+                    $availableVersion = $plugin['version'] ?? '0.0.0';
+                    $plugin['_installed_version'] = $installedVersion;
+                    $plugin['_update_available'] = version_compare($availableVersion, $installedVersion, '>');
+                } else {
+                    $plugin['_installed_version'] = null;
+                    $plugin['_update_available'] = false;
+                }
 
                 // Attach source info: plugin-level overrides registry-level
                 if (!isset($plugin['_source']) && $registrySource && !empty($plugin['path'])) {

@@ -132,8 +132,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
     }
 }
 
+// Handle plugin settings save
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_plugin_settings']) && Csrf::check()) {
+    $pluginId = $_POST['save_plugin_settings'];
+    $pluginSettings = $_POST['plugin_settings'] ?? [];
+    $pm = PluginManager::getInstance();
+    if ($pm->savePluginSettings($pluginId, $pluginSettings)) {
+        $message = 'Plugin settings saved successfully.';
+    } else {
+        $error = 'Failed to save plugin settings.';
+    }
+}
+
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email']) && !isset($_POST['save_plugin_settings'])) {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
@@ -550,7 +562,29 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </details>
 
-                    <?php if (class_exists('PluginManager')): ?>
+                    <?php if (class_exists('PluginManager')):
+                        $pm = PluginManager::getInstance();
+                        $pluginsWithSettings = $pm->getPluginsWithSettings();
+                        foreach ($pluginsWithSettings as $pId => $pManifest):
+                    ?>
+                    </form>
+                    <form class="settings-form" method="POST">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="save_plugin_settings" value="<?= htmlspecialchars($pId) ?>">
+                        <details class="settings-section">
+                            <summary><h2><?= htmlspecialchars($pManifest['name'] ?? $pId) ?> Settings</h2></summary>
+                            <?php if (!empty($pManifest['description'])): ?>
+                            <p class="form-help" style="margin-bottom: 1rem;"><?= htmlspecialchars($pManifest['description']) ?></p>
+                            <?php endif; ?>
+                            <?= $pm->renderPluginSettingsForm($pId) ?>
+                            <div class="form-actions" style="margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary">Save <?= htmlspecialchars($pManifest['name'] ?? 'Plugin') ?> Settings</button>
+                            </div>
+                        </details>
+                    </form>
+                    <form class="settings-form" method="POST">
+                        <?= csrf_field() ?>
+                    <?php endforeach; ?>
                     <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
                     <?php endif; ?>
 
