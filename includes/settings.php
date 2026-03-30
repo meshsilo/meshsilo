@@ -139,11 +139,10 @@ function initializeDefaultSettings($db)
     // Seed official plugin repository
     try {
         $repoUrl = 'https://raw.githubusercontent.com/meshsilo/meshsilo-plugins/main/registry.json';
-        if ($type === 'mysql') {
-            $db->prepare('INSERT IGNORE INTO plugin_repositories (name, url, is_official) VALUES (:name, :url, 1)')
-                ->execute([':name' => 'MeshSilo Official', ':url' => $repoUrl]);
-        } else {
-            $db->prepare('INSERT OR IGNORE INTO plugin_repositories (name, url, is_official) VALUES (:name, :url, 1)')
+        $stmt = $db->prepare('SELECT COUNT(*) FROM plugin_repositories WHERE url = :url');
+        $stmt->execute([':url' => $repoUrl]);
+        if ((int)$stmt->fetchColumn() === 0) {
+            $db->prepare('INSERT INTO plugin_repositories (name, url, is_official) VALUES (:name, :url, 1)')
                 ->execute([':name' => 'MeshSilo Official', ':url' => $repoUrl]);
         }
     } catch (Exception $e) {

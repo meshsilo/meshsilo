@@ -84,7 +84,19 @@ function getMigrationList(): array
  */
 function getSpecialMigrations(): array
 {
-    return [];
+    return [
+        [
+            'name' => 'Deduplicate plugin repositories and add unique URL index',
+            'description' => 'Remove duplicate plugin_repositories rows and add a unique index on url to prevent future duplicates',
+            'check' => fn($db) => indexExists($db, 'plugin_repositories', 'idx_plugin_repositories_url'),
+            'apply' => function ($db) {
+                // Delete duplicates, keeping the row with the lowest id
+                $db->exec('DELETE FROM plugin_repositories WHERE id NOT IN (SELECT MIN(id) FROM plugin_repositories GROUP BY url)');
+                // Add unique index to prevent future duplicates
+                $db->exec('CREATE UNIQUE INDEX idx_plugin_repositories_url ON plugin_repositories (url)');
+            },
+        ],
+    ];
 }
 
 /**
