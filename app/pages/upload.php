@@ -371,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         if ($parentId) {
                             // Save all parts in a single transaction for speed
-                            $db->exec('BEGIN TRANSACTION');
+                            $db->exec('BEGIN');
                             try {
                                 foreach ($modelFiles as $modelFile) {
                                     $partName = pathinfo($modelFile['filename'], PATHINFO_FILENAME);
