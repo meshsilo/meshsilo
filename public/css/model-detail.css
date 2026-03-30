@@ -387,7 +387,7 @@
 
 /* Model Attachments Section */
 .model-attachments {
-    margin-top: 1.5rem;
+    margin-top: 0;
 }
 
 .model-attachments .attachments-header {
@@ -437,6 +437,7 @@
 }
 
 .model-content-sidebar .model-attachments {
+    margin-top: 0;
 }
 
 .model-content-sidebar .model-attachments h3 {
