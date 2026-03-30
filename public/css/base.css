@@ -610,3 +610,69 @@ textarea.form-control {
     border-radius: var(--radius);
 }
 
+/* =====================
+   Mobile Responsive
+   ===================== */
+@media (max-width: 768px) {
+    /* Tables scroll horizontally */
+    .data-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Section cards tighter padding */
+    .section-card,
+    .settings-section,
+    .stat-card,
+    .model-description,
+    .model-version-history,
+    .model-parts,
+    .model-attachments,
+    .delete-model-info {
+        padding: 1rem;
+    }
+
+    /* Cards tighter */
+    .card-body {
+        padding: 1rem;
+    }
+
+    .card-header {
+        padding: 0.75rem 1rem;
+    }
+
+    /* Modal full-width on mobile */
+    .modal-content {
+        max-width: 95vw;
+        margin: 1rem;
+    }
+
+    /* Buttons touch-friendly */
+    .btn {
+        min-height: 44px;
+        padding: 0.6rem 1rem;
+    }
+
+    .btn-sm, .btn-small {
+        min-height: 36px;
+        padding: 0.35rem 0.6rem;
+    }
+
+    /* Form inputs touch-friendly */
+    .form-input,
+    .form-control {
+        min-height: 44px;
+        font-size: 16px; /* Prevent iOS zoom */
+    }
+
+    /* Code block scroll */
+    .code-block {
+        font-size: 0.75rem;
+    }
+
+    .php-values {
+        grid-template-columns: 1fr;
+    }
+}
+

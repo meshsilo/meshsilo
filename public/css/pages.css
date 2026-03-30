@@ -454,7 +454,53 @@ body.mobile-menu-open::before {
     }
 
     .admin-content {
+        padding: 1rem;
+    }
+
+    .admin-nav .nav-section {
+        display: none;
+    }
+
+    .admin-nav .nav-links {
+        flex-direction: row;
+    }
+
+    .page-container-wide {
+        padding: 1.5rem 1rem;
+    }
+
+    .settings-section {
+        padding: 1rem;
+    }
+
+    details.settings-section > *:not(summary) {
+        padding: 0 1rem;
+    }
+
+    details.settings-section > *:last-child {
+        padding-bottom: 1rem;
+    }
+
+    .form-row-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .auth-card {
         padding: 1.5rem;
+    }
+
+    .verify-container {
+        margin: 2rem auto;
+        padding: 1rem;
     }
 }
 
