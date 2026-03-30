@@ -372,8 +372,6 @@ include __DIR__ . '/../../includes/header.php';
         <!-- Cron Expression Help -->
         <details class="settings-section">
             <summary><h2>Cron Expression Reference</h2></summary>
-            </div>
-            <div class="card-body">
                 <pre>
 ┌───────────── minute (0-59)
 │ ┌───────────── hour (0-23)
@@ -384,7 +382,7 @@ include __DIR__ . '/../../includes/header.php';
 * * * * *
                 </pre>
                 <h4>Common Expressions</h4>
-                <table class="table table-sm" aria-label="Cron expression examples">
+                <table class="data-table" aria-label="Cron expression examples">
                     <tr><td><code>* * * * *</code></td><td>Every minute</td></tr>
                     <tr><td><code>*/5 * * * *</code></td><td>Every 5 minutes</td></tr>
                     <tr><td><code>0 * * * *</code></td><td>Every hour</td></tr>
