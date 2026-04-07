@@ -269,6 +269,15 @@
     color: var(--color-success);
 }
 
+/* Stat card warning variant */
+.stat-card-warning {
+    border-color: var(--color-warning);
+}
+
+.stat-card-warning .stat-value {
+    color: var(--color-warning);
+}
+
 /* Activity icons by action type */
 .activity-icon.upload { background-color: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
 .activity-icon.download { background-color: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary); }
