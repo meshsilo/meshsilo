@@ -78,9 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
 
                 // Update parent's part count if this was a child
                 if ($parentRow && $parentRow['parent_id']) {
-                    $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :parent_id1) WHERE id = :parent_id2');
-                    $stmt->bindValue(':parent_id1', $parentRow['parent_id'], PDO::PARAM_INT);
-                    $stmt->bindValue(':parent_id2', $parentRow['parent_id'], PDO::PARAM_INT);
+                    $countStmt = $db->prepare('SELECT COUNT(*) FROM models WHERE parent_id = :pid');
+                    $countStmt->bindValue(':pid', $parentRow['parent_id'], PDO::PARAM_INT);
+                    $countStmt->execute();
+                    $partCount = (int)$countStmt->fetchColumn();
+                    $stmt = $db->prepare('UPDATE models SET part_count = :count WHERE id = :id');
+                    $stmt->bindValue(':count', $partCount, PDO::PARAM_INT);
+                    $stmt->bindValue(':id', $parentRow['parent_id'], PDO::PARAM_INT);
                     $stmt->execute();
                 }
 

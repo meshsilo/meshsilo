@@ -383,7 +383,8 @@ class Scheduler
             // Cleanup old logs (keep last 1000)
             $count = $db->querySingle('SELECT COUNT(*) FROM scheduler_log');
             if ($count > 1000) {
-                $db->exec('DELETE FROM scheduler_log WHERE id IN (SELECT id FROM scheduler_log ORDER BY created_at ASC LIMIT ' . ($count - 1000) . ')');
+                $deleteCount = $count - 1000;
+                $db->exec("DELETE FROM scheduler_log WHERE id IN (SELECT id FROM (SELECT id FROM scheduler_log ORDER BY created_at ASC LIMIT $deleteCount) AS old)");
             }
         } catch (Exception $e) {
             // Silently fail

@@ -149,8 +149,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             $stmt->execute();
 
             // Update parent's part count (recount for accuracy)
-            $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :pid) WHERE id = :id');
-            $stmt->bindValue(':pid', $modelId, PDO::PARAM_INT);
+            $countStmt = $db->prepare('SELECT COUNT(*) FROM models WHERE parent_id = :pid');
+            $countStmt->bindValue(':pid', $modelId, PDO::PARAM_INT);
+            $countStmt->execute();
+            $partCount = (int)$countStmt->fetchColumn();
+            $stmt = $db->prepare('UPDATE models SET part_count = :count WHERE id = :id');
+            $stmt->bindValue(':count', $partCount, PDO::PARAM_INT);
             $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 

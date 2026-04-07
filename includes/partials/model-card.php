@@ -1,4 +1,6 @@
 <?php
+/** @var array $model */
+/** @var array|null $cardOptions */
 /**
  * Model Card Partial
  *

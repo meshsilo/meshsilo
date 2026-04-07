@@ -153,12 +153,12 @@ function recordModelView($modelId)
 
         // Limit to 50 most recent per user/session using parameterized queries
         if ($userId) {
-            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE user_id = :user_id AND id NOT IN (SELECT id FROM recently_viewed WHERE user_id = :user_id2 ORDER BY viewed_at DESC LIMIT 50)');
+            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE user_id = :user_id AND id NOT IN (SELECT id FROM (SELECT id FROM recently_viewed WHERE user_id = :user_id2 ORDER BY viewed_at DESC LIMIT 50) AS keep)');
             $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stmt->bindValue(':user_id2', $userId, PDO::PARAM_INT);
             $stmt->execute();
         } else {
-            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE session_id = :session_id AND id NOT IN (SELECT id FROM recently_viewed WHERE session_id = :session_id2 ORDER BY viewed_at DESC LIMIT 50)');
+            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE session_id = :session_id AND id NOT IN (SELECT id FROM (SELECT id FROM recently_viewed WHERE session_id = :session_id2 ORDER BY viewed_at DESC LIMIT 50) AS keep)');
             $stmt->bindValue(':session_id', $sessionId, PDO::PARAM_STR);
             $stmt->bindValue(':session_id2', $sessionId, PDO::PARAM_STR);
             $stmt->execute();

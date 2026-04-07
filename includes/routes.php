@@ -347,7 +347,14 @@ $router->get('/assets/{path:.+}', function ($params) {
     header('Content-Type: ' . ($mimeTypes[$ext] ?? 'application/octet-stream'));
     header('Cache-Control: public, max-age=604800');
     header('Content-Length: ' . filesize($realFile));
-    readfile($realFile);
+
+    // Use X-Accel-Redirect in Docker (nginx serves the file directly)
+    if (getenv('MESHSILO_DOCKER') === 'true') {
+        $relativePath = str_replace($realBase, '', $realFile);
+        header('X-Accel-Redirect: /assets' . $relativePath);
+    } else {
+        readfile($realFile);
+    }
     exit;
 }, 'assets.serve');
 

@@ -86,6 +86,122 @@ function getSpecialMigrations(): array
 {
     return [
         [
+            'name' => 'Relocate attachments to model asset folders',
+            'description' => 'Move attachment files from md5-hash folders into the parent model\'s own asset folder and update file_path',
+            'check' => function ($db) {
+                // Check if any attachments still point to old md5-hash folders
+                // New-style paths use the model's folderId; old-style used md5(name+id)
+                // We detect old paths by checking if the attachment folder matches the model's folder
+                if (!tableExists($db, 'model_attachments')) {
+                    return true;
+                }
+                $sql = 'SELECT COUNT(*) FROM model_attachments a
+                        JOIN models m ON a.model_id = m.id
+                        WHERE m.file_path IS NOT NULL
+                        AND m.file_path != \'\'
+                        AND a.file_path NOT LIKE \'%/attachments/%\'';
+                $result = $db->querySingle($sql);
+                if ((int)$result > 0) {
+                    return false;
+                }
+                // Check for attachments whose folder doesn't match the model's folder
+                $stmt = $db->prepare('SELECT a.id, a.file_path, m.file_path AS model_file_path
+                    FROM model_attachments a
+                    JOIN models m ON a.model_id = m.id
+                    WHERE m.file_path IS NOT NULL AND m.file_path != \'\'
+                    LIMIT 100');
+                $stmt->execute();
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $modelFolder = preg_replace('#^assets/#', '', $row['model_file_path']);
+                    if (str_contains($modelFolder, '/')) {
+                        $modelFolder = explode('/', $modelFolder)[0];
+                    }
+                    $attachFolder = explode('/', $row['file_path'])[0] ?? '';
+                    if ($attachFolder !== $modelFolder && $attachFolder !== '') {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            'apply' => function ($db) {
+                $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__);
+                $uploadPath = defined('UPLOAD_PATH') ? UPLOAD_PATH : $basePath . '/storage/assets/';
+
+                $stmt = $db->prepare('SELECT a.id, a.file_path, a.model_id, m.file_path AS model_file_path, m.name AS model_name
+                    FROM model_attachments a
+                    JOIN models m ON a.model_id = m.id
+                    WHERE m.file_path IS NOT NULL AND m.file_path != \'\'');
+                $stmt->execute();
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $moved = 0;
+                $skipped = 0;
+                $errors = 0;
+
+                foreach ($rows as $row) {
+                    // Extract model's folder from its file_path ("assets/{folderId}" or "assets/{folderId}/file")
+                    $modelFolder = preg_replace('#^assets/#', '', $row['model_file_path']);
+                    if (str_contains($modelFolder, '/')) {
+                        $modelFolder = explode('/', $modelFolder)[0];
+                    }
+
+                    // Current attachment folder
+                    $attachParts = explode('/', $row['file_path']);
+                    $currentFolder = $attachParts[0] ?? '';
+                    $attachFilename = basename($row['file_path']);
+
+                    // Already in the right folder
+                    if ($currentFolder === $modelFolder) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    // Build new path
+                    $newRelativePath = $modelFolder . '/attachments/' . $attachFilename;
+                    $oldDiskPath = $uploadPath . $row['file_path'];
+                    $newDiskDir = $uploadPath . $modelFolder . '/attachments';
+                    $newDiskPath = $newDiskDir . '/' . $attachFilename;
+
+                    // Skip if source file doesn't exist
+                    if (!file_exists($oldDiskPath)) {
+                        // Update DB path anyway so it at least points to the right location
+                        $upd = $db->prepare('UPDATE model_attachments SET file_path = :path WHERE id = :id');
+                        $upd->execute([':path' => $newRelativePath, ':id' => $row['id']]);
+                        $skipped++;
+                        continue;
+                    }
+
+                    // Create target directory
+                    if (!is_dir($newDiskDir)) {
+                        mkdir($newDiskDir, 0755, true);
+                    }
+
+                    // Move file
+                    if (rename($oldDiskPath, $newDiskPath)) {
+                        $upd = $db->prepare('UPDATE model_attachments SET file_path = :path WHERE id = :id');
+                        $upd->execute([':path' => $newRelativePath, ':id' => $row['id']]);
+                        $moved++;
+
+                        // Clean up old empty directories
+                        $oldDir = dirname($oldDiskPath);
+                        if (is_dir($oldDir) && count(scandir($oldDir)) === 2) {
+                            @rmdir($oldDir);
+                            $parentDir = dirname($oldDir);
+                            if (is_dir($parentDir) && count(scandir($parentDir)) === 2) {
+                                @rmdir($parentDir);
+                            }
+                        }
+                    } else {
+                        $errors++;
+                    }
+                }
+
+                if (function_exists('logInfo')) {
+                    logInfo("Attachment relocation: moved $moved, skipped $skipped, errors $errors");
+                }
+            },
+        ],
+        [
             'name' => 'Deduplicate plugin repositories and add unique URL index',
             'description' => 'Remove duplicate plugin_repositories rows and add a unique index on url to prevent future duplicates',
             'check' => fn($db) => indexExists($db, 'plugin_repositories', 'idx_plugin_repositories_url'),

@@ -106,7 +106,7 @@ function uploadAttachment() {
 
     // Get model to create attachment directory
     $db = getDB();
-    $stmt = $db->prepare('SELECT id, name, user_id FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT id, name, file_path, user_id FROM models WHERE id = :id');
     $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
@@ -123,9 +123,16 @@ function uploadAttachment() {
         return;
     }
 
-    // Create attachments directory
-    $modelHash = substr(md5($model['name'] . $model['id']), 0, 12);
-    $attachDir = UPLOAD_PATH . $modelHash . '/attachments';
+    // Store attachments in the model's own asset folder
+    // file_path is "assets/{folderId}" or "assets/{folderId}/filename" — extract the folder
+    $modelFilePath = $model['file_path'] ?? '';
+    $modelFolder = preg_replace('#^assets/#', '', $modelFilePath);
+    // For parent models, file_path is "assets/{folderId}" (no filename)
+    // For single models, file_path is "assets/{folderId}/filename.ext"
+    if (str_contains($modelFolder, '/')) {
+        $modelFolder = dirname($modelFolder);
+    }
+    $attachDir = UPLOAD_PATH . $modelFolder . '/attachments';
     if (!is_dir($attachDir)) {
         mkdir($attachDir, 0755, true);
     }
@@ -166,14 +173,19 @@ function uploadAttachment() {
     }
 
     // Store relative path
-    $relativePath = $modelHash . '/attachments/' . $finalFilename;
+    $relativePath = $modelFolder . '/attachments/' . $finalFilename;
+
+    // Get next display order
+    $orderStmt = $db->prepare('SELECT COALESCE(MAX(display_order), 0) + 1 FROM model_attachments WHERE model_id = :model_id');
+    $orderStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $orderStmt->execute();
+    $nextOrder = (int)$orderStmt->fetchColumn();
 
     // Insert into database
     $stmt = $db->prepare('INSERT INTO model_attachments (model_id, filename, file_path, file_type, mime_type, file_size, original_filename, display_order)
-                          VALUES (:model_id, :filename, :file_path, :file_type, :mime_type, :file_size, :original_filename,
-                                  (SELECT COALESCE(MAX(display_order), 0) + 1 FROM model_attachments WHERE model_id = :model_id2))');
+                          VALUES (:model_id, :filename, :file_path, :file_type, :mime_type, :file_size, :original_filename, :display_order)');
     $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-    $stmt->bindValue(':model_id2', $modelId, PDO::PARAM_INT);
+    $stmt->bindValue(':display_order', $nextOrder, PDO::PARAM_INT);
     $stmt->bindValue(':filename', $finalFilename, PDO::PARAM_STR);
     $stmt->bindValue(':file_path', $relativePath, PDO::PARAM_STR);
     $stmt->bindValue(':file_type', $fileType, PDO::PARAM_STR);

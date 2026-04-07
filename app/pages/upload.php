@@ -371,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         if ($parentId) {
                             // Save all parts in a single transaction for speed
-                            $db->exec('BEGIN TRANSACTION');
+                            $db->exec('BEGIN');
                             try {
                                 foreach ($modelFiles as $modelFile) {
                                     $partName = pathinfo($modelFile['filename'], PATHINFO_FILENAME);
@@ -410,8 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Save images, text files, and PDFs from ZIP as attachments
                             if (!empty($attachmentFiles) && isFeatureEnabled('attachments')) {
-                                $modelHash = substr(md5($name . $parentId), 0, 12);
-                                $attachDir = UPLOAD_PATH . $modelHash . '/attachments';
+                                $attachDir = UPLOAD_PATH . $folderId . '/attachments';
                                 if (!is_dir($attachDir)) {
                                     mkdir($attachDir, 0755, true);
                                 }
@@ -419,18 +418,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $attFilename = $attFile['type'] . '_' . $parentId . '_' . time() . '_' . mt_rand(100, 999) . '.' . $attFile['extension'];
                                     $attDest = $attachDir . '/' . $attFilename;
                                     if (copy($attFile['path'], $attDest)) {
-                                        $attRelative = $modelHash . '/attachments/' . $attFilename;
+                                        $attRelative = $folderId . '/attachments/' . $attFilename;
                                         $mimeMap = [
                                             'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
                                             'gif' => 'image/gif', 'webp' => 'image/webp', 'pdf' => 'application/pdf',
                                             'txt' => 'text/plain', 'md' => 'text/markdown'
                                         ];
                                         $attMime = $mimeMap[$attFile['extension']] ?? 'application/octet-stream';
+                                        $orderStmt = $db->prepare('SELECT COALESCE(MAX(display_order), 0) + 1 FROM model_attachments WHERE model_id = :model_id');
+                                        $orderStmt->bindValue(':model_id', $parentId, PDO::PARAM_INT);
+                                        $orderStmt->execute();
+                                        $nextOrder = (int)$orderStmt->fetchColumn();
                                         $stmt = $db->prepare('INSERT INTO model_attachments (model_id, filename, file_path, file_type, mime_type, file_size, original_filename, display_order)
-                                                              VALUES (:model_id, :filename, :file_path, :file_type, :mime_type, :file_size, :original_filename,
-                                                                      (SELECT COALESCE(MAX(display_order), 0) + 1 FROM model_attachments WHERE model_id = :model_id2))');
+                                                              VALUES (:model_id, :filename, :file_path, :file_type, :mime_type, :file_size, :original_filename, :display_order)');
                                         $stmt->bindValue(':model_id', $parentId, PDO::PARAM_INT);
-                                        $stmt->bindValue(':model_id2', $parentId, PDO::PARAM_INT);
+                                        $stmt->bindValue(':display_order', $nextOrder, PDO::PARAM_INT);
                                         $stmt->bindValue(':filename', $attFilename, PDO::PARAM_STR);
                                         $stmt->bindValue(':file_path', $attRelative, PDO::PARAM_STR);
                                         $stmt->bindValue(':file_type', $attFile['type'], PDO::PARAM_STR);

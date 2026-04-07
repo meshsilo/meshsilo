@@ -253,7 +253,12 @@ function downloadModel($id, $apiUser) {
     header('Content-Type: application/octet-stream');
     header('Content-Disposition: attachment; filename="' . $safeFilename . '"');
     header('Content-Length: ' . filesize($filePath));
-    readfile($filePath);
+    if (getenv('MESHSILO_DOCKER') === 'true' && defined('UPLOAD_PATH')) {
+        $relativePath = str_replace(realpath(UPLOAD_PATH), '', realpath($filePath));
+        header('X-Accel-Redirect: /assets' . $relativePath);
+    } else {
+        readfile($filePath);
+    }
     exit;
 }
 

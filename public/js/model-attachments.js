@@ -311,9 +311,8 @@
                 section.className = 'attachment-section';
                 section.innerHTML = '<h4>Images</h4><div class="attachment-grid" id="attachment-images"></div>';
 
-                const attachmentsDiv = document.querySelector('.model-attachments');
-                const uploadDiv = attachmentsDiv.querySelector('.attachment-upload');
-                attachmentsDiv.insertBefore(section, uploadDiv);
+                const uploadDiv = document.querySelector('.model-attachments .attachment-upload');
+                uploadDiv.parentNode.insertBefore(section, uploadDiv);
                 grid = document.getElementById('attachment-images');
             }
 
@@ -358,9 +357,8 @@
                 section.className = 'attachment-section';
                 section.innerHTML = '<h4>Documents</h4><div class="attachment-documents" id="attachment-documents"></div>';
 
-                const attachmentsDiv = document.querySelector('.model-attachments');
-                const uploadDiv = attachmentsDiv.querySelector('.attachment-upload');
-                attachmentsDiv.insertBefore(section, uploadDiv);
+                const uploadDiv = document.querySelector('.model-attachments .attachment-upload');
+                uploadDiv.parentNode.insertBefore(section, uploadDiv);
                 list = document.getElementById('attachment-documents');
             }
 

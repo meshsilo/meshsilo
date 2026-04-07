@@ -161,9 +161,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         $partId = $db->lastInsertRowID();
 
         // Update parent model's part count
-        $stmt = $db->prepare('UPDATE models SET part_count = (SELECT COUNT(*) FROM models WHERE parent_id = :id1) WHERE id = :id2');
-        $stmt->bindValue(':id1', $modelId, PDO::PARAM_INT);
-        $stmt->bindValue(':id2', $modelId, PDO::PARAM_INT);
+        $countStmt = $db->prepare('SELECT COUNT(*) FROM models WHERE parent_id = :id');
+        $countStmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $countStmt->execute();
+        $partCount = (int)$countStmt->fetchColumn();
+        $stmt = $db->prepare('UPDATE models SET part_count = :count WHERE id = :id');
+        $stmt->bindValue(':count', $partCount, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
 
         // Get new part count
