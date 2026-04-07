@@ -410,8 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Save images, text files, and PDFs from ZIP as attachments
                             if (!empty($attachmentFiles) && isFeatureEnabled('attachments')) {
-                                $modelHash = substr(md5($name . $parentId), 0, 12);
-                                $attachDir = UPLOAD_PATH . $modelHash . '/attachments';
+                                $attachDir = UPLOAD_PATH . $folderId . '/attachments';
                                 if (!is_dir($attachDir)) {
                                     mkdir($attachDir, 0755, true);
                                 }
@@ -419,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $attFilename = $attFile['type'] . '_' . $parentId . '_' . time() . '_' . mt_rand(100, 999) . '.' . $attFile['extension'];
                                     $attDest = $attachDir . '/' . $attFilename;
                                     if (copy($attFile['path'], $attDest)) {
-                                        $attRelative = $modelHash . '/attachments/' . $attFilename;
+                                        $attRelative = $folderId . '/attachments/' . $attFilename;
                                         $mimeMap = [
                                             'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
                                             'gif' => 'image/gif', 'webp' => 'image/webp', 'pdf' => 'application/pdf',
