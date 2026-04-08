@@ -103,7 +103,7 @@ if ($model && !$requiresPassword && isset($_GET['download'])) {
         header('Content-Length: ' . filesize($filePath));
         if (getenv('MESHSILO_DOCKER') === 'true' && defined('UPLOAD_PATH')) {
             $relativePath = str_replace(realpath(UPLOAD_PATH), '', realpath($filePath));
-            header('X-Accel-Redirect: /assets' . $relativePath);
+            header('X-Accel-Redirect: /internal-assets' . $relativePath);
         } else {
             readfile($filePath);
         }
