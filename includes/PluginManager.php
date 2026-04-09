@@ -1055,7 +1055,12 @@ class PluginManager
         if (is_dir($destDir)) {
             $this->recursiveDelete($destDir);
         }
-        rename($tempDir, $destDir);
+        // rename() fails across filesystem boundaries (common in Docker),
+        // so fall back to recursive copy + delete
+        if (!@rename($tempDir, $destDir)) {
+            $this->recursiveCopy($tempDir, $destDir);
+            $this->recursiveDelete($tempDir);
+        }
 
         // Register in database
         try {
@@ -1322,6 +1327,23 @@ class PluginManager
         }
 
         return @rmdir($dir);
+    }
+
+    private static function recursiveCopy(string $src, string $dst): void
+    {
+        if (!is_dir($dst)) {
+            mkdir($dst, 0755, true);
+        }
+        foreach (scandir($src) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $srcPath = $src . DIRECTORY_SEPARATOR . $item;
+            $dstPath = $dst . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($srcPath)) {
+                self::recursiveCopy($srcPath, $dstPath);
+            } else {
+                copy($srcPath, $dstPath);
+            }
+        }
     }
 
     private function sanitizePluginId(string $id): string
