@@ -1027,33 +1027,35 @@ class PluginManager
 
         $destDir = $pluginsDir . '/' . $pluginId;
 
-        // Remove existing if updating
-        if (is_dir($destDir)) {
-            $this->recursiveDelete($destDir);
-        }
-
-        mkdir($destDir, 0755, true);
+        // Download to temp directory first (atomic install)
+        $tempDir = sys_get_temp_dir() . '/meshsilo-plugin-' . $pluginId . '-' . uniqid();
+        mkdir($tempDir, 0755, true);
 
         try {
-            $this->downloadGitHubDirectory($repo, $branch, $path, $destDir);
+            $this->downloadGitHubDirectory($repo, $branch, $path, $tempDir);
         } catch (\Exception $e) {
-            // Clean up on failure
-            $this->recursiveDelete($destDir);
+            $this->recursiveDelete($tempDir);
             return ['success' => false, 'error' => 'Failed to download plugin: ' . $e->getMessage()];
         }
 
         // Validate the downloaded plugin has a manifest
-        $manifestFile = $destDir . '/plugin.json';
+        $manifestFile = $tempDir . '/plugin.json';
         if (!file_exists($manifestFile)) {
-            $this->recursiveDelete($destDir);
+            $this->recursiveDelete($tempDir);
             return ['success' => false, 'error' => 'Downloaded plugin is missing plugin.json'];
         }
 
         $manifest = json_decode(file_get_contents($manifestFile), true);
         if (!is_array($manifest) || empty($manifest['id'])) {
-            $this->recursiveDelete($destDir);
+            $this->recursiveDelete($tempDir);
             return ['success' => false, 'error' => 'Invalid plugin.json in downloaded plugin'];
         }
+
+        // All files downloaded and validated — swap into place
+        if (is_dir($destDir)) {
+            $this->recursiveDelete($destDir);
+        }
+        rename($tempDir, $destDir);
 
         // Register in database
         try {
