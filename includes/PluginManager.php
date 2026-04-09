@@ -781,12 +781,15 @@ class PluginManager
             $resolvedFile = $file;
             $manager = $this;
 
-            $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function (Router $router) use ($safeSlug, $resolvedFile, $manager): void {
-                $router->get('/plugin/' . $safeSlug, function () use ($safeSlug, $resolvedFile, $manager): void {
-                    $adminPage = $safeSlug;
-                    $pluginManager = $manager;
-                    require $resolvedFile;
-                }, 'admin.plugin.' . $safeSlug);
+            $handler = function () use ($safeSlug, $resolvedFile, $manager): void {
+                $adminPage = $safeSlug;
+                $pluginManager = $manager;
+                require $resolvedFile;
+            };
+
+            $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function (Router $router) use ($safeSlug, $handler): void {
+                $router->get('/plugin/' . $safeSlug, $handler, 'admin.plugin.' . $safeSlug);
+                $router->post('/plugin/' . $safeSlug, $handler, 'admin.plugin.' . $safeSlug . '.post');
             });
         }
     }
