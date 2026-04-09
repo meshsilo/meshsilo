@@ -1113,12 +1113,22 @@ class PluginManager
 
         $response = @file_get_contents($apiUrl, false, $context);
         if ($response === false) {
-            throw new \RuntimeException('Failed to fetch directory listing from GitHub');
+            throw new \RuntimeException('Failed to fetch directory listing from GitHub (network error or rate limit)');
         }
 
         $items = json_decode($response, true);
         if (!is_array($items)) {
             throw new \RuntimeException('Invalid response from GitHub API');
+        }
+
+        // GitHub API errors return {"message": "..."} — detect and throw
+        if (isset($items['message'])) {
+            throw new \RuntimeException('GitHub API error: ' . $items['message']);
+        }
+
+        // Ensure we have a sequential array of items, not an associative error object
+        if (empty($items) || !isset($items[0])) {
+            throw new \RuntimeException('Empty directory listing from GitHub for: ' . $path);
         }
 
         foreach ($items as $item) {
