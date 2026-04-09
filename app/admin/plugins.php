@@ -210,14 +210,17 @@ $availablePlugins = [];
 $repositories = [];
 $updates = [];
 
-if ($activeTab === 'browse') {
-    // Auto-fetch registries that have never been fetched
-    $repos = $pluginManager->getRepositories();
-    foreach ($repos as $repo) {
-        if (empty($repo['registry_cache'])) {
-            $pluginManager->fetchRegistry($repo['url']);
-        }
+// Auto-refresh stale registries (older than 1 hour or never fetched)
+$repos = $pluginManager->getRepositories();
+foreach ($repos as $repo) {
+    $lastFetched = $repo['last_fetched'] ?? null;
+    $isStale = empty($lastFetched) || strtotime($lastFetched) < time() - 3600;
+    if (empty($repo['registry_cache']) || $isStale) {
+        $pluginManager->fetchRegistry($repo['url']);
     }
+}
+
+if ($activeTab === 'browse') {
     $availablePlugins = $pluginManager->getAvailablePlugins();
     $updates = $pluginManager->checkUpdates();
 } elseif ($activeTab === 'repositories') {
