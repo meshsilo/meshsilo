@@ -277,8 +277,12 @@ class Router
     {
         $file = $handler['file'];
 
-        // Resolve file path
-        $filePath = __DIR__ . '/../' . ltrim($file, '/');
+        // Resolve file path — use as-is if absolute, otherwise resolve relative to project root
+        if (str_starts_with($file, '/') && file_exists($file)) {
+            $filePath = $file;
+        } else {
+            $filePath = __DIR__ . '/../' . ltrim($file, '/');
+        }
         if (!file_exists($filePath)) {
             return false;
         }
