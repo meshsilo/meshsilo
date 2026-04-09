@@ -121,8 +121,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             break;
 
         case 'update-plugin':
+        case 'reinstall':
             $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['plugin_id'] ?? ''));
             $source = json_decode($_POST['plugin_source'] ?? '{}', true);
+            $isReinstall = $action === 'reinstall';
             if ($pluginId !== '' && is_array($source) && !empty($source['repo'])) {
                 $wasActive = $pluginManager->isPluginActive($pluginId);
                 $result = $pluginManager->installFromRepo($pluginId, $source);
@@ -130,10 +132,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                     if ($wasActive) {
                         $pluginManager->enablePlugin($pluginId);
                     }
-                    $message = 'Plugin updated successfully.';
-                    logInfo('Plugin updated', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
+                    $message = $isReinstall ? 'Plugin reinstalled successfully.' : 'Plugin updated successfully.';
+                    logInfo($isReinstall ? 'Plugin reinstalled' : 'Plugin updated', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Update failed: ' . ($result['error'] ?? 'Unknown error');
+                    $error = ($isReinstall ? 'Reinstall' : 'Update') . ' failed: ' . ($result['error'] ?? 'Unknown error');
                 }
             } else {
                 $error = 'Invalid plugin ID or source configuration.';
@@ -220,13 +222,12 @@ foreach ($repos as $repo) {
     }
 }
 
-if ($activeTab === 'browse') {
-    $availablePlugins = $pluginManager->getAvailablePlugins();
-    $updates = $pluginManager->checkUpdates();
-} elseif ($activeTab === 'repositories') {
+// Always load available plugins for source info (needed for update/reinstall buttons)
+$availablePlugins = $pluginManager->getAvailablePlugins();
+$updates = $pluginManager->checkUpdates();
+
+if ($activeTab === 'repositories') {
     $repositories = $pluginManager->getRepositories();
-} elseif ($activeTab === 'installed') {
-    $updates = $pluginManager->checkUpdates();
 }
 
 require_once __DIR__ . '/../../includes/header.php';
@@ -361,6 +362,16 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="hidden" name="action" value="run-migrations">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
                             <button type="submit" class="btn btn-secondary btn-sm">Run Migrations</button>
+                        </form>
+                        <?php endif; ?>
+                        <?php $pluginSource = $availablePlugins[$id]['_source'] ?? null; ?>
+                        <?php if ($pluginSource): ?>
+                        <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="reinstall">
+                            <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
+                            <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($pluginSource)) ?>">
+                            <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Reinstall <?= htmlspecialchars($plugin['name']) ?>? This will re-download and replace all plugin files.">Reinstall</button>
                         </form>
                         <?php endif; ?>
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
