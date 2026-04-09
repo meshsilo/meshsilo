@@ -1147,10 +1147,17 @@ class PluginManager
                     throw new \RuntimeException('Failed to download file: ' . $name);
                 }
 
+                // Ensure parent directory exists
+                $fileDir = dirname($destDir . '/' . $name);
+                if (!is_dir($fileDir)) {
+                    mkdir($fileDir, 0755, true);
+                }
                 file_put_contents($destDir . '/' . $name, $fileContent);
             } elseif ($itemType === 'dir') {
                 $subDir = $destDir . '/' . $name;
-                mkdir($subDir, 0755, true);
+                if (!is_dir($subDir)) {
+                    mkdir($subDir, 0755, true);
+                }
                 $this->downloadGitHubDirectory($repo, $branch, $path . '/' . $name, $subDir);
             }
         }
