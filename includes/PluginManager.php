@@ -100,6 +100,8 @@ class PluginManager
         }
     }
 
+    private array $bootedPlugins = [];
+
     public function loadActivePlugins(): void
     {
         foreach ($this->activePlugins as $id => $active) {
@@ -109,6 +111,11 @@ class PluginManager
 
     public function bootPlugin(string $id): void
     {
+        if (isset($this->bootedPlugins[$id])) {
+            return;
+        }
+        $this->bootedPlugins[$id] = true;
+
         $bootFile = $this->pluginsDir . '/' . ($this->plugins[$id]['_dir'] ?? $id) . '/boot.php';
         if (!is_file($bootFile)) {
             return;
@@ -121,7 +128,7 @@ class PluginManager
                 $plugin = $_plugin;
                 $pluginDir = $_pluginDir;
                 $pluginMeta = $_pluginMeta;
-                require $_bootFile;
+                require_once $_bootFile;
             })(
                 $bootFile,
                 $this,
