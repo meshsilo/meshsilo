@@ -531,11 +531,13 @@ textarea.form-control {
 
 .toggle-switch {
     width: 44px;
+    min-width: 44px;
     height: 24px;
     background-color: var(--color-border);
     border-radius: 12px;
     position: relative;
     transition: background-color 0.2s;
+    flex-shrink: 0;
 }
 
 .toggle-switch::after {
