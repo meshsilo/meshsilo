@@ -252,7 +252,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                             <button type="submit" name="update_groups" class="btn btn-small btn-secondary">Save</button>
                                         </form>
                                     </td>
-                                    <td><?= date('M j, Y', strtotime($user['created_at'])) ?></td>
+                                    <td><?= !empty($user['created_at']) ? date('M j, Y', strtotime($user['created_at'])) : 'Unknown' ?></td>
                                     <td>
                                         <a href="<?= route('admin.user', ['id' => $user['id']]) ?>" class="btn btn-small btn-secondary">Edit</a>
                                         <?php if ($user['id'] !== getCurrentUser()['id']): ?>

@@ -210,7 +210,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div class="form-row-grid">
                                 <div class="form-group">
                                     <label for="account-created">Account Created</label>
-                                    <input type="text" id="account-created" class="form-input" value="<?= date('F j, Y g:i A', strtotime($user['created_at'])) ?>" disabled aria-disabled="true">
+                                    <input type="text" id="account-created" class="form-input" value="<?= !empty($user['created_at']) ? date('F j, Y g:i A', strtotime($user['created_at'])) : 'Unknown' ?>" disabled aria-disabled="true">
                                 </div>
                             </div>
                             <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
