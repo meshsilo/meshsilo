@@ -165,7 +165,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         <div class="form-row-grid">
                             <div class="form-group">
                                 <label for="account-created">Account Created</label>
-                                <input type="text" id="account-created" class="form-input" value="<?= date('F j, Y', strtotime($user['created_at'])) ?>" disabled>
+                                <input type="text" id="account-created" class="form-input" value="<?= !empty($user['created_at']) ? date('F j, Y', strtotime($user['created_at'])) : 'Unknown' ?>" disabled>
                             </div>
                             <div class="form-group">
                                 <label for="account-type">Account Type</label>
