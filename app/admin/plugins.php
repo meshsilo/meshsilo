@@ -276,7 +276,19 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <!-- Installed Plugins List -->
-            <h3>Installed Plugins</h3>
+            <div class="installed-plugins-header">
+                <h3>Installed Plugins</h3>
+                <div class="installed-plugins-actions">
+                    <?php if (!empty($updates)): ?>
+                    <span class="plugin-status-badge badge-update"><?= count($updates) ?> update<?= count($updates) !== 1 ? 's' : '' ?> available</span>
+                    <?php endif; ?>
+                    <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="refresh-repos">
+                        <button type="submit" class="btn btn-secondary btn-sm">Check for Updates</button>
+                    </form>
+                </div>
+            </div>
             <?php if (empty($allPlugins)): ?>
             <div class="empty-state">
                 <p>No plugins are installed.</p>
@@ -371,7 +383,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="hidden" name="action" value="reinstall">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
                             <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($pluginSource)) ?>">
-                            <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Reinstall <?= htmlspecialchars($plugin['name']) ?>? This will re-download and replace all plugin files.">Reinstall</button>
+                            <button type="submit" class="btn btn-secondary btn-sm" title="Re-download and replace all plugin files from the repository" data-confirm="Force update <?= htmlspecialchars($plugin['name']) ?>? This will re-download and replace all plugin files from the repository.">Force Update</button>
                         </form>
                         <?php endif; ?>
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
@@ -588,6 +600,25 @@ require_once __DIR__ . '/../../includes/header.php';
     font-weight: 600;
     margin-bottom: 1rem;
     color: var(--color-text);
+}
+
+.installed-plugins-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.installed-plugins-header h3 {
+    margin: 0;
+}
+
+.installed-plugins-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 /* Upload section */
