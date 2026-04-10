@@ -1065,7 +1065,20 @@ class PluginManager
         // rename() fails across filesystem boundaries (common in Docker),
         // so fall back to recursive copy + delete
         if (!@rename($tempDir, $destDir)) {
-            $this->recursiveCopy($tempDir, $destDir);
+            try {
+                $this->recursiveCopy($tempDir, $destDir);
+            } catch (\RuntimeException $e) {
+                $this->recursiveDelete($tempDir);
+                logWarning('Plugin install failed during file copy', [
+                    'plugin' => $pluginId,
+                    'error' => $e->getMessage(),
+                ]);
+                return [
+                    'success' => false,
+                    'error' => 'Failed to install plugin files: ' . $e->getMessage()
+                        . '. Ensure the web server user has write access to ' . $destDir . '.',
+                ];
+            }
             $this->recursiveDelete($tempDir);
         }
 
@@ -1338,17 +1351,41 @@ class PluginManager
 
     private static function recursiveCopy(string $src, string $dst): void
     {
-        if (!is_dir($dst)) {
-            mkdir($dst, 0755, true);
+        if (!is_dir($dst) && !@mkdir($dst, 0755, true) && !is_dir($dst)) {
+            throw new RuntimeException(
+                'Failed to create plugin directory: ' . $dst . ' (check web server write permissions)'
+            );
         }
-        foreach (scandir($src) as $item) {
+
+        $items = @scandir($src);
+        if ($items === false) {
+            throw new RuntimeException('Failed to read source directory: ' . $src);
+        }
+
+        foreach ($items as $item) {
             if ($item === '.' || $item === '..') continue;
             $srcPath = $src . DIRECTORY_SEPARATOR . $item;
             $dstPath = $dst . DIRECTORY_SEPARATOR . $item;
+
             if (is_dir($srcPath)) {
                 self::recursiveCopy($srcPath, $dstPath);
-            } else {
-                copy($srcPath, $dstPath);
+                continue;
+            }
+
+            // Remove stale destination file first. copy() cannot overwrite a
+            // file the web server user doesn't own, but unlink() works as long
+            // as the parent directory is writable — this handles the common
+            // case of a previous partial install leaving read-only files.
+            if (file_exists($dstPath) || is_link($dstPath)) {
+                @unlink($dstPath);
+            }
+
+            if (!@copy($srcPath, $dstPath)) {
+                $err = error_get_last();
+                $reason = $err['message'] ?? 'unknown error';
+                throw new RuntimeException(
+                    'Failed to copy plugin file to ' . $dstPath . ': ' . $reason
+                );
             }
         }
     }
