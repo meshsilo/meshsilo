@@ -29,6 +29,7 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
 // All uploads now go through the tus chunked upload endpoint (/actions/tus).
 // The old single-POST form handler has been removed. The HTML form below
 // collects metadata, but submission is intercepted by tus-js-client.
+$error = '';
 
 $needsTusJs = true;
 require_once 'includes/header.php';
