@@ -354,7 +354,8 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        successCount++;
+                        // Zip uploads can add multiple parts in a single request
+                        successCount += result.zip ? (result.parts_added || 1) : 1;
                     } else {
                         errorCount++;
                         console.error('Upload failed for', file.name, ':', result.error);

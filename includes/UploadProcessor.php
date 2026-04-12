@@ -221,6 +221,143 @@ class UploadProcessor
         return ['success' => true, 'parent_id' => $parentId, 'part_count' => $uploadedCount, 'error' => ''];
     }
 
+    /**
+     * Extract a zip and add each model file inside as a new child part of an
+     * existing parent model. Does not create a new parent.
+     *
+     * Used by the "Add Parts" flow on the model page when the user uploads a
+     * zip instead of individual model files.
+     *
+     * @param string $zipPath         Absolute path to the zip file
+     * @param int    $parentModelId   Existing parent model id (must exist)
+     * @return array ['success' => bool, 'parent_id' => int, 'part_count' => int, 'error' => string]
+     */
+    public static function addPartsFromZip(string $zipPath, int $parentModelId): array
+    {
+        $db = getDB();
+
+        // Look up parent
+        $stmt = $db->prepare('SELECT id, file_path, filename, file_size, part_count FROM models WHERE id = :id AND parent_id IS NULL');
+        $stmt->bindValue(':id', $parentModelId, PDO::PARAM_INT);
+        $result = $stmt->execute();
+        $parent = $result->fetchArray(PDO::FETCH_ASSOC);
+        if (!$parent) {
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'Parent model not found'];
+        }
+
+        // Derive folder id from file_path ("assets/<folder>") or filename
+        $folderId = null;
+        if (!empty($parent['file_path']) && strpos($parent['file_path'], 'assets/') === 0) {
+            $folderId = trim(substr($parent['file_path'], strlen('assets/')), '/');
+        }
+        if (!$folderId && !empty($parent['filename'])) {
+            $folderId = $parent['filename'];
+        }
+        if (!$folderId) {
+            $folderId = self::createModelFolder();
+        } elseif (!is_dir(UPLOAD_PATH . $folderId)) {
+            // Ensure the folder exists on disk (may not if parent was created but never populated)
+            mkdir(UPLOAD_PATH . $folderId, 0755, true);
+        }
+
+        // Open zip and extract to temp
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'Failed to open ZIP file'];
+        }
+
+        $extractDir = sys_get_temp_dir() . '/silo_addparts_' . uniqid();
+        mkdir($extractDir, 0755, true);
+        $realExtractDir = realpath($extractDir);
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $filename = $zip->getNameIndex($i);
+            if (substr($filename, -1) === '/') continue;
+
+            $targetPath = $extractDir . '/' . $filename;
+            $targetDir = dirname($targetPath);
+            if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
+
+            $realTargetPath = realpath($targetDir) . '/' . basename($filename);
+            if (strpos($realTargetPath, $realExtractDir) !== 0) {
+                if (function_exists('logWarning')) logWarning('ZIP path traversal blocked', ['filename' => $filename]);
+                continue;
+            }
+
+            $stream = $zip->getStream($filename);
+            if ($stream !== false) {
+                $outFile = fopen($realTargetPath, 'w');
+                if ($outFile !== false) {
+                    stream_copy_to_stream($stream, $outFile);
+                    fclose($outFile);
+                }
+                fclose($stream);
+            }
+        }
+        $zip->close();
+
+        // Collect model files
+        $modelFiles = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        foreach ($iterator as $fileInfo) {
+            if (!$fileInfo->isFile()) continue;
+            $ext = strtolower($fileInfo->getExtension());
+            if (function_exists('isModelExtension') && isModelExtension($ext)) {
+                $relativePath = str_replace($extractDir . '/', '', $fileInfo->getPathname());
+                $modelFiles[] = [
+                    'path' => $fileInfo->getPathname(),
+                    'filename' => $fileInfo->getFilename(),
+                    'relative_path' => $relativePath,
+                    'size' => $fileInfo->getSize(),
+                ];
+            }
+        }
+        usort($modelFiles, fn($a, $b) => strcmp($a['relative_path'], $b['relative_path']));
+
+        if (empty($modelFiles)) {
+            self::cleanupExtractDir($extractDir);
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'No valid 3D model or slicer files found in the ZIP archive'];
+        }
+
+        // Save each as a child of the existing parent
+        $addedCount = 0;
+        $addedSize = 0;
+        $db->exec('BEGIN');
+        try {
+            foreach ($modelFiles as $f) {
+                $partName = pathinfo($f['filename'], PATHINFO_FILENAME);
+                if (self::saveModelFile($db, $f['path'], $f['filename'], $partName, $parentModelId, $f['relative_path'], $folderId)) {
+                    $addedCount++;
+                    $addedSize += $f['size'];
+                }
+            }
+            // Recompute parent's part_count from actual DB state (handles legacy inconsistencies)
+            $countStmt = $db->prepare('SELECT COUNT(*) FROM models WHERE parent_id = :pid');
+            $countStmt->bindValue(':pid', $parentModelId, PDO::PARAM_INT);
+            $countStmt->execute();
+            $newPartCount = (int)$countStmt->fetchColumn();
+
+            $newSize = (int)($parent['file_size'] ?? 0) + $addedSize;
+            self::updateParentModel($db, $parentModelId, $newPartCount, $newSize);
+            $db->exec('COMMIT');
+        } catch (\Exception $e) {
+            $db->exec('ROLLBACK');
+            if (function_exists('logException')) logException($e, ['action' => 'add_parts_from_zip']);
+            self::cleanupExtractDir($extractDir);
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'Failed during extraction: ' . $e->getMessage()];
+        }
+
+        self::cleanupExtractDir($extractDir);
+
+        if (function_exists('logInfo')) {
+            logInfo('Added parts from ZIP', ['parent_id' => $parentModelId, 'added' => $addedCount]);
+        }
+
+        return ['success' => true, 'parent_id' => $parentModelId, 'part_count' => $addedCount, 'error' => ''];
+    }
+
     // ─── Shared helpers (extracted from upload.php) ─────────────────────────
 
     public static function createModelFolder(?string $folderName = null): string
