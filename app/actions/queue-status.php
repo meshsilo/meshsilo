@@ -104,13 +104,29 @@ try {
         // Ignore — conversions field will be null
     }
 
+    // Optional: model-specific upload status
+    $uploadStatus = null;
+    $checkModelId = isset($_GET['model_id']) ? (int)$_GET['model_id'] : 0;
+    if ($checkModelId > 0) {
+        try {
+            $stmt = $db->prepare('SELECT upload_status FROM models WHERE id = :id');
+            $stmt->bindValue(':id', $checkModelId, PDO::PARAM_INT);
+            $result = $stmt->execute();
+            $row = $result->fetchArray(PDO::FETCH_ASSOC);
+            $uploadStatus = $row['upload_status'] ?? null;
+        } catch (Exception $e) {
+            // Column may not exist on old installs
+        }
+    }
+
     echo json_encode([
         'active' => $activeCount,
         'jobs' => $jobs,
         'conversions' => $conversions,
         'converting_part_ids' => $convertingPartIds,
         'converting_model_ids' => $convertingModelIds,
+        'upload_status' => $uploadStatus,
     ]);
 } catch (Exception $e) {
-    echo json_encode(['active' => 0, 'jobs' => [], 'conversions' => null, 'converting_part_ids' => [], 'converting_model_ids' => []]);
+    echo json_encode(['active' => 0, 'jobs' => [], 'conversions' => null, 'converting_part_ids' => [], 'converting_model_ids' => [], 'upload_status' => null]);
 }

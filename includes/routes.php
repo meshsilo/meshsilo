@@ -193,6 +193,10 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->get('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share.get');
     $router->post('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share');
 
+    // Tus resumable upload endpoint
+    $router->match(['POST', 'OPTIONS'], '/tus', ['file' => 'app/actions/tus.php'], 'actions.tus');
+    $router->match(['PATCH', 'HEAD', 'DELETE'], '/tus/{id}', ['file' => 'app/actions/tus.php', 'map' => ['id' => 'id']], 'actions.tus.upload');
+
     // Queue status
     $router->get('/queue-status', ['file' => 'app/actions/queue-status.php'], 'actions.queue.status');
 

@@ -74,9 +74,9 @@ class Queue
     /**
      * Push a job onto the queue
      */
-    public static function push(string $jobClass, array $data = [], string $queue = self::DEFAULT_QUEUE): int
+    public static function push(string $jobClass, array $data = [], string $queue = self::DEFAULT_QUEUE, int $maxAttempts = 3): int
     {
-        return self::pushAt(date('Y-m-d H:i:s'), $jobClass, $data, $queue);
+        return self::pushAt(date('Y-m-d H:i:s'), $jobClass, $data, $queue, $maxAttempts);
     }
 
     /**
@@ -96,7 +96,7 @@ class Queue
     /**
      * Push a job at a specific time
      */
-    private static function pushAt(string $availableAt, string $jobClass, array $data, string $queue): int
+    private static function pushAt(string $availableAt, string $jobClass, array $data, string $queue, int $maxAttempts = 3): int
     {
         $db = self::db();
         if (!$db) {
@@ -104,8 +104,8 @@ class Queue
         }
 
         $stmt = $db->prepare("
-            INSERT INTO jobs (queue, job_class, payload, available_at, status)
-            VALUES (:queue, :job_class, :payload, :available_at, :status)
+            INSERT INTO jobs (queue, job_class, payload, available_at, status, max_attempts)
+            VALUES (:queue, :job_class, :payload, :available_at, :status, :max_attempts)
         ");
 
         $stmt->bindValue(':queue', $queue, PDO::PARAM_STR);
@@ -113,6 +113,7 @@ class Queue
         $stmt->bindValue(':payload', json_encode($data), PDO::PARAM_STR);
         $stmt->bindValue(':available_at', $availableAt, PDO::PARAM_STR);
         $stmt->bindValue(':status', self::STATUS_PENDING, PDO::PARAM_STR);
+        $stmt->bindValue(':max_attempts', $maxAttempts, PDO::PARAM_INT);
 
         $stmt->execute();
         return $db->lastInsertRowID();
@@ -123,7 +124,7 @@ class Queue
      * This handles worker crashes (OOM, container restart) where a job
      * was reserved but never completed or failed.
      */
-    public static function reclaimStale(int $timeoutSeconds = 900): int
+    public static function reclaimStale(int $timeoutSeconds = 1800): int
     {
         $db = self::db();
         if (!$db) {

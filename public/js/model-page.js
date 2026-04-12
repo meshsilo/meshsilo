@@ -493,5 +493,27 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
     });
+
+    // ── Upload processing banner polling ──────────────────────────────
+    var banner = document.getElementById('upload-processing-banner');
+    if (banner) {
+        var modelId = banner.dataset.modelId;
+        var pollInterval = setInterval(function() {
+            fetch('/actions/queue-status?model_id=' + modelId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.upload_status === 'ready') {
+                        clearInterval(pollInterval);
+                        window.location.reload();
+                    } else if (data.upload_status === 'failed') {
+                        clearInterval(pollInterval);
+                        banner.className = 'alert alert-error mb-4';
+                        banner.setAttribute('role', 'alert');
+                        banner.innerHTML = 'Upload processing failed. Please try uploading again.';
+                    }
+                })
+                .catch(function() { /* silently retry next interval */ });
+        }, 5000);
+    }
 });
 

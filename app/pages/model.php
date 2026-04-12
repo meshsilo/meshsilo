@@ -18,7 +18,7 @@ if (!$modelId) {
 }
 
 // Get model details
-$stmt = $db->prepare('SELECT id, name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path, part_count, print_type, original_size, file_hash, dedup_path, created_at, updated_at, is_archived, thumbnail_path, dim_x, dim_y, dim_z, dim_unit, user_id, notes, license, download_count, current_version FROM models WHERE id = :id');
+$stmt = $db->prepare('SELECT id, name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path, part_count, print_type, original_size, file_hash, dedup_path, created_at, updated_at, is_archived, thumbnail_path, dim_x, dim_y, dim_z, dim_unit, user_id, notes, license, download_count, current_version, upload_status FROM models WHERE id = :id');
 $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
@@ -320,6 +320,19 @@ require_once 'includes/header.php';
 
             <?php if ($message): ?>
             <div role="<?= $messageType === 'success' ? 'status' : 'alert' ?>" class="alert alert-<?= $messageType ?> mb-4"><?= htmlspecialchars($message) ?></div>
+            <?php endif; ?>
+
+            <?php
+            $uploadStatus = $model['upload_status'] ?? null;
+            if ($uploadStatus === 'pending_upload' || $uploadStatus === 'processing'): ?>
+            <div id="upload-processing-banner" class="alert alert-info mb-4" role="status" data-model-id="<?= $modelId ?>">
+                <span class="spinner-inline" aria-hidden="true"></span>
+                Processing upload &mdash; extracting files...
+            </div>
+            <?php elseif ($uploadStatus === 'failed'): ?>
+            <div class="alert alert-error mb-4" role="alert">
+                Upload processing failed. Please try uploading again.
+            </div>
             <?php endif; ?>
 
             <div class="model-detail">

@@ -51,12 +51,14 @@ RUN mkdir -p /var/www/meshsilo/storage/assets \
     /var/www/meshsilo/storage/logs \
     /var/www/meshsilo/storage/db \
     /var/www/meshsilo/storage/cache \
+    /var/www/meshsilo/storage/uploads/tus \
     && chown -R www-data:www-data /var/www/meshsilo \
     && chmod -R 755 /var/www/meshsilo \
     && chmod -R 775 /var/www/meshsilo/storage/assets \
     /var/www/meshsilo/storage/logs \
     /var/www/meshsilo/storage/db \
-    /var/www/meshsilo/storage/cache
+    /var/www/meshsilo/storage/cache \
+    /var/www/meshsilo/storage/uploads/tus
 
 # Copy nginx configuration (writable by www-data for admin UI upload size sync)
 COPY docker/nginx.conf /etc/nginx/sites-available/default
@@ -124,7 +126,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost/health || exit 1
 
 # Volume for persistent data
-VOLUME ["/var/www/meshsilo/storage/assets", "/var/www/meshsilo/storage/db", "/var/www/meshsilo/storage/logs", "/var/www/meshsilo/plugins"]
+VOLUME ["/var/www/meshsilo/storage/assets", "/var/www/meshsilo/storage/db", "/var/www/meshsilo/storage/logs", "/var/www/meshsilo/storage/uploads", "/var/www/meshsilo/plugins"]
 
 # Start supervisor (manages nginx and php-fpm)
 ENTRYPOINT ["/entrypoint.sh"]

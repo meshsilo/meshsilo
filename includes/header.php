@@ -89,6 +89,9 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <?php if (!empty($needsEditModelJs)): ?>
     <script src="<?= basePath('js/edit-model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/edit-model-page.js') ?>" defer></script>
     <?php endif; ?>
+    <?php if (!empty($needsTusJs)): ?>
+    <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js" defer></script>
+    <?php endif; ?>
     <?php if (!empty($adminPage)): ?>
     <script src="<?= basePath('js/admin-pages.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/admin-pages.js') ?>" defer></script>
     <?php endif; ?>
