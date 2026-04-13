@@ -539,14 +539,27 @@ class Scheduler
 
             require_once __DIR__ . '/dedup.php';
 
-            if (function_exists('runDeduplicationScan')) {
-                $result = runDeduplicationScan();
-                $processed = $result['hashes_processed'] ?? 0;
-                $deleted = $result['files_deleted'] ?? 0;
-                $saved = $result['space_saved'] ?? 0;
-                return "Dedup scan complete: {$processed} hashes processed, {$deleted} files deleted, {$saved} bytes saved";
+            if (!function_exists('runDeduplicationScan')) {
+                return 'Deduplication function not available';
             }
-            return 'Deduplication function not available';
+
+            // Calculate any missing hashes first, matching CLI behavior.
+            // Without this step, models uploaded without a hash are invisible
+            // to the dedup scan (findDuplicateHashes filters them out).
+            $hashMsg = '';
+            if (function_exists('calculateMissingHashes')) {
+                $hashResult = calculateMissingHashes();
+                $calculated = is_array($hashResult) ? ($hashResult['calculated'] ?? 0) : (int)$hashResult;
+                if ($calculated > 0) {
+                    $hashMsg = " (calculated {$calculated} missing hashes first)";
+                }
+            }
+
+            $result = runDeduplicationScan();
+            $processed = $result['hashes_processed'] ?? 0;
+            $deleted = $result['files_deleted'] ?? 0;
+            $saved = $result['space_saved'] ?? 0;
+            return "Dedup scan complete: {$processed} hashes processed, {$deleted} files deleted, {$saved} bytes saved{$hashMsg}";
         }, ['description' => 'Scan for duplicate files']);
 
         // Stale tus upload cleanup - every hour

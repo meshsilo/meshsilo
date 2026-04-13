@@ -135,8 +135,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         }
     } elseif ($action === 'calculate_hashes') {
         // Calculate missing file hashes
-        $count = calculateMissingHashes();
-        $message = "Calculated hashes for $count files.";
+        $result = calculateMissingHashes();
+        $calculated = is_array($result) ? ($result['calculated'] ?? 0) : (int)$result;
+        $errors = is_array($result) ? ($result['errors'] ?? 0) : 0;
+        $message = "Calculated hashes for {$calculated} files" . ($errors > 0 ? " ({$errors} errors)" : '') . '.';
     } elseif ($action === 'recalculate_3mf_hashes') {
         // Recalculate 3MF hashes using content-based hashing
         $count = recalculate3mfHashes();
@@ -156,6 +158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         if ($result['success']) {
             $message = "Cleanup complete: {$result['migrated']} files migrated back to original locations.";
         }
+    } elseif ($action === 'toggle_auto_dedup') {
+        $enabled = !empty($_POST['auto_deduplication']) ? '1' : '0';
+        setSetting('auto_deduplication', $enabled);
+        $message = $enabled === '1'
+            ? 'Auto-deduplication enabled. The scheduled dedup:scan task will now run hourly.'
+            : 'Auto-deduplication disabled. The scheduled dedup:scan task will skip.';
     }
 }
 
@@ -468,11 +476,25 @@ require_once __DIR__ . '/../../includes/header.php';
             <?php endif; ?>
 
             <!-- File Deduplication -->
+            <?php $autoDedupEnabled = getSetting('auto_deduplication', '0') === '1'; ?>
             <section class="section-card section-card-full section-card-dedup">
                 <h2>File Deduplication</h2>
                 <p class="section-description">
                     Deduplication saves disk space by storing only one copy of identical files.
                 </p>
+                <?php if (isAdmin()): ?>
+                <form method="POST" class="dedup-auto-toggle" style="margin-bottom:1rem;">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="toggle_auto_dedup">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="auto_deduplication" value="1" <?= $autoDedupEnabled ? 'checked' : '' ?> onchange="this.form.submit()">
+                        <span>Run deduplication automatically (hourly scheduled task)</span>
+                    </label>
+                    <small class="form-help" style="display:block;margin-top:0.25rem;">
+                        When enabled, the <code>dedup:scan</code> scheduled task runs hourly, calculating missing hashes and deduplicating files automatically. When disabled, the task is skipped and dedup must be run manually.
+                    </small>
+                </form>
+                <?php endif; ?>
                 <div class="dedup-stats-grid">
                     <div class="dedup-stat">
                         <span class="dedup-stat-value"><?= number_format($dedupStats['dedup_file_count']) ?></span>
