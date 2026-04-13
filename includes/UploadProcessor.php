@@ -89,7 +89,9 @@ class UploadProcessor
         mkdir($extractDir, 0755, true);
         $realExtractDir = realpath($extractDir);
 
+        $zipEntryCount = $zip->numFiles;
         $extractedCount = 0;
+        $extractionFailures = [];
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $filename = $zip->getNameIndex($i);
             if (substr($filename, -1) === '/') continue; // skip directories
@@ -106,21 +108,36 @@ class UploadProcessor
                 if (function_exists('logWarning')) {
                     logWarning('ZIP path traversal attempt blocked', ['filename' => $filename]);
                 }
+                $extractionFailures[] = ['file' => $filename, 'reason' => 'path traversal blocked'];
                 continue;
             }
 
             $stream = $zip->getStream($filename);
-            if ($stream !== false) {
-                $outFile = fopen($realTargetPath, 'w');
-                if ($outFile !== false) {
-                    stream_copy_to_stream($stream, $outFile);
-                    fclose($outFile);
-                    $extractedCount++;
-                }
-                fclose($stream);
+            if ($stream === false) {
+                $extractionFailures[] = ['file' => $filename, 'reason' => 'getStream returned false'];
+                continue;
             }
+            $outFile = fopen($realTargetPath, 'w');
+            if ($outFile === false) {
+                fclose($stream);
+                $extractionFailures[] = ['file' => $filename, 'reason' => 'fopen failed for ' . $realTargetPath];
+                continue;
+            }
+            stream_copy_to_stream($stream, $outFile);
+            fclose($outFile);
+            fclose($stream);
+            $extractedCount++;
         }
         $zip->close();
+
+        if (!empty($extractionFailures) && function_exists('logWarning')) {
+            logWarning('ZIP extraction had failures', [
+                'zip_entries' => $zipEntryCount,
+                'extracted' => $extractedCount,
+                'failures' => array_slice($extractionFailures, 0, 20),
+                'total_failures' => count($extractionFailures),
+            ]);
+        }
 
         // Scan extracted files
         $modelFiles = [];
@@ -130,13 +147,21 @@ class UploadProcessor
         $textExtensions = ['txt', 'md'];
         $pdfExtensions = ['pdf'];
 
+        // Track every extension we see for diagnostics — when we can't find
+        // model files, this tells the user what was actually in their zip vs.
+        // what the system recognizes as a model.
+        $extensionsSeen = [];
+        $totalFilesScanned = 0;
+
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS)
         );
 
         foreach ($iterator as $fileInfo) {
             if (!$fileInfo->isFile()) continue;
+            $totalFilesScanned++;
             $fileExt = strtolower($fileInfo->getExtension());
+            $extensionsSeen[$fileExt] = ($extensionsSeen[$fileExt] ?? 0) + 1;
 
             if (function_exists('isModelExtension') && isModelExtension($fileExt)) {
                 $relativePath = str_replace($extractDir . '/', '', $fileInfo->getPathname());
@@ -162,8 +187,37 @@ class UploadProcessor
         usort($modelFiles, fn($a, $b) => strcmp($a['relative_path'], $b['relative_path']));
 
         if (empty($modelFiles)) {
+            // Build a diagnostic summary: what did we actually find?
+            $allowedModels = function_exists('getModelExtensions') ? getModelExtensions() : [];
+            $seen = $extensionsSeen
+                ? implode(', ', array_map(fn($e, $n) => ($e ?: '(no extension)') . " ({$n})", array_keys($extensionsSeen), $extensionsSeen))
+                : '(none)';
+            $allowed = $allowedModels ? implode(', ', $allowedModels) : '(none configured)';
+            $failCount = count($extractionFailures);
+
+            if (function_exists('logWarning')) {
+                logWarning('ZIP upload: no model files found', [
+                    'zip_path' => $zipPath,
+                    'zip_entries' => $zipEntryCount,
+                    'extracted' => $extractedCount,
+                    'extraction_failures' => $failCount,
+                    'total_files_scanned' => $totalFilesScanned,
+                    'extensions_seen' => $extensionsSeen,
+                    'allowed_model_extensions' => $allowedModels,
+                ]);
+            }
+
             self::cleanupExtractDir($extractDir);
-            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'No valid 3D model or slicer files found in the ZIP archive'];
+            return [
+                'success' => false,
+                'parent_id' => 0,
+                'part_count' => 0,
+                'error' => "No valid 3D model or slicer files found in the ZIP archive. "
+                    . "Zip contained {$zipEntryCount} entries; extracted {$extractedCount}"
+                    . ($failCount > 0 ? " ({$failCount} extraction failures — check logs)" : '')
+                    . ". Found extensions: {$seen}. "
+                    . "Recognized model extensions: {$allowed}.",
+            ];
         }
 
         $totalSize = array_sum(array_column($modelFiles, 'size'));
