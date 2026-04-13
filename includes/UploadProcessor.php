@@ -79,88 +79,46 @@ class UploadProcessor
     {
         $db = getDB();
 
+        // Open once to validate + count entries for diagnostics
         $zip = new \ZipArchive();
         if ($zip->open($zipPath) !== true) {
             return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'Failed to open ZIP file'];
         }
-
-        // Extract to temp directory
-        $extractDir = sys_get_temp_dir() . '/silo_' . uniqid();
-        mkdir($extractDir, 0755, true);
-        $realExtractDir = realpath($extractDir);
-
         $zipEntryCount = $zip->numFiles;
-        $extractedCount = 0;
-        $extractionFailures = [];
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $filename = $zip->getNameIndex($i);
-            if (substr($filename, -1) === '/') continue; // skip directories
-
-            $targetPath = $extractDir . '/' . $filename;
-            $targetDir = dirname($targetPath);
-            if (!is_dir($targetDir)) {
-                mkdir($targetDir, 0755, true);
-            }
-
-            // ZIP Slip prevention
-            $realTargetPath = realpath($targetDir) . '/' . basename($filename);
-            if (strpos($realTargetPath, $realExtractDir) !== 0) {
-                if (function_exists('logWarning')) {
-                    logWarning('ZIP path traversal attempt blocked', ['filename' => $filename]);
-                }
-                $extractionFailures[] = ['file' => $filename, 'reason' => 'path traversal blocked'];
-                continue;
-            }
-
-            // Primary path: getStream() for memory-efficient streaming. This
-            // is the right choice for huge files, but libzip's getStream has
-            // a narrower compression-method support than extractTo() — it
-            // silently returns false for LZMA (method 14), Zstandard (93),
-            // and some BZIP2 (12) archives depending on the build.
-            $stream = @$zip->getStream($filename);
-            if ($stream !== false) {
-                $outFile = fopen($realTargetPath, 'w');
-                if ($outFile === false) {
-                    fclose($stream);
-                    $extractionFailures[] = ['file' => $filename, 'reason' => 'fopen failed for ' . $realTargetPath];
-                    continue;
-                }
-                stream_copy_to_stream($stream, $outFile);
-                fclose($outFile);
-                fclose($stream);
-                $extractedCount++;
-                continue;
-            }
-
-            // Fallback: extractTo() handles more compression methods because
-            // it uses libzip's higher-level API internally. Slower and may
-            // use more memory, but succeeds on archives getStream can't read.
-            // Safe from ZIP Slip because $filename passed through the
-            // realpath check above.
-            if (@$zip->extractTo($extractDir, [$filename])) {
-                $extractedCount++;
-                continue;
-            }
-
-            // Both failed — capture diagnostic detail for the failure list
-            $stat = @$zip->statIndex($i) ?: [];
-            $extractionFailures[] = [
-                'file' => $filename,
-                'reason' => 'getStream + extractTo both failed',
-                'comp_method' => $stat['comp_method'] ?? null,
-                'comp_size' => $stat['comp_size'] ?? null,
-                'size' => $stat['size'] ?? null,
-                'zip_status' => $zip->getStatusString(),
-            ];
-        }
         $zip->close();
 
-        if (!empty($extractionFailures) && function_exists('logWarning')) {
-            logWarning('ZIP extraction had failures', [
+        $extractDir = sys_get_temp_dir() . '/silo_' . uniqid();
+        mkdir($extractDir, 0755, true);
+
+        // Prefer the `unzip` binary (InfoZIP) — it handles every compression
+        // method PHP's libzip does, plus Deflate64 (method 9, common in
+        // Windows-made zips), LZMA (14), and more. Fall back to
+        // ZipArchive::extractTo only when the binary isn't installed (rare:
+        // Docker image includes it; Linux/macOS dev boxes usually have it).
+        $extractMethod = null;
+        $extractError = null;
+        if (self::unzipBinaryAvailable()) {
+            $result = self::extractWithUnzipBinary($zipPath, $extractDir);
+            $extractMethod = 'unzip';
+            if (!$result['success']) {
+                $extractError = "unzip binary failed (exit {$result['exit_code']}): {$result['stderr']}";
+            }
+        } else {
+            $zip = new \ZipArchive();
+            $zip->open($zipPath);
+            $ok = @$zip->extractTo($extractDir);
+            $extractMethod = 'ZipArchive::extractTo';
+            if (!$ok) {
+                $extractError = 'ZipArchive::extractTo returned false: ' . $zip->getStatusString();
+            }
+            $zip->close();
+        }
+
+        if ($extractError && function_exists('logWarning')) {
+            logWarning('ZIP extraction error', [
+                'method' => $extractMethod,
+                'error' => $extractError,
                 'zip_entries' => $zipEntryCount,
-                'extracted' => $extractedCount,
-                'failures' => array_slice($extractionFailures, 0, 20),
-                'total_failures' => count($extractionFailures),
             ]);
         }
 
@@ -218,15 +176,14 @@ class UploadProcessor
                 ? implode(', ', array_map(fn($e, $n) => ($e ?: '(no extension)') . " ({$n})", array_keys($extensionsSeen), $extensionsSeen))
                 : '(none)';
             $allowed = $allowedModels ? implode(', ', $allowedModels) : '(none configured)';
-            $failCount = count($extractionFailures);
 
             if (function_exists('logWarning')) {
                 logWarning('ZIP upload: no model files found', [
                     'zip_path' => $zipPath,
                     'zip_entries' => $zipEntryCount,
-                    'extracted' => $extractedCount,
-                    'extraction_failures' => $failCount,
-                    'total_files_scanned' => $totalFilesScanned,
+                    'extracted' => $totalFilesScanned,
+                    'extract_method' => $extractMethod,
+                    'extract_error' => $extractError,
                     'extensions_seen' => $extensionsSeen,
                     'allowed_model_extensions' => $allowedModels,
                 ]);
@@ -238,8 +195,8 @@ class UploadProcessor
                 'parent_id' => 0,
                 'part_count' => 0,
                 'error' => "No valid 3D model or slicer files found in the ZIP archive. "
-                    . "Zip contained {$zipEntryCount} entries; extracted {$extractedCount}"
-                    . ($failCount > 0 ? " ({$failCount} extraction failures — check logs)" : '')
+                    . "Zip contained {$zipEntryCount} entries; extracted {$totalFilesScanned}"
+                    . ($extractError ? " ({$extractMethod} error: {$extractError})" : '')
                     . ". Found extensions: {$seen}. "
                     . "Recognized model extensions: {$allowed}.",
             ];
@@ -612,6 +569,59 @@ class UploadProcessor
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────
+
+    /**
+     * Cached check for the InfoZIP `unzip` binary. Cached because this can
+     * be called more than once per upload and shelling out to `command -v`
+     * isn't free.
+     */
+    private static ?bool $unzipAvailable = null;
+    private static function unzipBinaryAvailable(): bool
+    {
+        if (self::$unzipAvailable !== null) {
+            return self::$unzipAvailable;
+        }
+        $output = [];
+        $code = 1;
+        @exec('command -v unzip 2>/dev/null', $output, $code);
+        self::$unzipAvailable = ($code === 0 && !empty($output));
+        return self::$unzipAvailable;
+    }
+
+    /**
+     * Extract a zip archive using the InfoZIP `unzip` binary.
+     *
+     * Used when ZipArchive (libzip) can't read the archive — most commonly
+     * because the zip uses Deflate64 (compression method 9), which Windows
+     * zip tools produce for larger entries and which libzip does not
+     * support.
+     *
+     * InfoZIP has built-in ZIP Slip protection (refuses absolute paths and
+     * ../ components), so we don't need per-entry path validation here.
+     *
+     * @return array{success: bool, exit_code: int, stderr: string}
+     */
+    private static function extractWithUnzipBinary(string $zipPath, string $extractDir): array
+    {
+        $cmd = sprintf(
+            'unzip -o -q -- %s -d %s 2>&1',
+            escapeshellarg($zipPath),
+            escapeshellarg($extractDir)
+        );
+        $output = [];
+        $exitCode = 1;
+        @exec($cmd, $output, $exitCode);
+
+        // unzip exit codes: 0 = success, 1 = success with warnings, 2+ = error.
+        // Warnings typically come from ZIP Slip attempts being refused — the
+        // archive is still usable, so treat 0 and 1 as success.
+        $success = ($exitCode === 0 || $exitCode === 1);
+        return [
+            'success' => $success,
+            'exit_code' => $exitCode,
+            'stderr' => implode("\n", array_slice($output, 0, 20)),
+        ];
+    }
 
     private static function saveThumbnailFromImage($db, int $parentId, array $img, string $folderId): void
     {

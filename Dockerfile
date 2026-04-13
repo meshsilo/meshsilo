@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y software-properties-common && apt updat
     supervisor \
     sudo \
     curl \
+    unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
