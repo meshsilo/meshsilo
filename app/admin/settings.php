@@ -147,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_plugin_settings'
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email']) && !isset($_POST['save_plugin_settings'])) {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
+    $autoDedup = isset($_POST['auto_deduplication']) ? '1' : '0';
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
 
@@ -172,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     setSetting('site_name', $siteName);
     setSetting('site_description', $siteDescription);
     setSetting('auto_convert_stl', $autoConvert);
+    setSetting('auto_deduplication', $autoDedup);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
     setSetting('allowed_extensions', $allowedExtensions);
@@ -210,6 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
 
     logInfo('Settings updated', [
         'auto_convert_stl' => $autoConvert,
+        'auto_deduplication' => $autoDedup,
         'allow_registration' => $allowRegistration,
         'require_approval' => $requireApproval,
         'allowed_extensions' => $allowedExtensions
@@ -370,6 +373,19 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span>Auto-convert STL files to 3MF on upload</span>
                             </label>
                             <p class="form-help">When enabled, STL files will automatically be converted to 3MF format during upload if conversion saves space.</p>
+                        </div>
+                    </details>
+
+                    <details class="settings-section">
+                        <summary><h2>Storage &amp; Deduplication</h2></summary>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" name="auto_deduplication" <?= ($settings['auto_deduplication'] ?? '0') === '1' ? 'checked' : '' ?>>
+                                <span class="toggle-switch"></span>
+                                <span>Run deduplication automatically (hourly)</span>
+                            </label>
+                            <p class="form-help">When enabled, the <code>dedup:scan</code> scheduled task runs every hour &mdash; it calculates any missing file hashes and deduplicates identical files. When disabled, the task is skipped and deduplication must be run manually from the <a href="<?= route('admin.stats') ?>">Statistics</a> page.</p>
                         </div>
                     </details>
 

@@ -135,8 +135,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         }
     } elseif ($action === 'calculate_hashes') {
         // Calculate missing file hashes
-        $count = calculateMissingHashes();
-        $message = "Calculated hashes for $count files.";
+        $result = calculateMissingHashes();
+        $calculated = is_array($result) ? ($result['calculated'] ?? 0) : (int)$result;
+        $errors = is_array($result) ? ($result['errors'] ?? 0) : 0;
+        $message = "Calculated hashes for {$calculated} files" . ($errors > 0 ? " ({$errors} errors)" : '') . '.';
     } elseif ($action === 'recalculate_3mf_hashes') {
         // Recalculate 3MF hashes using content-based hashing
         $count = recalculate3mfHashes();

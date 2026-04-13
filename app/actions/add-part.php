@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
+require_once __DIR__ . '/../../includes/UploadProcessor.php';
 
 // Require upload permission
 if (!canUpload()) {
@@ -81,6 +82,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
 
     if (!in_array($extension, $allowedExtensions)) {
         jsonError('Invalid file type. Allowed: ' . implode(', ', $allowedExtensions));
+    }
+
+    // Zip upload: extract and add each model file inside as a new part
+    if ($extension === 'zip') {
+        $result = UploadProcessor::addPartsFromZip($file['tmp_name'], $modelId);
+
+        if (!$result['success']) {
+            jsonError($result['error'] ?: 'Failed to add parts from ZIP');
+        }
+
+        // Fetch updated part count for the response
+        $stmt = $db->prepare('SELECT part_count FROM models WHERE id = :id');
+        $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $execResult = $stmt->execute();
+        $newPartCount = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['part_count'] ?? 0) : 0;
+
+        logUpload('Parts added from ZIP', [
+            'model_id' => $modelId,
+            'model_name' => $model['name'],
+            'parts_added' => $result['part_count'],
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'parts_added' => $result['part_count'],
+            'part_count' => $newPartCount,
+            'zip' => true,
+        ]);
+        exit;
     }
 
     // Create directory for model if it doesn't exist

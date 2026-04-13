@@ -70,6 +70,9 @@ switch ($command) {
     case 'dedup':
         cmdDedup($options);
         break;
+    case 'plugin':
+        cmdPlugin($positional, $options);
+        break;
     case 'help':
     case '--help':
     case '-h':
@@ -113,6 +116,14 @@ Commands:
 
   dedup                   Run file deduplication
     --dry-run             Show what would be deduplicated
+
+  plugin <action> [id]    Manage plugins
+    plugin list           List installed plugins
+    plugin install <id>   Install plugin from repository
+    plugin reinstall <id> Reinstall plugin from repository
+    plugin enable <id>    Enable a plugin
+    plugin disable <id>   Disable a plugin
+    plugin uninstall <id> Uninstall a plugin
 
   help                    Show this help message
 
@@ -454,4 +465,129 @@ function formatSize($bytes) {
         $i++;
     }
     return round($bytes, 2) . ' ' . $units[$i];
+}
+
+function cmdPlugin($positional, $options) {
+    $baseDir = dirname(__DIR__);
+    require_once $baseDir . '/includes/config.php';
+
+    $pluginManager = PluginManager::getInstance();
+
+    $action = $positional[0] ?? 'list';
+    $pluginId = $positional[1] ?? '';
+
+    switch ($action) {
+        case 'list':
+            $plugins = $pluginManager->getAllPlugins();
+            if (empty($plugins)) {
+                echo "No plugins installed.\n";
+                return;
+            }
+            printf("%-20s %-10s %-10s %s\n", "ID", "Version", "Status", "Name");
+            echo str_repeat("-", 70) . "\n";
+            foreach ($plugins as $id => $p) {
+                $status = !empty($p['is_active']) ? 'active' : 'inactive';
+                printf("%-20s %-10s %-10s %s\n", $id, $p['version'] ?? '?', $status, $p['name'] ?? $id);
+            }
+            break;
+
+        case 'install':
+        case 'reinstall':
+            if (empty($pluginId)) {
+                echo "Error: Plugin ID required.\nUsage: ./bin/meshsilo plugin $action <plugin-id>\n";
+                exit(1);
+            }
+
+            // Find plugin source from available plugins
+            $available = $pluginManager->getAvailablePlugins();
+            if (!isset($available[$pluginId])) {
+                // Try refreshing registries first
+                echo "Refreshing plugin registries...\n";
+                $repos = $pluginManager->getRepositories();
+                foreach ($repos as $repo) {
+                    $pluginManager->fetchRegistry($repo['url']);
+                }
+                $available = $pluginManager->getAvailablePlugins();
+            }
+
+            if (!isset($available[$pluginId])) {
+                echo "Error: Plugin '$pluginId' not found in any repository.\n";
+                echo "Available plugins: " . implode(', ', array_keys($available)) . "\n";
+                exit(1);
+            }
+
+            $source = $available[$pluginId]['_source'] ?? null;
+            if (!$source) {
+                echo "Error: No download source for plugin '$pluginId'.\n";
+                exit(1);
+            }
+
+            $isReinstall = $action === 'reinstall';
+            if ($isReinstall && !isset($pluginManager->getAllPlugins()[$pluginId])) {
+                echo "Error: Plugin '$pluginId' is not installed. Use 'install' instead.\n";
+                exit(1);
+            }
+
+            $verb = $isReinstall ? 'Reinstalling' : 'Installing';
+            echo "$verb $pluginId v" . ($available[$pluginId]['version'] ?? '?') . "...\n";
+
+            $wasActive = $pluginManager->isPluginActive($pluginId);
+            $result = $pluginManager->installFromRepo($pluginId, $source);
+
+            if ($result['success']) {
+                if ($wasActive) {
+                    $pluginManager->enablePlugin($pluginId);
+                    echo "Plugin re-enabled (was active before).\n";
+                }
+                echo "Success! Plugin $pluginId installed.\n";
+            } else {
+                echo "Error: " . ($result['error'] ?? 'Unknown error') . "\n";
+                exit(1);
+            }
+            break;
+
+        case 'enable':
+            if (empty($pluginId)) {
+                echo "Error: Plugin ID required.\n";
+                exit(1);
+            }
+            if ($pluginManager->enablePlugin($pluginId)) {
+                echo "Plugin '$pluginId' enabled.\n";
+            } else {
+                echo "Error: Failed to enable '$pluginId'.\n";
+                exit(1);
+            }
+            break;
+
+        case 'disable':
+            if (empty($pluginId)) {
+                echo "Error: Plugin ID required.\n";
+                exit(1);
+            }
+            if ($pluginManager->disablePlugin($pluginId)) {
+                echo "Plugin '$pluginId' disabled.\n";
+            } else {
+                echo "Error: Failed to disable '$pluginId'. Another plugin may depend on it.\n";
+                exit(1);
+            }
+            break;
+
+        case 'uninstall':
+            if (empty($pluginId)) {
+                echo "Error: Plugin ID required.\n";
+                exit(1);
+            }
+            if ($pluginManager->uninstallPlugin($pluginId)) {
+                echo "Plugin '$pluginId' uninstalled.\n";
+            } else {
+                echo "Error: Failed to uninstall '$pluginId'.\n";
+                exit(1);
+            }
+            break;
+
+        default:
+            echo "Unknown plugin action: $action\n";
+            echo "Available: list, install, reinstall, enable, disable, uninstall\n";
+            exit(1);
+    }
 }

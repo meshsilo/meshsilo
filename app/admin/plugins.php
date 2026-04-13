@@ -121,8 +121,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             break;
 
         case 'update-plugin':
+        case 'reinstall':
             $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($_POST['plugin_id'] ?? ''));
             $source = json_decode($_POST['plugin_source'] ?? '{}', true);
+            $isReinstall = $action === 'reinstall';
             if ($pluginId !== '' && is_array($source) && !empty($source['repo'])) {
                 $wasActive = $pluginManager->isPluginActive($pluginId);
                 $result = $pluginManager->installFromRepo($pluginId, $source);
@@ -130,10 +132,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                     if ($wasActive) {
                         $pluginManager->enablePlugin($pluginId);
                     }
-                    $message = 'Plugin updated successfully.';
-                    logInfo('Plugin updated', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
+                    $message = $isReinstall ? 'Plugin reinstalled successfully.' : 'Plugin updated successfully.';
+                    logInfo($isReinstall ? 'Plugin reinstalled' : 'Plugin updated', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Update failed: ' . ($result['error'] ?? 'Unknown error');
+                    $error = ($isReinstall ? 'Reinstall' : 'Update') . ' failed: ' . ($result['error'] ?? 'Unknown error');
                 }
             } else {
                 $error = 'Invalid plugin ID or source configuration.';
@@ -210,20 +212,22 @@ $availablePlugins = [];
 $repositories = [];
 $updates = [];
 
-if ($activeTab === 'browse') {
-    // Auto-fetch registries that have never been fetched
-    $repos = $pluginManager->getRepositories();
-    foreach ($repos as $repo) {
-        if (empty($repo['registry_cache'])) {
-            $pluginManager->fetchRegistry($repo['url']);
-        }
+// Auto-refresh stale registries (older than 1 hour or never fetched)
+$repos = $pluginManager->getRepositories();
+foreach ($repos as $repo) {
+    $lastFetched = $repo['last_fetched'] ?? null;
+    $isStale = empty($lastFetched) || strtotime($lastFetched) < time() - 3600;
+    if (empty($repo['registry_cache']) || $isStale) {
+        $pluginManager->fetchRegistry($repo['url']);
     }
-    $availablePlugins = $pluginManager->getAvailablePlugins();
-    $updates = $pluginManager->checkUpdates();
-} elseif ($activeTab === 'repositories') {
+}
+
+// Always load available plugins for source info (needed for update/reinstall buttons)
+$availablePlugins = $pluginManager->getAvailablePlugins();
+$updates = $pluginManager->checkUpdates();
+
+if ($activeTab === 'repositories') {
     $repositories = $pluginManager->getRepositories();
-} elseif ($activeTab === 'installed') {
-    $updates = $pluginManager->checkUpdates();
 }
 
 require_once __DIR__ . '/../../includes/header.php';
@@ -272,7 +276,19 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <!-- Installed Plugins List -->
-            <h3>Installed Plugins</h3>
+            <div class="installed-plugins-header">
+                <h3>Installed Plugins</h3>
+                <div class="installed-plugins-actions">
+                    <?php if (!empty($updates)): ?>
+                    <span class="plugin-status-badge badge-update"><?= count($updates) ?> update<?= count($updates) !== 1 ? 's' : '' ?> available</span>
+                    <?php endif; ?>
+                    <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="refresh-repos">
+                        <button type="submit" class="btn btn-secondary btn-sm">Check for Updates</button>
+                    </form>
+                </div>
+            </div>
             <?php if (empty($allPlugins)): ?>
             <div class="empty-state">
                 <p>No plugins are installed.</p>
@@ -358,6 +374,16 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="hidden" name="action" value="run-migrations">
                             <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
                             <button type="submit" class="btn btn-secondary btn-sm">Run Migrations</button>
+                        </form>
+                        <?php endif; ?>
+                        <?php $pluginSource = $availablePlugins[$id]['_source'] ?? null; ?>
+                        <?php if ($pluginSource): ?>
+                        <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="reinstall">
+                            <input type="hidden" name="plugin_id" value="<?= htmlspecialchars($id) ?>">
+                            <input type="hidden" name="plugin_source" value="<?= htmlspecialchars(json_encode($pluginSource)) ?>">
+                            <button type="submit" class="btn btn-secondary btn-sm" title="Re-download and replace all plugin files from the repository" data-confirm="Force update <?= htmlspecialchars($plugin['name']) ?>? This will re-download and replace all plugin files from the repository.">Force Update</button>
                         </form>
                         <?php endif; ?>
                         <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>" class="inline-form">
@@ -574,6 +600,25 @@ require_once __DIR__ . '/../../includes/header.php';
     font-weight: 600;
     margin-bottom: 1rem;
     color: var(--color-text);
+}
+
+.installed-plugins-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.installed-plugins-header h3 {
+    margin: 0;
+}
+
+.installed-plugins-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 /* Upload section */

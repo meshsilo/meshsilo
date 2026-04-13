@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/storage.php';
+require_once __DIR__ . '/../../includes/dedup.php';
 
 // Require storage management permission
 if (!isLoggedIn() || !canManageStorage()) {
@@ -228,18 +229,33 @@ require_once __DIR__ . '/../../includes/header.php';
                         </table>
                     </details>
 
-                    <?php if ($dedupSavings['saved_size'] > 0): ?>
                     <details class="settings-section" open>
-                        <summary><h2>Deduplication Savings</h2></summary>
+                        <summary><h2>Deduplication</h2></summary>
+                        <?php
+                        $dedupEnabled = getSetting('dedup_enabled', 'true') === 'true';
+                        $dedupFileCount = (int)$db->querySingle('SELECT COUNT(*) FROM models WHERE dedup_path IS NOT NULL AND dedup_path != ""');
+                        $dedupUniqueCount = (int)$db->querySingle('SELECT COUNT(DISTINCT dedup_path) FROM models WHERE dedup_path IS NOT NULL AND dedup_path != ""');
+                        $pendingDuplicates = findDuplicateHashes();
+                        $pendingCount = count($pendingDuplicates);
+                        ?>
                         <div class="stats-grid">
                             <div class="stat-card">
-                                <div class="stat-value"><?= formatBytes($dedupSavings['total_size']) ?></div>
-                                <div class="stat-label">Original Size (if no dedup)</div>
+                                <div class="stat-value"><?= $dedupEnabled ? 'Enabled' : 'Disabled' ?></div>
+                                <div class="stat-label">Deduplication Status</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value"><?= formatBytes($dedupSavings['actual_size']) ?></div>
-                                <div class="stat-label">Actual Storage Used</div>
+                                <div class="stat-value"><?= $dedupFileCount ?></div>
+                                <div class="stat-label">Deduplicated Files</div>
                             </div>
+                            <div class="stat-card">
+                                <div class="stat-value"><?= $dedupUniqueCount ?></div>
+                                <div class="stat-label">Unique Files on Disk</div>
+                            </div>
+                            <div class="stat-card<?= $pendingCount > 0 ? ' stat-card-warning' : '' ?>">
+                                <div class="stat-value"><?= $pendingCount ?></div>
+                                <div class="stat-label">Pending Duplicate Groups</div>
+                            </div>
+                            <?php if ($dedupSavings['saved_size'] > 0): ?>
                             <div class="stat-card stat-card-success">
                                 <div class="stat-value"><?= formatBytes($dedupSavings['saved_size']) ?></div>
                                 <div class="stat-label">Space Saved</div>
@@ -248,9 +264,19 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="stat-value"><?= $dedupSavings['saved_percent'] ?>%</div>
                                 <div class="stat-label">Savings Rate</div>
                             </div>
+                            <?php endif; ?>
                         </div>
+                        <?php if ($dedupSavings['saved_size'] > 0): ?>
+                        <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--color-text-muted);">
+                            Without deduplication, these files would use <?= formatBytes($dedupSavings['total_size']) ?> — actual disk usage is <?= formatBytes($dedupSavings['actual_size']) ?>.
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($pendingCount > 0): ?>
+                        <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--color-text-muted);">
+                            Run <code>php cli/dedup.php --run</code> to deduplicate <?= $pendingCount ?> group<?= $pendingCount !== 1 ? 's' : '' ?> of identical files.
+                        </div>
+                        <?php endif; ?>
                     </details>
-                    <?php endif; ?>
 
                     <?php if ($conversionSaved > 0): ?>
                     <details class="settings-section" open>

@@ -100,6 +100,8 @@ class PluginManager
         }
     }
 
+    private array $bootedPlugins = [];
+
     public function loadActivePlugins(): void
     {
         foreach ($this->activePlugins as $id => $active) {
@@ -109,6 +111,11 @@ class PluginManager
 
     public function bootPlugin(string $id): void
     {
+        if (isset($this->bootedPlugins[$id])) {
+            return;
+        }
+        $this->bootedPlugins[$id] = true;
+
         $bootFile = $this->pluginsDir . '/' . ($this->plugins[$id]['_dir'] ?? $id) . '/boot.php';
         if (!is_file($bootFile)) {
             return;
@@ -121,7 +128,7 @@ class PluginManager
                 $plugin = $_plugin;
                 $pluginDir = $_pluginDir;
                 $pluginMeta = $_pluginMeta;
-                require $_bootFile;
+                require_once $_bootFile;
             })(
                 $bootFile,
                 $this,
@@ -781,12 +788,15 @@ class PluginManager
             $resolvedFile = $file;
             $manager = $this;
 
-            $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function (Router $router) use ($safeSlug, $resolvedFile, $manager): void {
-                $router->get('/plugin/' . $safeSlug, function () use ($safeSlug, $resolvedFile, $manager): void {
-                    $adminPage = $safeSlug;
-                    $pluginManager = $manager;
-                    require $resolvedFile;
-                }, 'admin.plugin.' . $safeSlug);
+            $handler = function () use ($safeSlug, $resolvedFile, $manager): void {
+                $adminPage = $safeSlug;
+                $pluginManager = $manager;
+                require $resolvedFile;
+            };
+
+            $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function (Router $router) use ($safeSlug, $handler): void {
+                $router->get('/plugin/' . $safeSlug, $handler, 'admin.plugin.' . $safeSlug);
+                $router->post('/plugin/' . $safeSlug, $handler, 'admin.plugin.' . $safeSlug . '.post');
             });
         }
     }
@@ -1024,32 +1034,52 @@ class PluginManager
 
         $destDir = $pluginsDir . '/' . $pluginId;
 
-        // Remove existing if updating
-        if (is_dir($destDir)) {
-            $this->recursiveDelete($destDir);
-        }
-
-        mkdir($destDir, 0755, true);
+        // Download to temp directory first (atomic install)
+        $tempDir = sys_get_temp_dir() . '/meshsilo-plugin-' . $pluginId . '-' . uniqid();
+        mkdir($tempDir, 0755, true);
 
         try {
-            $this->downloadGitHubDirectory($repo, $branch, $path, $destDir);
+            $this->downloadGitHubDirectory($repo, $branch, $path, $tempDir);
         } catch (\Exception $e) {
-            // Clean up on failure
-            $this->recursiveDelete($destDir);
+            $this->recursiveDelete($tempDir);
             return ['success' => false, 'error' => 'Failed to download plugin: ' . $e->getMessage()];
         }
 
         // Validate the downloaded plugin has a manifest
-        $manifestFile = $destDir . '/plugin.json';
+        $manifestFile = $tempDir . '/plugin.json';
         if (!file_exists($manifestFile)) {
-            $this->recursiveDelete($destDir);
+            $this->recursiveDelete($tempDir);
             return ['success' => false, 'error' => 'Downloaded plugin is missing plugin.json'];
         }
 
         $manifest = json_decode(file_get_contents($manifestFile), true);
         if (!is_array($manifest) || empty($manifest['id'])) {
-            $this->recursiveDelete($destDir);
+            $this->recursiveDelete($tempDir);
             return ['success' => false, 'error' => 'Invalid plugin.json in downloaded plugin'];
+        }
+
+        // All files downloaded and validated — swap into place
+        if (is_dir($destDir)) {
+            $this->recursiveDelete($destDir);
+        }
+        // rename() fails across filesystem boundaries (common in Docker),
+        // so fall back to recursive copy + delete
+        if (!@rename($tempDir, $destDir)) {
+            try {
+                $this->recursiveCopy($tempDir, $destDir);
+            } catch (\RuntimeException $e) {
+                $this->recursiveDelete($tempDir);
+                logWarning('Plugin install failed during file copy', [
+                    'plugin' => $pluginId,
+                    'error' => $e->getMessage(),
+                ]);
+                return [
+                    'success' => false,
+                    'error' => 'Failed to install plugin files: ' . $e->getMessage()
+                        . '. Ensure the web server user has write access to ' . $destDir . '.',
+                ];
+            }
+            $this->recursiveDelete($tempDir);
         }
 
         // Register in database
@@ -1110,12 +1140,22 @@ class PluginManager
 
         $response = @file_get_contents($apiUrl, false, $context);
         if ($response === false) {
-            throw new \RuntimeException('Failed to fetch directory listing from GitHub');
+            throw new \RuntimeException('Failed to fetch directory listing from GitHub (network error or rate limit)');
         }
 
         $items = json_decode($response, true);
         if (!is_array($items)) {
             throw new \RuntimeException('Invalid response from GitHub API');
+        }
+
+        // GitHub API errors return {"message": "..."} — detect and throw
+        if (isset($items['message'])) {
+            throw new \RuntimeException('GitHub API error: ' . $items['message']);
+        }
+
+        // Ensure we have a sequential array of items, not an associative error object
+        if (empty($items) || !isset($items[0])) {
+            throw new \RuntimeException('Empty directory listing from GitHub for: ' . $path);
         }
 
         foreach ($items as $item) {
@@ -1144,10 +1184,17 @@ class PluginManager
                     throw new \RuntimeException('Failed to download file: ' . $name);
                 }
 
+                // Ensure parent directory exists
+                $fileDir = dirname($destDir . '/' . $name);
+                if (!is_dir($fileDir)) {
+                    mkdir($fileDir, 0755, true);
+                }
                 file_put_contents($destDir . '/' . $name, $fileContent);
             } elseif ($itemType === 'dir') {
                 $subDir = $destDir . '/' . $name;
-                mkdir($subDir, 0755, true);
+                if (!is_dir($subDir)) {
+                    mkdir($subDir, 0755, true);
+                }
                 $this->downloadGitHubDirectory($repo, $branch, $path . '/' . $name, $subDir);
             }
         }
@@ -1300,6 +1347,47 @@ class PluginManager
         }
 
         return @rmdir($dir);
+    }
+
+    private static function recursiveCopy(string $src, string $dst): void
+    {
+        if (!is_dir($dst) && !@mkdir($dst, 0755, true) && !is_dir($dst)) {
+            throw new RuntimeException(
+                'Failed to create plugin directory: ' . $dst . ' (check web server write permissions)'
+            );
+        }
+
+        $items = @scandir($src);
+        if ($items === false) {
+            throw new RuntimeException('Failed to read source directory: ' . $src);
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $srcPath = $src . DIRECTORY_SEPARATOR . $item;
+            $dstPath = $dst . DIRECTORY_SEPARATOR . $item;
+
+            if (is_dir($srcPath)) {
+                self::recursiveCopy($srcPath, $dstPath);
+                continue;
+            }
+
+            // Remove stale destination file first. copy() cannot overwrite a
+            // file the web server user doesn't own, but unlink() works as long
+            // as the parent directory is writable — this handles the common
+            // case of a previous partial install leaving read-only files.
+            if (file_exists($dstPath) || is_link($dstPath)) {
+                @unlink($dstPath);
+            }
+
+            if (!@copy($srcPath, $dstPath)) {
+                $err = error_get_last();
+                $reason = $err['message'] ?? 'unknown error';
+                throw new RuntimeException(
+                    'Failed to copy plugin file to ' . $dstPath . ': ' . $reason
+                );
+            }
+        }
     }
 
     private function sanitizePluginId(string $id): string

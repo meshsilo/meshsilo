@@ -193,6 +193,10 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->get('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share.get');
     $router->post('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share');
 
+    // Tus resumable upload endpoint
+    $router->match(['POST', 'OPTIONS'], '/tus', ['file' => 'app/actions/tus.php'], 'actions.tus');
+    $router->match(['PATCH', 'HEAD', 'DELETE'], '/tus/{id}', ['file' => 'app/actions/tus.php', 'map' => ['id' => 'id']], 'actions.tus.upload');
+
     // Queue status
     $router->get('/queue-status', ['file' => 'app/actions/queue-status.php'], 'actions.queue.status');
 
@@ -351,7 +355,7 @@ $router->get('/assets/{path:.+}', function ($params) {
     // Use X-Accel-Redirect in Docker (nginx serves the file directly)
     if (getenv('MESHSILO_DOCKER') === 'true') {
         $relativePath = str_replace($realBase, '', $realFile);
-        header('X-Accel-Redirect: /assets' . $relativePath);
+        header('X-Accel-Redirect: /internal-assets' . $relativePath);
     } else {
         readfile($realFile);
     }

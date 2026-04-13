@@ -12,6 +12,12 @@ if (!isLoggedIn()) {
 }
 
 $user = getCurrentUser();
+if (!$user) {
+    // isLoggedIn() checks $_SESSION['user_id'] but getCurrentUser() reads
+    // $_SESSION['user'] — a session with only the former triggers a null
+    // user and every ownership check below dereferences it.
+    jsonError('Session expired — please log in again', 401);
+}
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions

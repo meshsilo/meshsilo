@@ -802,6 +802,7 @@ function ensureColumns($db)
         'external_source_url' => $type === 'mysql' ? 'VARCHAR(500)' : 'TEXT',
         'external_source_id' => $type === 'mysql' ? 'VARCHAR(100)' : 'TEXT',
         'user_id' => $type === 'mysql' ? 'INT' : 'INTEGER',
+        'upload_status' => $type === 'mysql' ? 'VARCHAR(20) DEFAULT NULL' : 'TEXT DEFAULT NULL',
     ];
 
     foreach ($modelColumns as $column => $dataType) {

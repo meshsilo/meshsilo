@@ -539,15 +539,91 @@ class Scheduler
 
             require_once __DIR__ . '/dedup.php';
 
-            if (function_exists('runDeduplicationScan')) {
-                $result = runDeduplicationScan();
-                $processed = $result['hashes_processed'] ?? 0;
-                $deleted = $result['files_deleted'] ?? 0;
-                $saved = $result['space_saved'] ?? 0;
-                return "Dedup scan complete: {$processed} hashes processed, {$deleted} files deleted, {$saved} bytes saved";
+            if (!function_exists('runDeduplicationScan')) {
+                return 'Deduplication function not available';
             }
-            return 'Deduplication function not available';
+
+            // Calculate any missing hashes first, matching CLI behavior.
+            // Without this step, models uploaded without a hash are invisible
+            // to the dedup scan (findDuplicateHashes filters them out).
+            $hashMsg = '';
+            if (function_exists('calculateMissingHashes')) {
+                $hashResult = calculateMissingHashes();
+                $calculated = is_array($hashResult) ? ($hashResult['calculated'] ?? 0) : (int)$hashResult;
+                if ($calculated > 0) {
+                    $hashMsg = " (calculated {$calculated} missing hashes first)";
+                }
+            }
+
+            $result = runDeduplicationScan();
+            $processed = $result['hashes_processed'] ?? 0;
+            $deleted = $result['files_deleted'] ?? 0;
+            $saved = $result['space_saved'] ?? 0;
+            return "Dedup scan complete: {$processed} hashes processed, {$deleted} files deleted, {$saved} bytes saved{$hashMsg}";
         }, ['description' => 'Scan for duplicate files']);
+
+        // Stale tus upload cleanup - every hour
+        self::register('cleanup:tus_uploads', '0 * * * *', function () {
+            $tusDir = __DIR__ . '/../storage/uploads/tus';
+            if (!is_dir($tusDir)) {
+                return 'No tus upload directory';
+            }
+
+            $threshold = time() - 86400; // 24 hours
+            $cleaned = 0;
+
+            foreach (glob($tusDir . '/*.json') as $infoFile) {
+                if (filemtime($infoFile) < $threshold) {
+                    $id = pathinfo($infoFile, PATHINFO_FILENAME);
+                    @unlink($tusDir . '/' . $id . '.bin');
+                    @unlink($infoFile);
+                    $cleaned++;
+                }
+            }
+
+            // Also cleanup orphaned pending_upload models older than 24h
+            if (function_exists('getDB')) {
+                $db = getDB();
+                try {
+                    $cutoff = date('Y-m-d H:i:s', $threshold);
+                    // Get file_path before deleting so we can clean up the filesystem
+                    $stmt = $db->prepare("SELECT id, file_path FROM models WHERE upload_status = 'pending_upload' AND created_at < :cutoff");
+                    $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
+                    $result = $stmt->execute();
+                    $orphanedRows = [];
+                    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                        $orphanedRows[] = $row;
+                    }
+
+                    foreach ($orphanedRows as $row) {
+                        // Remove the assets folder if it exists
+                        $assetDir = __DIR__ . '/../storage/' . ($row['file_path'] ?? '');
+                        if (is_dir($assetDir)) {
+                            $files = new \RecursiveIteratorIterator(
+                                new \RecursiveDirectoryIterator($assetDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                                \RecursiveIteratorIterator::CHILD_FIRST
+                            );
+                            foreach ($files as $f) {
+                                $f->isDir() ? @rmdir($f->getRealPath()) : @unlink($f->getRealPath());
+                            }
+                            @rmdir($assetDir);
+                        }
+                        $delStmt = $db->prepare("DELETE FROM models WHERE id = :id");
+                        $delStmt->bindValue(':id', $row['id'], PDO::PARAM_INT);
+                        $delStmt->execute();
+                    }
+
+                    $orphaned = count($orphanedRows);
+                    if ($orphaned > 0) {
+                        return "Cleaned {$cleaned} stale uploads, {$orphaned} orphaned models";
+                    }
+                } catch (\Exception $e) {
+                    // upload_status column may not exist yet
+                }
+            }
+
+            return $cleaned > 0 ? "Cleaned {$cleaned} stale tus uploads" : 'No stale uploads';
+        }, ['description' => 'Clean up stale tus upload chunks (>24h)']);
 
         // Allow plugins to register scheduled tasks
         if (class_exists('PluginManager')) {
