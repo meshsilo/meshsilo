@@ -112,21 +112,46 @@ class UploadProcessor
                 continue;
             }
 
-            $stream = $zip->getStream($filename);
-            if ($stream === false) {
-                $extractionFailures[] = ['file' => $filename, 'reason' => 'getStream returned false'];
-                continue;
-            }
-            $outFile = fopen($realTargetPath, 'w');
-            if ($outFile === false) {
+            // Primary path: getStream() for memory-efficient streaming. This
+            // is the right choice for huge files, but libzip's getStream has
+            // a narrower compression-method support than extractTo() — it
+            // silently returns false for LZMA (method 14), Zstandard (93),
+            // and some BZIP2 (12) archives depending on the build.
+            $stream = @$zip->getStream($filename);
+            if ($stream !== false) {
+                $outFile = fopen($realTargetPath, 'w');
+                if ($outFile === false) {
+                    fclose($stream);
+                    $extractionFailures[] = ['file' => $filename, 'reason' => 'fopen failed for ' . $realTargetPath];
+                    continue;
+                }
+                stream_copy_to_stream($stream, $outFile);
+                fclose($outFile);
                 fclose($stream);
-                $extractionFailures[] = ['file' => $filename, 'reason' => 'fopen failed for ' . $realTargetPath];
+                $extractedCount++;
                 continue;
             }
-            stream_copy_to_stream($stream, $outFile);
-            fclose($outFile);
-            fclose($stream);
-            $extractedCount++;
+
+            // Fallback: extractTo() handles more compression methods because
+            // it uses libzip's higher-level API internally. Slower and may
+            // use more memory, but succeeds on archives getStream can't read.
+            // Safe from ZIP Slip because $filename passed through the
+            // realpath check above.
+            if (@$zip->extractTo($extractDir, [$filename])) {
+                $extractedCount++;
+                continue;
+            }
+
+            // Both failed — capture diagnostic detail for the failure list
+            $stat = @$zip->statIndex($i) ?: [];
+            $extractionFailures[] = [
+                'file' => $filename,
+                'reason' => 'getStream + extractTo both failed',
+                'comp_method' => $stat['comp_method'] ?? null,
+                'comp_size' => $stat['comp_size'] ?? null,
+                'size' => $stat['size'] ?? null,
+                'zip_status' => $zip->getStatusString(),
+            ];
         }
         $zip->close();
 
