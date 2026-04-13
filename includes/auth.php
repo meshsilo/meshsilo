@@ -96,9 +96,40 @@ function isLoggedIn()
 }
 
 // Get current user
+//
+// Returns the user array from the session. If only $_SESSION['user_id'] is
+// set (e.g., after a partial login flow, session migration, or any other
+// path that populated user_id but not the full user record), rehydrate the
+// session by fetching the user row from the DB. This prevents a class of
+// crashes where isLoggedIn() returns true but every caller of
+// getCurrentUser() then dereferences null.
 function getCurrentUser()
 {
-    return $_SESSION['user'] ?? null;
+    if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+        return $_SESSION['user'];
+    }
+
+    if (!isset($_SESSION['user_id']) || !function_exists('getDB')) {
+        return null;
+    }
+
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('SELECT id, username, email, is_admin FROM users WHERE id = :id');
+        $stmt->bindValue(':id', (int)$_SESSION['user_id'], PDO::PARAM_INT);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
+        }
+        $_SESSION['user'] = $row;
+        return $row;
+    } catch (\Throwable $e) {
+        if (function_exists('logException')) {
+            logException($e, ['action' => 'session_rehydrate', 'user_id' => $_SESSION['user_id'] ?? null]);
+        }
+        return null;
+    }
 }
 
 /**
