@@ -11,13 +11,11 @@ if (!isLoggedIn()) {
     jsonError('Not logged in');
 }
 
-$user = getCurrentUser();
-if (!$user) {
-    // isLoggedIn() checks $_SESSION['user_id'] but getCurrentUser() reads
-    // $_SESSION['user'] — a session with only the former triggers a null
-    // user and every ownership check below dereferences it.
-    jsonError('Session expired — please log in again', 401);
-}
+// Note: each handler function below calls getCurrentUser() itself rather
+// than reading a top-level $user via `global $user`. The Router loads this
+// file with `require` inside a method, so top-level variables in this file
+// are NOT in the true global scope and `global $user` inside the handlers
+// would find nothing.
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
@@ -45,7 +43,14 @@ switch ($action) {
 }
 
 function uploadThumbnail() {
-    global $user;
+    // Router loads this file via `require` inside a method, so top-level
+    // variables don't reach the true global scope — `global $user` here would
+    // find nothing. Call getCurrentUser() directly so the function gets a
+    // fresh, rehydrated user record regardless of scope games.
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonError('Session expired — please log in again', 401);
+    }
 
     $modelId = (int)($_POST['model_id'] ?? 0);
 
@@ -138,7 +143,14 @@ function uploadThumbnail() {
 }
 
 function deleteThumbnail() {
-    global $user;
+    // Router loads this file via `require` inside a method, so top-level
+    // variables don't reach the true global scope — `global $user` here would
+    // find nothing. Call getCurrentUser() directly so the function gets a
+    // fresh, rehydrated user record regardless of scope games.
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonError('Session expired — please log in again', 401);
+    }
 
     $modelId = (int)($_POST['model_id'] ?? 0);
 
@@ -178,7 +190,14 @@ function deleteThumbnail() {
 }
 
 function generateThumbnail() {
-    global $user;
+    // Router loads this file via `require` inside a method, so top-level
+    // variables don't reach the true global scope — `global $user` here would
+    // find nothing. Call getCurrentUser() directly so the function gets a
+    // fresh, rehydrated user record regardless of scope games.
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonError('Session expired — please log in again', 401);
+    }
 
     require_once __DIR__ . '/../../includes/ThumbnailGenerator.php';
 
@@ -224,7 +243,14 @@ function generateThumbnail() {
 }
 
 function setFromAttachment() {
-    global $user;
+    // Router loads this file via `require` inside a method, so top-level
+    // variables don't reach the true global scope — `global $user` here would
+    // find nothing. Call getCurrentUser() directly so the function gets a
+    // fresh, rehydrated user record regardless of scope games.
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonError('Session expired — please log in again', 401);
+    }
 
     $modelId = (int)($_POST['model_id'] ?? 0);
     $attachmentId = (int)($_POST['attachment_id'] ?? 0);

@@ -12,7 +12,9 @@ if (!isLoggedIn()) {
     jsonError('Not logged in');
 }
 
-$user = getCurrentUser();
+// Note: each handler function below calls getCurrentUser() itself. The
+// Router loads this file with `require` inside a method, so top-level
+// variables here aren't in the true global scope.
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
@@ -44,7 +46,13 @@ switch ($action) {
  * Convert single model thumbnail to WebP
  */
 function convertToWebP() {
-    global $user;
+    // Router loads this file via `require` inside a method, so top-level
+    // variables don't reach the true global scope — call getCurrentUser()
+    // directly instead of `global $user`.
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonError('Session expired — please log in again', 401);
+    }
 
     $modelId = (int)($_POST['model_id'] ?? 0);
     $quality = (int)($_POST['quality'] ?? 80);
@@ -104,7 +112,13 @@ function convertToWebP() {
  * Convert all thumbnails to WebP
  */
 function convertAllToWebP() {
-    global $user;
+    // Router loads this file via `require` inside a method, so top-level
+    // variables don't reach the true global scope — call getCurrentUser()
+    // directly instead of `global $user`.
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonError('Session expired — please log in again', 401);
+    }
 
     if (!$user['is_admin']) {
         jsonError('Admin access required');
@@ -230,7 +244,13 @@ function getConversionStats() {
  * Revert from WebP (restore original if backup exists)
  */
 function revertFromWebP() {
-    global $user;
+    // Router loads this file via `require` inside a method, so top-level
+    // variables don't reach the true global scope — call getCurrentUser()
+    // directly instead of `global $user`.
+    $user = getCurrentUser();
+    if (!$user) {
+        jsonError('Session expired — please log in again', 401);
+    }
 
     $modelId = (int)($_POST['model_id'] ?? 0);
 
