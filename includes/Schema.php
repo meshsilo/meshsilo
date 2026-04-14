@@ -827,6 +827,17 @@ function ensureColumns($db)
             $db->exec("ALTER TABLE users ADD COLUMN $column $dataType");
         }
     }
+
+    // Model attachments table columns (added later for PDF compression tracking)
+    $attachmentColumns = [
+        'pdf_compressed' => 'INTEGER DEFAULT 0',
+    ];
+
+    foreach ($attachmentColumns as $column => $dataType) {
+        if (tableExists($db, 'model_attachments') && !columnExists($db, 'model_attachments', $column)) {
+            $db->exec("ALTER TABLE model_attachments ADD COLUMN $column $dataType");
+        }
+    }
 }
 
 // =====================

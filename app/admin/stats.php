@@ -158,6 +158,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         if ($result['success']) {
             $message = "Cleanup complete: {$result['migrated']} files migrated back to original locations.";
         }
+    } elseif ($action === 'compress_all_pdfs') {
+        // Retroactively dispatch OptimizePdf jobs for every PDF attachment
+        // that hasn't already been compressed. The job itself handles the
+        // "skip if already flagged" check, but we filter here too to keep
+        // the queue slim.
+        $queued = 0;
+        $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'pdf' AND (pdf_compressed IS NULL OR pdf_compressed = 0)");
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            Queue::push('OptimizePdf', ['id' => (int)$row['id']]);
+            $queued++;
+        }
+        if ($queued > 0) {
+            $message = "Queued $queued PDF(s) for compression. Processing runs in the background.";
+        } else {
+            $message = 'No uncompressed PDFs found.';
+        }
     } elseif ($action === 'convert_all_images_webp') {
         // Retroactively dispatch OptimizeImage jobs for all unconverted JPEG/PNG
         // attachments and model thumbnails. Conversion happens in the background
@@ -597,6 +614,37 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="convert_all_images_webp">
                         <button type="submit" class="btn btn-primary btn-small" data-confirm="This will queue <?= $totalUnconverted ?> image(s) for background WebP conversion. Originals will be deleted as each conversion completes. Continue?">Convert All to WebP</button>
+                    </form>
+                </div>
+                <?php endif; ?>
+            </section>
+
+            <!-- PDF Compression -->
+            <?php
+            $uncompressedPdfs = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'pdf' AND (pdf_compressed IS NULL OR pdf_compressed = 0)");
+            $compressedPdfs = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'pdf' AND pdf_compressed = 1");
+            ?>
+            <section class="section-card section-card-full">
+                <h2>PDF Compression</h2>
+                <p class="section-description">
+                    Compress PDF attachments with Ghostscript or qpdf. Mode and enabled/disabled state are configured in <a href="<?= route('admin.settings') ?>">Site Settings</a>. Processing runs in the background queue.
+                </p>
+                <div class="dedup-stats-grid">
+                    <div class="dedup-stat <?= $uncompressedPdfs > 0 ? 'dedup-stat-warning' : '' ?>">
+                        <span class="dedup-stat-value"><?= number_format($uncompressedPdfs) ?></span>
+                        <span class="dedup-stat-label">Uncompressed PDFs</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($compressedPdfs) ?></span>
+                        <span class="dedup-stat-label">Compressed PDFs</span>
+                    </div>
+                </div>
+                <?php if (isAdmin() && $uncompressedPdfs > 0): ?>
+                <div class="dedup-actions">
+                    <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="compress_all_pdfs">
+                        <button type="submit" class="btn btn-primary btn-small" data-confirm="Queue <?= $uncompressedPdfs ?> PDF(s) for background compression? The current mode in Site Settings will be used. Originals are only replaced when the result is measurably smaller.">Compress All PDFs</button>
                     </form>
                 </div>
                 <?php endif; ?>

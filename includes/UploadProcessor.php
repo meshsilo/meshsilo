@@ -683,10 +683,14 @@ class UploadProcessor
             $stmt->bindValue(':display_order', $nextOrder, PDO::PARAM_INT);
             $stmt->execute();
 
-            // Dispatch WebP conversion for image attachments pulled from zip.
-            if ($attFile['type'] === 'image' && class_exists('Queue')) {
+            // Dispatch background optimization for this attachment.
+            if (class_exists('Queue')) {
                 $attachmentId = (int)$db->lastInsertRowID();
-                Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => $attachmentId]);
+                if ($attFile['type'] === 'image') {
+                    Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => $attachmentId]);
+                } elseif ($attFile['type'] === 'pdf') {
+                    Queue::push('OptimizePdf', ['id' => $attachmentId]);
+                }
             }
         }
 

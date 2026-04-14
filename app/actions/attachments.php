@@ -194,6 +194,12 @@ function uploadAttachment() {
             Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$attachmentId]);
         }
 
+        // Dispatch PDF compression job for PDF attachments. The job is
+        // a no-op if compress_pdfs is disabled or no gs/qpdf binary exists.
+        if ($isPdf && class_exists('Queue')) {
+            Queue::push('OptimizePdf', ['id' => (int)$attachmentId]);
+        }
+
         // Log activity
         if (function_exists('logActivity')) {
             logActivity('attachment_upload', 'model', $modelId, $originalFilename);
