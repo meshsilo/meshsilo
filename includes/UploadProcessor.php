@@ -638,6 +638,12 @@ class UploadProcessor
             $stmt->bindValue(':path', $thumbRelative, PDO::PARAM_STR);
             $stmt->bindValue(':id', $parentId, PDO::PARAM_INT);
             $stmt->execute();
+
+            // Dispatch WebP conversion for JPEG/PNG thumbnails pulled from zip.
+            // No-op for already-WebP/GIF files.
+            if (class_exists('Queue')) {
+                Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $parentId]);
+            }
         }
     }
 
@@ -676,6 +682,12 @@ class UploadProcessor
             $stmt->bindValue(':original_filename', $attFile['filename'], PDO::PARAM_STR);
             $stmt->bindValue(':display_order', $nextOrder, PDO::PARAM_INT);
             $stmt->execute();
+
+            // Dispatch WebP conversion for image attachments pulled from zip.
+            if ($attFile['type'] === 'image' && class_exists('Queue')) {
+                $attachmentId = (int)$db->lastInsertRowID();
+                Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => $attachmentId]);
+            }
         }
 
         if (function_exists('logInfo')) {

@@ -158,6 +158,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         if ($result['success']) {
             $message = "Cleanup complete: {$result['migrated']} files migrated back to original locations.";
         }
+    } elseif ($action === 'convert_all_images_webp') {
+        // Retroactively dispatch OptimizeImage jobs for all unconverted JPEG/PNG
+        // attachments and model thumbnails. Conversion happens in the background
+        // queue; the worker handles them gradually.
+        $queued = 0;
+
+        // Image attachments still in PNG/JPG/JPEG format
+        $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'image' AND (LOWER(file_path) LIKE '%.png' OR LOWER(file_path) LIKE '%.jpg' OR LOWER(file_path) LIKE '%.jpeg')");
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$row['id']]);
+            $queued++;
+        }
+
+        // Model thumbnails still in PNG/JPG/JPEG format
+        $stmt = $db->prepare("SELECT id FROM models WHERE thumbnail_path IS NOT NULL AND (LOWER(thumbnail_path) LIKE '%.png' OR LOWER(thumbnail_path) LIKE '%.jpg' OR LOWER(thumbnail_path) LIKE '%.jpeg')");
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => (int)$row['id']]);
+            $queued++;
+        }
+
+        if ($queued > 0) {
+            $message = "Queued $queued image(s) for WebP conversion. Conversions run in the background &mdash; check the queue status page for progress.";
+        } else {
+            $message = 'No JPEG/PNG images found to convert. All images are already in WebP format.';
+        }
     }
 }
 
@@ -535,6 +562,42 @@ require_once __DIR__ . '/../../includes/header.php';
                         <button type="submit" class="btn btn-secondary btn-small" title="Move files back if only one part references them">Run Cleanup</button>
                     </form>
                     <?php endif; ?>
+                </div>
+                <?php endif; ?>
+            </section>
+
+            <!-- Image Optimization -->
+            <?php
+            $unconvertedAttachments = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'image' AND (LOWER(file_path) LIKE '%.png' OR LOWER(file_path) LIKE '%.jpg' OR LOWER(file_path) LIKE '%.jpeg')");
+            $unconvertedThumbnails = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE thumbnail_path IS NOT NULL AND (LOWER(thumbnail_path) LIKE '%.png' OR LOWER(thumbnail_path) LIKE '%.jpg' OR LOWER(thumbnail_path) LIKE '%.jpeg')");
+            $totalUnconverted = $unconvertedAttachments + $unconvertedThumbnails;
+            ?>
+            <section class="section-card section-card-full">
+                <h2>Image Optimization (WebP)</h2>
+                <p class="section-description">
+                    Convert existing JPEG/PNG images to WebP to reduce disk usage. Conversions run in the background queue.
+                </p>
+                <div class="dedup-stats-grid">
+                    <div class="dedup-stat <?= $totalUnconverted > 0 ? 'dedup-stat-warning' : '' ?>">
+                        <span class="dedup-stat-value"><?= number_format($totalUnconverted) ?></span>
+                        <span class="dedup-stat-label">Images Awaiting Conversion</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($unconvertedAttachments) ?></span>
+                        <span class="dedup-stat-label">Attachments</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($unconvertedThumbnails) ?></span>
+                        <span class="dedup-stat-label">Model Thumbnails</span>
+                    </div>
+                </div>
+                <?php if (isAdmin() && $totalUnconverted > 0): ?>
+                <div class="dedup-actions">
+                    <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="convert_all_images_webp">
+                        <button type="submit" class="btn btn-primary btn-small" data-confirm="This will queue <?= $totalUnconverted ?> image(s) for background WebP conversion. Originals will be deleted as each conversion completes. Continue?">Convert All to WebP</button>
+                    </form>
                 </div>
                 <?php endif; ?>
             </section>

@@ -136,6 +136,11 @@ function uploadThumbnail() {
     $stmt = $db->prepare('UPDATE models SET thumbnail_path = :path WHERE id = :id');
     $stmt->execute([':path' => $relativePath, ':id' => $modelId]);
 
+    // Dispatch WebP conversion for JPEG/PNG thumbnails. No-op for GIF/WebP.
+    if (class_exists('Queue')) {
+        Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $modelId]);
+    }
+
     echo json_encode([
         'success' => true,
         'thumbnail_path' => $relativePath
@@ -339,6 +344,11 @@ function setFromAttachment() {
     // Update model
     $stmt = $db->prepare('UPDATE models SET thumbnail_path = :path WHERE id = :id');
     $stmt->execute([':path' => $relativePath, ':id' => $modelId]);
+
+    // Dispatch WebP conversion — no-op if source was already WebP.
+    if (class_exists('Queue')) {
+        Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $modelId]);
+    }
 
     echo json_encode([
         'success' => true,
