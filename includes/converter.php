@@ -470,7 +470,18 @@ class STLConverter
 
 /**
  * Get system memory total and used bytes.
- * Checks cgroup limits first (accurate in Docker), then /proc/meminfo.
+ *
+ * In Docker, cgroup `memory.current` / `memory.usage_in_bytes` counts
+ * reclaimable page cache toward "used" — the kernel reclaims that cache
+ * instantly under memory pressure, so it's not actually consumed in any
+ * meaningful sense. That inflation trips the 90% check in
+ * `convertPartTo3MF` even on a nearly-idle container that's just been
+ * reading STL files.
+ *
+ * We subtract reclaimable memory when we can get it (cgroup `memory.stat`
+ * on v2, `memory.stat` on v1, MemAvailable on bare metal) so "used" means
+ * genuinely-in-use memory, not "memory that happens to have a kernel
+ * cache page in it."
  */
 function getSystemMemory(): ?array
 {
@@ -479,7 +490,20 @@ function getSystemMemory(): ?array
         $max = trim(file_get_contents('/sys/fs/cgroup/memory.max'));
         $current = (int)trim(file_get_contents('/sys/fs/cgroup/memory.current'));
         if ($max !== 'max' && (int)$max > 0) {
-            return ['total' => (int)$max, 'used' => $current];
+            // Subtract reclaimable page cache (memory.stat:file) so the
+            // "used" number reflects actually-consumed memory.
+            $reclaimable = 0;
+            if (is_readable('/sys/fs/cgroup/memory.stat')) {
+                $stat = file_get_contents('/sys/fs/cgroup/memory.stat');
+                // `file` = page cache backed by files on disk (reclaimable).
+                // We intentionally don't subtract `shmem` or `anon` — those
+                // are genuinely consumed and matter for conversion headroom.
+                if (preg_match('/^file\s+(\d+)/m', $stat, $m)) {
+                    $reclaimable = (int)$m[1];
+                }
+            }
+            $used = max(0, $current - $reclaimable);
+            return ['total' => (int)$max, 'used' => $used];
         }
     }
 
@@ -488,11 +512,22 @@ function getSystemMemory(): ?array
         $limit = (int)trim(file_get_contents('/sys/fs/cgroup/memory/memory.limit_in_bytes'));
         $usage = (int)trim(file_get_contents('/sys/fs/cgroup/memory/memory.usage_in_bytes'));
         if ($limit > 0 && $limit < (PHP_INT_MAX / 2)) {
-            return ['total' => $limit, 'used' => $usage];
+            // Same fix for cgroup v1: memory.stat exposes `cache` (reclaimable).
+            $reclaimable = 0;
+            if (is_readable('/sys/fs/cgroup/memory/memory.stat')) {
+                $stat = file_get_contents('/sys/fs/cgroup/memory/memory.stat');
+                if (preg_match('/^cache\s+(\d+)/m', $stat, $m)) {
+                    $reclaimable = (int)$m[1];
+                }
+            }
+            $used = max(0, $usage - $reclaimable);
+            return ['total' => $limit, 'used' => $used];
         }
     }
 
     // /proc/meminfo (bare metal or host-level)
+    // MemAvailable already accounts for reclaimable cache — this path was
+    // always correct.
     if (is_readable('/proc/meminfo')) {
         $meminfo = file_get_contents('/proc/meminfo');
         if (preg_match('/MemTotal:\s+(\d+)/', $meminfo, $totalMatch) &&
