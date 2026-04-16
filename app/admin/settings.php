@@ -194,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     // Max file size (convert MB to bytes)
     $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
     if ($maxFileSize < 1) $maxFileSize = 1;
-    if ($maxFileSize > 102400) $maxFileSize = 102400; // Cap at 100GB
+    // No upper cap — tus chunked uploads handle arbitrarily large files
     setSetting('max_file_size', (string)($maxFileSize * 1024 * 1024));
 
     setSetting('site_url', $siteUrl);
