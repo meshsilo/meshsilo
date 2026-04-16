@@ -191,13 +191,13 @@ function uploadAttachment() {
         // a no-op for already-WebP files and files whose extension isn't
         // in ImageConverter::CONVERTIBLE_EXTENSIONS.
         if ($isImage && class_exists('Queue')) {
-            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$attachmentId]);
+            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$attachmentId], 'images');
         }
 
         // Dispatch PDF compression job for PDF attachments. The job is
         // a no-op if compress_pdfs is disabled or no gs/qpdf binary exists.
         if ($isPdf && class_exists('Queue')) {
-            Queue::push('OptimizePdf', ['id' => (int)$attachmentId]);
+            Queue::push('OptimizePdf', ['id' => (int)$attachmentId], 'pdfs');
         }
 
         // Log activity

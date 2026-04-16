@@ -138,7 +138,7 @@ function uploadThumbnail() {
 
     // Dispatch WebP conversion for JPEG/PNG thumbnails. No-op for GIF/WebP.
     if (class_exists('Queue')) {
-        Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $modelId]);
+        Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $modelId], 'images');
     }
 
     echo json_encode([
@@ -347,7 +347,7 @@ function setFromAttachment() {
 
     // Dispatch WebP conversion — no-op if source was already WebP.
     if (class_exists('Queue')) {
-        Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $modelId]);
+        Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $modelId], 'images');
     }
 
     echo json_encode([

@@ -167,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'pdf' AND (pdf_compressed IS NULL OR pdf_compressed = 0)");
         $result = $stmt->execute();
         while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            Queue::push('OptimizePdf', ['id' => (int)$row['id']]);
+            Queue::push('OptimizePdf', ['id' => (int)$row['id']], 'pdfs');
             $queued++;
         }
         if ($queued > 0) {
@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'image' AND (LOWER(file_path) LIKE '%.png' OR LOWER(file_path) LIKE '%.jpg' OR LOWER(file_path) LIKE '%.jpeg')");
         $result = $stmt->execute();
         while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$row['id']]);
+            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$row['id']], 'images');
             $queued++;
         }
 
@@ -193,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         $stmt = $db->prepare("SELECT id FROM models WHERE thumbnail_path IS NOT NULL AND (LOWER(thumbnail_path) LIKE '%.png' OR LOWER(thumbnail_path) LIKE '%.jpg' OR LOWER(thumbnail_path) LIKE '%.jpeg')");
         $result = $stmt->execute();
         while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => (int)$row['id']]);
+            Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => (int)$row['id']], 'images');
             $queued++;
         }
 

@@ -477,10 +477,10 @@ class UploadProcessor
             // Queue background jobs
             if (class_exists('Queue')) {
                 if ($extension === 'stl' && function_exists('getSetting') && getSetting('auto_convert_stl', '0') === '1') {
-                    Queue::push('ConvertStlTo3mf', ['model_id' => $modelId]);
+                    Queue::push('ConvertStlTo3mf', ['model_id' => $modelId], 'conversions');
                 }
                 if (in_array($extension, ['3mf', 'stl'])) {
-                    Queue::push('GenerateThumbnail', ['model_id' => $modelId]);
+                    Queue::push('GenerateThumbnail', ['model_id' => $modelId], 'thumbnails');
                 }
             }
 
@@ -642,7 +642,7 @@ class UploadProcessor
             // Dispatch WebP conversion for JPEG/PNG thumbnails pulled from zip.
             // No-op for already-WebP/GIF files.
             if (class_exists('Queue')) {
-                Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $parentId]);
+                Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $parentId], 'images');
             }
         }
     }
@@ -687,9 +687,9 @@ class UploadProcessor
             if (class_exists('Queue')) {
                 $attachmentId = (int)$db->lastInsertRowID();
                 if ($attFile['type'] === 'image') {
-                    Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => $attachmentId]);
+                    Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => $attachmentId], 'images');
                 } elseif ($attFile['type'] === 'pdf') {
-                    Queue::push('OptimizePdf', ['id' => $attachmentId]);
+                    Queue::push('OptimizePdf', ['id' => $attachmentId], 'pdfs');
                 }
             }
         }
