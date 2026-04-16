@@ -148,6 +148,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_plugin_settings'
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email']) && !isset($_POST['save_plugin_settings'])) {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
     $autoDedup = isset($_POST['auto_deduplication']) ? '1' : '0';
+    $convertImagesWebp = isset($_POST['convert_images_webp']) ? '1' : '0';
+    $compressPdfs = isset($_POST['compress_pdfs']) ? '1' : '0';
+    $compressPdfsMode = $_POST['compress_pdfs_mode'] ?? 'gs-ebook';
+    // Defense-in-depth: validate mode against the PdfOptimizer whitelist
+    require_once __DIR__ . '/../../includes/PdfOptimizer.php';
+    if (!PdfOptimizer::isValidMode($compressPdfsMode)) {
+        $compressPdfsMode = 'gs-ebook';
+    }
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
 
@@ -174,6 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     setSetting('site_description', $siteDescription);
     setSetting('auto_convert_stl', $autoConvert);
     setSetting('auto_deduplication', $autoDedup);
+    setSetting('convert_images_webp', $convertImagesWebp);
+    setSetting('compress_pdfs', $compressPdfs);
+    setSetting('compress_pdfs_mode', $compressPdfsMode);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
     setSetting('allowed_extensions', $allowedExtensions);
@@ -183,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     // Max file size (convert MB to bytes)
     $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
     if ($maxFileSize < 1) $maxFileSize = 1;
-    if ($maxFileSize > 10240) $maxFileSize = 10240; // Cap at 10GB
+    // No upper cap — tus chunked uploads handle arbitrarily large files
     setSetting('max_file_size', (string)($maxFileSize * 1024 * 1024));
 
     setSetting('site_url', $siteUrl);
@@ -213,6 +224,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     logInfo('Settings updated', [
         'auto_convert_stl' => $autoConvert,
         'auto_deduplication' => $autoDedup,
+        'convert_images_webp' => $convertImagesWebp,
+        'compress_pdfs' => $compressPdfs,
+        'compress_pdfs_mode' => $compressPdfsMode,
         'allow_registration' => $allowRegistration,
         'require_approval' => $requireApproval,
         'allowed_extensions' => $allowedExtensions
@@ -386,6 +400,56 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span>Run deduplication automatically (hourly)</span>
                             </label>
                             <p class="form-help">When enabled, the <code>dedup:scan</code> scheduled task runs every hour &mdash; it calculates any missing file hashes and deduplicates identical files. When disabled, the task is skipped and deduplication must be run manually from the <a href="<?= route('admin.stats') ?>">Statistics</a> page.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" name="convert_images_webp" <?= ($settings['convert_images_webp'] ?? '1') === '1' ? 'checked' : '' ?>>
+                                <span class="toggle-switch"></span>
+                                <span>Convert uploaded images to WebP</span>
+                            </label>
+                            <p class="form-help">When enabled, JPEG and PNG images uploaded as model attachments, custom thumbnails, or extracted from ZIP archives are automatically converted to WebP in the background. WebP files are typically 25&ndash;35% smaller. Originals are deleted after conversion.</p>
+                        </div>
+
+                        <?php
+                        require_once __DIR__ . '/../../includes/PdfOptimizer.php';
+                        $pdfAvailableModes = PdfOptimizer::availableModes();
+                        $pdfCurrentMode = $settings['compress_pdfs_mode'] ?? 'gs-ebook';
+                        $pdfModeLabels = [
+                            'gs-ebook' => 'Ghostscript — ebook (best size/quality balance, 150 DPI)',
+                            'gs-printer' => 'Ghostscript — printer (preserve print quality, 300 DPI)',
+                            'gs-screen' => 'Ghostscript — screen (smallest, 72 DPI, may blur)',
+                            'qpdf' => 'qpdf — lossless restructure (no quality loss)',
+                        ];
+                        ?>
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" name="compress_pdfs" <?= ($settings['compress_pdfs'] ?? '0') === '1' ? 'checked' : '' ?>>
+                                <span class="toggle-switch"></span>
+                                <span>Compress uploaded PDFs</span>
+                            </label>
+                            <p class="form-help">When enabled, PDF attachments (uploaded directly or extracted from ZIPs) are compressed in the background. Only swaps the file when the output is measurably smaller; skips PDFs where compression isn't worthwhile.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="compress-pdfs-mode">PDF compression mode</label>
+                            <select id="compress-pdfs-mode" name="compress_pdfs_mode" class="form-input">
+                                <?php foreach ($pdfModeLabels as $mode => $label): ?>
+                                    <?php $disabled = !in_array($mode, $pdfAvailableModes, true); ?>
+                                    <option value="<?= htmlspecialchars($mode) ?>"
+                                        <?= $pdfCurrentMode === $mode ? 'selected' : '' ?>
+                                        <?= $disabled ? 'disabled' : '' ?>>
+                                        <?= htmlspecialchars($label) ?><?= $disabled ? ' — binary not installed' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (empty($pdfAvailableModes)): ?>
+                                <p class="form-help" style="color: var(--color-warning, #c75)">
+                                    Neither <code>ghostscript</code> nor <code>qpdf</code> is installed in this environment. PDF compression will be a no-op until one is available. In Docker, rebuild the image with <code>docker compose up -d --build</code>.
+                                </p>
+                            <?php else: ?>
+                                <p class="form-help">Available binaries determine which modes you can select. Settings are only applied to new uploads (plus the retroactive batch on the Statistics page).</p>
+                            <?php endif; ?>
                         </div>
                     </details>
 
@@ -578,36 +642,33 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </details>
 
-                    <?php if (class_exists('PluginManager')):
-                        $pm = PluginManager::getInstance();
-                        $pluginsWithSettings = $pm->getPluginsWithSettings();
-                        foreach ($pluginsWithSettings as $pId => $pManifest):
-                    ?>
-                    </form>
-                    <form class="settings-form" method="POST">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="save_plugin_settings" value="<?= htmlspecialchars($pId) ?>">
-                        <details class="settings-section">
-                            <summary><h2><?= htmlspecialchars($pManifest['name'] ?? $pId) ?> Settings</h2></summary>
-                            <?php if (!empty($pManifest['description'])): ?>
-                            <p class="form-help" style="margin-bottom: 1rem;"><?= htmlspecialchars($pManifest['description']) ?></p>
-                            <?php endif; ?>
-                            <?= $pm->renderPluginSettingsForm($pId) ?>
-                            <div class="form-actions" style="margin-top: 1rem;">
-                                <button type="submit" class="btn btn-primary">Save <?= htmlspecialchars($pManifest['name'] ?? 'Plugin') ?> Settings</button>
-                            </div>
-                        </details>
-                    </form>
-                    <form class="settings-form" method="POST">
-                        <?= csrf_field() ?>
-                    <?php endforeach; ?>
-                    <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
-                    <?php endif; ?>
-
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">Save Settings</button>
                     </div>
                 </form>
+
+                <?php if (class_exists('PluginManager')):
+                    $pm = PluginManager::getInstance();
+                    $pluginsWithSettings = $pm->getPluginsWithSettings();
+                    foreach ($pluginsWithSettings as $pId => $pManifest):
+                ?>
+                <form class="settings-form" method="POST">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="save_plugin_settings" value="<?= htmlspecialchars($pId) ?>">
+                    <details class="settings-section">
+                        <summary><h2><?= htmlspecialchars($pManifest['name'] ?? $pId) ?> Settings</h2></summary>
+                        <?php if (!empty($pManifest['description'])): ?>
+                        <p class="form-help" style="margin-bottom: 1rem;"><?= htmlspecialchars($pManifest['description']) ?></p>
+                        <?php endif; ?>
+                        <?= $pm->renderPluginSettingsForm($pId) ?>
+                        <div class="form-actions" style="margin-top: 1rem;">
+                            <button type="submit" class="btn btn-primary">Save <?= htmlspecialchars($pManifest['name'] ?? 'Plugin') ?> Settings</button>
+                        </div>
+                    </details>
+                </form>
+                <?php endforeach; ?>
+                <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
+                <?php endif; ?>
 
             </div>
         </div>

@@ -30,6 +30,9 @@ RUN apt-get update && apt-get install -y software-properties-common && apt updat
     supervisor \
     sudo \
     curl \
+    unzip \
+    ghostscript \
+    qpdf \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

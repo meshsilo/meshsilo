@@ -99,7 +99,7 @@ if ($action === 'estimate') {
         jsonSuccess(['queued' => 0, 'message' => 'Already queued']);
     }
 
-    Queue::push('ConvertStlTo3mf', ['model_id' => $partId]);
+    Queue::push('ConvertStlTo3mf', ['model_id' => $partId], 'conversions');
     jsonSuccess(['queued' => 1]);
 
 } elseif ($action === 'batch') {
@@ -125,7 +125,7 @@ if ($action === 'estimate') {
         $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if ($part && $part['file_type'] === 'stl' && !isPartAlreadyQueued($id)) {
-            Queue::push('ConvertStlTo3mf', ['model_id' => $id]);
+            Queue::push('ConvertStlTo3mf', ['model_id' => $id], 'conversions');
             $queued++;
         }
     }

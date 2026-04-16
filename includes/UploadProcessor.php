@@ -79,48 +79,48 @@ class UploadProcessor
     {
         $db = getDB();
 
+        // Open once to validate + count entries for diagnostics
         $zip = new \ZipArchive();
         if ($zip->open($zipPath) !== true) {
             return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'Failed to open ZIP file'];
         }
+        $zipEntryCount = $zip->numFiles;
+        $zip->close();
 
-        // Extract to temp directory
         $extractDir = sys_get_temp_dir() . '/silo_' . uniqid();
         mkdir($extractDir, 0755, true);
-        $realExtractDir = realpath($extractDir);
 
-        $extractedCount = 0;
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $filename = $zip->getNameIndex($i);
-            if (substr($filename, -1) === '/') continue; // skip directories
-
-            $targetPath = $extractDir . '/' . $filename;
-            $targetDir = dirname($targetPath);
-            if (!is_dir($targetDir)) {
-                mkdir($targetDir, 0755, true);
+        // Prefer the `unzip` binary (InfoZIP) — it handles every compression
+        // method PHP's libzip does, plus Deflate64 (method 9, common in
+        // Windows-made zips), LZMA (14), and more. Fall back to
+        // ZipArchive::extractTo only when the binary isn't installed (rare:
+        // Docker image includes it; Linux/macOS dev boxes usually have it).
+        $extractMethod = null;
+        $extractError = null;
+        if (self::unzipBinaryAvailable()) {
+            $result = self::extractWithUnzipBinary($zipPath, $extractDir);
+            $extractMethod = 'unzip';
+            if (!$result['success']) {
+                $extractError = "unzip binary failed (exit {$result['exit_code']}): {$result['stderr']}";
             }
-
-            // ZIP Slip prevention
-            $realTargetPath = realpath($targetDir) . '/' . basename($filename);
-            if (strpos($realTargetPath, $realExtractDir) !== 0) {
-                if (function_exists('logWarning')) {
-                    logWarning('ZIP path traversal attempt blocked', ['filename' => $filename]);
-                }
-                continue;
+        } else {
+            $zip = new \ZipArchive();
+            $zip->open($zipPath);
+            $ok = @$zip->extractTo($extractDir);
+            $extractMethod = 'ZipArchive::extractTo';
+            if (!$ok) {
+                $extractError = 'ZipArchive::extractTo returned false: ' . $zip->getStatusString();
             }
-
-            $stream = $zip->getStream($filename);
-            if ($stream !== false) {
-                $outFile = fopen($realTargetPath, 'w');
-                if ($outFile !== false) {
-                    stream_copy_to_stream($stream, $outFile);
-                    fclose($outFile);
-                    $extractedCount++;
-                }
-                fclose($stream);
-            }
+            $zip->close();
         }
-        $zip->close();
+
+        if ($extractError && function_exists('logWarning')) {
+            logWarning('ZIP extraction error', [
+                'method' => $extractMethod,
+                'error' => $extractError,
+                'zip_entries' => $zipEntryCount,
+            ]);
+        }
 
         // Scan extracted files
         $modelFiles = [];
@@ -130,13 +130,21 @@ class UploadProcessor
         $textExtensions = ['txt', 'md'];
         $pdfExtensions = ['pdf'];
 
+        // Track every extension we see for diagnostics — when we can't find
+        // model files, this tells the user what was actually in their zip vs.
+        // what the system recognizes as a model.
+        $extensionsSeen = [];
+        $totalFilesScanned = 0;
+
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS)
         );
 
         foreach ($iterator as $fileInfo) {
             if (!$fileInfo->isFile()) continue;
+            $totalFilesScanned++;
             $fileExt = strtolower($fileInfo->getExtension());
+            $extensionsSeen[$fileExt] = ($extensionsSeen[$fileExt] ?? 0) + 1;
 
             if (function_exists('isModelExtension') && isModelExtension($fileExt)) {
                 $relativePath = str_replace($extractDir . '/', '', $fileInfo->getPathname());
@@ -162,8 +170,36 @@ class UploadProcessor
         usort($modelFiles, fn($a, $b) => strcmp($a['relative_path'], $b['relative_path']));
 
         if (empty($modelFiles)) {
+            // Build a diagnostic summary: what did we actually find?
+            $allowedModels = function_exists('getModelExtensions') ? getModelExtensions() : [];
+            $seen = $extensionsSeen
+                ? implode(', ', array_map(fn($e, $n) => ($e ?: '(no extension)') . " ({$n})", array_keys($extensionsSeen), $extensionsSeen))
+                : '(none)';
+            $allowed = $allowedModels ? implode(', ', $allowedModels) : '(none configured)';
+
+            if (function_exists('logWarning')) {
+                logWarning('ZIP upload: no model files found', [
+                    'zip_path' => $zipPath,
+                    'zip_entries' => $zipEntryCount,
+                    'extracted' => $totalFilesScanned,
+                    'extract_method' => $extractMethod,
+                    'extract_error' => $extractError,
+                    'extensions_seen' => $extensionsSeen,
+                    'allowed_model_extensions' => $allowedModels,
+                ]);
+            }
+
             self::cleanupExtractDir($extractDir);
-            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'No valid 3D model or slicer files found in the ZIP archive'];
+            return [
+                'success' => false,
+                'parent_id' => 0,
+                'part_count' => 0,
+                'error' => "No valid 3D model or slicer files found in the ZIP archive. "
+                    . "Zip contained {$zipEntryCount} entries; extracted {$totalFilesScanned}"
+                    . ($extractError ? " ({$extractMethod} error: {$extractError})" : '')
+                    . ". Found extensions: {$seen}. "
+                    . "Recognized model extensions: {$allowed}.",
+            ];
         }
 
         $totalSize = array_sum(array_column($modelFiles, 'size'));
@@ -441,10 +477,10 @@ class UploadProcessor
             // Queue background jobs
             if (class_exists('Queue')) {
                 if ($extension === 'stl' && function_exists('getSetting') && getSetting('auto_convert_stl', '0') === '1') {
-                    Queue::push('ConvertStlTo3mf', ['model_id' => $modelId]);
+                    Queue::push('ConvertStlTo3mf', ['model_id' => $modelId], 'conversions');
                 }
                 if (in_array($extension, ['3mf', 'stl'])) {
-                    Queue::push('GenerateThumbnail', ['model_id' => $modelId]);
+                    Queue::push('GenerateThumbnail', ['model_id' => $modelId], 'thumbnails');
                 }
             }
 
@@ -534,6 +570,59 @@ class UploadProcessor
 
     // ─── Private helpers ────────────────────────────────────────────────────
 
+    /**
+     * Cached check for the InfoZIP `unzip` binary. Cached because this can
+     * be called more than once per upload and shelling out to `command -v`
+     * isn't free.
+     */
+    private static ?bool $unzipAvailable = null;
+    private static function unzipBinaryAvailable(): bool
+    {
+        if (self::$unzipAvailable !== null) {
+            return self::$unzipAvailable;
+        }
+        $output = [];
+        $code = 1;
+        @exec('command -v unzip 2>/dev/null', $output, $code);
+        self::$unzipAvailable = ($code === 0 && !empty($output));
+        return self::$unzipAvailable;
+    }
+
+    /**
+     * Extract a zip archive using the InfoZIP `unzip` binary.
+     *
+     * Used when ZipArchive (libzip) can't read the archive — most commonly
+     * because the zip uses Deflate64 (compression method 9), which Windows
+     * zip tools produce for larger entries and which libzip does not
+     * support.
+     *
+     * InfoZIP has built-in ZIP Slip protection (refuses absolute paths and
+     * ../ components), so we don't need per-entry path validation here.
+     *
+     * @return array{success: bool, exit_code: int, stderr: string}
+     */
+    private static function extractWithUnzipBinary(string $zipPath, string $extractDir): array
+    {
+        $cmd = sprintf(
+            'unzip -o -q -- %s -d %s 2>&1',
+            escapeshellarg($zipPath),
+            escapeshellarg($extractDir)
+        );
+        $output = [];
+        $exitCode = 1;
+        @exec($cmd, $output, $exitCode);
+
+        // unzip exit codes: 0 = success, 1 = success with warnings, 2+ = error.
+        // Warnings typically come from ZIP Slip attempts being refused — the
+        // archive is still usable, so treat 0 and 1 as success.
+        $success = ($exitCode === 0 || $exitCode === 1);
+        return [
+            'success' => $success,
+            'exit_code' => $exitCode,
+            'stderr' => implode("\n", array_slice($output, 0, 20)),
+        ];
+    }
+
     private static function saveThumbnailFromImage($db, int $parentId, array $img, string $folderId): void
     {
         $thumbDir = 'thumbnails';
@@ -549,6 +638,12 @@ class UploadProcessor
             $stmt->bindValue(':path', $thumbRelative, PDO::PARAM_STR);
             $stmt->bindValue(':id', $parentId, PDO::PARAM_INT);
             $stmt->execute();
+
+            // Dispatch WebP conversion for JPEG/PNG thumbnails pulled from zip.
+            // No-op for already-WebP/GIF files.
+            if (class_exists('Queue')) {
+                Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => $parentId], 'images');
+            }
         }
     }
 
@@ -587,6 +682,16 @@ class UploadProcessor
             $stmt->bindValue(':original_filename', $attFile['filename'], PDO::PARAM_STR);
             $stmt->bindValue(':display_order', $nextOrder, PDO::PARAM_INT);
             $stmt->execute();
+
+            // Dispatch background optimization for this attachment.
+            if (class_exists('Queue')) {
+                $attachmentId = (int)$db->lastInsertRowID();
+                if ($attFile['type'] === 'image') {
+                    Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => $attachmentId], 'images');
+                } elseif ($attFile['type'] === 'pdf') {
+                    Queue::push('OptimizePdf', ['id' => $attachmentId], 'pdfs');
+                }
+            }
         }
 
         if (function_exists('logInfo')) {

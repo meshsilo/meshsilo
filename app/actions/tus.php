@@ -190,7 +190,7 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
         'filename' => $filename,
         'folder_id' => $folderId,
         'user_id' => getCurrentUser()['id'] ?? null,
-    ], 'default', maxAttempts: 2);
+    ], 'uploads', maxAttempts: 2);
 
     logInfo('Tus upload complete, processing queued', [
         'upload_id' => $uploadId,

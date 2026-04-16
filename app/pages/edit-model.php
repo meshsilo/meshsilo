@@ -55,6 +55,13 @@ while ($row = $catIdsResult->fetchArray(PDO::FETCH_ASSOC)) {
     $selectedCategories[] = $row['category_id'];
 }
 
+// Load existing collections for the datalist (same pattern as upload.php)
+$collections = [];
+$collResult = $db->query('SELECT name FROM collections ORDER BY name');
+while ($row = $collResult->fetchArray(PDO::FETCH_ASSOC)) {
+    $collections[] = $row['name'];
+}
+
 $message = '';
 $messageType = '';
 
@@ -65,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $creator = trim($_POST['creator'] ?? '');
     $sourceUrl = trim($_POST['source_url'] ?? '');
     $license = trim($_POST['license'] ?? '');
+    $collection = trim($_POST['collection'] ?? '');
     $categoryIds = $_POST['categories'] ?? [];
 
     if (!Csrf::validate()) {
@@ -75,14 +83,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $messageType = 'error';
     } else {
         // Update model
-        $stmt = $db->prepare('UPDATE models SET name = :name, description = :description, creator = :creator, source_url = :source_url, license = :license WHERE id = :id');
+        $stmt = $db->prepare('UPDATE models SET name = :name, description = :description, creator = :creator, source_url = :source_url, license = :license, collection = :collection WHERE id = :id');
         $stmt->bindValue(':name', $name);
         $stmt->bindValue(':description', $description);
         $stmt->bindValue(':creator', $creator);
         $stmt->bindValue(':source_url', $sourceUrl);
         $stmt->bindValue(':license', $license);
+        $stmt->bindValue(':collection', $collection);
         $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
+
+        // Auto-create new collection (matches upload.php pattern)
+        if (!empty($collection)) {
+            try {
+                $insColl = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
+                $insColl->bindValue(':name', $collection, PDO::PARAM_STR);
+                $insColl->execute();
+            } catch (\Exception $e) {
+                // Ignore — already exists
+            }
+        }
 
         // Update categories using prepared statements
         $deleteStmt = $db->prepare('DELETE FROM model_categories WHERE model_id = :model_id');
@@ -154,6 +174,16 @@ require_once 'includes/header.php';
                 <div class="form-group">
                     <label for="creator">Creator</label>
                     <input type="text" id="creator" name="creator" class="form-input" value="<?= htmlspecialchars($model['creator'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="collection">Collection</label>
+                    <input type="text" id="collection" name="collection" class="form-input" placeholder="Collection name (e.g., Gridfinity, Voron)" list="collections-list" value="<?= htmlspecialchars($model['collection'] ?? '') ?>">
+                    <datalist id="collections-list">
+                        <?php foreach ($collections as $col): ?>
+                        <option value="<?= htmlspecialchars($col) ?>">
+                        <?php endforeach; ?>
+                    </datalist>
                 </div>
 
                 <div class="form-group">

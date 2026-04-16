@@ -38,6 +38,11 @@ services:
       # Development/Debug Settings
       # - MESHSILO_ENABLE_QUERY_STATS=true
 
+    # Memory limit — sized for STL to 3MF conversion and PDF compression
+    # workloads. Raise if you process very large (>50M triangle) STLs.
+    # TrueNAS users: this is overridden by the App's UI "Resource Limits"
+    # if set there.
+    mem_limit: 4g
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s

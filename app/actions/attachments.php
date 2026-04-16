@@ -162,17 +162,8 @@ function uploadAttachment() {
     $finalMimeType = $mimeType;
     $finalFileSize = filesize($filePath);
 
-    // Convert images to WebP
-    if ($isImage && $mimeType !== 'image/webp') {
-        $webpResult = convertToWebP($filePath);
-        if ($webpResult['success']) {
-            $finalFilename = $baseFilename . '.webp';
-            $finalMimeType = 'image/webp';
-            $finalFileSize = $webpResult['size'];
-        }
-    }
-
-    // Store relative path
+    // Store relative path (in its original format; OptimizeImage job converts
+    // JPEG/PNG → WebP asynchronously after insert)
     $relativePath = $modelFolder . '/attachments/' . $finalFilename;
 
     // Get next display order
@@ -195,6 +186,19 @@ function uploadAttachment() {
 
     if ($stmt->execute()) {
         $attachmentId = $db->lastInsertId();
+
+        // Dispatch WebP conversion job for image attachments. The job is
+        // a no-op for already-WebP files and files whose extension isn't
+        // in ImageConverter::CONVERTIBLE_EXTENSIONS.
+        if ($isImage && class_exists('Queue')) {
+            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$attachmentId], 'images');
+        }
+
+        // Dispatch PDF compression job for PDF attachments. The job is
+        // a no-op if compress_pdfs is disabled or no gs/qpdf binary exists.
+        if ($isPdf && class_exists('Queue')) {
+            Queue::push('OptimizePdf', ['id' => (int)$attachmentId], 'pdfs');
+        }
 
         // Log activity
         if (function_exists('logActivity')) {
@@ -279,70 +283,5 @@ function deleteAttachment() {
     }
 }
 
-/**
- * Convert image to WebP format
- */
-function convertToWebP($filePath, $quality = 85) {
-    $webpPath = preg_replace('/\.(png|jpe?g|gif)$/i', '.webp', $filePath);
-
-    // Get image info
-    $imageInfo = @getimagesize($filePath);
-    if (!$imageInfo) {
-        return ['success' => false, 'error' => 'Invalid image file'];
-    }
-
-    try {
-        // Try Imagick first (better quality)
-        if (extension_loaded('imagick') && in_array('WEBP', \Imagick::queryFormats())) {
-            $imagick = new \Imagick($filePath);
-            $imagick->setImageFormat('webp');
-            $imagick->setImageCompressionQuality($quality);
-            $imagick->writeImage($webpPath);
-            $imagick->destroy();
-        }
-        // Fall back to GD
-        elseif (function_exists('imagewebp')) {
-            switch ($imageInfo[2]) {
-                case IMAGETYPE_JPEG:
-                    $image = imagecreatefromjpeg($filePath);
-                    break;
-                case IMAGETYPE_PNG:
-                    $image = imagecreatefrompng($filePath);
-                    imagepalettetotruecolor($image);
-                    imagealphablending($image, true);
-                    imagesavealpha($image, true);
-                    break;
-                case IMAGETYPE_GIF:
-                    $image = imagecreatefromgif($filePath);
-                    break;
-                default:
-                    return ['success' => false, 'error' => 'Unsupported image type'];
-            }
-
-            if (!$image) {
-                return ['success' => false, 'error' => 'Could not load image'];
-            }
-
-            imagewebp($image, $webpPath, $quality);
-            imagedestroy($image);
-        } else {
-            // No WebP support, keep original
-            return ['success' => false, 'error' => 'WebP not supported'];
-        }
-
-        if (file_exists($webpPath)) {
-            // Remove original, keep WebP
-            unlink($filePath);
-            return [
-                'success' => true,
-                'path' => $webpPath,
-                'size' => filesize($webpPath)
-            ];
-        }
-
-        return ['success' => false, 'error' => 'WebP file not created'];
-
-    } catch (Exception $e) {
-        return ['success' => false, 'error' => $e->getMessage()];
-    }
-}
+// WebP conversion moved to includes/ImageConverter.php + jobs/OptimizeImage.php
+// Dispatched from uploadAttachment() above after a successful INSERT.

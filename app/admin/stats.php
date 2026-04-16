@@ -158,6 +158,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         if ($result['success']) {
             $message = "Cleanup complete: {$result['migrated']} files migrated back to original locations.";
         }
+    } elseif ($action === 'compress_all_pdfs') {
+        // Retroactively dispatch OptimizePdf jobs for every PDF attachment
+        // that hasn't already been compressed. The job itself handles the
+        // "skip if already flagged" check, but we filter here too to keep
+        // the queue slim.
+        $queued = 0;
+        $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'pdf' AND (pdf_compressed IS NULL OR pdf_compressed = 0)");
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            Queue::push('OptimizePdf', ['id' => (int)$row['id']], 'pdfs');
+            $queued++;
+        }
+        if ($queued > 0) {
+            $message = "Queued $queued PDF(s) for compression. Processing runs in the background.";
+        } else {
+            $message = 'No uncompressed PDFs found.';
+        }
+    } elseif ($action === 'convert_all_images_webp') {
+        // Retroactively dispatch OptimizeImage jobs for all unconverted JPEG/PNG
+        // attachments and model thumbnails. Conversion happens in the background
+        // queue; the worker handles them gradually.
+        $queued = 0;
+
+        // Image attachments still in PNG/JPG/JPEG format
+        $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'image' AND (LOWER(file_path) LIKE '%.png' OR LOWER(file_path) LIKE '%.jpg' OR LOWER(file_path) LIKE '%.jpeg')");
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$row['id']], 'images');
+            $queued++;
+        }
+
+        // Model thumbnails still in PNG/JPG/JPEG format
+        $stmt = $db->prepare("SELECT id FROM models WHERE thumbnail_path IS NOT NULL AND (LOWER(thumbnail_path) LIKE '%.png' OR LOWER(thumbnail_path) LIKE '%.jpg' OR LOWER(thumbnail_path) LIKE '%.jpeg')");
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => (int)$row['id']], 'images');
+            $queued++;
+        }
+
+        if ($queued > 0) {
+            $message = "Queued $queued image(s) for WebP conversion. Conversions run in the background &mdash; check the queue status page for progress.";
+        } else {
+            $message = 'No JPEG/PNG images found to convert. All images are already in WebP format.';
+        }
     }
 }
 
@@ -535,6 +579,73 @@ require_once __DIR__ . '/../../includes/header.php';
                         <button type="submit" class="btn btn-secondary btn-small" title="Move files back if only one part references them">Run Cleanup</button>
                     </form>
                     <?php endif; ?>
+                </div>
+                <?php endif; ?>
+            </section>
+
+            <!-- Image Optimization -->
+            <?php
+            $unconvertedAttachments = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'image' AND (LOWER(file_path) LIKE '%.png' OR LOWER(file_path) LIKE '%.jpg' OR LOWER(file_path) LIKE '%.jpeg')");
+            $unconvertedThumbnails = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE thumbnail_path IS NOT NULL AND (LOWER(thumbnail_path) LIKE '%.png' OR LOWER(thumbnail_path) LIKE '%.jpg' OR LOWER(thumbnail_path) LIKE '%.jpeg')");
+            $totalUnconverted = $unconvertedAttachments + $unconvertedThumbnails;
+            ?>
+            <section class="section-card section-card-full">
+                <h2>Image Optimization (WebP)</h2>
+                <p class="section-description">
+                    Convert existing JPEG/PNG images to WebP to reduce disk usage. Conversions run in the background queue.
+                </p>
+                <div class="dedup-stats-grid">
+                    <div class="dedup-stat <?= $totalUnconverted > 0 ? 'dedup-stat-warning' : '' ?>">
+                        <span class="dedup-stat-value"><?= number_format($totalUnconverted) ?></span>
+                        <span class="dedup-stat-label">Images Awaiting Conversion</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($unconvertedAttachments) ?></span>
+                        <span class="dedup-stat-label">Attachments</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($unconvertedThumbnails) ?></span>
+                        <span class="dedup-stat-label">Model Thumbnails</span>
+                    </div>
+                </div>
+                <?php if (isAdmin() && $totalUnconverted > 0): ?>
+                <div class="dedup-actions">
+                    <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="convert_all_images_webp">
+                        <button type="submit" class="btn btn-primary btn-small" data-confirm="This will queue <?= $totalUnconverted ?> image(s) for background WebP conversion. Originals will be deleted as each conversion completes. Continue?">Convert All to WebP</button>
+                    </form>
+                </div>
+                <?php endif; ?>
+            </section>
+
+            <!-- PDF Compression -->
+            <?php
+            $uncompressedPdfs = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'pdf' AND (pdf_compressed IS NULL OR pdf_compressed = 0)");
+            $compressedPdfs = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'pdf' AND pdf_compressed = 1");
+            ?>
+            <section class="section-card section-card-full">
+                <h2>PDF Compression</h2>
+                <p class="section-description">
+                    Compress PDF attachments with Ghostscript or qpdf. Mode and enabled/disabled state are configured in <a href="<?= route('admin.settings') ?>">Site Settings</a>. Processing runs in the background queue.
+                </p>
+                <div class="dedup-stats-grid">
+                    <div class="dedup-stat <?= $uncompressedPdfs > 0 ? 'dedup-stat-warning' : '' ?>">
+                        <span class="dedup-stat-value"><?= number_format($uncompressedPdfs) ?></span>
+                        <span class="dedup-stat-label">Uncompressed PDFs</span>
+                    </div>
+                    <div class="dedup-stat">
+                        <span class="dedup-stat-value"><?= number_format($compressedPdfs) ?></span>
+                        <span class="dedup-stat-label">Compressed PDFs</span>
+                    </div>
+                </div>
+                <?php if (isAdmin() && $uncompressedPdfs > 0): ?>
+                <div class="dedup-actions">
+                    <form method="POST" style="display: inline;">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="compress_all_pdfs">
+                        <button type="submit" class="btn btn-primary btn-small" data-confirm="Queue <?= $uncompressedPdfs ?> PDF(s) for background compression? The current mode in Site Settings will be used. Originals are only replaced when the result is measurably smaller.">Compress All PDFs</button>
+                    </form>
                 </div>
                 <?php endif; ?>
             </section>
