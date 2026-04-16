@@ -73,8 +73,10 @@ class STLConverter
         $usable = (int)($available * 0.8);
         $maxTriangles = (int)($usable / self::BYTES_PER_TRIANGLE);
 
-        // Clamp between 50K and 5M as safety bounds
-        return max(50_000, min($maxTriangles, 5_000_000));
+        // Floor at 50K — no artificial ceiling. The memory-based calculation
+        // above is the real constraint; the old 5M cap was too low for large
+        // but still memory-feasible STL files.
+        return max(50_000, $maxTriangles);
     }
 
     /**
