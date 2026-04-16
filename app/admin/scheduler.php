@@ -109,6 +109,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         } else {
             $error = "Invalid JSON for custom tasks";
         }
+    } elseif ($action === 'queue_clear_failed') {
+        $queueFilter = trim($_POST['queue_filter'] ?? '');
+        $db = getDB();
+        if ($queueFilter) {
+            $stmt = $db->prepare("DELETE FROM jobs WHERE status = 'failed' AND queue = :q");
+            $stmt->bindValue(':q', $queueFilter, PDO::PARAM_STR);
+            $stmt->execute();
+        } else {
+            $db->exec("DELETE FROM jobs WHERE status = 'failed'");
+        }
+        $count = $db->changes();
+        $message = "Cleared $count failed job(s)" . ($queueFilter ? " from '$queueFilter' queue" : '');
+    } elseif ($action === 'queue_release_stuck') {
+        $db = getDB();
+        $db->exec("UPDATE jobs SET status = 'pending', reserved_at = NULL WHERE status = 'processing'");
+        $count = $db->changes();
+        $message = "Released $count stuck job(s) back to pending";
+    } elseif ($action === 'queue_clear_all') {
+        $db = getDB();
+        $db->exec("DELETE FROM jobs WHERE status IN ('pending', 'processing', 'failed', 'completed')");
+        $count = $db->changes();
+        $message = "Cleared entire queue ($count job(s) removed)";
+    } elseif ($action === 'queue_retry_failed') {
+        $db = getDB();
+        $db->exec("UPDATE jobs SET status = 'pending', attempts = 0, reserved_at = NULL, available_at = datetime('now'), error_message = NULL WHERE status = 'failed'");
+        $count = $db->changes();
+        $message = "Requeued $count failed job(s) for retry";
     }
 }
 
@@ -162,6 +189,120 @@ include __DIR__ . '/../../includes/header.php';
                     <p class="text-muted mt-2">This unified cron handles: scheduler, queue processing, retention, thumbnails, deduplication, and demo reset (if enabled).</p>
 
                 </div>
+        </details>
+
+        <!-- Job Queue -->
+        <?php
+        $db = getDB();
+        $queueStats = [];
+        try {
+            $result = $db->query("
+                SELECT queue, status, COUNT(*) as cnt
+                FROM jobs
+                GROUP BY queue, status
+                ORDER BY queue, status
+            ");
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                $q = $row['queue'];
+                if (!isset($queueStats[$q])) {
+                    $queueStats[$q] = ['pending' => 0, 'processing' => 0, 'failed' => 0, 'completed' => 0];
+                }
+                $queueStats[$q][$row['status']] = (int)$row['cnt'];
+            }
+        } catch (\Throwable $e) {
+            // jobs table might not exist yet
+        }
+        $totalPending = array_sum(array_column($queueStats, 'pending'));
+        $totalProcessing = array_sum(array_column($queueStats, 'processing'));
+        $totalFailed = array_sum(array_column($queueStats, 'failed'));
+        ?>
+        <details class="settings-section" open>
+            <summary><h2>Job Queue</h2></summary>
+
+            <div class="dedup-stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value"><?= number_format($totalPending) ?></div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value"><?= number_format($totalProcessing) ?></div>
+                    <div class="stat-label">Processing</div>
+                </div>
+                <div class="stat-box <?= $totalFailed > 0 ? 'stat-warning' : '' ?>">
+                    <div class="stat-value"><?= number_format($totalFailed) ?></div>
+                    <div class="stat-label">Failed</div>
+                </div>
+            </div>
+
+            <?php if (!empty($queueStats)): ?>
+            <table class="data-table mt-3" aria-label="Queue status by name">
+                <thead>
+                    <tr>
+                        <th scope="col">Queue</th>
+                        <th scope="col">Pending</th>
+                        <th scope="col">Processing</th>
+                        <th scope="col">Failed</th>
+                        <th scope="col">Completed</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($queueStats as $qName => $counts): ?>
+                    <tr>
+                        <td><strong><?= htmlspecialchars($qName) ?></strong></td>
+                        <td><?= number_format($counts['pending']) ?></td>
+                        <td><?= number_format($counts['processing']) ?></td>
+                        <td><?= $counts['failed'] > 0 ? '<span class="badge badge-danger">' . number_format($counts['failed']) . '</span>' : '0' ?></td>
+                        <td><?= number_format($counts['completed']) ?></td>
+                        <td>
+                            <?php if ($counts['failed'] > 0): ?>
+                            <form method="post" style="display: inline;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="queue_clear_failed">
+                                <input type="hidden" name="queue_filter" value="<?= htmlspecialchars($qName) ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" data-confirm="Clear <?= $counts['failed'] ?> failed job(s) from '<?= htmlspecialchars($qName) ?>'?">Clear Failed</button>
+                            </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php else: ?>
+            <p class="text-muted mt-3">No jobs in queue.</p>
+            <?php endif; ?>
+
+            <div class="dedup-actions mt-3">
+                <?php if ($totalFailed > 0): ?>
+                <form method="post" style="display: inline;">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="queue_retry_failed">
+                    <button type="submit" class="btn btn-primary" data-confirm="Requeue all <?= $totalFailed ?> failed job(s) for retry?">Retry All Failed</button>
+                </form>
+                <form method="post" style="display: inline;">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="queue_clear_failed">
+                    <input type="hidden" name="queue_filter" value="">
+                    <button type="submit" class="btn btn-danger" data-confirm="Permanently delete all <?= $totalFailed ?> failed job(s)?">Clear All Failed</button>
+                </form>
+                <?php endif; ?>
+
+                <?php if ($totalProcessing > 0): ?>
+                <form method="post" style="display: inline;">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="queue_release_stuck">
+                    <button type="submit" class="btn btn-secondary" data-confirm="Release all <?= $totalProcessing ?> processing job(s) back to pending? Only do this if workers are stuck.">Release Stuck Jobs</button>
+                </form>
+                <?php endif; ?>
+
+                <?php if ($totalPending + $totalProcessing + $totalFailed > 0): ?>
+                <form method="post" style="display: inline;">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="queue_clear_all">
+                    <button type="submit" class="btn btn-danger" data-confirm="Clear the ENTIRE queue? This deletes all pending, processing, failed, and completed jobs. This cannot be undone.">Clear Entire Queue</button>
+                </form>
+                <?php endif; ?>
+            </div>
         </details>
 
         <!-- Deduplication Status -->
