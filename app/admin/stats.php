@@ -205,17 +205,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
     }
 }
 
-// Get model count
-$result = $db->query('SELECT COUNT(*) as count FROM models');
+// Get model count — parent/standalone models only (not child parts, which
+// are counted under their parent's part_count). This matches what users
+// think of as "a model" when they see the number on the dashboard.
+$result = $db->query('SELECT COUNT(*) as count FROM models WHERE parent_id IS NULL');
 $modelCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
-// Get total storage from database
-$result = $db->query('SELECT SUM(file_size) as total, AVG(file_size) as avg FROM models');
-$row = $result->fetchArray(PDO::FETCH_ASSOC);
-$totalStorageDB = $row['total'] ?? 0;
-$avgModelSize = $row['avg'] ?? 0;
+// Total parts (child models)
+$result = $db->query('SELECT COUNT(*) as count FROM models WHERE parent_id IS NOT NULL');
+$totalParts = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
-// Get actual storage from filesystem
+// Get actual storage from filesystem — this is the only accurate number.
+// The DB's SUM(file_size) double-counts because parent models store the
+// sum of their parts' sizes, AND each part has its own file_size row.
+// Deduped files also retain their original file_size in the DB despite
+// the actual file being deleted from disk.
 $assetsPath = realpath(UPLOAD_PATH);
 $actualStorage = 0;
 $fileCount = 0;
@@ -230,6 +234,9 @@ if ($assetsPath && is_dir($assetsPath)) {
         }
     }
 }
+
+// Average model size based on actual disk usage and real file count
+$avgModelSize = $fileCount > 0 ? $actualStorage / $fileCount : 0;
 
 // Get disk space info
 $diskFree = disk_free_space($assetsPath ?: '.');
@@ -254,8 +261,10 @@ $userStats = $result->fetchArray(PDO::FETCH_ASSOC);
 $totalUsers = $userStats['total'] ?? 0;
 $adminUsers = $userStats['admins'] ?? 0;
 
-// Get models by file type (exclude parent models/ZIP containers which are just organizational entries)
-$result = $db->query('SELECT file_type, COUNT(*) as count, SUM(file_size) as size FROM models WHERE NOT (file_type = "zip" AND part_count > 0) GROUP BY file_type ORDER BY count DESC');
+// Get models by file type — only count actual files (child parts and
+// standalone models), not parent container rows which don't have files
+// on disk and would double-count file_size.
+$result = $db->query('SELECT file_type, COUNT(*) as count, SUM(file_size) as size FROM models WHERE file_type != "parent" AND parent_id IS NOT NULL OR (parent_id IS NULL AND part_count = 0) GROUP BY file_type ORDER BY count DESC');
 $fileTypes = [];
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $fileTypes[] = $row;
@@ -460,18 +469,18 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div class="stat-card stat-card-large">
                     <div class="stat-icon">&#9653;</div>
                     <div class="stat-value"><?= number_format($modelCount) ?></div>
-                    <div class="stat-label">Total Models</div>
+                    <div class="stat-label">Models<?= $totalParts > 0 ? " ($totalParts parts)" : '' ?></div>
                 </div>
 
                 <div class="stat-card stat-card-large">
                     <div class="stat-icon">&#128190;</div>
-                    <div class="stat-value"><?= formatBytes($totalStorageDB) ?></div>
-                    <div class="stat-label">Storage Used</div>
+                    <div class="stat-value"><?= formatBytes($actualStorage) ?></div>
+                    <div class="stat-label">Storage Used (<?= number_format($fileCount) ?> files)</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-value"><?= formatBytes($avgModelSize) ?></div>
-                    <div class="stat-label">Avg Model Size</div>
+                    <div class="stat-label">Avg File Size</div>
                 </div>
 
                 <div class="stat-card">
