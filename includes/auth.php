@@ -156,8 +156,8 @@ function enforceAuthentication(): void
     $currentRoute = '/' . trim($_GET['route'] ?? '', '/');
     $isPublicRoute = in_array($currentRoute, $publicRoutes);
 
-    // Public route prefixes (routes with dynamic segments like /share/{token})
-    $publicPrefixes = ['/share/', '/s/'];
+    // Public route prefixes (routes with dynamic segments)
+    $publicPrefixes = [];
     if (class_exists('PluginManager')) {
         $publicPrefixes = PluginManager::applyFilter('public_route_prefixes', $publicPrefixes);
     }

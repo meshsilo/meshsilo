@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 ]);
                 $mysqlPdo = $db->getPDO();
                 $tableName = $_POST['sync_table'] ?? '';
-                $allowedTables = ['model_attachments', 'model_links', 'model_annotations', 'share_links', 'model_versions', 'related_models', 'activity_log'];
+                $allowedTables = ['model_attachments', 'model_links', 'model_annotations', 'model_versions', 'related_models', 'activity_log'];
                 if (!in_array($tableName, $allowedTables)) {
                     $error = 'Invalid table for re-sync.';
                 } else {
@@ -626,7 +626,6 @@ php cli/migrate.php --dry-run
                         <option value="model_attachments">Attachments</option>
                         <option value="model_links">External Links</option>
                         <option value="model_versions">Version History</option>
-                        <option value="share_links">Share Links</option>
                         <option value="related_models">Related Models</option>
                         <option value="model_annotations">Annotations</option>
                         <option value="activity_log">Activity Log</option>

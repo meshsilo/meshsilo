@@ -4,7 +4,7 @@
  * Signed URLs for Silo
  *
  * Generate and verify secure, temporary URLs with expiration.
- * Useful for download links, share links, password reset links, etc.
+ * Useful for download links, password reset links, etc.
  */
 
 class SignedUrl
@@ -49,7 +49,7 @@ class SignedUrl
      *
      * @example
      * SignedUrl::create('/download/123', time() + 3600);  // Expires in 1 hour
-     * SignedUrl::create('/share/abc', time() + 86400);    // Expires in 24 hours
+     * SignedUrl::create('/download/abc', time() + 86400);  // Expires in 24 hours
      */
     public static function create(string $url, ?int $expiresAt = null, array $additionalParams = []): string
     {
@@ -241,18 +241,6 @@ class SignedUrl
     public static function downloadLink(int $fileId, int $ttlSeconds = 3600): string
     {
         return self::route('download', ['id' => $fileId], time() + $ttlSeconds);
-    }
-
-    /**
-     * Create a temporary share link
-     *
-     * @param string $token Share token
-     * @param int $ttlSeconds Time to live in seconds (default: 7 days)
-     * @return string Signed share URL
-     */
-    public static function shareLink(string $token, int $ttlSeconds = 604800): string
-    {
-        return self::route('share.view', ['token' => $token], time() + $ttlSeconds);
     }
 
     /**

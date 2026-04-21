@@ -51,10 +51,6 @@ $router->get('/model/{id:\d+}/compare', ['file' => 'app/pages/model-compare.php'
 // Remix/Fork Tracking
 $router->get('/model/{id:\d+}/remixes', ['file' => 'app/pages/remix-tree.php', 'map' => ['id' => 'id']], 'model.remixes');
 
-// Shared links (public, no auth required)
-$router->get('/share/{token}', ['file' => 'app/pages/share.php', 'map' => ['token' => 'token']], 'share.view');
-$router->get('/s/{token}', ['file' => 'app/pages/share.php', 'map' => ['token' => 'token']], 'share.short');
-
 // ============================================================================
 // AUTHENTICATION (rate limited for security)
 // ============================================================================
@@ -188,10 +184,6 @@ $router->group(['prefix' => '/actions'], function ($router) {
     // Saved searches
     $router->get('/saved-searches', ['file' => 'app/actions/saved-searches.php'], 'actions.saved.searches');
     $router->post('/saved-searches', ['file' => 'app/actions/saved-searches.php'], 'actions.saved.searches.post');
-
-    // Share links
-    $router->get('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share.get');
-    $router->post('/share-link', ['file' => 'app/actions/share-link.php'], 'actions.share');
 
     // Tus resumable upload endpoint
     $router->match(['POST', 'OPTIONS'], '/tus', ['file' => 'app/actions/tus.php'], 'actions.tus');

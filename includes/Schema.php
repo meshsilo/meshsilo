@@ -320,21 +320,6 @@ CREATE TABLE IF NOT EXISTS folders (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 )$engine;
 
-CREATE TABLE IF NOT EXISTS share_links (
-    id $autoId,
-    model_id $int NOT NULL,
-    user_id $int,
-    token {$varchar(64)} NOT NULL UNIQUE,
-    password_hash {$varchar(255)},
-    expires_at $ts NULL,
-    max_downloads $int,
-    download_count $int DEFAULT 0,
-    is_active $tinyint DEFAULT 1,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-)$engine;
-
 CREATE TABLE IF NOT EXISTS related_models (
     id $autoId,
     model_id $int NOT NULL,
@@ -859,7 +844,6 @@ function ensureIndexes($db)
         'idx_recent_session' => ['recently_viewed', 'session_id, viewed_at'],
         'idx_api_log_created' => ['api_request_log', 'created_at'],
         'idx_api_log_key' => ['api_request_log', 'api_key_id'],
-        'idx_share_token' => ['share_links', 'token'],
         'idx_models_filename' => ['models', 'filename'],
         'idx_models_parent_id' => ['models', 'parent_id'],
         'idx_models_created_at' => ['models', 'created_at'],

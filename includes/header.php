@@ -78,7 +78,6 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <?php endif; ?>
     <?php if (!empty($needsModelPageJs)): ?>
     <script src="<?= basePath('js/model-parts.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts.js') ?>" defer></script>
-    <script src="<?= basePath('js/model-share.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-share.js') ?>" defer></script>
     <script src="<?= basePath('js/model-attachments.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-attachments.js') ?>" defer></script>
     <script src="<?= basePath('js/model-actions.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-actions.js') ?>" defer></script>
     <script src="<?= basePath('js/model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-page.js') ?>" defer></script>

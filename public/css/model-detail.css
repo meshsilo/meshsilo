@@ -1187,10 +1187,6 @@
         width: 100%;
     }
 
-    .share-links-list {
-        overflow-x: auto;
-    }
-
     .modal-content {
         margin: 1rem;
         max-height: 90vh;

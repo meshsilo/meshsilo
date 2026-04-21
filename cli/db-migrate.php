@@ -192,7 +192,7 @@ $migrationOrder = [
     'users', 'categories', 'collections', 'tags', 'settings',
     'groups', 'models',
     'user_groups', 'model_categories', 'model_tags', 'favorites',
-    'activity_log', 'recently_viewed', 'share_links', 'model_ratings',
+    'activity_log', 'recently_viewed', 'model_ratings',
     'model_versions', 'related_models', 'folders',
     'api_keys', 'api_request_log',
     'print_queue', 'print_photos', 'printers', 'print_history',
@@ -315,7 +315,7 @@ $mysql->exec("SET FOREIGN_KEY_CHECKS = 1");
 // Reset auto-increment counters to max ID + 1
 echo "\nPhase 3: Resetting auto-increment counters...\n";
 $autoIncrementTables = ['users', 'models', 'categories', 'collections', 'tags', 'activity_log',
-    'api_keys', 'share_links', 'model_versions', 'model_ratings', 'folders',
+    'api_keys', 'model_versions', 'model_ratings', 'folders',
     'print_queue', 'printers', 'print_history', 'print_photos',
     'teams', 'team_invites', 'jobs', 'rate_limits', 'model_links', 'model_attachments',
     'model_annotations', 'scheduled_task_history', 'password_resets'];

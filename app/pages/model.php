@@ -489,9 +489,6 @@ require_once 'includes/header.php';
                         <?php endif; ?>
 
                         <div class="model-actions mt-3">
-                            <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
-                            <button type="button" class="btn btn-secondary btn-small open-share-modal">Share</button>
-                            <?php endif; ?>
                             <?php if (isFeatureEnabled('version_history')): ?>
                             <a href="<?= route('model.versions', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">Version History<?php if ($versionCount > 0): ?> (<?= $versionCount ?>)<?php endif; ?></a>
                             <?php if ($canManageVersions): ?>
@@ -828,60 +825,6 @@ require_once 'includes/header.php';
                 </div>
             </div>
         </div>
-
-        <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
-        <!-- Share Modal -->
-        <div id="share-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" style="display: none;">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h3 id="share-modal-title">Share "<?= htmlspecialchars($model['name']) ?>"</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <!-- Create New Share Link -->
-                    <div class="share-create-section">
-                        <h4>Create Share Link</h4>
-                        <form id="share-link-form" method="post" class="share-form">
-                            <div class="share-form-row">
-                                <div class="form-group">
-                                    <label for="share-expires">Expires In</label>
-                                    <select id="share-expires" class="form-input">
-                                        <option value="">Never</option>
-                                        <option value="1 hour">1 Hour</option>
-                                        <option value="24 hours">24 Hours</option>
-                                        <option value="7 days">7 Days</option>
-                                        <option value="30 days">30 Days</option>
-                                        <option value="90 days">90 Days</option>
-                                        <option value="1 year">1 Year</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="share-max-downloads">Max Downloads</label>
-                                    <input type="number" id="share-max-downloads" class="form-input" min="0" placeholder="Unlimited">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="share-password">Password (optional)</label>
-                                <div class="password-wrapper">
-                                    <input type="password" id="share-password" class="form-input" placeholder="Leave empty for no password" autocomplete="off">
-                                    <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Create Share Link</button>
-                        </form>
-                    </div>
-
-                    <!-- Existing Share Links -->
-                    <div class="share-links-section">
-                        <h4>Active Share Links</h4>
-                        <div id="share-links-list" class="share-links-list">
-                            <p class="text-muted">Loading...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
 
         <?php if (canEdit() && !empty($parts)): ?>
         <!-- Create Folder Modal -->

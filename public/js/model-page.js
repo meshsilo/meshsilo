@@ -1,6 +1,6 @@
 // model-page.js — Model detail page initialization and shared utilities
 // PHP data is injected by model.php via window.ModelPageConfig = {...}
-// Depends on: model-parts.js, model-share.js, model-attachments.js, model-actions.js
+// Depends on: model-parts.js, model-attachments.js, model-actions.js
 
         // Add click handlers to part items
         document.querySelectorAll('.part-preview-trigger').forEach(trigger => {
@@ -233,14 +233,6 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleFavorite(ModelPageConfig.modelId, this);
     });
 
-    // ── Share modal open ─────────────────────────────────────────────
-    document.querySelector('.open-share-modal')?.addEventListener('click', openShareModal);
-
-    // ── Share modal close (backdrop click handled in openShareModal listener) ─
-    document.getElementById('share-modal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeShareModal();
-    });
-
     // ── Password visibility toggle ───────────────────────────────────
     document.querySelector('.password-toggle')?.addEventListener('click', function() {
         togglePasswordVisibility(this);
@@ -283,7 +275,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── Modal close buttons — map parent modal ID to close function ───
     const modalClosers = {
         'part-preview-modal': closePartPreview,
-        'share-modal': closeShareModal,
         'create-folder-modal': closeCreateFolderModal,
         'move-folder-modal': closeMoveFolderModal,
         'upload-version-modal': closeUploadVersionModal,
