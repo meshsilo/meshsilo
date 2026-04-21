@@ -438,9 +438,28 @@
 
 .model-content-sidebar .model-attachments {
     margin-top: 0;
-    max-height: 600px;
-    overflow-y: auto;
 }
+
+.model-content-sidebar .model-attachments .collapsible-body {
+    max-height: 500px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 2px;
+}
+
 
 .model-content-sidebar .model-attachments h3 {
     font-size: 1.125rem;
