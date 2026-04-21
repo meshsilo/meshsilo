@@ -1065,8 +1065,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    flex: none;
+    flex: 1;
     min-width: 0;
+    overflow: hidden;
 }
 
 .model-parts .part-name {
