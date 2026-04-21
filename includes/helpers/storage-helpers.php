@@ -106,15 +106,22 @@ function getStorageUsageByCategory()
 {
     try {
         $db = getDB();
-        // Sum file sizes of parent models AND their parts, grouped by category
+        // Pre-compute each parent model's total size (itself + parts) to avoid
+        // double-counting when a model belongs to multiple categories.
         $stmt = $db->query('
             SELECT c.id, c.name,
-                   COUNT(DISTINCT m.id) as model_count,
-                   COALESCE(SUM(COALESCE(all_models.file_size, 0)), 0) as total_size
+                   COUNT(DISTINCT ms.model_id) as model_count,
+                   COALESCE(SUM(ms.total_size), 0) as total_size
             FROM categories c
             LEFT JOIN model_categories mc ON mc.category_id = c.id
-            LEFT JOIN models m ON m.id = mc.model_id AND m.parent_id IS NULL
-            LEFT JOIN models all_models ON (all_models.id = m.id OR all_models.parent_id = m.id)
+            LEFT JOIN (
+                SELECT m.id as model_id,
+                       COALESCE(SUM(COALESCE(all_models.file_size, 0)), 0) as total_size
+                FROM models m
+                LEFT JOIN models all_models ON all_models.id = m.id OR all_models.parent_id = m.id
+                WHERE m.parent_id IS NULL
+                GROUP BY m.id
+            ) ms ON ms.model_id = mc.model_id
             GROUP BY c.id, c.name
             ORDER BY total_size DESC
         ');
