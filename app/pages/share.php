@@ -12,7 +12,7 @@ require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 require_once __DIR__ . '/../../includes/Csrf.php';
 
-$token = $_GET['t'] ?? '';
+$token = $_GET['token'] ?? $_GET['t'] ?? '';
 $error = '';
 $model = null;
 $link = null;
@@ -318,7 +318,7 @@ $_shareImage = ($model && !empty($model['thumbnail_path'])) ? $_shareBase . '/as
 
                 <div class="share-actions">
                     <?php if (!$isMultiPart): ?>
-                    <a href="?t=<?= htmlspecialchars($token) ?>&download=1" class="btn btn-primary btn-lg">
+                    <a href="?download=1" class="btn btn-primary btn-lg">
                         Download <?= htmlspecialchars(strtoupper($model['file_type'])) ?>
                     </a>
                     <?php else: ?>

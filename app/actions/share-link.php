@@ -121,7 +121,7 @@ function createShareLink() {
 
     // Build share URL
     $siteUrl = getSetting('site_url', '');
-    $shareUrl = rtrim($siteUrl, '/') . '/share.php?t=' . $token;
+    $shareUrl = rtrim($siteUrl, '/') . '/share/' . $token;
 
     logActivity('create_share_link', 'model', $modelId, null, ['link_id' => $linkId]);
 
@@ -201,7 +201,7 @@ function listShareLinks() {
     $links = [];
     $siteUrl = getSetting('site_url', '');
     while ($row = $stmt->fetch()) {
-        $row['share_url'] = rtrim($siteUrl, '/') . '/share.php?t=' . $row['token'];
+        $row['share_url'] = rtrim($siteUrl, '/') . '/share/' . $row['token'];
         $row['has_password'] = !empty($row['password_hash']);
         $row['is_expired'] = $row['expires_at'] && strtotime($row['expires_at']) < time();
         $row['downloads_remaining'] = $row['max_downloads'] ? ($row['max_downloads'] - $row['download_count']) : null;
