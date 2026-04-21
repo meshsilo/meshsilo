@@ -156,6 +156,18 @@ function enforceAuthentication(): void
     $currentRoute = '/' . trim($_GET['route'] ?? '', '/');
     $isPublicRoute = in_array($currentRoute, $publicRoutes);
 
+    // Public route prefixes (routes with dynamic segments like /share/{token})
+    $publicPrefixes = ['/share/', '/s/'];
+    if (class_exists('PluginManager')) {
+        $publicPrefixes = PluginManager::applyFilter('public_route_prefixes', $publicPrefixes);
+    }
+    foreach ($publicPrefixes as $prefix) {
+        if (str_starts_with($currentRoute, $prefix)) {
+            $isPublicRoute = true;
+            break;
+        }
+    }
+
     // Skip for API routes - they handle their own key-based auth in api/index.php
     // Note: API_REQUEST constant isn't defined yet at this point because the API
     // route handler (app/api/index.php) loads after enforceAuthentication() runs.
