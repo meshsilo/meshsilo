@@ -76,10 +76,11 @@ class BrowseQuery
             }
         }
 
-        // File type filter
+        // File type filter (check parent model or any of its parts)
         if ($fileType !== '') {
-            $where[] = 'm.file_type = :file_type';
+            $where[] = '(m.file_type = :file_type OR m.id IN (SELECT parent_id FROM models WHERE parent_id IS NOT NULL AND file_type = :file_type2))';
             $params[':file_type'] = $fileType;
+            $params[':file_type2'] = $fileType;
         }
 
         // Print type filter
@@ -219,7 +220,7 @@ class BrowseQuery
         $tags = getAllTags();
 
         $fileTypes = [];
-        $ftResult = $db->query("SELECT DISTINCT file_type FROM models WHERE parent_id IS NULL AND file_type IS NOT NULL AND file_type != '' ORDER BY file_type");
+        $ftResult = $db->query("SELECT DISTINCT file_type FROM models WHERE file_type IS NOT NULL AND file_type != '' AND file_type != 'parent' ORDER BY file_type");
         if ($ftResult) {
             while ($ftRow = $ftResult->fetchArray()) {
                 $fileTypes[] = $ftRow['file_type'];
