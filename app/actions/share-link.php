@@ -82,7 +82,7 @@ function createShareLink() {
     }
 
     // Validate expiration period against whitelist before passing to strtotime
-    $allowedDurations = ['1 hour', '1 day', '7 days', '30 days', '90 days', '1 year'];
+    $allowedDurations = ['1 hour', '24 hours', '1 day', '7 days', '30 days', '90 days', '1 year'];
     if ($expiresIn && !in_array($expiresIn, $allowedDurations)) {
         echo json_encode(['success' => false, 'error' => 'Invalid expiration period']);
         exit;

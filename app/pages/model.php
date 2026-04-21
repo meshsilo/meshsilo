@@ -851,6 +851,8 @@ require_once 'includes/header.php';
                                         <option value="24 hours">24 Hours</option>
                                         <option value="7 days">7 Days</option>
                                         <option value="30 days">30 Days</option>
+                                        <option value="90 days">90 Days</option>
+                                        <option value="1 year">1 Year</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
