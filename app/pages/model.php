@@ -589,6 +589,7 @@ require_once 'includes/header.php';
                     <div class="parts-header">
                         <?php if (count($groupedParts) > 1): ?>
                         <button type="button" class="collapse-all-toggle" title="Collapse/expand all groups" aria-label="Collapse/expand all groups">&#9660;</button>
+                        <button type="button" class="nest-folders-toggle btn btn-small btn-secondary" title="Nest subfolders inside parent folders" aria-label="Toggle subfolder nesting" aria-pressed="false">Nest Folders</button>
                         <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
                         <input type="checkbox" class="select-all-checkbox" id="select-all-parts" title="Select all parts" aria-label="Select all parts">

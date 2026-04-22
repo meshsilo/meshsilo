@@ -496,6 +496,90 @@
         });
         updateCollapseAllToggle();
 
+        // Nest folders toggle — moves subfolder groups inside parent folder groups
+        (function() {
+            var nestBtn = document.querySelector('.nest-folders-toggle');
+            if (!nestBtn) return;
+
+            var modelParts = document.querySelector('.model-parts');
+            var storageKey = 'model_' + ModelPageConfig.modelId + '_nest_folders';
+            var isNested = false;
+            // Save original DOM positions for un-nesting
+            var originalPositions = [];
+
+            function getAllGroups() {
+                return Array.from(modelParts.querySelectorAll('.parts-group[data-folder]'));
+            }
+
+            function nestFolders() {
+                var groups = getAllGroups();
+                // Save original order for restoring
+                originalPositions = groups.map(function(g) {
+                    return { el: g, parent: g.parentNode, next: g.nextSibling };
+                });
+
+                // Sort groups so parents come before children
+                var folderMap = {};
+                groups.forEach(function(g) { folderMap[g.dataset.folder] = g; });
+
+                // Move child groups into parent group's parts-list
+                groups.forEach(function(group) {
+                    var folder = group.dataset.folder;
+                    if (folder === 'Root') return;
+
+                    // Find the closest parent folder
+                    var segments = folder.split('/');
+                    for (var len = segments.length - 1; len > 0; len--) {
+                        var parentPath = segments.slice(0, len).join('/');
+                        if (folderMap[parentPath]) {
+                            var parentList = folderMap[parentPath].querySelector('.parts-list');
+                            if (parentList) {
+                                group.classList.add('nested-subfolder');
+                                parentList.appendChild(group);
+                            }
+                            break;
+                        }
+                    }
+                });
+
+                isNested = true;
+                nestBtn.classList.add('active');
+                nestBtn.setAttribute('aria-pressed', 'true');
+                sessionStorage.setItem(storageKey, '1');
+            }
+
+            function unnestFolders() {
+                // Restore original positions
+                originalPositions.forEach(function(pos) {
+                    pos.el.classList.remove('nested-subfolder');
+                    if (pos.next) {
+                        pos.parent.insertBefore(pos.el, pos.next);
+                    } else {
+                        pos.parent.appendChild(pos.el);
+                    }
+                });
+                originalPositions = [];
+
+                isNested = false;
+                nestBtn.classList.remove('active');
+                nestBtn.setAttribute('aria-pressed', 'false');
+                sessionStorage.setItem(storageKey, '0');
+            }
+
+            nestBtn.addEventListener('click', function() {
+                if (isNested) {
+                    unnestFolders();
+                } else {
+                    nestFolders();
+                }
+            });
+
+            // Restore preference
+            if (sessionStorage.getItem(storageKey) === '1') {
+                nestFolders();
+            }
+        })();
+
         function showCreateFolderModal() {
             const modal = document.getElementById('create-folder-modal');
             modal.style.display = 'flex';

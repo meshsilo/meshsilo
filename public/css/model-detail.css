@@ -752,6 +752,23 @@
     text-align: center;
 }
 
+.nested-subfolder {
+    margin-left: 1.25rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--color-border);
+    margin-top: 0.5rem;
+}
+
+.nested-subfolder .parts-group-header {
+    font-size: 0.85rem;
+}
+
+.nest-folders-toggle.active {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
 .add-parts-progress {
     margin: 1rem 0;
     padding: 0.75rem 1rem;
