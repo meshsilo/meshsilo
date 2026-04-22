@@ -589,7 +589,7 @@ function convertPartTo3MF($partId)
         // Raise memory limit for large STL conversions (queue worker only)
         $currentLimit = ini_get('memory_limit');
         if ($currentLimit !== '-1') {
-            ini_set('memory_limit', '2G');
+            ini_set('memory_limit', '4G');
         }
 
         $converter = new STLConverter();
