@@ -505,32 +505,22 @@
             var storageKey = 'meshsilo_nest_folders_' + ModelPageConfig.modelId;
             var isNested = false;
             var originalPositions = [];
+            var createdVirtualGroups = [];
 
             function getTopLevelGroups() {
-                // Only get direct children of model-parts, not already-nested groups
                 return Array.from(modelParts.querySelectorAll(':scope > .parts-group[data-folder]'));
             }
 
-            function getAllGroups() {
-                return Array.from(modelParts.querySelectorAll('.parts-group[data-folder]'));
-            }
-
-            // Check if any folder is a child of another folder
+            // Any folder with a / in its path can be nested
             function hasNestableRelationships() {
                 var groups = getTopLevelGroups();
-                var folders = groups.map(function(g) { return g.dataset.folder; });
-                for (var i = 0; i < folders.length; i++) {
-                    if (folders[i] === 'Root') continue;
-                    var segments = folders[i].split('/');
-                    for (var len = segments.length - 1; len > 0; len--) {
-                        var parentPath = segments.slice(0, len).join('/');
-                        if (folders.indexOf(parentPath) !== -1) return true;
-                    }
+                for (var i = 0; i < groups.length; i++) {
+                    var folder = groups[i].dataset.folder;
+                    if (folder !== 'Root' && folder.indexOf('/') !== -1) return true;
                 }
                 return false;
             }
 
-            // Hide button if no nesting relationships exist
             if (!hasNestableRelationships()) {
                 nestBtn.style.display = 'none';
                 return;
@@ -542,28 +532,64 @@
                     return { el: g, parent: g.parentNode, next: g.nextSibling };
                 });
 
+                // Build map of existing folder groups
                 var folderMap = {};
                 groups.forEach(function(g) { folderMap[g.dataset.folder] = g; });
 
-                // Process deepest paths first so nesting is hierarchical
-                var sorted = groups.slice().sort(function(a, b) {
-                    return b.dataset.folder.split('/').length - a.dataset.folder.split('/').length;
-                });
-
-                sorted.forEach(function(group) {
+                // Collect all intermediate ancestor paths that need virtual groups
+                var neededParents = {};
+                groups.forEach(function(group) {
                     var folder = group.dataset.folder;
                     if (folder === 'Root') return;
-
                     var segments = folder.split('/');
-                    for (var len = segments.length - 1; len > 0; len--) {
-                        var parentPath = segments.slice(0, len).join('/');
-                        if (folderMap[parentPath]) {
-                            var parentList = folderMap[parentPath].querySelector(':scope > .parts-list');
-                            if (parentList) {
-                                group.classList.add('nested-subfolder');
-                                parentList.appendChild(group);
-                            }
-                            break;
+                    for (var len = 1; len < segments.length; len++) {
+                        var ancestorPath = segments.slice(0, len).join('/');
+                        if (!folderMap[ancestorPath]) {
+                            neededParents[ancestorPath] = segments[len - 1];
+                        }
+                    }
+                });
+
+                // Create virtual parent groups sorted by depth (shallowest first)
+                var parentPaths = Object.keys(neededParents).sort(function(a, b) {
+                    return a.split('/').length - b.split('/').length;
+                });
+                parentPaths.forEach(function(path) {
+                    var name = neededParents[path];
+                    var el = document.createElement('div');
+                    el.className = 'parts-group';
+                    el.dataset.folder = path;
+                    el.dataset.virtual = 'true';
+                    el.innerHTML =
+                        '<h3 class="parts-group-header" tabindex="0" role="button" aria-expanded="true">' +
+                            '<span class="folder-toggle" aria-hidden="true">&#9660;</span> ' +
+                            name +
+                        '</h3>' +
+                        '<div class="parts-list"></div>';
+                    el.querySelector('.parts-group-header').addEventListener('click', function() {
+                        toggleFolder(el);
+                    });
+                    folderMap[path] = el;
+                    createdVirtualGroups.push(el);
+                    modelParts.appendChild(el);
+                });
+
+                // Nest all groups from deepest to shallowest
+                var allPaths = Object.keys(folderMap).sort(function(a, b) {
+                    return b.split('/').length - a.split('/').length;
+                });
+                allPaths.forEach(function(folder) {
+                    if (folder === 'Root') return;
+                    var group = folderMap[folder];
+                    var segments = folder.split('/');
+                    if (segments.length < 2) return;
+                    var parentPath = segments.slice(0, -1).join('/');
+                    var parentGroup = folderMap[parentPath];
+                    if (parentGroup) {
+                        var parentList = parentGroup.querySelector(':scope > .parts-list');
+                        if (parentList) {
+                            group.classList.add('nested-subfolder');
+                            parentList.appendChild(group);
                         }
                     }
                 });
@@ -575,6 +601,7 @@
             }
 
             function unnestFolders() {
+                // Restore original groups to their positions
                 originalPositions.forEach(function(pos) {
                     pos.el.classList.remove('nested-subfolder');
                     if (pos.next && pos.next.parentNode === pos.parent) {
@@ -584,6 +611,10 @@
                     }
                 });
                 originalPositions = [];
+
+                // Remove virtual parent groups
+                createdVirtualGroups.forEach(function(g) { g.remove(); });
+                createdVirtualGroups = [];
 
                 isNested = false;
                 nestBtn.classList.remove('active');
@@ -599,7 +630,6 @@
                 }
             });
 
-            // Restore preference
             if (localStorage.getItem(storageKey) === '1') {
                 nestFolders();
             }
