@@ -556,6 +556,13 @@
                 });
                 parentPaths.forEach(function(path) {
                     var name = neededParents[path];
+                    // Count parts in all child folders of this path
+                    var childCount = 0;
+                    groups.forEach(function(g) {
+                        if (g.dataset.folder.indexOf(path + '/') === 0 || g.dataset.folder === path) {
+                            childCount += g.querySelectorAll('.part-item').length;
+                        }
+                    });
                     var el = document.createElement('div');
                     el.className = 'parts-group';
                     el.dataset.folder = path;
@@ -564,6 +571,7 @@
                         '<h3 class="parts-group-header" tabindex="0" role="button" aria-expanded="true">' +
                             '<span class="folder-toggle" aria-hidden="true">&#9660;</span> ' +
                             name +
+                            (childCount ? ' <span class="folder-part-count">(' + childCount + ')</span>' : '') +
                         '</h3>' +
                         '<div class="parts-list"></div>';
                     el.querySelector('.parts-group-header').addEventListener('click', function() {

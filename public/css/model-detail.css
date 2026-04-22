@@ -752,15 +752,36 @@
     text-align: center;
 }
 
+/* Nested subfolder styling — only target direct nesting level, not descendants */
 .nested-subfolder {
-    margin-left: 1.25rem;
+    margin-left: 1rem;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
     padding-left: 0.75rem;
     border-left: 2px solid var(--color-border);
-    margin-top: 0.5rem;
 }
 
-.nested-subfolder .parts-group-header {
+/* Virtual parent folder groups (created by JS for intermediate directories) */
+.parts-group[data-virtual] > .parts-group-header {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.parts-group[data-virtual] > .parts-list {
+    padding-left: 0;
+}
+
+/* Nested child folder headers are slightly smaller */
+.nested-subfolder > .parts-group-header {
     font-size: 0.85rem;
+    padding: 0.4rem 0.65rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Reduce spacing between nested groups */
+.nested-subfolder.parts-group {
+    margin-bottom: 0.5rem;
 }
 
 .nest-folders-toggle.active {
