@@ -132,6 +132,13 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
 
     $db = getDB();
 
+    // Check if this is an "add part" upload (has parent_id metadata)
+    $parentId = isset($metadata['parent_id']) ? (int)base64_decode($metadata['parent_id']) : 0;
+    if ($parentId > 0) {
+        dispatchAddPart($server, $uploadId, $parentId, $info, $metadata);
+        return;
+    }
+
     // Decode metadata
     $modelName = isset($metadata['name']) ? base64_decode($metadata['name']) : pathinfo($filename, PATHINFO_FILENAME);
     $description = isset($metadata['description']) ? base64_decode($metadata['description']) : '';
@@ -200,4 +207,56 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
 
     // Store model_id in response for the frontend redirect
     $GLOBALS['_tus_model_id'] = $modelId;
+}
+
+/**
+ * Dispatch processing for adding a part to an existing model via TUS.
+ */
+function dispatchAddPart(TusServer $server, string $uploadId, int $parentId, array $info, array $metadata): void
+{
+    $filename = isset($metadata['filename']) ? base64_decode($metadata['filename']) : 'unknown';
+    $folder = isset($metadata['folder']) ? base64_decode($metadata['folder']) : '';
+
+    $db = getDB();
+
+    // Verify parent model exists
+    $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
+    $stmt->bindValue(':id', $parentId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $parent = $result->fetchArray(PDO::FETCH_ASSOC);
+
+    if (!$parent) {
+        logWarning('TUS add-part: parent model not found', ['parent_id' => $parentId]);
+        return;
+    }
+
+    // Verify ownership
+    $user = getCurrentUser();
+    if ($parent['user_id'] && (int)$parent['user_id'] !== (int)$user['id'] && !($user['is_admin'] ?? false)) {
+        logWarning('TUS add-part: permission denied', ['parent_id' => $parentId, 'user_id' => $user['id']]);
+        return;
+    }
+
+    // Queue the processing job with parent_id so ProcessUpload handles it as a part
+    require_once dirname(__DIR__, 2) . '/includes/Queue.php';
+    $folderId = uniqid();
+
+    Queue::push('ProcessUpload', [
+        'upload_id' => $uploadId,
+        'model_id' => $parentId,
+        'parent_id' => $parentId,
+        'filename' => $filename,
+        'folder_id' => $folderId,
+        'folder' => $folder,
+        'user_id' => $user['id'] ?? null,
+        'add_part' => true,
+    ], 'uploads', maxAttempts: 2);
+
+    logInfo('TUS add-part upload complete, processing queued', [
+        'upload_id' => $uploadId,
+        'parent_id' => $parentId,
+        'filename' => $filename,
+    ]);
+
+    $GLOBALS['_tus_model_id'] = $parentId;
 }

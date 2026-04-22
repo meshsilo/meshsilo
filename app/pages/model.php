@@ -298,6 +298,7 @@ $ogType = 'article';
 
 $needsViewer = true;
 $needsModelPageJs = true;
+$needsTusJs = canUpload();
 require_once 'includes/header.php';
 ?>
 

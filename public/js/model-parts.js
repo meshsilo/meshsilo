@@ -322,44 +322,95 @@
             }
         }
 
-        // Upload parts function
+        // Upload parts function — uses TUS chunked resumable uploads
         async function uploadParts(files) {
             if (!files || files.length === 0) return;
-
-            const modelId = ModelPageConfig.modelId;
-            let successCount = 0;
-            let errorCount = 0;
-
-            // Show loading indicator
-            const addBtn = document.querySelector('button[onclick*="add-part-file"]');
-            const originalText = addBtn ? addBtn.textContent : '';
-            if (addBtn) {
-                addBtn.textContent = 'Uploading...';
-                addBtn.disabled = true;
+            if (typeof tus === 'undefined') {
+                showToast('Upload library not loaded. Please refresh and try again.', 'error');
+                return;
             }
 
-            for (const file of files) {
-                const formData = new FormData();
-                formData.append('model_id', modelId);
-                formData.append('part_file', file);
+            const modelId = ModelPageConfig.modelId;
+            const totalFiles = files.length;
+            let completedFiles = 0;
+            let errorCount = 0;
+
+            // Disable add-parts buttons
+            document.querySelectorAll('.trigger-add-parts').forEach(function(btn) {
+                btn.disabled = true;
+                btn._originalText = btn.textContent;
+                btn.textContent = 'Uploading...';
+            });
+
+            // Create or show progress container
+            let progressContainer = document.getElementById('add-parts-progress');
+            if (!progressContainer) {
+                progressContainer = document.createElement('div');
+                progressContainer.id = 'add-parts-progress';
+                progressContainer.className = 'add-parts-progress';
+                progressContainer.innerHTML =
+                    '<div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress">' +
+                        '<div class="progress-bar-fill" style="width: 0%"></div>' +
+                    '</div>' +
+                    '<div class="add-parts-progress-text"></div>';
+                // Insert before the parts actions area
+                var partsActions = document.querySelector('.parts-actions');
+                if (partsActions) {
+                    partsActions.parentNode.insertBefore(progressContainer, partsActions);
+                } else {
+                    document.querySelector('.model-parts')?.appendChild(progressContainer);
+                }
+            }
+            progressContainer.style.display = 'block';
+            var progressFill = progressContainer.querySelector('.progress-bar-fill');
+            var progressText = progressContainer.querySelector('.add-parts-progress-text');
+
+            function formatSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / 1048576).toFixed(1) + ' MB';
+            }
+
+            function updateOverallProgress(fileIndex, filePercent) {
+                var overall = Math.round(((fileIndex + filePercent / 100) / totalFiles) * 100);
+                progressFill.style.width = overall + '%';
+                progressFill.parentElement.setAttribute('aria-valuenow', overall);
+            }
+
+            // Upload files sequentially using TUS
+            for (let i = 0; i < totalFiles; i++) {
+                const file = files[i];
+                progressText.textContent = 'Uploading ' + (i + 1) + ' of ' + totalFiles + ': ' + file.name;
+                updateOverallProgress(i, 0);
 
                 try {
-                    const response = await fetch('/actions/add-part', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
+                    await new Promise(function(resolve, reject) {
+                        var upload = new tus.Upload(file, {
+                            endpoint: '/actions/tus',
+                            chunkSize: 5 * 1024 * 1024,
+                            retryDelays: [0, 1000, 3000, 5000],
+                            metadata: {
+                                filename: file.name,
+                                filetype: file.type || file.name.split('.').pop(),
+                                parent_id: String(modelId)
+                            },
+                            onProgress: function(bytesUploaded, bytesTotal) {
+                                var percent = Math.round((bytesUploaded / bytesTotal) * 100);
+                                updateOverallProgress(i, percent);
+                                progressText.textContent = 'Uploading ' + (i + 1) + '/' + totalFiles + ': ' + file.name + ' — ' + percent + '% (' + formatSize(bytesUploaded) + ' / ' + formatSize(bytesTotal) + ')';
+                            },
+                            onSuccess: function() {
+                                completedFiles++;
+                                resolve();
+                            },
+                            onError: function(error) {
+                                errorCount++;
+                                console.error('TUS upload failed for', file.name, ':', error);
+                                resolve(); // continue with next file
+                            }
+                        });
+                        upload.start();
                     });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        // Zip uploads can add multiple parts in a single request
-                        successCount += result.zip ? (result.parts_added || 1) : 1;
-                    } else {
-                        errorCount++;
-                        console.error('Upload failed for', file.name, ':', result.error);
-                    }
                 } catch (err) {
                     errorCount++;
                     console.error('Upload error for', file.name, ':', err);
@@ -369,20 +420,22 @@
             // Reset file input
             document.getElementById('add-part-file').value = '';
 
-            // Restore button
-            if (addBtn) {
-                addBtn.textContent = originalText;
-                addBtn.disabled = false;
-            }
-
-            // Show result and reload
-            if (successCount > 0) {
+            // Show completion
+            if (completedFiles > 0) {
+                progressText.textContent = 'Processing ' + completedFiles + ' file(s)...';
+                progressFill.style.width = '100%';
                 if (errorCount > 0) {
-                    showToast(`Uploaded ${successCount} files. ${errorCount} files failed.`, 'error');
+                    showToast('Uploaded ' + completedFiles + ' files. ' + errorCount + ' failed.', 'error');
                 }
-                location.reload();
-            } else if (errorCount > 0) {
-                showToast(`Upload failed. ${errorCount} files could not be uploaded.`, 'error');
+                // Reload after a brief delay to let queue process
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                progressContainer.style.display = 'none';
+                document.querySelectorAll('.trigger-add-parts').forEach(function(btn) {
+                    btn.textContent = btn._originalText || 'Add Parts';
+                    btn.disabled = false;
+                });
+                showToast('Upload failed. ' + errorCount + ' file(s) could not be uploaded.', 'error');
             }
         }
 
