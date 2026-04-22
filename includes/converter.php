@@ -586,6 +586,12 @@ function convertPartTo3MF($partId)
     }
 
     try {
+        // Raise memory limit for large STL conversions (queue worker only)
+        $currentLimit = ini_get('memory_limit');
+        if ($currentLimit !== '-1') {
+            ini_set('memory_limit', '2G');
+        }
+
         $converter = new STLConverter();
 
         // Generate new filename - place output next to source file
