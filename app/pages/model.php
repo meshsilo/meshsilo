@@ -499,6 +499,9 @@ require_once 'includes/header.php';
                             <?php if (canEdit()): ?>
                             <button type="button" class="btn btn-secondary btn-small navigate-edit-model" data-href="<?= route('model.edit', ['id' => $model['id']]) ?>">Edit Model</button>
                             <button type="button" class="btn btn-secondary btn-small show-create-folder">New Folder</button>
+                            <?php if (count($groupedParts) > 1): ?>
+                            <button type="button" class="nest-folders-toggle btn btn-secondary btn-small" title="Nest subfolders inside parent folders" aria-label="Toggle subfolder nesting" aria-pressed="false">Nest Folders</button>
+                            <?php endif; ?>
                             <?php if (!empty($model['is_archived'])): ?>
                             <button type="button" class="btn btn-secondary btn-small toggle-archive" data-archive-value="false">Unarchive</button>
                             <?php else: ?>
@@ -589,7 +592,6 @@ require_once 'includes/header.php';
                     <div class="parts-header">
                         <?php if (count($groupedParts) > 1): ?>
                         <button type="button" class="collapse-all-toggle" title="Collapse/expand all groups" aria-label="Collapse/expand all groups">&#9660;</button>
-                        <button type="button" class="nest-folders-toggle btn btn-small btn-secondary" title="Nest subfolders inside parent folders" aria-label="Toggle subfolder nesting" aria-pressed="false">Nest Folders</button>
                         <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
                         <input type="checkbox" class="select-all-checkbox" id="select-all-parts" title="Select all parts" aria-label="Select all parts">

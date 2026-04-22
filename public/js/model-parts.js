@@ -502,37 +502,63 @@
             if (!nestBtn) return;
 
             var modelParts = document.querySelector('.model-parts');
-            var storageKey = 'model_' + ModelPageConfig.modelId + '_nest_folders';
+            var storageKey = 'meshsilo_nest_folders_' + ModelPageConfig.modelId;
             var isNested = false;
-            // Save original DOM positions for un-nesting
             var originalPositions = [];
+
+            function getTopLevelGroups() {
+                // Only get direct children of model-parts, not already-nested groups
+                return Array.from(modelParts.querySelectorAll(':scope > .parts-group[data-folder]'));
+            }
 
             function getAllGroups() {
                 return Array.from(modelParts.querySelectorAll('.parts-group[data-folder]'));
             }
 
+            // Check if any folder is a child of another folder
+            function hasNestableRelationships() {
+                var groups = getTopLevelGroups();
+                var folders = groups.map(function(g) { return g.dataset.folder; });
+                for (var i = 0; i < folders.length; i++) {
+                    if (folders[i] === 'Root') continue;
+                    var segments = folders[i].split('/');
+                    for (var len = segments.length - 1; len > 0; len--) {
+                        var parentPath = segments.slice(0, len).join('/');
+                        if (folders.indexOf(parentPath) !== -1) return true;
+                    }
+                }
+                return false;
+            }
+
+            // Hide button if no nesting relationships exist
+            if (!hasNestableRelationships()) {
+                nestBtn.style.display = 'none';
+                return;
+            }
+
             function nestFolders() {
-                var groups = getAllGroups();
-                // Save original order for restoring
+                var groups = getTopLevelGroups();
                 originalPositions = groups.map(function(g) {
                     return { el: g, parent: g.parentNode, next: g.nextSibling };
                 });
 
-                // Sort groups so parents come before children
                 var folderMap = {};
                 groups.forEach(function(g) { folderMap[g.dataset.folder] = g; });
 
-                // Move child groups into parent group's parts-list
-                groups.forEach(function(group) {
+                // Process deepest paths first so nesting is hierarchical
+                var sorted = groups.slice().sort(function(a, b) {
+                    return b.dataset.folder.split('/').length - a.dataset.folder.split('/').length;
+                });
+
+                sorted.forEach(function(group) {
                     var folder = group.dataset.folder;
                     if (folder === 'Root') return;
 
-                    // Find the closest parent folder
                     var segments = folder.split('/');
                     for (var len = segments.length - 1; len > 0; len--) {
                         var parentPath = segments.slice(0, len).join('/');
                         if (folderMap[parentPath]) {
-                            var parentList = folderMap[parentPath].querySelector('.parts-list');
+                            var parentList = folderMap[parentPath].querySelector(':scope > .parts-list');
                             if (parentList) {
                                 group.classList.add('nested-subfolder');
                                 parentList.appendChild(group);
@@ -545,14 +571,13 @@
                 isNested = true;
                 nestBtn.classList.add('active');
                 nestBtn.setAttribute('aria-pressed', 'true');
-                sessionStorage.setItem(storageKey, '1');
+                localStorage.setItem(storageKey, '1');
             }
 
             function unnestFolders() {
-                // Restore original positions
                 originalPositions.forEach(function(pos) {
                     pos.el.classList.remove('nested-subfolder');
-                    if (pos.next) {
+                    if (pos.next && pos.next.parentNode === pos.parent) {
                         pos.parent.insertBefore(pos.el, pos.next);
                     } else {
                         pos.parent.appendChild(pos.el);
@@ -563,7 +588,7 @@
                 isNested = false;
                 nestBtn.classList.remove('active');
                 nestBtn.setAttribute('aria-pressed', 'false');
-                sessionStorage.setItem(storageKey, '0');
+                localStorage.setItem(storageKey, '0');
             }
 
             nestBtn.addEventListener('click', function() {
@@ -575,7 +600,7 @@
             });
 
             // Restore preference
-            if (sessionStorage.getItem(storageKey) === '1') {
+            if (localStorage.getItem(storageKey) === '1') {
                 nestFolders();
             }
         })();
