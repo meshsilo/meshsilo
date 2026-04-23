@@ -579,9 +579,7 @@
                             (childCount ? ' <span class="folder-part-count">(' + childCount + ')</span>' : '') +
                         '</h3>' +
                         '<div class="parts-list"></div>';
-                    el.querySelector('.parts-group-header').addEventListener('click', function() {
-                        toggleFolder(el);
-                    });
+                    // Click handling is done by the delegated handler in model-page.js
                     folderMap[path] = el;
                     createdVirtualGroups.push(el);
                     if (insertBefore) {
@@ -629,6 +627,26 @@
                             group.classList.add('nested-subfolder');
                             parentList.appendChild(group);
                         }
+                    }
+                });
+
+                // Sort remaining top-level groups alphabetically
+                var topGroups = Array.from(modelParts.querySelectorAll(':scope > .parts-group[data-folder]'));
+                var anchor = modelParts.querySelector('.parts-actions') ||
+                             modelParts.querySelector('.model-download') || null;
+                topGroups.sort(function(a, b) {
+                    var fa = a.dataset.folder.toLowerCase();
+                    var fb = b.dataset.folder.toLowerCase();
+                    // Keep Root first
+                    if (fa === 'root') return -1;
+                    if (fb === 'root') return 1;
+                    return fa.localeCompare(fb);
+                });
+                topGroups.forEach(function(g) {
+                    if (anchor) {
+                        modelParts.insertBefore(g, anchor);
+                    } else {
+                        modelParts.appendChild(g);
                     }
                 });
 
