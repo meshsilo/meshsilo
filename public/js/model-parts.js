@@ -554,6 +554,11 @@
                 var parentPaths = Object.keys(neededParents).sort(function(a, b) {
                     return a.split('/').length - b.split('/').length;
                 });
+                // Find insertion point — before the parts-actions/download area
+                var insertBefore = modelParts.querySelector('.parts-actions') ||
+                                   modelParts.querySelector('.model-download') ||
+                                   null;
+
                 parentPaths.forEach(function(path) {
                     var name = neededParents[path];
                     // Count parts in all child folders of this path
@@ -579,7 +584,32 @@
                     });
                     folderMap[path] = el;
                     createdVirtualGroups.push(el);
-                    modelParts.appendChild(el);
+                    if (insertBefore) {
+                        modelParts.insertBefore(el, insertBefore);
+                    } else {
+                        modelParts.appendChild(el);
+                    }
+                });
+
+                // Shorten nested folder names: "Aarakocra/Aarakocra OLD" → "Aarakocra OLD"
+                groups.forEach(function(group) {
+                    var folder = group.dataset.folder;
+                    if (folder === 'Root' || folder.indexOf('/') === -1) return;
+                    var headerEl = group.querySelector(':scope > .parts-group-header');
+                    if (!headerEl) return;
+                    if (!group.dataset.origHeaderHtml) {
+                        group.dataset.origHeaderHtml = headerEl.innerHTML;
+                    }
+                    var leafName = folder.split('/').pop();
+                    // Find text nodes that contain a / (the full path display name)
+                    var walker = document.createTreeWalker(headerEl, NodeFilter.SHOW_TEXT);
+                    var node;
+                    while (node = walker.nextNode()) {
+                        if (node.textContent.indexOf('/') !== -1) {
+                            node.textContent = node.textContent.replace(/\S*\/\S*/g, leafName);
+                            break;
+                        }
+                    }
                 });
 
                 // Nest all groups from deepest to shallowest
@@ -609,6 +639,15 @@
             }
 
             function unnestFolders() {
+                // Restore original header text on nested groups
+                originalPositions.forEach(function(pos) {
+                    if (pos.el.dataset.origHeaderHtml) {
+                        var headerEl = pos.el.querySelector(':scope > .parts-group-header');
+                        if (headerEl) headerEl.innerHTML = pos.el.dataset.origHeaderHtml;
+                        delete pos.el.dataset.origHeaderHtml;
+                    }
+                });
+
                 // Restore original groups to their positions
                 originalPositions.forEach(function(pos) {
                     pos.el.classList.remove('nested-subfolder');
