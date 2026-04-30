@@ -74,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $license = trim($_POST['license'] ?? '');
     $collection = trim($_POST['collection'] ?? '');
     $categoryIds = $_POST['categories'] ?? [];
+    $nestFolders = isset($_POST['nest_folders']) ? 1 : 0;
 
     if (!Csrf::validate()) {
         $message = 'Security validation failed. Please try again.';
@@ -83,13 +84,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $messageType = 'error';
     } else {
         // Update model
-        $stmt = $db->prepare('UPDATE models SET name = :name, description = :description, creator = :creator, source_url = :source_url, license = :license, collection = :collection WHERE id = :id');
+        $stmt = $db->prepare('UPDATE models SET name = :name, description = :description, creator = :creator, source_url = :source_url, license = :license, collection = :collection, nest_folders = :nest_folders WHERE id = :id');
         $stmt->bindValue(':name', $name);
         $stmt->bindValue(':description', $description);
         $stmt->bindValue(':creator', $creator);
         $stmt->bindValue(':source_url', $sourceUrl);
         $stmt->bindValue(':license', $license);
         $stmt->bindValue(':collection', $collection);
+        $stmt->bindValue(':nest_folders', $nestFolders, PDO::PARAM_INT);
         $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -213,6 +215,14 @@ require_once 'includes/header.php';
                     </div>
                 </fieldset>
                 <?php endif; ?>
+
+                <div class="form-group">
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="nest_folders" value="1" <?= !empty($model['nest_folders']) ? 'checked' : '' ?>>
+                        Nest subfolders inside parent folders
+                    </label>
+                    <small class="form-hint">When enabled, folders with paths like "Parent/Child" will be displayed as nested hierarchies on the model page.</small>
+                </div>
 
                 <div class="form-group">
                     <label>Tags</label>

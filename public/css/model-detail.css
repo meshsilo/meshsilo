@@ -762,16 +762,13 @@
     border-left: 2px solid var(--color-border);
 }
 
-/* Nested child folder headers are slightly smaller */
-.nested-subfolder > .parts-group-header {
-    font-size: 0.85rem;
-    padding: 0.4rem 0.65rem;
-    margin-bottom: 0.5rem;
+/* Nested child folders use the same header style as top-level folders */
+.nested-subfolder.parts-group {
+    margin-bottom: 1.5rem;
 }
 
-/* Reduce spacing between nested groups */
-.nested-subfolder.parts-group {
-    margin-bottom: 0.5rem;
+.nested-subfolder.parts-group:last-child {
+    margin-bottom: 0;
 }
 
 .nest-folders-toggle.active {

@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS models (
     external_source_url {$varchar(500)},
     external_source_id {$varchar(100)},
     user_id $int,
+    nest_folders $tinyint DEFAULT 0,
     created_at $ts DEFAULT CURRENT_TIMESTAMP,
     updated_at $ts DEFAULT CURRENT_TIMESTAMP$onUpdate,
     FOREIGN KEY (parent_id) REFERENCES models(id) ON DELETE CASCADE
@@ -788,6 +789,7 @@ function ensureColumns($db)
         'external_source_id' => $type === 'mysql' ? 'VARCHAR(100)' : 'TEXT',
         'user_id' => $type === 'mysql' ? 'INT' : 'INTEGER',
         'upload_status' => $type === 'mysql' ? 'VARCHAR(20) DEFAULT NULL' : 'TEXT DEFAULT NULL',
+        'nest_folders' => ($type === 'mysql' ? 'TINYINT' : 'INTEGER') . ' DEFAULT 0',
     ];
 
     foreach ($modelColumns as $column => $dataType) {

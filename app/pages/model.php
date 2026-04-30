@@ -946,7 +946,8 @@ require_once 'includes/header.php';
             csrfToken: <?= json_encode(Csrf::getToken()) ?>,
             modelName: <?= json_encode($model['name']) ?>,
             allTags: <?= json_encode(getAllTags()) ?>,
-            updatePartRoute: <?= json_encode(route('actions.update.part')) ?>
+            updatePartRoute: <?= json_encode(route('actions.update.part')) ?>,
+            nestFolders: <?= !empty($model['nest_folders']) ? 'true' : 'false' ?>
         };
         </script>
         <?php endif; ?>

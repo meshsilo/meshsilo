@@ -502,7 +502,6 @@
             if (!nestBtn) return;
 
             var modelParts = document.querySelector('.model-parts');
-            var storageKey = 'meshsilo_nest_folders_' + ModelPageConfig.modelId;
             var isNested = false;
             var originalPositions = [];
             var createdVirtualGroups = [];
@@ -653,7 +652,6 @@
                 isNested = true;
                 nestBtn.classList.add('active');
                 nestBtn.setAttribute('aria-pressed', 'true');
-                localStorage.setItem(storageKey, '1');
             }
 
             function unnestFolders() {
@@ -684,7 +682,6 @@
                 isNested = false;
                 nestBtn.classList.remove('active');
                 nestBtn.setAttribute('aria-pressed', 'false');
-                localStorage.setItem(storageKey, '0');
             }
 
             nestBtn.addEventListener('click', function() {
@@ -695,7 +692,7 @@
                 }
             });
 
-            if (localStorage.getItem(storageKey) === '1') {
+            if (ModelPageConfig.nestFolders) {
                 nestFolders();
             }
         })();
