@@ -160,7 +160,8 @@ function getTagByName($name)
         $db = getDB();
         $stmt = $db->prepare('SELECT id, name, color FROM tags WHERE LOWER(name) = LOWER(:name)');
         $stmt->execute([':name' => trim($name)]);
-        return $stmt->fetch();
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
     } catch (Exception $e) {
         return null;
     }
