@@ -63,6 +63,9 @@ $usageByCategory = getStorageUsageByCategory();
 $totalUsage = getTotalStorageUsage();
 $dedupSavings = getDedupStorageSavings();
 
+// Count unconverted STL parts (parent_id IS NOT NULL = parts, not top-level models)
+$unconvertedStlCount = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE file_type = 'stl' AND parent_id IS NOT NULL");
+
 // Calculate 3MF conversion savings
 $conversionStats = $db->query('
     SELECT COUNT(*) as converted_count,
@@ -127,6 +130,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         } else {
             $error = 'Failed to create backup.';
         }
+    } elseif (isset($_POST['mass_convert_stl'])) {
+        require_once __DIR__ . '/../../includes/converter.php';
+        $stmt = $db->prepare("SELECT id FROM models WHERE file_type = 'stl' AND parent_id IS NOT NULL");
+        $stmt->execute();
+        $queued = 0;
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $partId = (int)$row['id'];
+            // Skip if already queued
+            $check = $db->prepare("SELECT COUNT(*) as cnt FROM jobs WHERE job_class = 'ConvertStlTo3mf' AND status IN ('pending', 'processing') AND payload = :payload");
+            $check->bindValue(':payload', json_encode(['model_id' => $partId]), PDO::PARAM_STR);
+            $checkResult = $check->execute();
+            $already = (int)($checkResult->fetchArray(PDO::FETCH_ASSOC)['cnt'] ?? 0);
+            if ($already === 0) {
+                Queue::push('ConvertStlTo3mf', ['model_id' => $partId], 'conversions');
+                $queued++;
+            }
+        }
+        $message = "Queued $queued STL file(s) for conversion to 3MF.";
     } elseif (isset($_POST['clear_orphans'])) {
         // Find files in assets that aren't in the database
         $orphanCount = 0;
@@ -465,6 +486,12 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <?= csrf_field() ?>
                                 <button type="submit" name="clear_orphans" class="btn btn-secondary">Clean Orphaned Files</button>
                             </form>
+                            <?php if ($unconvertedStlCount > 0): ?>
+                            <form method="post" style="display:inline;" data-confirm="This will queue <?= $unconvertedStlCount ?> STL file(s) for conversion to 3MF. This runs in the background via the job queue. Continue?">
+                                <?= csrf_field() ?>
+                                <button type="submit" name="mass_convert_stl" class="btn btn-secondary">Convert All STL → 3MF (<?= $unconvertedStlCount ?>)</button>
+                            </form>
+                            <?php endif; ?>
                         </div>
                     </details>
                 </div>
