@@ -46,7 +46,7 @@ $tools = [
     'worker' => [
         'name' => 'Job Queue Worker',
         'description' => 'Manage background job queue',
-        'script' => 'cli/worker.php',
+        'script' => 'cli/queue-worker.php',
         'options' => [
             'stats' => ['label' => 'Show Stats', 'description' => 'Show queue statistics', 'type' => 'flag'],
             'once' => ['label' => 'Process One', 'description' => 'Process one job and exit', 'type' => 'flag'],
@@ -346,7 +346,7 @@ include __DIR__ . '/../../includes/header.php';
             <pre>cd /path/to/meshsilo
 php cli/purge-css.php --analyze
 php cli/optimize.php status
-php cli/worker.php --stats</pre>
+php cli/queue-worker.php --stats</pre>
         </div>
     </div>
 </div>
