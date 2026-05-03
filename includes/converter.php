@@ -2,15 +2,27 @@
 
 /**
  * STL to 3MF Converter
- * Converts STL files to 3MF format for better compression
+ * Converts STL files to 3MF format for better compression.
+ *
+ * Uses disk-backed storage (SQLite temp DB for vertex deduplication,
+ * binary temp file for triangle indices) to support arbitrarily large
+ * STL files within bounded RAM.
  */
 
 require_once __DIR__ . '/dedup.php';
 
 class STLConverter
 {
-    private $vertices = [];
-    private $triangles = [];
+    private ?PDO $tempDb = null;
+    private $triangleFile = null;
+    private ?string $triangleTempPath = null;
+    private ?string $tempDbPath = null;
+    private int $vertexCount = 0;
+    private int $triangleCount = 0;
+
+    /** Cached prepared statements for vertex operations */
+    private ?\PDOStatement $insertVertexStmt = null;
+    private ?\PDOStatement $selectVertexStmt = null;
 
     /**
      * Check if an STL file is binary or ASCII
@@ -54,50 +66,120 @@ class STLConverter
     }
 
     /**
-     * Estimate bytes per triangle during conversion:
-     * ~500 bytes for vertex map entries, arrays, and XML string building.
+     * Initialize temp storage: SQLite DB for vertices, binary file for triangles.
      */
-    private const BYTES_PER_TRIANGLE = 500;
-
-    /**
-     * Calculate max triangles based on available PHP memory.
-     * Uses 80% of remaining memory (XML is streamed to disk, not held in RAM).
-     */
-    private function getMaxTriangles(): int
+    private function initTempStorage(): void
     {
-        $memoryLimit = $this->getMemoryLimitBytes();
-        $currentUsage = memory_get_usage(true);
-        $available = $memoryLimit - $currentUsage;
+        $cacheDir = __DIR__ . '/../storage/cache';
+        $tempDir = is_writable($cacheDir) ? $cacheDir : sys_get_temp_dir();
 
-        // Use 80% of remaining memory — XML generation streams to disk
-        $usable = (int)($available * 0.8);
-        $maxTriangles = (int)($usable / self::BYTES_PER_TRIANGLE);
+        // SQLite temp DB on disk (not :memory:) so it doesn't eat RAM
+        $baseTmp = tempnam($tempDir, 'silo_vtx_');
+        @unlink($baseTmp); // Remove the placeholder file created by tempnam
+        $this->tempDbPath = $baseTmp . '.db';
+        $this->tempDb = new PDO('sqlite:' . $this->tempDbPath, null, null, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
+        $this->tempDb->exec('PRAGMA journal_mode=WAL');
+        $this->tempDb->exec('PRAGMA synchronous=OFF');
+        $this->tempDb->exec('PRAGMA temp_store=FILE');
+        $this->tempDb->exec('PRAGMA cache_size=-50000'); // ~50MB page cache
+        $this->tempDb->exec('
+            CREATE TABLE vertices (
+                id INTEGER PRIMARY KEY,
+                key BLOB UNIQUE,
+                x REAL,
+                y REAL,
+                z REAL
+            )
+        ');
 
-        // Floor at 50K — no artificial ceiling. The memory-based calculation
-        // above is the real constraint; the old 5M cap was too low for large
-        // but still memory-feasible STL files.
-        return max(50_000, $maxTriangles);
+        // Prepare cached statements — id is assigned manually (no AUTOINCREMENT)
+        $this->insertVertexStmt = $this->tempDb->prepare(
+            'INSERT OR IGNORE INTO vertices (id, key, x, y, z) VALUES (?, ?, ?, ?, ?)'
+        );
+        $this->selectVertexStmt = $this->tempDb->prepare(
+            'SELECT id FROM vertices WHERE key = ?'
+        );
+
+        // Binary temp file for triangle indices (12 bytes per triangle: 3 x uint32)
+        $this->triangleTempPath = tempnam($tempDir, 'silo_tri_');
+        $this->triangleFile = fopen($this->triangleTempPath, 'w+b');
+        if (!$this->triangleFile) {
+            throw new Exception('Cannot create temp file for triangle data');
+        }
+
+        $this->vertexCount = 0;
+        $this->triangleCount = 0;
+
+        // Ensure cleanup on fatal errors
+        $dbPath = $this->tempDbPath;
+        $triPath = $this->triangleTempPath;
+        register_shutdown_function(function () use ($dbPath, $triPath) {
+            if ($dbPath && is_file($dbPath)) @unlink($dbPath);
+            if ($dbPath && is_file($dbPath . '-wal')) @unlink($dbPath . '-wal');
+            if ($dbPath && is_file($dbPath . '-shm')) @unlink($dbPath . '-shm');
+            if ($triPath && is_file($triPath)) @unlink($triPath);
+        });
     }
 
     /**
-     * Parse PHP memory_limit into bytes.
+     * Clean up temp storage (SQLite DB + triangle file).
      */
-    private function getMemoryLimitBytes(): int
+    private function cleanupTempStorage(): void
     {
-        $limit = ini_get('memory_limit');
-        if ($limit === '-1') {
-            return 8 * 1024 * 1024 * 1024; // Treat unlimited as 8G
+        $this->insertVertexStmt = null;
+        $this->selectVertexStmt = null;
+
+        if ($this->tempDb !== null) {
+            $this->tempDb = null; // Close PDO connection
+        }
+        if ($this->tempDbPath !== null) {
+            if (is_file($this->tempDbPath)) @unlink($this->tempDbPath);
+            if (is_file($this->tempDbPath . '-wal')) @unlink($this->tempDbPath . '-wal');
+            if (is_file($this->tempDbPath . '-shm')) @unlink($this->tempDbPath . '-shm');
+            $this->tempDbPath = null;
         }
 
-        $value = (int)$limit;
-        $unit = strtolower(substr(trim($limit), -1));
+        if ($this->triangleFile !== null) {
+            fclose($this->triangleFile);
+            $this->triangleFile = null;
+        }
+        if ($this->triangleTempPath !== null) {
+            if (is_file($this->triangleTempPath)) @unlink($this->triangleTempPath);
+            $this->triangleTempPath = null;
+        }
+    }
 
-        return match ($unit) {
-            'g' => $value * 1024 * 1024 * 1024,
-            'm' => $value * 1024 * 1024,
-            'k' => $value * 1024,
-            default => $value,
-        };
+    /**
+     * Look up or insert a vertex, returning its 0-based index.
+     */
+    private function getOrInsertVertex(float $x, float $y, float $z): int
+    {
+        $key = pack('d3', $x, $y, $z);
+
+        // Try to insert with the next available ID (ignored if key already exists)
+        $this->insertVertexStmt->execute([$this->vertexCount, $key, $x, $y, $z]);
+        if ($this->insertVertexStmt->rowCount() > 0) {
+            // New vertex inserted
+            return $this->vertexCount++;
+        }
+
+        // Duplicate key — look up the existing ID
+        $this->selectVertexStmt->execute([$key]);
+        $row = $this->selectVertexStmt->fetch(PDO::FETCH_NUM);
+        $this->selectVertexStmt->closeCursor();
+
+        return (int)$row[0];
+    }
+
+    /**
+     * Write a triangle's three vertex indices to the binary temp file.
+     */
+    private function writeTriangle(int $v1, int $v2, int $v3): void
+    {
+        fwrite($this->triangleFile, pack('VVV', $v1, $v2, $v3));
+        $this->triangleCount++;
     }
 
     /**
@@ -105,91 +187,85 @@ class STLConverter
      */
     public function parseBinarySTL($filePath)
     {
-        $this->vertices = [];
-        $this->triangles = [];
+        $this->initTempStorage();
 
-        $handle = fopen($filePath, 'rb');
-        if (!$handle) {
-            throw new Exception('Cannot open STL file');
-        }
-
-        // Skip 80-byte header
-        fseek($handle, 80);
-
-        // Read triangle count
-        $triangleCountData = fread($handle, 4);
-        $triangleCount = unpack('V', $triangleCountData)[1];
-
-        $maxTriangles = $this->getMaxTriangles();
-        if ($triangleCount > $maxTriangles) {
-            fclose($handle);
-            throw new Exception(sprintf(
-                'STL file too large for conversion (%s triangles, max %s with current memory)',
-                number_format($triangleCount),
-                number_format($maxTriangles)
-            ));
-        }
-
-        $vertexMap = [];
-        $vertexIndex = 0;
-
-        // Read in chunks of 1000 triangles (~50KB) instead of entire file at once
-        $chunkSize = 1000;
-        $remaining = $triangleCount;
-
-        while ($remaining > 0) {
-            $batch = min($chunkSize, $remaining);
-            $data = fread($handle, $batch * 50);
-
-            if (strlen($data) < $batch * 50) {
-                fclose($handle);
-                throw new Exception('Incomplete STL file');
+        try {
+            $handle = fopen($filePath, 'rb');
+            if (!$handle) {
+                throw new Exception('Cannot open STL file');
             }
 
-            $offset = 0;
-            for ($i = 0; $i < $batch; $i++) {
-                // Unpack all 12 floats at once (normal[3] + v1[3] + v2[3] + v3[3])
-                $floats = unpack('f12', $data, $offset);
-                $offset += 48;
+            // Skip 80-byte header
+            fseek($handle, 80);
 
-                $triIndices = [];
+            // Read triangle count
+            $triangleCountData = fread($handle, 4);
+            $triangleCount = unpack('V', $triangleCountData)[1];
 
-                // Process 3 vertices (skip normal at indices 1-3)
-                for ($v = 0; $v < 3; $v++) {
-                    $base = 4 + ($v * 3);
-                    $x = round($floats[$base], 6);
-                    $y = round($floats[$base + 1], 6);
-                    $z = round($floats[$base + 2], 6);
+            // Read in chunks of 1000 triangles (~50KB) instead of entire file at once
+            $chunkSize = 1000;
+            $remaining = $triangleCount;
+            $batchCount = 0;
 
-                    // Binary key: 24 bytes vs ~30+ byte string from implode
-                    $key = pack('d3', $x, $y, $z);
+            $this->tempDb->beginTransaction();
 
-                    if (!isset($vertexMap[$key])) {
-                        $vertexMap[$key] = $vertexIndex;
-                        $this->vertices[] = [$x, $y, $z];
-                        $vertexIndex++;
-                    }
+            while ($remaining > 0) {
+                $batch = min($chunkSize, $remaining);
+                $data = fread($handle, $batch * 50);
 
-                    $triIndices[] = $vertexMap[$key];
+                if (strlen($data) < $batch * 50) {
+                    fclose($handle);
+                    throw new Exception('Incomplete STL file');
                 }
 
-                $this->triangles[] = $triIndices;
+                $offset = 0;
+                for ($i = 0; $i < $batch; $i++) {
+                    // Unpack all 12 floats at once (normal[3] + v1[3] + v2[3] + v3[3])
+                    $floats = unpack('f12', $data, $offset);
+                    $offset += 48;
 
-                // Skip attribute byte count (2 bytes)
-                $offset += 2;
+                    $triIndices = [];
+
+                    // Process 3 vertices (skip normal at indices 1-3)
+                    for ($v = 0; $v < 3; $v++) {
+                        $base = 4 + ($v * 3);
+                        $x = round($floats[$base], 6);
+                        $y = round($floats[$base + 1], 6);
+                        $z = round($floats[$base + 2], 6);
+
+                        $triIndices[] = $this->getOrInsertVertex($x, $y, $z);
+                    }
+
+                    $this->writeTriangle($triIndices[0], $triIndices[1], $triIndices[2]);
+
+                    // Skip attribute byte count (2 bytes)
+                    $offset += 2;
+                    $batchCount++;
+
+                    // Commit transaction every 50K triangles
+                    if ($batchCount >= 50000) {
+                        $this->tempDb->commit();
+                        $this->tempDb->beginTransaction();
+                        $batchCount = 0;
+                    }
+                }
+
+                $remaining -= $batch;
+                unset($data);
             }
 
-            $remaining -= $batch;
-            unset($data);
+            $this->tempDb->commit();
+            fclose($handle);
+
+            return [
+                'vertices' => $this->vertexCount,
+                'triangles' => $this->triangleCount
+            ];
+        } catch (Exception $e) {
+            if (isset($handle) && is_resource($handle)) fclose($handle);
+            $this->cleanupTempStorage();
+            throw $e;
         }
-
-        fclose($handle);
-        unset($vertexMap);
-
-        return [
-            'vertices' => count($this->vertices),
-            'triangles' => count($this->triangles)
-        ];
     }
 
     /**
@@ -198,58 +274,56 @@ class STLConverter
      */
     public function parseASCIISTL($filePath)
     {
-        $this->vertices = [];
-        $this->triangles = [];
+        $this->initTempStorage();
 
-        $handle = fopen($filePath, 'r');
-        if (!$handle) {
-            throw new Exception('Cannot read STL file');
-        }
-
-        $vertexMap = [];
-        $vertexIndex = 0;
-        $triIndices = [];
-        $maxTriangles = $this->getMaxTriangles();
-
-        while (($line = fgets($handle)) !== false) {
-            $line = trim($line);
-
-            if (preg_match('/^vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/i', $line, $m)) {
-                $x = round((float)$m[1], 6);
-                $y = round((float)$m[2], 6);
-                $z = round((float)$m[3], 6);
-
-                $key = pack('d3', $x, $y, $z);
-
-                if (!isset($vertexMap[$key])) {
-                    $vertexMap[$key] = $vertexIndex;
-                    $this->vertices[] = [$x, $y, $z];
-                    $vertexIndex++;
-                }
-
-                $triIndices[] = $vertexMap[$key];
-            } elseif (stripos($line, 'endloop') === 0) {
-                if (count($triIndices) === 3) {
-                    $this->triangles[] = $triIndices;
-                    if (count($this->triangles) > $maxTriangles) {
-                        fclose($handle);
-                        throw new Exception(sprintf(
-                            'STL file too large for conversion (exceeded %s triangles with current memory)',
-                            number_format($maxTriangles)
-                        ));
-                    }
-                }
-                $triIndices = [];
+        try {
+            $handle = fopen($filePath, 'r');
+            if (!$handle) {
+                throw new Exception('Cannot read STL file');
             }
+
+            $triIndices = [];
+            $batchCount = 0;
+
+            $this->tempDb->beginTransaction();
+
+            while (($line = fgets($handle)) !== false) {
+                $line = trim($line);
+
+                if (preg_match('/^vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/i', $line, $m)) {
+                    $x = round((float)$m[1], 6);
+                    $y = round((float)$m[2], 6);
+                    $z = round((float)$m[3], 6);
+
+                    $triIndices[] = $this->getOrInsertVertex($x, $y, $z);
+                } elseif (stripos($line, 'endloop') === 0) {
+                    if (count($triIndices) === 3) {
+                        $this->writeTriangle($triIndices[0], $triIndices[1], $triIndices[2]);
+                        $batchCount++;
+
+                        // Commit transaction every 50K triangles
+                        if ($batchCount >= 50000) {
+                            $this->tempDb->commit();
+                            $this->tempDb->beginTransaction();
+                            $batchCount = 0;
+                        }
+                    }
+                    $triIndices = [];
+                }
+            }
+
+            $this->tempDb->commit();
+            fclose($handle);
+
+            return [
+                'vertices' => $this->vertexCount,
+                'triangles' => $this->triangleCount
+            ];
+        } catch (Exception $e) {
+            if (isset($handle) && is_resource($handle)) fclose($handle);
+            $this->cleanupTempStorage();
+            throw $e;
         }
-
-        fclose($handle);
-        unset($vertexMap);
-
-        return [
-            'vertices' => count($this->vertices),
-            'triangles' => count($this->triangles)
-        ];
     }
 
     /**
@@ -265,8 +339,8 @@ class STLConverter
     }
 
     /**
-     * Stream 3MF XML content directly to a file instead of building in memory.
-     * Frees vertex/triangle arrays as they are written.
+     * Stream 3MF XML content directly to a file.
+     * Reads vertices from SQLite and triangles from the binary temp file.
      */
     private function write3MFModelToFile($filePath)
     {
@@ -281,13 +355,13 @@ class STLConverter
         fwrite($handle, "    <object id=\"1\" type=\"model\">\n");
         fwrite($handle, "      <mesh>\n");
 
-        // Stream vertices in batches of 1000 lines per fwrite
+        // Stream vertices from SQLite in batches of 1000
         fwrite($handle, "        <vertices>\n");
+        $stmt = $this->tempDb->query('SELECT x, y, z FROM vertices ORDER BY id');
         $buffer = '';
         $bufCount = 0;
-        foreach ($this->vertices as $i => $v) {
-            $buffer .= sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />' . "\n", $v[0], $v[1], $v[2]);
-            unset($this->vertices[$i]);
+        while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
+            $buffer .= sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />' . "\n", $row[0], $row[1], $row[2]);
             if (++$bufCount >= 1000) {
                 fwrite($handle, $buffer);
                 $buffer = '';
@@ -299,13 +373,14 @@ class STLConverter
         }
         fwrite($handle, "        </vertices>\n");
 
-        // Stream triangles in batches of 1000 lines per fwrite
+        // Stream triangles from binary temp file in batches of 1000
         fwrite($handle, "        <triangles>\n");
+        fseek($this->triangleFile, 0);
         $buffer = '';
         $bufCount = 0;
-        foreach ($this->triangles as $i => $t) {
-            $buffer .= sprintf('          <triangle v1="%d" v2="%d" v3="%d" />' . "\n", $t[0], $t[1], $t[2]);
-            unset($this->triangles[$i]);
+        while (($data = fread($this->triangleFile, 12)) !== false && strlen($data) === 12) {
+            $indices = unpack('V3', $data);
+            $buffer .= sprintf('          <triangle v1="%d" v2="%d" v3="%d" />' . "\n", $indices[1], $indices[2], $indices[3]);
             if (++$bufCount >= 1000) {
                 fwrite($handle, $buffer);
                 $buffer = '';
@@ -354,7 +429,7 @@ class STLConverter
     /**
      * Convert STL to 3MF
      * @param string $stlPath Path to input STL file
-     * @param string $outputPath Path for output 3MF file (optional)
+     * @param string|null $outputPath Path for output 3MF file (optional)
      * @return array Result with success status and file info
      */
     public function convertTo3MF($stlPath, $outputPath = null)
@@ -365,10 +440,11 @@ class STLConverter
 
         $originalSize = filesize($stlPath);
 
-        // Parse the STL file
+        // Parse the STL file (populates temp storage)
         $parseResult = $this->parseSTL($stlPath);
 
-        if (empty($this->triangles)) {
+        if ($this->triangleCount === 0) {
+            $this->cleanupTempStorage();
             throw new Exception('No triangles found in STL file');
         }
 
@@ -383,6 +459,9 @@ class STLConverter
 
         try {
             $this->write3MFModelToFile($tempModelFile);
+
+            // Clean up temp storage before ZIP creation to free disk space
+            $this->cleanupTempStorage();
 
             // Create 3MF (ZIP) file
             $zip = new ZipArchive();
@@ -399,6 +478,7 @@ class STLConverter
             if (is_file($tempModelFile)) {
                 unlink($tempModelFile);
             }
+            $this->cleanupTempStorage();
         }
 
         $newSize = filesize($outputPath);
@@ -418,10 +498,9 @@ class STLConverter
     }
 
     /**
-     * Estimate 3MF size without actually converting
-     * For binary STL, reads only the header to get triangle count
-     * @param string $stlPath Path to STL file
-     * @return array Estimated sizes and savings
+     * Estimate 3MF size without actually converting.
+     * For binary STL, reads only the header to get triangle count.
+     * For ASCII STL, stream-counts without loading geometry.
      */
     public function estimateConversion($stlPath)
     {
@@ -442,10 +521,27 @@ class STLConverter
             // Estimate ~50% vertex sharing for typical models
             $estimatedVertices = (int)($triangleCount * 3 * 0.5);
         } else {
-            // ASCII STL: must parse to count (but still cheaper than full conversion)
-            $parseResult = $this->parseASCIISTL($stlPath);
-            $triangleCount = $parseResult['triangles'];
-            $estimatedVertices = $parseResult['vertices'];
+            // ASCII STL: stream-count without loading geometry into memory
+            $handle = fopen($stlPath, 'r');
+            if (!$handle) {
+                throw new Exception('Cannot read STL file');
+            }
+
+            $triangleCount = 0;
+            $vertexRefCount = 0;
+
+            while (($line = fgets($handle)) !== false) {
+                $trimmed = trim($line);
+                if (stripos($trimmed, 'endloop') === 0) {
+                    $triangleCount++;
+                } elseif (preg_match('/^vertex\s+/i', $trimmed)) {
+                    $vertexRefCount++;
+                }
+            }
+            fclose($handle);
+
+            // Estimate ~50% vertex sharing (same heuristic as binary path)
+            $estimatedVertices = (int)($vertexRefCount * 0.5);
         }
 
         // Estimate 3MF size based on XML structure
@@ -569,7 +665,7 @@ function convertPartTo3MF($partId)
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
     $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $part = $result->fetchArray(PDO::FETCH_ASSOC);
+    $part = $result->fetch(PDO::FETCH_ASSOC);
 
     if (!$part) {
         return ['success' => false, 'error' => 'Part not found'];
@@ -585,13 +681,36 @@ function convertPartTo3MF($partId)
         return ['success' => false, 'error' => 'File not found on disk'];
     }
 
-    try {
-        // Raise memory limit for large STL conversions (queue worker only)
-        $currentLimit = ini_get('memory_limit');
-        if ($currentLimit !== '-1') {
-            ini_set('memory_limit', '8G');
+    // Check available disk space — conversion needs temp files
+    // Estimate: triangle file (12 bytes/tri) + SQLite DB (~180 bytes/vertex)
+    // Use binary header to get triangle count for the estimate
+    $diskEstimateTriangles = 0;
+    if (filesize($stlPath) >= 84) {
+        $fh = fopen($stlPath, 'rb');
+        if ($fh) {
+            fseek($fh, 80);
+            $data = fread($fh, 4);
+            if (strlen($data) === 4) {
+                $diskEstimateTriangles = unpack('V', $data)[1];
+            }
+            fclose($fh);
         }
+    }
+    if ($diskEstimateTriangles > 0) {
+        $cacheDir = __DIR__ . '/../storage/cache';
+        $checkDir = is_writable($cacheDir) ? $cacheDir : sys_get_temp_dir();
+        $neededBytes = ($diskEstimateTriangles * 12) + ($diskEstimateTriangles * 3 * 60);
+        $freeBytes = disk_free_space($checkDir);
+        if ($freeBytes !== false && $freeBytes < $neededBytes) {
+            return ['success' => false, 'error' => sprintf(
+                'Insufficient disk space for conversion temp files (need %s, have %s)',
+                formatBytes($neededBytes),
+                formatBytes($freeBytes)
+            )];
+        }
+    }
 
+    try {
         $converter = new STLConverter();
 
         // Generate new filename - place output next to source file
@@ -686,7 +805,7 @@ function estimatePartConversion($partId)
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
     $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
     $result = $stmt->execute();
-    $part = $result->fetchArray(PDO::FETCH_ASSOC);
+    $part = $result->fetch(PDO::FETCH_ASSOC);
 
     if (!$part || $part['file_type'] !== 'stl') {
         return null;
