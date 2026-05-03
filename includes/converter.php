@@ -86,7 +86,7 @@ class STLConverter
     {
         $limit = ini_get('memory_limit');
         if ($limit === '-1') {
-            return 2 * 1024 * 1024 * 1024; // Treat unlimited as 2G
+            return 8 * 1024 * 1024 * 1024; // Treat unlimited as 8G
         }
 
         $value = (int)$limit;
@@ -589,7 +589,7 @@ function convertPartTo3MF($partId)
         // Raise memory limit for large STL conversions (queue worker only)
         $currentLimit = ini_get('memory_limit');
         if ($currentLimit !== '-1') {
-            ini_set('memory_limit', '4G');
+            ini_set('memory_limit', '8G');
         }
 
         $converter = new STLConverter();
