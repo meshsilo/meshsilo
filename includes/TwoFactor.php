@@ -12,7 +12,7 @@
  *
  * Usage:
  *   $secret = TwoFactor::generateSecret();
- *   $otpUrl = TwoFactor::getOTPAuthUrl($secret, 'user@example.com');
+ *   $qrUrl = TwoFactor::getQRCodeUrl($secret, 'user@example.com');
  *   $valid = TwoFactor::verify($secret, $code);
  */
 
@@ -90,6 +90,22 @@ class TwoFactor
         }
 
         return false;
+    }
+
+    /**
+     * Get QR code URL for setting up authenticator app
+     *
+     * @param string $secret User's secret key
+     * @param string $account User's email or username
+     * @param string|null $issuer Application name (default: SITE_NAME)
+     * @return string URL for QR code image
+     */
+    public static function getQRCodeUrl(string $secret, string $account, ?string $issuer = null): string
+    {
+        $otpUrl = self::getOTPAuthUrl($secret, $account, $issuer);
+
+        require_once __DIR__ . '/QRCode.php';
+        return QRCode::toDataURI($otpUrl);
     }
 
     /**
@@ -426,6 +442,16 @@ class TwoFactor
         return $decoded;
     }
 
+    /**
+     * Generate QR code as SVG (no external service needed)
+     */
+    public static function generateQRCodeSVG(string $secret, string $account, ?string $issuer = null): string
+    {
+        $url = self::getOTPAuthUrl($secret, $account, $issuer);
+
+        require_once __DIR__ . '/QRCode.php';
+        return QRCode::toSVG($url);
+    }
 }
 
 /**
