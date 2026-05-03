@@ -111,20 +111,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         }
     } elseif ($action === 'delete_all_orphans') {
         // Delete all orphaned files from disk
-        // Use database queries instead of loading all filenames into memory
+        // Load all known filenames into a set first, then compare against disk
         $assetsPath = realpath(UPLOAD_PATH);
         if ($assetsPath && is_dir($assetsPath)) {
+            $knownFiles = [];
+            $stmt = $db->query('SELECT DISTINCT filename FROM models WHERE filename IS NOT NULL');
+            while ($row = $stmt->fetchArray(PDO::FETCH_ASSOC)) {
+                $knownFiles[$row['filename']] = true;
+            }
+
             $deletedCount = 0;
             $iterator = new DirectoryIterator($assetsPath);
             foreach ($iterator as $file) {
                 if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-                    // Check if file exists in database
-                    $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
-                    $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
-                    $result = $stmt->execute();
-                    $row = $result->fetchArray(PDO::FETCH_ASSOC);
-
-                    if ($row['count'] == 0) {
+                    if (!isset($knownFiles[$file->getFilename()])) {
                         unlink($file->getPathname());
                         $deletedCount++;
                     }
@@ -205,37 +205,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
     }
 }
 
-// Get model count — parent/standalone models only (not child parts, which
-// are counted under their parent's part_count). This matches what users
-// think of as "a model" when they see the number on the dashboard.
-$result = $db->query('SELECT COUNT(*) as count FROM models WHERE parent_id IS NULL');
-$modelCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
+// Combined model/part/storage stats in a single query
+$coreStats = $db->query("
+    SELECT
+        SUM(CASE WHEN parent_id IS NULL THEN 1 ELSE 0 END) as model_count,
+        SUM(CASE WHEN parent_id IS NOT NULL THEN 1 ELSE 0 END) as part_count,
+        SUM(CASE WHEN (parent_id IS NOT NULL OR (parent_id IS NULL AND part_count = 0))
+                  AND file_type != 'parent' AND file_path IS NOT NULL AND file_path != ''
+                 THEN file_size ELSE 0 END) as actual_storage,
+        SUM(CASE WHEN (parent_id IS NOT NULL OR (parent_id IS NULL AND part_count = 0))
+                  AND file_type != 'parent' AND file_path IS NOT NULL AND file_path != ''
+                 THEN 1 ELSE 0 END) as file_count,
+        SUM(CASE WHEN parent_id IS NULL AND NOT EXISTS (
+            SELECT 1 FROM model_categories mc WHERE mc.model_id = models.id
+        ) THEN 1 ELSE 0 END) as uncategorized_count,
+        SUM(CASE WHEN parent_id IS NULL AND (source_url IS NULL OR source_url = '')
+                 THEN 1 ELSE 0 END) as no_source_count
+    FROM models
+")->fetchArray(PDO::FETCH_ASSOC);
 
-// Total parts (child models)
-$result = $db->query('SELECT COUNT(*) as count FROM models WHERE parent_id IS NOT NULL');
-$totalParts = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-
-// Get actual storage from filesystem — this is the only accurate number.
-// The DB's SUM(file_size) double-counts because parent models store the
-// sum of their parts' sizes, AND each part has its own file_size row.
-// Deduped files also retain their original file_size in the DB despite
-// the actual file being deleted from disk.
+$modelCount = (int)($coreStats['model_count'] ?? 0);
+$totalParts = (int)($coreStats['part_count'] ?? 0);
+$actualStorage = (int)($coreStats['actual_storage'] ?? 0);
+$fileCount = (int)($coreStats['file_count'] ?? 0);
+$uncategorizedCount = (int)($coreStats['uncategorized_count'] ?? 0);
+$noSourceCount = (int)($coreStats['no_source_count'] ?? 0);
 $assetsPath = realpath(UPLOAD_PATH);
-$actualStorage = 0;
-$fileCount = 0;
-if ($assetsPath && is_dir($assetsPath)) {
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($assetsPath, RecursiveDirectoryIterator::SKIP_DOTS)
-    );
-    foreach ($iterator as $file) {
-        if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-            $actualStorage += $file->getSize();
-            $fileCount++;
-        }
-    }
-}
 
-// Average model size based on actual disk usage and real file count
+// Average model size based on actual file count
 $avgModelSize = $fileCount > 0 ? $actualStorage / $fileCount : 0;
 
 // Get disk space info
@@ -282,17 +279,6 @@ $categoryStats = [];
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $categoryStats[] = $row;
 }
-
-// Get uncategorized models count
-$result = $db->query('
-    SELECT COUNT(*) as count FROM models m
-    WHERE NOT EXISTS (SELECT 1 FROM model_categories mc WHERE mc.model_id = m.id)
-');
-$uncategorizedCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-
-// Get models without source URL
-$result = $db->query('SELECT COUNT(*) as count FROM models WHERE source_url IS NULL OR source_url = ""');
-$noSourceCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
 // Get models by collection
 $result = $db->query('
