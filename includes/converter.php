@@ -61,8 +61,11 @@ class STLConverter
         // Binary STL: 80 byte header + 4 byte count + (50 bytes * triangles)
         $expectedSize = 84 + ($triangleCount * 50);
 
-        // If file size matches expected binary size (within tolerance), it's binary
-        return abs($actualSize - $expectedSize) < 100;
+        // If file size matches expected binary size (within tolerance), it's binary.
+        // Some slicers append extra data (color, metadata); allow up to 1KB overshoot.
+        // Undersized files are never valid binary STL.
+        $diff = $actualSize - $expectedSize;
+        return $diff >= 0 && $diff < 1024;
     }
 
     /**
@@ -445,7 +448,20 @@ class STLConverter
 
         if ($this->triangleCount === 0) {
             $this->cleanupTempStorage();
-            throw new Exception('No triangles found in STL file');
+            // Provide diagnostic info for debugging
+            $fileSize = filesize($stlPath);
+            $header = '';
+            $fh = fopen($stlPath, 'rb');
+            if ($fh) {
+                $header = bin2hex(fread($fh, 16));
+                fclose($fh);
+            }
+            throw new Exception(sprintf(
+                'No triangles found in STL file (size=%d, binary=%s, header=%s)',
+                $fileSize,
+                $this->isBinarySTL($stlPath) ? 'yes' : 'no',
+                $header
+            ));
         }
 
         // Generate output path if not provided

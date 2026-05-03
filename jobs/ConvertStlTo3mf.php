@@ -32,6 +32,9 @@ class ConvertStlTo3mf extends Job
         } elseif (($convertResult['error'] ?? '') === 'Conversion would not save space') {
             // Not worth converting — complete the job silently
             logInfo('STL to 3MF conversion skipped (no space savings)', ['model_id' => $modelId]);
+        } elseif (str_contains($convertResult['error'] ?? '', 'No triangles found')) {
+            // Unparseable file — don't retry
+            logWarning('STL to 3MF conversion skipped (no triangles)', ['model_id' => $modelId, 'error' => $convertResult['error']]);
         } else {
             // Real failure — throw so the queue worker retries with backoff
             throw new \Exception($convertResult['error'] ?? 'Conversion failed');
