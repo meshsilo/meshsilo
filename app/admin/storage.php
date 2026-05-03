@@ -64,7 +64,7 @@ $totalUsage = getTotalStorageUsage();
 $dedupSavings = getDedupStorageSavings();
 
 // Count unconverted STL parts (parent_id IS NOT NULL = parts, not top-level models)
-$unconvertedStlCount = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE file_type = 'stl' AND parent_id IS NOT NULL");
+$unconvertedStlCount = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE file_type = 'stl'");
 
 // Calculate 3MF conversion savings
 $conversionStats = $db->query('
@@ -131,8 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             $error = 'Failed to create backup.';
         }
     } elseif (isset($_POST['mass_convert_stl'])) {
-        require_once __DIR__ . '/../../includes/converter.php';
-        $stmt = $db->prepare("SELECT id FROM models WHERE file_type = 'stl' AND parent_id IS NOT NULL");
+        $stmt = $db->prepare("SELECT id FROM models WHERE file_type = 'stl'");
         $stmt->execute();
         $queued = 0;
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -489,7 +488,8 @@ require_once __DIR__ . '/../../includes/header.php';
                             <?php if ($unconvertedStlCount > 0): ?>
                             <form method="post" style="display:inline;" data-confirm="This will queue <?= $unconvertedStlCount ?> STL file(s) for conversion to 3MF. This runs in the background via the job queue. Continue?">
                                 <?= csrf_field() ?>
-                                <button type="submit" name="mass_convert_stl" class="btn btn-secondary">Convert All STL → 3MF (<?= $unconvertedStlCount ?>)</button>
+                                <input type="hidden" name="mass_convert_stl" value="1">
+                                <button type="submit" class="btn btn-secondary">Convert All STL → 3MF (<?= $unconvertedStlCount ?>)</button>
                             </form>
                             <?php endif; ?>
                         </div>
