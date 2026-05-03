@@ -43,9 +43,10 @@ $activePage = 'browse';
 // Get tags for this model
 $modelTags = getModelTags($modelId);
 
-// Check if favorited
-$isFavorited = isModelFavorited($modelId);
-$favoriteCount = getModelFavoriteCount($modelId);
+// Check if favorited (single query for both status and count)
+$favInfo = getModelFavoriteInfo($modelId);
+$isFavorited = $favInfo['is_favorited'];
+$favoriteCount = $favInfo['count'];
 
 // Get categories for this model
 $categories = [];

@@ -96,3 +96,30 @@ function getModelFavoriteCount($modelId)
         return 0;
     }
 }
+
+// Get both favorite status and count in a single query
+function getModelFavoriteInfo($modelId, $userId = null)
+{
+    if (!$userId) {
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+    }
+
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('
+            SELECT
+                COUNT(*) as count,
+                SUM(CASE WHEN user_id = :user_id THEN 1 ELSE 0 END) as is_favorited
+            FROM favorites WHERE model_id = :model_id
+        ');
+        $stmt->execute([':model_id' => $modelId, ':user_id' => $userId ?? 0]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return [
+            'is_favorited' => (bool)($row['is_favorited'] ?? 0),
+            'count' => (int)($row['count'] ?? 0),
+        ];
+    } catch (Exception $e) {
+        return ['is_favorited' => false, 'count' => 0];
+    }
+}

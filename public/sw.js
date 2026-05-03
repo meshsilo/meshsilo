@@ -3,7 +3,10 @@
  * Provides offline support and intelligent caching for PWA
  */
 
-const CACHE_VERSION = 'silo-v4';
+// Derive cache version from registration URL query param (?v=X) for deploy-time busting
+const SW_PARAMS = new URL(self.registration?.scope || self.location.href, self.location.href);
+const APP_VER = new URL(self.location.href).searchParams.get('v') || '0';
+const CACHE_VERSION = 'silo-v4-' + APP_VER;
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const DYNAMIC_CACHE = CACHE_VERSION + '-dynamic';
 const MODEL_CACHE = CACHE_VERSION + '-models';

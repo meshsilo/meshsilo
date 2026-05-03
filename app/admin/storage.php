@@ -19,44 +19,25 @@ $db = getDB();
 // Current storage type
 $storageType = getSetting('storage_type', 'local');
 
-// Calculate storage stats
-$assetsPath = realpath(defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../../storage/assets');
+// Calculate storage stats from DB (avoids slow filesystem scans)
 $dbPath = realpath(DB_PATH);
-
-function getDirectorySize($path) {
-    $size = 0;
-    if (is_dir($path)) {
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)) as $file) {
-            $size += $file->getSize();
-        }
-    }
-    return $size;
-}
-
-// formatBytes is defined in includes/helpers.php
-
-function countFiles($path, $extensions = []) {
-    $count = 0;
-    if (is_dir($path)) {
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)) as $file) {
-            if ($file->isFile()) {
-                if (empty($extensions) || in_array(strtolower($file->getExtension()), $extensions)) {
-                    $count++;
-                }
-            }
-        }
-    }
-    return $count;
-}
-
-$assetsSize = getDirectorySize($assetsPath);
 $dbSize = file_exists($dbPath) ? filesize($dbPath) : 0;
-$totalFiles = countFiles($assetsPath);
-$stlFiles = countFiles($assetsPath, ['stl']);
-$threemfFiles = countFiles($assetsPath, ['3mf']);
 
-// Get model count from database
-$modelCount = $db->querySingle('SELECT COUNT(*) FROM models');
+$storageStats = $db->query("
+    SELECT
+        COUNT(*) as total_files,
+        COALESCE(SUM(file_size), 0) as total_size,
+        SUM(CASE WHEN file_type = 'stl' THEN 1 ELSE 0 END) as stl_count,
+        SUM(CASE WHEN file_type = '3mf' THEN 1 ELSE 0 END) as threemf_count,
+        SUM(CASE WHEN parent_id IS NULL THEN 1 ELSE 0 END) as model_count
+    FROM models
+")->fetch(PDO::FETCH_ASSOC);
+
+$assetsSize = (int)($storageStats['total_size'] ?? 0);
+$totalFiles = (int)($storageStats['total_files'] ?? 0);
+$stlFiles = (int)($storageStats['stl_count'] ?? 0);
+$threemfFiles = (int)($storageStats['threemf_count'] ?? 0);
+$modelCount = (int)($storageStats['model_count'] ?? 0);
 
 // Get storage usage breakdown
 $usageByCategory = getStorageUsageByCategory();

@@ -434,7 +434,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('/sw.js?v=<?= defined('APP_VERSION') ? APP_VERSION : '0' ?>')
                     .catch(function() {});
             });
         }

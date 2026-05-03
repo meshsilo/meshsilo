@@ -103,10 +103,14 @@ $contentTypes = [
 ];
 $contentType = $contentTypes[$extension] ?? 'application/octet-stream';
 
-// Increment download count (for both the part and its parent if it has one)
-incrementDownloadCount($partId);
+// Increment download count (part + parent in single query when applicable)
 if ($part['parent_id']) {
-    incrementDownloadCount($part['parent_id']);
+    try {
+        $db->prepare('UPDATE models SET download_count = download_count + 1 WHERE id IN (:id1, :id2)')
+            ->execute([':id1' => $partId, ':id2' => $part['parent_id']]);
+    } catch (Exception $e) { /* non-critical */ }
+} else {
+    incrementDownloadCount($partId);
 }
 
 // Log the download activity

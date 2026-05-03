@@ -58,12 +58,32 @@ function listModels($apiUser) {
     $where = ['m.parent_id IS NULL'];
     $params = [];
 
-    // Search filter
+    // Search filter (uses FTS when available for ranked results)
     if (!empty($_GET['q'])) {
-        $where[] = '(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3)';
-        $params[':search1'] = '%' . $_GET['q'] . '%';
-        $params[':search2'] = '%' . $_GET['q'] . '%';
-        $params[':search3'] = '%' . $_GET['q'] . '%';
+        $dbType = $db->getType();
+        $ftsAvailable = ($dbType === 'sqlite' && tableExists($db, 'models_fts'));
+
+        if ($ftsAvailable) {
+            $ftsWords = preg_split('/\s+/', trim($_GET['q']), -1, PREG_SPLIT_NO_EMPTY);
+            $ftsWords = array_values(array_filter(array_map(fn($w) => preg_replace('/[^\w\x80-\xff]/u', '', $w), $ftsWords)));
+            if (!empty($ftsWords)) {
+                $ftsQuery = implode(' ', array_map(fn($w) => $w . '*', $ftsWords));
+                $where[] = 'm.id IN (SELECT rowid FROM models_fts WHERE models_fts MATCH :fts_query)';
+                $params[':fts_query'] = $ftsQuery;
+            } else {
+                $searchTerm = '%' . $_GET['q'] . '%';
+                $where[] = '(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3)';
+                $params[':search1'] = $searchTerm;
+                $params[':search2'] = $searchTerm;
+                $params[':search3'] = $searchTerm;
+            }
+        } else {
+            $searchTerm = '%' . $_GET['q'] . '%';
+            $where[] = '(m.name LIKE :search1 OR m.description LIKE :search2 OR m.creator LIKE :search3)';
+            $params[':search1'] = $searchTerm;
+            $params[':search2'] = $searchTerm;
+            $params[':search3'] = $searchTerm;
+        }
     }
 
     // Category filter

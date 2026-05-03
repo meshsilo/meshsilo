@@ -217,31 +217,42 @@ class BrowseQuery
             return $cats;
         });
 
-        $tags = getAllTags();
+        $tags = Cache::getInstance()->remember('browse_all_tags', 300, function() {
+            return getAllTags();
+        });
 
-        $fileTypes = [];
-        $ftResult = $db->query("SELECT DISTINCT file_type FROM models WHERE file_type IS NOT NULL AND file_type != '' AND file_type != 'parent' ORDER BY file_type");
-        if ($ftResult) {
-            while ($ftRow = $ftResult->fetchArray()) {
-                $fileTypes[] = $ftRow['file_type'];
+        $fileTypes = Cache::getInstance()->remember('browse_file_types', 300, function() use ($db) {
+            $types = [];
+            $ftResult = $db->query("SELECT DISTINCT file_type FROM models WHERE file_type IS NOT NULL AND file_type != '' AND file_type != 'parent' ORDER BY file_type");
+            if ($ftResult) {
+                while ($ftRow = $ftResult->fetchArray()) {
+                    $types[] = $ftRow['file_type'];
+                }
             }
-        }
+            return $types;
+        });
 
-        $printTypes = [];
-        $ptResult = $db->query("SELECT DISTINCT print_type FROM models WHERE print_type IS NOT NULL AND print_type != '' ORDER BY print_type");
-        if ($ptResult) {
-            while ($ptRow = $ptResult->fetchArray()) {
-                $printTypes[] = $ptRow['print_type'];
+        $printTypes = Cache::getInstance()->remember('browse_print_types', 300, function() use ($db) {
+            $types = [];
+            $ptResult = $db->query("SELECT DISTINCT print_type FROM models WHERE print_type IS NOT NULL AND print_type != '' ORDER BY print_type");
+            if ($ptResult) {
+                while ($ptRow = $ptResult->fetchArray()) {
+                    $types[] = $ptRow['print_type'];
+                }
             }
-        }
+            return $types;
+        });
 
-        $collections = [];
-        $collResult = $db->query("SELECT DISTINCT collection FROM models WHERE parent_id IS NULL AND collection IS NOT NULL AND collection != '' ORDER BY collection");
-        if ($collResult) {
-            while ($collRow = $collResult->fetchArray()) {
-                $collections[] = $collRow['collection'];
+        $collections = Cache::getInstance()->remember('browse_collections', 300, function() use ($db) {
+            $colls = [];
+            $collResult = $db->query("SELECT DISTINCT collection FROM models WHERE parent_id IS NULL AND collection IS NOT NULL AND collection != '' ORDER BY collection");
+            if ($collResult) {
+                while ($collRow = $collResult->fetchArray()) {
+                    $colls[] = $collRow['collection'];
+                }
             }
-        }
+            return $colls;
+        });
 
         $savedSearches = [];
         if (isLoggedIn()) {
