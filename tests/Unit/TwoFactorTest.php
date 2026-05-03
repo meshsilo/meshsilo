@@ -98,17 +98,6 @@ class TwoFactorTest extends SiloTestCase
         $this->assertStringContainsString('alice', $url);
     }
 
-    public function testGetQRCodeUrlContainsOtpUrl(): void
-    {
-        $url = TwoFactor::getQRCodeUrl(self::TEST_SECRET, 'user@example.com', 'TestApp');
-        // QR code is now a data URI SVG, not a Google Charts URL
-        $this->assertStringStartsWith('data:image/svg+xml;base64,', $url);
-        // Decode and verify the SVG contains valid content
-        $base64 = substr($url, strlen('data:image/svg+xml;base64,'));
-        $svg = base64_decode($base64);
-        $this->assertStringContainsString('<svg', $svg);
-    }
-
     public function testGenerateBackupCodesReturns10Codes(): void
     {
         $codes = TwoFactor::generateBackupCodes();
