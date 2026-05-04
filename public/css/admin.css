@@ -94,6 +94,7 @@
 
 .admin-content {
     flex: 1;
+    min-width: 0;
     padding: 2rem 3rem;
 }
 
