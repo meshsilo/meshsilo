@@ -659,7 +659,7 @@ class UploadProcessor
         ];
 
         foreach ($attachmentFiles as $attFile) {
-            $attFilename = $attFile['type'] . '_' . $parentId . '_' . time() . '_' . mt_rand(100, 999) . '.' . $attFile['extension'];
+            $attFilename = $attFile['type'] . '_' . $parentId . '_' . time() . '_' . random_int(100000, 999999) . '.' . $attFile['extension'];
             $attDest = $attachDir . '/' . $attFilename;
 
             if (!copy($attFile['path'], $attDest)) continue;

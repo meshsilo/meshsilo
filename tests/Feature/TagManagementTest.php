@@ -48,6 +48,11 @@ class TagManagementTest extends SiloTestCase
 
     public function testGetAllTagsReturnsAllTags(): void
     {
+        // Verify test DB is accessible
+        $db = getDB();
+        $directCount = $db->querySingle('SELECT COUNT(*) FROM tags');
+        $this->assertEquals(2, $directCount, 'Direct DB query should find 2 tags');
+
         $tags = getAllTags(false);
         $this->assertCount(2, $tags);
         $this->assertEquals('ABS', $tags[0]['name']); // Ordered by name
