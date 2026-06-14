@@ -496,21 +496,15 @@
         });
         updateCollapseAllToggle();
 
-        // Nest folders toggle — moves subfolder groups inside parent folder groups
+        // Nest folders - moves subfolder groups inside parent folder groups when nest_folders is saved on the model
         (function() {
-            var nestBtn = document.querySelector('.nest-folders-toggle');
-            if (!nestBtn) return;
-
             var modelParts = document.querySelector('.model-parts');
-            var isNested = false;
-            var originalPositions = [];
-            var createdVirtualGroups = [];
+            if (!modelParts) return;
 
             function getTopLevelGroups() {
                 return Array.from(modelParts.querySelectorAll(':scope > .parts-group[data-folder]'));
             }
 
-            // Any folder with a / in its path can be nested
             function hasNestableRelationships() {
                 var groups = getTopLevelGroups();
                 for (var i = 0; i < groups.length; i++) {
@@ -520,16 +514,8 @@
                 return false;
             }
 
-            if (!hasNestableRelationships()) {
-                nestBtn.style.display = 'none';
-                return;
-            }
-
             function nestFolders() {
                 var groups = getTopLevelGroups();
-                originalPositions = groups.map(function(g) {
-                    return { el: g, parent: g.parentNode, next: g.nextSibling };
-                });
 
                 // Build map of existing folder groups
                 var folderMap = {};
@@ -553,14 +539,12 @@
                 var parentPaths = Object.keys(neededParents).sort(function(a, b) {
                     return a.split('/').length - b.split('/').length;
                 });
-                // Find insertion point — before the parts-actions/download area
                 var insertBefore = modelParts.querySelector('.parts-actions') ||
                                    modelParts.querySelector('.model-download') ||
                                    null;
 
                 parentPaths.forEach(function(path) {
                     var name = neededParents[path];
-                    // Count parts in all child folders of this path
                     var childCount = 0;
                     groups.forEach(function(g) {
                         if (g.dataset.folder.indexOf(path + '/') === 0 || g.dataset.folder === path) {
@@ -580,7 +564,6 @@
                         '<div class="parts-list"></div>';
                     // Click handling is done by the delegated handler in model-page.js
                     folderMap[path] = el;
-                    createdVirtualGroups.push(el);
                     if (insertBefore) {
                         modelParts.insertBefore(el, insertBefore);
                     } else {
@@ -588,17 +571,13 @@
                     }
                 });
 
-                // Shorten nested folder names: "Aarakocra/Aarakocra OLD" → "Aarakocra OLD"
+                // Shorten nested folder names: "Aarakocra/Aarakocra OLD" -> "Aarakocra OLD"
                 groups.forEach(function(group) {
                     var folder = group.dataset.folder;
                     if (folder === 'Root' || folder.indexOf('/') === -1) return;
                     var headerEl = group.querySelector(':scope > .parts-group-header');
                     if (!headerEl) return;
-                    if (!group.dataset.origHeaderHtml) {
-                        group.dataset.origHeaderHtml = headerEl.innerHTML;
-                    }
                     var leafName = folder.split('/').pop();
-                    // Find text nodes that contain a / (the full path display name)
                     var walker = document.createTreeWalker(headerEl, NodeFilter.SHOW_TEXT);
                     var node;
                     while (node = walker.nextNode()) {
@@ -636,7 +615,6 @@
                 topGroups.sort(function(a, b) {
                     var fa = a.dataset.folder.toLowerCase();
                     var fb = b.dataset.folder.toLowerCase();
-                    // Keep Root first
                     if (fa === 'root') return -1;
                     if (fb === 'root') return 1;
                     return fa.localeCompare(fb);
@@ -648,51 +626,9 @@
                         modelParts.appendChild(g);
                     }
                 });
-
-                isNested = true;
-                nestBtn.classList.add('active');
-                nestBtn.setAttribute('aria-pressed', 'true');
             }
 
-            function unnestFolders() {
-                // Restore original header text on nested groups
-                originalPositions.forEach(function(pos) {
-                    if (pos.el.dataset.origHeaderHtml) {
-                        var headerEl = pos.el.querySelector(':scope > .parts-group-header');
-                        if (headerEl) headerEl.innerHTML = pos.el.dataset.origHeaderHtml;
-                        delete pos.el.dataset.origHeaderHtml;
-                    }
-                });
-
-                // Restore original groups to their positions
-                originalPositions.forEach(function(pos) {
-                    pos.el.classList.remove('nested-subfolder');
-                    if (pos.next && pos.next.parentNode === pos.parent) {
-                        pos.parent.insertBefore(pos.el, pos.next);
-                    } else {
-                        pos.parent.appendChild(pos.el);
-                    }
-                });
-                originalPositions = [];
-
-                // Remove virtual parent groups
-                createdVirtualGroups.forEach(function(g) { g.remove(); });
-                createdVirtualGroups = [];
-
-                isNested = false;
-                nestBtn.classList.remove('active');
-                nestBtn.setAttribute('aria-pressed', 'false');
-            }
-
-            nestBtn.addEventListener('click', function() {
-                if (isNested) {
-                    unnestFolders();
-                } else {
-                    nestFolders();
-                }
-            });
-
-            if (ModelPageConfig.nestFolders) {
+            if (ModelPageConfig.nestFolders && hasNestableRelationships()) {
                 nestFolders();
             }
         })();
