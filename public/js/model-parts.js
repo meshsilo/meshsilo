@@ -603,6 +603,13 @@
                         var parentList = parentGroup.querySelector(':scope > .parts-list');
                         if (parentList) {
                             group.classList.add('nested-subfolder');
+                            // Collapse nested subfolders by default; session storage '0' means user explicitly opened it
+                            var ssKey = 'model_' + ModelPageConfig.modelId + '_folder_' + folder;
+                            if (sessionStorage.getItem(ssKey) !== '0') {
+                                group.classList.add('collapsed');
+                                var groupHeader = group.querySelector(':scope > .parts-group-header');
+                                if (groupHeader) groupHeader.setAttribute('aria-expanded', 'false');
+                            }
                             parentList.appendChild(group);
                         }
                     }
