@@ -586,7 +586,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     <div class="info-item"><span class="info-label">Models</span><span class="info-value" id="model-count"><?= number_format($metrics['model_count']) ?></span></div>
                     <div class="info-item"><span class="info-label">Users</span><span class="info-value" id="user-count"><?= number_format($metrics['user_count']) ?></span></div>
                     <div class="info-item"><span class="info-label">Uptime</span><span class="info-value"><?= $metrics['uptime'] ?></span></div>
-                    <div class="info-item"><span class="info-label">Version</span><span class="info-value"><?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0' ?></span></div>
+                    <div class="info-item"><span class="info-label">Version</span><span class="info-value"><?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '0.5.0' ?></span></div>
                 </div>
             </div>
         </div>

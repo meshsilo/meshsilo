@@ -1,7 +1,7 @@
 <?php
 
 // MeshSilo Version — resolved from VERSION file, git tag, or fallback
-$_version = '1.0.5';
+$_version = '0.5.0';
 $_versionFile = __DIR__ . '/../VERSION';
 if (file_exists($_versionFile) && trim(file_get_contents($_versionFile)) !== '') {
     $_version = trim(file_get_contents($_versionFile));
