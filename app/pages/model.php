@@ -18,7 +18,7 @@ if (!$modelId) {
 }
 
 // Get model details
-$stmt = $db->prepare('SELECT id, name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path, part_count, print_type, original_size, file_hash, dedup_path, created_at, updated_at, is_archived, thumbnail_path, dim_x, dim_y, dim_z, dim_unit, user_id, notes, license, download_count, current_version, upload_status FROM models WHERE id = :id');
+$stmt = $db->prepare('SELECT id, name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path, part_count, print_type, original_size, file_hash, dedup_path, created_at, updated_at, is_archived, thumbnail_path, dim_x, dim_y, dim_z, dim_unit, user_id, notes, license, download_count, current_version, upload_status, nest_folders FROM models WHERE id = :id');
 $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
