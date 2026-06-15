@@ -79,8 +79,8 @@ Debug::init();
 require_once __DIR__ . '/db.php';
 
 // Register autoloader for lazy-loaded classes (SignedUrl, Events, TwoFactor,
-// Integrity, Scheduler, AuditLogger, Mail, Queue, Validator, QueryBuilder,
-// Search, HttpCache, Asset, Cache, Csrf, RateLimiter, Encryption, etc.)
+// Integrity, Scheduler, AuditLogger, Mail, Queue, Validator,
+// Search, Asset, Cache, Csrf, RateLimiter, Encryption, etc.)
 require_once __DIR__ . '/Autoloader.php';
 
 // Load site configuration from database (batch load for performance)
@@ -141,8 +141,8 @@ if (!interface_exists('MiddlewareInterface')) {
 require_once __DIR__ . '/ErrorHandler.php';
 
 // All other classes (Queue, Mail, SignedUrl, Events, TwoFactor, Integrity,
-// Scheduler, AuditLogger, Csrf, Validator, QueryBuilder, Cache, Search,
-// Asset, HttpCache, RateLimiter, Encryption) are autoloaded on first use
+// Scheduler, AuditLogger, Csrf, Validator, Cache, Search,
+// Asset, RateLimiter, Encryption) are autoloaded on first use
 // via the Autoloader registered above.
 
 // Load plugin system
