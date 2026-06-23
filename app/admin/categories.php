@@ -35,16 +35,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
     if (isset($_POST['add_category'])) {
         $name = trim($_POST['category_name'] ?? '');
         if (!empty($name)) {
-            try {
-                $stmt = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
-                $stmt->bindValue(':name', $name, PDO::PARAM_STR);
-                $stmt->execute();
-                invalidateCategoriesCache();
-                $message = 'Category added successfully.';
-                header('Location: ' . route('admin.categories', [], ['success' => '1']));
-                exit;
-            } catch (Exception $e) {
-                $error = 'Category already exists.';
+            $dupCheck = $db->prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(:name)');
+            $dupCheck->bindValue(':name', $name, PDO::PARAM_STR);
+            $dupResult = $dupCheck->execute();
+            if ($dupResult && $dupResult->fetchArray(PDO::FETCH_ASSOC)) {
+                $error = 'A category with this name already exists.';
+            } else {
+                try {
+                    $stmt = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
+                    $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+                    $stmt->execute();
+                    invalidateCategoriesCache();
+                    $message = 'Category added successfully.';
+                    header('Location: ' . route('admin.categories', [], ['success' => '1']));
+                    exit;
+                } catch (Exception $e) {
+                    $error = 'Category already exists.';
+                }
             }
         } else {
             $error = 'Please enter a category name.';

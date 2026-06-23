@@ -26,6 +26,13 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row['name'];
 }
 
+// Load distinct creators from existing models for autocomplete
+$result = $db->query("SELECT DISTINCT creator FROM models WHERE creator != '' ORDER BY creator LIMIT 200");
+$creators = [];
+while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+    $creators[] = $row['creator'];
+}
+
 // All uploads now go through the tus chunked upload endpoint (/actions/tus).
 // The old single-POST form handler has been removed. The HTML form below
 // collects metadata, but submission is intercepted by tus-js-client.
@@ -98,7 +105,12 @@ require_once 'includes/header.php';
                     <div class="advanced-content">
                         <div class="form-group">
                             <label for="model-creator">Creator</label>
-                            <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" autocomplete="name" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
+                            <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" autocomplete="off" list="creators-list" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
+                            <datalist id="creators-list">
+                                <?php foreach ($creators as $c): ?>
+                                <option value="<?= htmlspecialchars($c) ?>">
+                                <?php endforeach; ?>
+                            </datalist>
                         </div>
 
                         <div class="form-group">
@@ -125,6 +137,10 @@ require_once 'includes/header.php';
                                     <span><?= htmlspecialchars($category['name']) ?></span>
                                 </label>
                                 <?php endforeach; ?>
+                            </div>
+                            <div class="form-group" style="margin-top:0.75rem;margin-bottom:0">
+                                <input type="text" id="new-categories" class="form-input" placeholder="Add new categories (comma-separated, e.g. Minis, Terrain)">
+                                <small class="form-help">New categories will be created automatically. Existing names are matched without regard to capitalization.</small>
                             </div>
                         </fieldset>
                     </div>
@@ -287,7 +303,8 @@ require_once 'includes/header.php';
                     creator: document.getElementById('model-creator') ? document.getElementById('model-creator').value : '',
                     collection: document.getElementById('model-collection') ? document.getElementById('model-collection').value : '',
                     source_url: document.getElementById('model-source') ? document.getElementById('model-source').value : '',
-                    categories: JSON.stringify(categories)
+                    categories: JSON.stringify(categories),
+                    new_categories: document.getElementById('new-categories') ? document.getElementById('new-categories').value : ''
                 },
                 onProgress: function(bytesUploaded, bytesTotal) {
                     var percent = Math.round((bytesUploaded / bytesTotal) * 100);

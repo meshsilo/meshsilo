@@ -62,6 +62,13 @@ while ($row = $collResult->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row['name'];
 }
 
+// Load distinct creators for autocomplete
+$creators = [];
+$creatorsResult = $db->query("SELECT DISTINCT creator FROM models WHERE creator != '' ORDER BY creator LIMIT 200");
+while ($row = $creatorsResult->fetchArray(PDO::FETCH_ASSOC)) {
+    $creators[] = $row['creator'];
+}
+
 $message = '';
 $messageType = '';
 
@@ -74,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $license = trim($_POST['license'] ?? '');
     $collection = trim($_POST['collection'] ?? '');
     $categoryIds = $_POST['categories'] ?? [];
+    $newCategoryNames = array_filter(array_map('trim', explode(',', $_POST['new_categories'] ?? '')));
     $nestFolders = isset($_POST['nest_folders']) ? 1 : 0;
 
     if (!Csrf::validate()) {
@@ -83,6 +91,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'Name is required';
         $messageType = 'error';
     } else {
+        // Normalize collection: resolve to canonical name or insert as new
+        if (!empty($collection)) {
+            $colCheck = $db->prepare('SELECT name FROM collections WHERE LOWER(name) = LOWER(:name)');
+            $colCheck->bindValue(':name', $collection, PDO::PARAM_STR);
+            $colResult = $colCheck->execute();
+            $existingCol = $colResult ? $colResult->fetchArray(PDO::FETCH_ASSOC) : null;
+            if ($existingCol) {
+                $collection = $existingCol['name'];
+            } else {
+                try {
+                    $insColl = $db->prepare('INSERT INTO collections (name) VALUES (:name)');
+                    $insColl->bindValue(':name', $collection, PDO::PARAM_STR);
+                    $insColl->execute();
+                } catch (\Exception $e) {
+                    // ignore race condition
+                }
+            }
+        }
+
         // Update model
         $stmt = $db->prepare('UPDATE models SET name = :name, description = :description, creator = :creator, source_url = :source_url, license = :license, collection = :collection, nest_folders = :nest_folders WHERE id = :id');
         $stmt->bindValue(':name', $name);
@@ -95,27 +122,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
 
-        // Auto-create new collection (matches upload.php pattern)
-        if (!empty($collection)) {
-            try {
-                $insColl = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
-                $insColl->bindValue(':name', $collection, PDO::PARAM_STR);
-                $insColl->execute();
-            } catch (\Exception $e) {
-                // Ignore — already exists
-            }
-        }
-
         // Update categories using prepared statements
         $deleteStmt = $db->prepare('DELETE FROM model_categories WHERE model_id = :model_id');
         $deleteStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
         $deleteStmt->execute();
 
-        $insertStmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
+        $insertStmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
         foreach ($categoryIds as $catId) {
             $insertStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
             $insertStmt->bindValue(':category_id', (int)$catId, PDO::PARAM_INT);
             $insertStmt->execute();
+        }
+
+        // Create and link new categories typed by the user
+        if (!empty($newCategoryNames)) {
+            foreach ($newCategoryNames as $catName) {
+                $catCheck = $db->prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(:name)');
+                $catCheck->bindValue(':name', $catName, PDO::PARAM_STR);
+                $catResult = $catCheck->execute();
+                $existingCat = $catResult ? $catResult->fetchArray(PDO::FETCH_ASSOC) : null;
+                if ($existingCat) {
+                    $catId = (int)$existingCat['id'];
+                } else {
+                    $catInsert = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
+                    $catInsert->bindValue(':name', $catName, PDO::PARAM_STR);
+                    $catInsert->execute();
+                    $catId = (int)$db->lastInsertRowID();
+                    if (function_exists('invalidateCategoriesCache')) {
+                        invalidateCategoriesCache();
+                    }
+                }
+                // Add to categories list so checkboxes reflect it on the refresh below
+                if (!in_array($catId, $categoryIds)) {
+                    $catInsertLink = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
+                    $catInsertLink->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+                    $catInsertLink->bindValue(':category_id', $catId, PDO::PARAM_INT);
+                    $catInsertLink->execute();
+                }
+            }
         }
 
         logActivity('edit', 'model', $modelId, $name);
@@ -129,7 +173,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $stmt->execute();
         $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
-        // Refresh categories
+        // Refresh all categories (new ones may have been created above)
+        $categories = [];
+        $catListResult = $db->query('SELECT * FROM categories ORDER BY name');
+        while ($row = $catListResult->fetchArray(PDO::FETCH_ASSOC)) {
+            $categories[] = $row;
+        }
+
+        // Refresh selected categories for this model
         $stmt = $db->prepare('SELECT category_id FROM model_categories WHERE model_id = :model_id');
         $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
         $catIdsResult = $stmt->execute();
@@ -175,7 +226,12 @@ require_once 'includes/header.php';
 
                 <div class="form-group">
                     <label for="creator">Creator</label>
-                    <input type="text" id="creator" name="creator" class="form-input" value="<?= htmlspecialchars($model['creator'] ?? '') ?>">
+                    <input type="text" id="creator" name="creator" class="form-input" autocomplete="off" list="creators-list" value="<?= htmlspecialchars($model['creator'] ?? '') ?>">
+                    <datalist id="creators-list">
+                        <?php foreach ($creators as $c): ?>
+                        <option value="<?= htmlspecialchars($c) ?>">
+                        <?php endforeach; ?>
+                    </datalist>
                 </div>
 
                 <div class="form-group">
@@ -202,9 +258,9 @@ require_once 'includes/header.php';
                     </select>
                 </div>
 
-                <?php if (!empty($categories)): ?>
                 <fieldset class="form-group">
                     <legend>Categories</legend>
+                    <?php if (!empty($categories)): ?>
                     <div class="checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
                         <?php foreach ($categories as $cat): ?>
                         <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem;">
@@ -213,8 +269,12 @@ require_once 'includes/header.php';
                         </label>
                         <?php endforeach; ?>
                     </div>
+                    <?php endif; ?>
+                    <div class="form-group" style="margin-top:0.75rem;margin-bottom:0">
+                        <input type="text" name="new_categories" class="form-input" placeholder="Add new categories (comma-separated, e.g. Minis, Terrain)">
+                        <small class="form-help">New categories will be created automatically. Existing names are matched without regard to capitalization.</small>
+                    </div>
                 </fieldset>
-                <?php endif; ?>
 
                 <div class="form-group">
                     <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem;">

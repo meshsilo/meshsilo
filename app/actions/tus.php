@@ -146,6 +146,36 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
     $collection = isset($metadata['collection']) ? base64_decode($metadata['collection']) : '';
     $sourceUrl = isset($metadata['source_url']) ? base64_decode($metadata['source_url']) : '';
     $categories = isset($metadata['categories']) ? json_decode(base64_decode($metadata['categories']), true) : [];
+    $newCategoryNames = isset($metadata['new_categories'])
+        ? array_filter(array_map('trim', explode(',', base64_decode($metadata['new_categories']))))
+        : [];
+
+    // Normalize collection name: match case-insensitively to the canonical stored name,
+    // or insert it if it's genuinely new.
+    if (!empty($collection)) {
+        $colCheck = $db->prepare('SELECT name FROM collections WHERE LOWER(name) = LOWER(:name)');
+        $colCheck->bindValue(':name', $collection, PDO::PARAM_STR);
+        $colResult = $colCheck->execute();
+        $existingCol = $colResult ? $colResult->fetchArray(PDO::FETCH_ASSOC) : null;
+        if ($existingCol) {
+            $collection = $existingCol['name'];
+        } else {
+            try {
+                $colInsert = $db->prepare('INSERT INTO collections (name) VALUES (:name)');
+                $colInsert->bindValue(':name', $collection, PDO::PARAM_STR);
+                $colInsert->execute();
+            } catch (\Exception $e) {
+                // Race condition: another request inserted it first - fetch the canonical name
+                $colCheck2 = $db->prepare('SELECT name FROM collections WHERE LOWER(name) = LOWER(:name)');
+                $colCheck2->bindValue(':name', $collection, PDO::PARAM_STR);
+                $colResult2 = $colCheck2->execute();
+                $existing2 = $colResult2 ? $colResult2->fetchArray(PDO::FETCH_ASSOC) : null;
+                if ($existing2) {
+                    $collection = $existing2['name'];
+                }
+            }
+        }
+    }
 
     // Create parent model row with pending_upload status
     $folderId = uniqid();
@@ -168,24 +198,39 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
 
     $modelId = (int)$db->lastInsertRowID();
 
-    // Link categories
+    // Link existing categories
     if (!empty($categories)) {
         foreach ($categories as $catId) {
-            $catStmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:mid, :cid)');
+            $catStmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:mid, :cid)');
             $catStmt->bindValue(':mid', $modelId, PDO::PARAM_INT);
             $catStmt->bindValue(':cid', (int)$catId, PDO::PARAM_INT);
             $catStmt->execute();
         }
     }
 
-    // Add collection if new
-    if (!empty($collection)) {
-        try {
-            $stmt = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
-            $stmt->bindValue(':name', $collection, PDO::PARAM_STR);
-            $stmt->execute();
-        } catch (\Exception $e) {
-            // Ignore
+    // Create and link new categories typed by the user
+    if (!empty($newCategoryNames)) {
+        foreach ($newCategoryNames as $catName) {
+            // Find existing category case-insensitively
+            $catCheck = $db->prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(:name)');
+            $catCheck->bindValue(':name', $catName, PDO::PARAM_STR);
+            $catResult = $catCheck->execute();
+            $existingCat = $catResult ? $catResult->fetchArray(PDO::FETCH_ASSOC) : null;
+            if ($existingCat) {
+                $catId = (int)$existingCat['id'];
+            } else {
+                $catInsert = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
+                $catInsert->bindValue(':name', $catName, PDO::PARAM_STR);
+                $catInsert->execute();
+                $catId = (int)$db->lastInsertRowID();
+                if (function_exists('invalidateCategoriesCache')) {
+                    invalidateCategoriesCache();
+                }
+            }
+            $catLink = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:mid, :cid)');
+            $catLink->bindValue(':mid', $modelId, PDO::PARAM_INT);
+            $catLink->bindValue(':cid', $catId, PDO::PARAM_INT);
+            $catLink->execute();
         }
     }
 

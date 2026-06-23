@@ -30,15 +30,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         $name = trim($_POST['collection_name'] ?? '');
         $description = trim($_POST['collection_description'] ?? '');
         if (!empty($name)) {
-            try {
-                $stmt = $db->prepare('INSERT INTO collections (name, description) VALUES (:name, :description)');
-                $stmt->bindValue(':name', $name, PDO::PARAM_STR);
-                $stmt->bindValue(':description', $description, PDO::PARAM_STR);
-                $stmt->execute();
-                header('Location: ' . route('admin.collections', [], ['success' => '1']));
-                exit;
-            } catch (Exception $e) {
-                $error = 'Collection already exists.';
+            $dupCheck = $db->prepare('SELECT id FROM collections WHERE LOWER(name) = LOWER(:name)');
+            $dupCheck->bindValue(':name', $name, PDO::PARAM_STR);
+            $dupResult = $dupCheck->execute();
+            if ($dupResult && $dupResult->fetchArray(PDO::FETCH_ASSOC)) {
+                $error = 'A collection with this name already exists.';
+            } else {
+                try {
+                    $stmt = $db->prepare('INSERT INTO collections (name, description) VALUES (:name, :description)');
+                    $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+                    $stmt->bindValue(':description', $description, PDO::PARAM_STR);
+                    $stmt->execute();
+                    header('Location: ' . route('admin.collections', [], ['success' => '1']));
+                    exit;
+                } catch (Exception $e) {
+                    $error = 'Collection already exists.';
+                }
             }
         } else {
             $error = 'Please enter a collection name.';
