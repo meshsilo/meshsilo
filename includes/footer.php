@@ -1,5 +1,6 @@
     </main>
 
+<?php if (empty($minimalHeader)): ?>
     <footer class="site-footer">
         <div class="footer-content">
             <div class="footer-brand">
@@ -42,6 +43,7 @@
         </div>
         <?php endif; ?>
     </footer>
+<?php endif; ?>
 
 <?php if (class_exists('PluginManager')) : ?>
     <?= PluginManager::applyFilter('footer_content', '') ?>

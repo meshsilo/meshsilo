@@ -653,7 +653,8 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
 })();
 </script>
 </head>
-<body>
+<body<?= !empty($bodyClass) ? ' class="' . htmlspecialchars($bodyClass) . '"' : '' ?>>
+<?php if (empty($minimalHeader)): ?>
     <a href="#main-content" class="skip-to-content">Skip to content</a>
     <header class="site-header">
         <div class="header-content">
@@ -760,5 +761,6 @@ endif; ?>
             </div>
         </div>
     </header>
+<?php endif; ?>
 
-    <main id="main-content">
+    <main id="main-content"<?= !empty($minimalHeader) ? ' class="auth-main"' : '' ?>>
