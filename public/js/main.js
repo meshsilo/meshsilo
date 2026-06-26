@@ -8,6 +8,7 @@ class LazyModelLoader {
     constructor() {
         this.observer = null;
         this.loadedViewers = new WeakSet();
+        this.pendingElements = new Set();
         this.init();
     }
 
@@ -21,6 +22,19 @@ class LazyModelLoader {
         document.querySelectorAll('.model-thumbnail[data-model-url], .model-list-thumbnail[data-model-url], .model-detail-thumbnail[data-model-url]').forEach(el => {
             this.observer.observe(el);
         });
+
+        // THREE.js loads async from CDN - retry elements that fired before it was ready
+        if (!window.THREE_READY) {
+            window.addEventListener('three-ready', () => this.retryFailed(), { once: true });
+        }
+    }
+
+    retryFailed() {
+        this.pendingElements.forEach(el => {
+            this.observer.unobserve(el);
+            this.observer.observe(el);
+        });
+        this.pendingElements.clear();
     }
 
     handleIntersection(entries) {
@@ -40,6 +54,8 @@ class LazyModelLoader {
         // Check if required libraries are available
         if (typeof THREE === 'undefined' || typeof window.ModelViewer === 'undefined') {
             DEBUG && console.warn('3D viewer libraries not loaded');
+            this.loadedViewers.delete(thumbnail);
+            this.pendingElements.add(thumbnail);
             return;
         }
 
