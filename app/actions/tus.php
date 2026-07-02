@@ -116,6 +116,32 @@ if (!empty($response['complete'])) {
 exit;
 
 /**
+ * Only allow http/https or relative source URLs to be stored - blocks
+ * javascript:, data:, and other dangerous schemes from being persisted and
+ * later rendered as a link. Anything with a non-http(s) scheme becomes ''.
+ */
+function tusSanitizeSourceUrl(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '';
+    }
+    // Reject control-character obfuscation (e.g. "java\tscript:"): browsers strip
+    // these before resolving the scheme, so they'd sneak past the check below as a
+    // "relative" URL. A legitimate URL contains no raw control characters.
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+        return '';
+    }
+    // Has an explicit scheme? Only http/https are permitted.
+    if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*:#', $url)) {
+        $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+        return in_array($scheme, ['http', 'https'], true) ? $url : '';
+    }
+    // No scheme -> relative URL, allowed as-is.
+    return $url;
+}
+
+/**
  * Dispatch background processing for a completed upload.
  *
  * Creates a parent model row (pending_upload) and queues the ProcessUpload job.
@@ -144,7 +170,7 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
     $description = isset($metadata['description']) ? base64_decode($metadata['description']) : '';
     $creator = isset($metadata['creator']) ? base64_decode($metadata['creator']) : '';
     $collection = isset($metadata['collection']) ? base64_decode($metadata['collection']) : '';
-    $sourceUrl = isset($metadata['source_url']) ? base64_decode($metadata['source_url']) : '';
+    $sourceUrl = isset($metadata['source_url']) ? tusSanitizeSourceUrl(base64_decode($metadata['source_url'])) : '';
     $categories = isset($metadata['categories']) ? json_decode(base64_decode($metadata['categories']), true) : [];
     $newCategoryNames = isset($metadata['new_categories'])
         ? array_filter(array_map('trim', explode(',', base64_decode($metadata['new_categories']))))

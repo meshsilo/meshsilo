@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_secret {$varchar(255)},
     two_factor_backup_codes TEXT,
     two_factor_enabled_at $ts NULL,
+    two_factor_last_used $bigint,
     storage_limit_mb $int DEFAULT 0,
     model_limit $int DEFAULT 0,
     created_at $ts DEFAULT CURRENT_TIMESTAMP
@@ -214,6 +215,7 @@ CREATE TABLE IF NOT EXISTS model_versions (
     changelog TEXT,
     created_by $int,
     created_at $ts DEFAULT CURRENT_TIMESTAMP,
+    {$uniqueKey('unique_model_version', 'model_id, version_number')},
     FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 )$engine;
@@ -805,6 +807,7 @@ function ensureColumns($db)
         'two_factor_secret' => $type === 'mysql' ? 'VARCHAR(255)' : 'TEXT',
         'two_factor_backup_codes' => 'TEXT',
         'two_factor_enabled_at' => $type === 'mysql' ? 'DATETIME' : 'DATETIME',
+        'two_factor_last_used' => $type === 'mysql' ? 'BIGINT' : 'INTEGER',
         'storage_limit_mb' => 'INTEGER DEFAULT 0',
         'model_limit' => 'INTEGER DEFAULT 0',
     ];

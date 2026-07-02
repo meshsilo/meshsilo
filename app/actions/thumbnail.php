@@ -363,6 +363,12 @@ function resizeThumbnail($filePath, $maxDimension) {
     $width = $info[0];
     $height = $info[1];
 
+    // Decompression-bomb guard: refuse to decode images beyond a sane pixel
+    // budget (~40 MP) so a small file can't blow up GD's memory on decode.
+    if (($width * $height) > 40000000) {
+        return;
+    }
+
     if ($width <= $maxDimension && $height <= $maxDimension) {
         return; // No resize needed
     }

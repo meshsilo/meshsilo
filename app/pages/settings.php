@@ -101,6 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
 
+            // Invalidate all other sessions for this user after a password change,
+            // keeping the current session active.
+            require_once __DIR__ . '/../../includes/DatabaseSessionHandler.php';
+            if (class_exists('DatabaseSessionHandler') && method_exists('DatabaseSessionHandler', 'destroyUserSessions')) {
+                DatabaseSessionHandler::destroyUserSessions((int)$userId, session_id());
+            }
+
             $message = 'Password changed successfully.';
 
             logAuthEvent('password_change', $user['username'], true, ['user_id' => $userId]);
@@ -190,7 +197,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             <div class="password-wrapper">
                                 <input type="password" id="current_password" name="current_password" class="form-input"
                                        placeholder="Enter your current password" required autocomplete="current-password">
-                                <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                                <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </div>
                         <div class="form-row-grid">
@@ -199,7 +206,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="password-wrapper">
                                     <input type="password" id="new_password" name="new_password" class="form-input"
                                            minlength="8" placeholder="Minimum 8 characters" required autocomplete="new-password" aria-describedby="pw-strength-text">
-                                    <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                                    <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><i class="fa-solid fa-eye"></i></button>
                                 </div>
                                 <div class="password-strength"><div class="password-strength-bar" id="pw-strength-bar"></div></div>
                                 <div class="password-strength-text" id="pw-strength-text"></div>
@@ -209,7 +216,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <div class="password-wrapper">
                                     <input type="password" id="confirm_password" name="confirm_password" class="form-input"
                                            placeholder="Re-enter new password" required autocomplete="new-password">
-                                    <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                                    <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><i class="fa-solid fa-eye"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -246,7 +253,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             $hasPerm = in_array($perm, $userPermissions);
                         ?>
                         <div class="permission-item <?= $hasPerm ? 'has-permission' : 'no-permission' ?>">
-                            <span class="permission-status"><?= $hasPerm ? '&#10003;' : '&#10005;' ?></span>
+                            <span class="permission-status"><?= $hasPerm ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>' ?></span>
                             <span class="permission-name"><?= htmlspecialchars($desc) ?></span>
                         </div>
                         <?php endforeach; ?>

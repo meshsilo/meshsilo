@@ -15,7 +15,7 @@
                 const data = await response.json();
                 if (data.success) {
                     btn.classList.toggle('favorited', data.favorited);
-                    btn.innerHTML = data.favorited ? '&#9829;' : '&#9825;';
+                    btn.innerHTML = data.favorited ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
                     btn.title = data.favorited ? 'Remove from favorites' : 'Add to favorites';
                 }
             } catch (err) {
@@ -118,24 +118,29 @@
                 const matching = allTags.filter(t => t.name.toLowerCase().includes(value));
                 if (matching.length === 0 && value.length > 0) {
                     // Show option to create new tag
-                    tagSuggestions.innerHTML = `
-                        <button type="button" class="tag-suggestion" onclick="addTag('${value.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: var(--color-primary);"></span>
-                            <span>Create "${value}"</span>
-                        </button>
-                    `;
+                    const safeValue = escapeHtml(value);
+                    tagSuggestions.innerHTML =
+                        '<button type="button" class="tag-suggestion" data-tag-name="' + safeValue + '">' +
+                            '<span class="tag-color-dot" style="background-color: var(--color-primary);"></span>' +
+                            '<span>Create "' + safeValue + '"</span>' +
+                        '</button>';
                 } else {
                     tagSuggestions.innerHTML = matching.map(t => {
                         const safeColor = t.color && /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$/.test(t.color) ? t.color : '#6b7280';
-                        return `
-                        <button type="button" class="tag-suggestion" onclick="addTagById(${t.id}, '${t.name.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: ${safeColor};"></span>
-                            <span>${t.name}</span>
-                        </button>
-                    `;
+                        const safeName = escapeHtml(t.name);
+                        return '<button type="button" class="tag-suggestion" data-tag-id="' + t.id + '" data-tag-name="' + safeName + '">' +
+                            '<span class="tag-color-dot" style="background-color: ' + safeColor + ';"></span>' +
+                            '<span>' + safeName + '</span>' +
+                        '</button>';
                     }).join('');
                 }
                 tagSuggestions.style.display = matching.length > 0 || value.length > 0 ? 'block' : 'none';
+            });
+
+            // Delegated: tag suggestion clicks
+            tagSuggestions.addEventListener('click', function(e) {
+                const btn = e.target.closest('.tag-suggestion');
+                if (btn) addTag(btn.dataset.tagName);
             });
 
             tagInput.addEventListener('keydown', function(e) {
@@ -171,10 +176,6 @@
             } catch (err) {
                 console.error('Failed to add tag:', err);
             }
-        }
-
-        async function addTagById(_tagId, tagName) {
-            await addTag(tagName);
         }
 
         async function removeTag(modelId, tagId, element) {
@@ -248,7 +249,7 @@
                     item.innerHTML =
                         '<span class="model-link-type type-' + escapeHtml(link.link_type) + '">' + escapeHtml(link.link_type) + '</span>' +
                         '<a href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener noreferrer" class="model-link-title">' + escapeHtml(link.title) + '</a>' +
-                        '<button type="button" class="model-link-delete" aria-label="Remove link" onclick="deleteModelLink(' + link.id + ')" title="Remove link">&times;</button>';
+                        '<button type="button" class="model-link-delete" aria-label="Remove link" onclick="deleteModelLink(' + link.id + ')" title="Remove link"><i class="fa-solid fa-xmark"></i></button>';
                     list.appendChild(item);
 
                     toggleAddLinkForm();

@@ -59,10 +59,10 @@
             lightbox.setAttribute('aria-modal', 'true');
             lightbox.innerHTML =
                 '<div class="lightbox-content">' +
-                    '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeLightbox()">&times;</button>' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image" onclick="lightboxNav(-1)">&#8249;</button>' : '') +
+                    '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></button>' +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image" onclick="lightboxNav(-1)"><i class="fa-solid fa-chevron-left"></i></button>' : '') +
                     '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(caption) + '" draggable="false">' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" aria-label="Next image" onclick="lightboxNav(1)">&#8250;</button>' : '') +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" aria-label="Next image" onclick="lightboxNav(1)"><i class="fa-solid fa-chevron-right"></i></button>' : '') +
                     '<div class="lightbox-caption">' + escapeHtml(caption) +
                     (hasMultiple ? ' <span class="lightbox-counter">' + (lightboxIndex + 1) + ' / ' + lightboxImages.length + '</span>' : '') +
                     '</div>' +
@@ -206,7 +206,7 @@
                         '<div class="doc-preview-actions">' +
                             '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-secondary" title="Open in new tab">Open</a>' +
                             '<a href="' + escapeHtml(src) + '" download class="btn btn-small btn-secondary" title="Download">Download</a>' +
-                            '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeDocumentPreview()">&times;</button>' +
+                            '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeDocumentPreview()"><i class="fa-solid fa-xmark"></i></button>' +
                         '</div>' +
                     '</div>' +
                     '<div class="doc-preview-body">' + contentHtml + '</div>' +
@@ -332,7 +332,7 @@
             thumbBtn.type = 'button';
             thumbBtn.className = 'attachment-set-thumb';
             thumbBtn.title = 'Set as model thumbnail';
-            thumbBtn.innerHTML = '&#128247;';
+            thumbBtn.innerHTML = '<i class="fa-solid fa-camera"></i>';
             thumbBtn.onclick = function() { setAttachmentAsThumbnail(att.attachment_id); };
 
             const deleteBtn = document.createElement('button');

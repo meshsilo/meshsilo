@@ -89,7 +89,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
         $phpIniPath = __DIR__ . '/../.user.ini';
     }
 
-    // Basic validation - check for valid ini format
+    // Basic validation - check for valid ini format.
+    // Security: only a fixed allowlist of safe size/time tuning directives may
+    // be written. Everything else is rejected (fail closed) so dangerous keys
+    // such as auto_prepend_file, auto_append_file, open_basedir,
+    // disable_functions, disable_classes, extension, zend_extension,
+    // include_path and error_log can never be injected through this editor;
+    // any of those would enable remote code execution or sandbox escape.
+    $allowedDirectives = [
+        'upload_max_filesize',
+        'post_max_size',
+        'memory_limit',
+        'max_execution_time',
+        'max_input_time',
+        'max_file_uploads',
+        'max_input_vars',
+    ];
     $lines = explode("\n", $content);
     $valid = true;
     $uploadSize = null;
@@ -105,8 +120,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
             $valid = false;
             break;
         }
+        // Reject any directive not on the safe allowlist
+        $directive = strtolower(trim($matches[1]));
+        if (!in_array($directive, $allowedDirectives, true)) {
+            $error = "Directive not allowed on line " . ($lineNum + 1) . ": "
+                . htmlspecialchars(trim($matches[1]))
+                . ". Only these may be changed: " . implode(', ', $allowedDirectives) . ".";
+            $valid = false;
+            break;
+        }
         // Extract upload_max_filesize for nginx sync
-        if (trim($matches[1]) === 'upload_max_filesize') {
+        if ($directive === 'upload_max_filesize') {
             $uploadSize = trim($matches[2]);
         }
     }
@@ -289,7 +313,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                         <?php else: ?>
                         <div class="version-status up-to-date">
-                            <span class="status-icon" aria-hidden="true">&#10003;</span>
+                            <span class="status-icon" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
                             <span>You're running the latest version</span>
                         </div>
                         <?php endif; ?>

@@ -453,13 +453,13 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="stats-grid">
                 <div class="stat-card stat-card-large">
-                    <div class="stat-icon">&#9653;</div>
+                    <div class="stat-icon"><i class="fa-solid fa-cube"></i></div>
                     <div class="stat-value"><?= number_format($modelCount) ?></div>
                     <div class="stat-label">Models<?= $totalParts > 0 ? " ($totalParts parts)" : '' ?></div>
                 </div>
 
                 <div class="stat-card stat-card-large">
-                    <div class="stat-icon">&#128190;</div>
+                    <div class="stat-icon"><i class="fa-solid fa-hard-drive"></i></div>
                     <div class="stat-value"><?= formatBytes($actualStorage) ?></div>
                     <div class="stat-label">Storage Used (<?= number_format($fileCount) ?> files)</div>
                 </div>

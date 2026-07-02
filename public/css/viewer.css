@@ -77,7 +77,9 @@
 
 .model-thumbnail.load-error::before,
 .model-thumbnail.no-webgl::before {
-    content: '⬡';
+    content: '\f1b2';
+    font-family: "Font Awesome 7 Free";
+    font-weight: 900;
     font-size: 2.5rem;
     color: var(--color-text-muted);
     opacity: 0.6;
@@ -93,7 +95,7 @@
 }
 
 .model-thumbnail.load-error::before {
-    content: '⚠';
+    content: '\f071';
 }
 
 .model-thumbnail.load-error::after {

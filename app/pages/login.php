@@ -24,6 +24,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         logAuthEvent('login', $_POST['username'] ?? '', false, ['reason' => 'rate_limited', 'ip' => $ip]);
     }
 
+    // Also rate limit per account+source. Keying on username alone (with denied
+    // attempts counted) would let an attacker lock a victim out of their own
+    // account indefinitely by flooding their username; scoping to username+IP
+    // throttles single-source brute force without enabling that lockout DoS.
+    $loginUsername = strtolower(trim($_POST['username'] ?? ''));
+    if (!$error && $loginUsername !== '') {
+        $userRateResult = RateLimiter::check($loginUsername . '|' . $ip, 'anonymous', 'login_user');
+        if (!$userRateResult['allowed']) {
+            $error = 'Too many login attempts. Please try again in a few minutes.';
+            logAuthEvent('login', $_POST['username'] ?? '', false, ['reason' => 'rate_limited_account', 'ip' => $ip]);
+        }
+    }
+
     if (!$error) {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -53,6 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     unset($_SESSION['redirect_after_login']);
                 }
                 RateLimiter::reset($ip, 'login');
+                if ($loginUsername !== '') {
+                    RateLimiter::reset($loginUsername . '|' . $ip, 'login_user');
+                }
                 header('Location: ' . route('2fa.verify'));
                 exit;
             }
@@ -77,6 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Clear login attempts on success
             RateLimiter::reset($ip, 'login');
+            if ($loginUsername !== '') {
+                RateLimiter::reset($loginUsername . '|' . $ip, 'login_user');
+            }
 
             // Redirect to the page they were trying to access, or home
             $redirect = $_SESSION['redirect_after_login'] ?? null;
@@ -226,7 +245,7 @@ require_once 'includes/header.php';
                             autocomplete="current-password"
                         >
                         <button type="button" class="password-toggle" aria-label="Show password" title="Show password">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>

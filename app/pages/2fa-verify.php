@@ -23,6 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Too many verification attempts. Please try again in a few minutes.';
     }
 
+    // Also rate limit per pending account so 2FA codes can't be brute-forced
+    // across many IP addresses.
+    if (!$error) {
+        $userRateResult = RateLimiter::check('2fa:' . $userId, 'anonymous', '2fa_user');
+        if (!$userRateResult['allowed']) {
+            $error = 'Too many verification attempts. Please try again in a few minutes.';
+        }
+    }
+
     if (!$error) {
         $code = trim($_POST['code'] ?? '');
 
@@ -31,7 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Try TOTP code first, then backup code
             if (TwoFactor::verifyForUser($userId, $code)) {
-                // 2FA verified — grant full session
+                // 2FA verified - grant full session.
+                // Regenerate the session ID at this privilege elevation to
+                // prevent session fixation before granting the full session.
+                session_regenerate_id(true);
+
                 $pendingUser = $_SESSION['2fa_pending_user'];
                 $_SESSION['user_id'] = $pendingUser['id'];
                 $_SESSION['user'] = $pendingUser;

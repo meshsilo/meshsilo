@@ -44,28 +44,40 @@ ARG MESHSILO_VERSION=dev
 RUN echo "${MESHSILO_VERSION}" > /tmp/meshsilo-version
 
 # Copy application files
-COPY --chown=www-data:www-data . /var/www/meshsilo/
+# Owned root:www-data so application CODE is readable by the runtime user but
+# NOT writable by it (write access is re-granted to storage/ and plugins/ below).
+COPY --chown=root:www-data . /var/www/meshsilo/
 
 # Write VERSION file into the image
-RUN mv /tmp/meshsilo-version /var/www/meshsilo/VERSION && chown www-data:www-data /var/www/meshsilo/VERSION
+RUN mv /tmp/meshsilo-version /var/www/meshsilo/VERSION && chown root:www-data /var/www/meshsilo/VERSION
 
-# Create required directories with correct permissions
+# Create required directories, then lock down code ownership.
+# Application CODE is owned root:www-data and only READABLE by the runtime user
+# (dirs 755, files 644). Write access is then re-granted to the runtime dirs
+# (storage/, plugins/) so uploads/cache/logs/db and plugin installs still work.
 RUN mkdir -p /var/www/meshsilo/storage/assets \
     /var/www/meshsilo/storage/logs \
     /var/www/meshsilo/storage/db \
     /var/www/meshsilo/storage/cache \
     /var/www/meshsilo/storage/uploads/tus \
-    && chown -R www-data:www-data /var/www/meshsilo \
-    && chmod -R 755 /var/www/meshsilo \
+    /var/www/meshsilo/plugins \
+    && chown -R root:www-data /var/www/meshsilo \
+    && find /var/www/meshsilo -type d -exec chmod 755 {} \; \
+    && find /var/www/meshsilo -type f -exec chmod 644 {} \; \
+    && chown -R www-data:www-data /var/www/meshsilo/storage /var/www/meshsilo/plugins \
     && chmod -R 775 /var/www/meshsilo/storage/assets \
     /var/www/meshsilo/storage/logs \
     /var/www/meshsilo/storage/db \
     /var/www/meshsilo/storage/cache \
-    /var/www/meshsilo/storage/uploads/tus
+    /var/www/meshsilo/storage/uploads/tus \
+    /var/www/meshsilo/plugins
 
-# Copy nginx configuration (writable by www-data for admin UI upload size sync)
+# Copy nginx configuration.
+# Root-owned: www-data cannot edit it directly. The admin UI stages upload-size
+# changes and the root-owned reload script (meshsilo-reload, run via sudo)
+# applies the synced client_max_body_size.
 COPY docker/nginx.conf /etc/nginx/sites-available/default
-RUN chown www-data:www-data /etc/nginx/sites-available/default
+RUN chown root:root /etc/nginx/sites-available/default
 
 # Copy PHP-FPM configuration
 COPY docker/php-fpm.conf /etc/php/8.1/fpm/pool.d/www.conf
@@ -83,8 +95,10 @@ RUN echo "www-data ALL=(ALL) NOPASSWD: /usr/local/bin/meshsilo-reload" > /etc/su
     && chmod 440 /etc/sudoers.d/meshsilo
 
 # Configure PHP settings for file uploads (both FPM and CLI)
-# Create custom config files in conf.d to override defaults reliably
-# Owned by www-data so the admin UI can update them at runtime
+# Create custom config files in conf.d to override defaults reliably.
+# Root-owned: www-data cannot edit the APPLIED ini directly. The admin UI writes
+# only the staging file (storage/cache/php-meshsilo.ini); the root-owned reload
+# script regenerates this applied ini from the allowlist-filtered staging values.
 RUN echo "upload_max_filesize = 100M" > /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
     && echo "post_max_size = 105M" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
     && echo "memory_limit = 4G" >> /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
@@ -92,9 +106,7 @@ RUN echo "upload_max_filesize = 100M" > /etc/php/8.1/fpm/conf.d/99-meshsilo.ini 
     && echo "upload_max_filesize = 100M" > /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
     && echo "post_max_size = 105M" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
     && echo "memory_limit = 4G" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
-    && echo "max_execution_time = 300" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini \
-    && chown www-data:www-data /etc/php/8.1/fpm/conf.d/99-meshsilo.ini \
-    && chown www-data:www-data /etc/php/8.1/cli/conf.d/99-meshsilo.ini
+    && echo "max_execution_time = 300" >> /etc/php/8.1/cli/conf.d/99-meshsilo.ini
 
 # Configure OPcache for production performance with JIT and preloading
 RUN echo "opcache.enable=1" > /etc/php/8.1/fpm/conf.d/10-opcache-meshsilo.ini \

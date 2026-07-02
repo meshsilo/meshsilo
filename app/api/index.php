@@ -67,12 +67,30 @@ $subResource = $segments[2] ?? null;
 // Authenticate the request
 $apiUser = authenticateApiRequest();
 if (!$apiUser) {
+    // Throttle failed authentication per-IP so invalid keys can't be brute-forced
+    // for free. Only failed attempts are counted here, so valid requests are never
+    // double-charged against this bucket.
+    $authThrottle = RateLimiter::check(
+        'api-auth:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
+        'anonymous',
+        'api:auth'
+    );
+    RateLimiter::setHeaders($authThrottle);
+    if (!$authThrottle['allowed']) {
+        http_response_code(429);
+        echo json_encode([
+            'error' => 'Rate limit exceeded',
+            'retry_after' => $authThrottle['reset'] - time(),
+            'tier' => $authThrottle['tier']
+        ]);
+        exit;
+    }
     apiError('Unauthorized. Provide a valid API key via X-API-Key header or api_key parameter.', 401);
 }
 
 // Apply rate limiting
 $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
-$tier = RateLimiter::getTierForUser($apiUser['id'] ?? null, $apiKey);
+$tier = RateLimiter::getTierForUser($apiUser['user_id'] ?? null, $apiKey);
 $rateLimitResult = RateLimiter::check(
     $apiKey ?: ($apiUser['id'] ?? $_SERVER['REMOTE_ADDR']),
     $tier,

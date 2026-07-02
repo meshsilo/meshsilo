@@ -21,6 +21,10 @@ if (!$input) {
 
 requireCsrfJson();
 
+if (!canEdit()) {
+    jsonError('Permission denied', 403);
+}
+
 $user = getCurrentUser();
 $modelId = isset($input['model_id']) ? (int)$input['model_id'] : 0;
 $versionNumber = isset($input['version_number']) ? (int)$input['version_number'] : 0;
@@ -88,46 +92,80 @@ $newFilename = 'v' . $nextVersion . '_revert_from_v' . $versionNumber . '.' . $e
 $newFilePath = 'versions/' . $modelId . '/' . $newFilename;
 $fullNewPath = $versionDir . '/' . $newFilename;
 
-if (!copy($sourceFilePath, $fullNewPath)) {
-    jsonError('Failed to copy version file');
+// Persist the copied file, the new version row, and the model pointer atomically.
+$pdo = $db->getPDO();
+$useImmediate = ($db->getType() !== 'mysql');
+$fileType = strtolower($ext);
+
+if ($useImmediate) {
+    // SQLite: BEGIN IMMEDIATE takes the write lock up front. The Database wrapper
+    // exposes no beginTransaction(); transactions go through the raw PDO handle.
+    $db->exec('BEGIN IMMEDIATE');
+} else {
+    $pdo->beginTransaction();
 }
 
-// Get file info
-$fileSize = filesize($fullNewPath);
-$fileHash = $targetVersion['file_hash'];
-if (!$fileHash) {
-    $fileHash = calculateContentHash($fullNewPath, $ext);
+$copied = false;
+try {
+    if (!copy($sourceFilePath, $fullNewPath)) {
+        throw new RuntimeException('Failed to copy version file');
+    }
+    $copied = true;
+
+    // Get file info
+    $fileSize = filesize($fullNewPath);
+    $fileHash = $targetVersion['file_hash'];
+    if (!$fileHash) {
+        $fileHash = calculateContentHash($fullNewPath, $ext);
+    }
+
+    // Default changelog if not provided
+    if (empty($changelog)) {
+        $changelog = 'Reverted to version ' . $versionNumber;
+    }
+
+    // Add new version record
+    $newVersionId = addModelVersion($modelId, $newFilePath, $fileSize, $fileHash, $changelog, $user['id']);
+    if (!$newVersionId) {
+        throw new RuntimeException('Failed to create version record');
+    }
+
+    // Update main model to point to new version. file_type is included so it
+    // matches the extension of the file the model now points to.
+    $stmt = $db->prepare('
+        UPDATE models
+        SET file_path = :file_path,
+            file_size = :file_size,
+            file_hash = :file_hash,
+            file_type = :file_type,
+            current_version = :version
+        WHERE id = :id
+    ');
+    $stmt->bindValue(':file_path', $newFilePath, PDO::PARAM_STR);
+    $stmt->bindValue(':file_size', $fileSize, PDO::PARAM_INT);
+    $stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
+    $stmt->bindValue(':file_type', $fileType, PDO::PARAM_STR);
+    $stmt->bindValue(':version', $newVersionId, PDO::PARAM_INT);
+    $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+    $stmt->execute();
+
+    if ($useImmediate) {
+        $db->exec('COMMIT');
+    } else {
+        $pdo->commit();
+    }
+} catch (Throwable $e) {
+    if ($useImmediate) {
+        $db->exec('ROLLBACK');
+    } else {
+        $pdo->rollBack();
+    }
+    // Remove the copied file if it was created before the failure.
+    if ($copied && is_file($fullNewPath)) {
+        unlink($fullNewPath);
+    }
+    jsonError($e->getMessage() ?: 'Failed to revert version');
 }
-
-// Default changelog if not provided
-if (empty($changelog)) {
-    $changelog = 'Reverted to version ' . $versionNumber;
-}
-
-// Add new version record
-$newVersionId = addModelVersion($modelId, $newFilePath, $fileSize, $fileHash, $changelog, $user['id']);
-
-if (!$newVersionId) {
-    // Clean up file
-    unlink($fullNewPath);
-    jsonError('Failed to create version record');
-}
-
-// Update main model to point to new version
-$stmt = $db->prepare('
-    UPDATE models
-    SET file_path = :file_path,
-        file_size = :file_size,
-        file_hash = :file_hash,
-        current_version = :version
-    WHERE id = :id
-');
-$stmt->bindValue(':file_path', $newFilePath, PDO::PARAM_STR);
-$stmt->bindValue(':file_size', $fileSize, PDO::PARAM_INT);
-$stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
-$stmt->bindValue(':version', $newVersionId, PDO::PARAM_INT);
-$stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
-$stmt->execute();
 
 // Log activity
 logActivity('revert_version', 'model', $modelId, $model['name'] . ' reverted to v' . $versionNumber);

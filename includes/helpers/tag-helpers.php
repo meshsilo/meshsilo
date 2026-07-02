@@ -128,10 +128,16 @@ function removeTagFromModel($modelId, $tagId)
 // Create a new tag
 function createTag($name, $color = '#6366f1')
 {
+    // Sanitize: reject empty names and strip HTML metacharacters (defense-in-depth against stored XSS)
+    $name = trim($name);
+    if ($name === '') {
+        return false;
+    }
+    $name = preg_replace('/[<>"\']/', '', $name);
     try {
         $db = getDB();
         $stmt = $db->prepare('INSERT INTO tags (name, color) VALUES (:name, :color)');
-        $stmt->execute([':name' => trim($name), ':color' => $color]);
+        $stmt->execute([':name' => $name, ':color' => $color]);
         invalidateTagsCache();
         return $db->lastInsertId();
     } catch (Exception $e) {

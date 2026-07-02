@@ -138,8 +138,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         }
     }
 
-    // Generate unique filename
-    $filename = $file['name'];
+    // Generate unique filename - strip any path components and restrict to a
+    // safe charset so a client-controlled name cannot traverse out of $modelDir.
+    $filename = basename($file['name']);
+    $filename = preg_replace('/[^A-Za-z0-9._-]/', '_', $filename);
     $baseName = pathinfo($filename, PATHINFO_FILENAME);
     $destPath = $modelDir . '/' . $subDir . $filename;
     $relativePath = $relativeDir . '/' . $subDir . $filename;
@@ -151,6 +153,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         $destPath = $modelDir . '/' . $subDir . $newFilename;
         $relativePath = $relativeDir . '/' . $subDir . $newFilename;
         $counter++;
+    }
+
+    // Containment assertion: the resolved destination directory must stay
+    // inside $modelDir (defense-in-depth on top of the filename sanitization).
+    $destDirReal = realpath(dirname($destPath));
+    $modelDirReal = realpath($modelDir);
+    if ($destDirReal === false || $modelDirReal === false || strpos($destDirReal, $modelDirReal) !== 0) {
+        jsonError('Invalid file path');
     }
 
     // Move uploaded file

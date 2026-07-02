@@ -78,6 +78,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = trim($_POST['description'] ?? '');
     $creator = trim($_POST['creator'] ?? '');
     $sourceUrl = trim($_POST['source_url'] ?? '');
+    // Reject control-character obfuscation (e.g. "java\tscript:") before the scheme
+    // test: parse_url() returns an empty scheme for these, but browsers strip the
+    // control chars and execute the underlying javascript: URL. A valid URL has none.
+    if ($sourceUrl !== '' && preg_match('/[\x00-\x1F\x7F]/', $sourceUrl)) {
+        $sourceUrl = '';
+    }
+    // Reject non-http(s) schemes (e.g. javascript:) to prevent stored XSS; allow empty and relative URLs.
+    $sourceScheme = strtolower((string)parse_url($sourceUrl, PHP_URL_SCHEME));
+    if ($sourceUrl !== '' && $sourceScheme !== '' && !in_array($sourceScheme, ['http', 'https'], true)) {
+        $sourceUrl = '';
+    }
     $license = trim($_POST['license'] ?? '');
     $collection = trim($_POST['collection'] ?? '');
     $categoryIds = $_POST['categories'] ?? [];
@@ -200,7 +211,7 @@ require_once 'includes/header.php';
         <div class="page-container">
             <div class="page-header">
                 <h1>Edit Model</h1>
-                <p><a href="<?= route('model.show', ['id' => $modelId]) ?>">&larr; Back to model</a></p>
+                <p><a href="<?= route('model.show', ['id' => $modelId]) ?>"><i class="fa-solid fa-arrow-left"></i> Back to model</a></p>
             </div>
 
             <?php if ($message): ?>
@@ -290,7 +301,7 @@ require_once 'includes/header.php';
                         <?php foreach ($modelTags as $tag): ?>
                         <span class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>;" data-tag-id="<?= $tag['id'] ?>">
                             <?= htmlspecialchars($tag['name']) ?>
-                            <button type="button" class="model-tag-remove" aria-label="Remove tag <?= htmlspecialchars($tag['name']) ?>">&times;</button>
+                            <button type="button" class="model-tag-remove" aria-label="Remove tag <?= htmlspecialchars($tag['name']) ?>"><i class="fa-solid fa-xmark"></i></button>
                         </span>
                         <?php endforeach; ?>
                     </div>

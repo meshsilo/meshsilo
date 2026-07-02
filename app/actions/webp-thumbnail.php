@@ -322,9 +322,18 @@ function convertImageToWebP($relativePath, $quality = 80) {
         return ['success' => false, 'error' => 'Invalid image file'];
     }
 
+    // Decompression-bomb guard: refuse to decode images beyond a sane pixel
+    // budget (~40 MP) so a small file can't exhaust memory on decode.
+    if (($imageInfo[0] * $imageInfo[1]) > 40000000) {
+        return ['success' => false, 'error' => 'Image too large to process'];
+    }
+
     try {
         // Try Imagick first (better quality)
         if (extension_loaded('imagick') && in_array('WEBP', \Imagick::queryFormats())) {
+            // Cap Imagick memory/map usage as an extra guard on decode.
+            \Imagick::setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 512 * 1024 * 1024);
+            \Imagick::setResourceLimit(\Imagick::RESOURCETYPE_MAP, 512 * 1024 * 1024);
             $imagick = new \Imagick($fullPath);
             $imagick->setImageFormat('webp');
             $imagick->setImageCompressionQuality($quality);

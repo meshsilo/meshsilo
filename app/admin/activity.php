@@ -83,15 +83,15 @@ while ($row = $usersResult->fetchArray(PDO::FETCH_ASSOC)) {
 // Helper for action icons
 function getActionIcon($action) {
     return match($action) {
-        'upload' => '&#8593;',
-        'download' => '&#8595;',
-        'delete' => '&#10005;',
-        'edit', 'update', 'add_tag', 'remove_tag' => '&#9998;',
-        'login' => '&#8594;',
-        'logout' => '&#8592;',
-        'favorite', 'unfavorite' => '&#9829;',
-        'archive', 'unarchive' => '&#128451;',
-        default => '&#8226;'
+        'upload' => '<i class="fa-solid fa-upload"></i>',
+        'download' => '<i class="fa-solid fa-download"></i>',
+        'delete' => '<i class="fa-solid fa-trash"></i>',
+        'edit', 'update', 'add_tag', 'remove_tag' => '<i class="fa-solid fa-pen"></i>',
+        'login' => '<i class="fa-solid fa-right-to-bracket"></i>',
+        'logout' => '<i class="fa-solid fa-right-from-bracket"></i>',
+        'favorite', 'unfavorite' => '<i class="fa-solid fa-heart"></i>',
+        'archive', 'unarchive' => '<i class="fa-solid fa-box-archive"></i>',
+        default => '<i class="fa-solid fa-circle"></i>'
     };
 }
 
@@ -188,7 +188,7 @@ require_once __DIR__ . '/../../includes/header.php';
                             </div>
                         </div>
                         <?php if ($activity['entity_id'] && $activity['entity_type'] === 'model'): ?>
-                        <a href="<?= route('model.show', ['id' => $activity['entity_id']]) ?>" class="btn btn-small btn-secondary" title="View">&#8594;</a>
+                        <a href="<?= route('model.show', ['id' => $activity['entity_id']]) ?>" class="btn btn-small btn-secondary" title="View"><i class="fa-solid fa-arrow-right"></i></a>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>

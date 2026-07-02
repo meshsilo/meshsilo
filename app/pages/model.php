@@ -363,7 +363,7 @@ require_once 'includes/header.php';
                                 <?php endif; ?>
                                 <?php if (isFeatureEnabled('favorites')): ?>
                                 <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>" aria-label="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
-                                    <span aria-hidden="true"><?= $isFavorited ? '&#9829;' : '&#9825;' ?></span>
+                                    <span aria-hidden="true"><?= $isFavorited ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>' ?></span>
                                 </button>
                                 <?php endif; ?>
                             </div>
@@ -423,7 +423,7 @@ require_once 'includes/header.php';
                             <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none;">
                                 <?= htmlspecialchars($tag['name']) ?>
                                 <?php if (canEdit()): ?>
-                                <button type="button" class="model-tag-remove" aria-label="Remove tag" data-tag-id="<?= $tag['id'] ?>" title="Remove tag">&times;</button>
+                                <button type="button" class="model-tag-remove" aria-label="Remove tag" data-tag-id="<?= $tag['id'] ?>" title="Remove tag"><i class="fa-solid fa-xmark"></i></button>
                                 <?php endif; ?>
                             </a>
                             <?php endforeach; ?>
@@ -453,7 +453,7 @@ require_once 'includes/header.php';
                                     <span class="model-link-type type-<?= htmlspecialchars($link['link_type']) ?>"><?= htmlspecialchars($link['link_type']) ?></span>
                                     <a href="<?= htmlspecialchars($link['url']) ?>" target="_blank" rel="noopener noreferrer" class="model-link-title"><?= htmlspecialchars($link['title']) ?></a>
                                     <?php if (canEdit()): ?>
-                                    <button type="button" class="model-link-delete" aria-label="Remove link" title="Remove link">&times;</button>
+                                    <button type="button" class="model-link-delete" aria-label="Remove link" title="Remove link"><i class="fa-solid fa-xmark"></i></button>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -589,7 +589,7 @@ require_once 'includes/header.php';
                 <div class="model-parts">
                     <div class="parts-header">
                         <?php if (count($groupedParts) > 1): ?>
-                        <button type="button" class="collapse-all-toggle" title="Collapse/expand all groups" aria-label="Collapse/expand all groups">&#9660;</button>
+                        <button type="button" class="collapse-all-toggle" title="Collapse/expand all groups" aria-label="Collapse/expand all groups"><i class="fa-solid fa-chevron-down"></i></button>
                         <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
                         <input type="checkbox" class="select-all-checkbox" id="select-all-parts" title="Select all parts" aria-label="Select all parts">
@@ -623,7 +623,7 @@ require_once 'includes/header.php';
                         <?php $multiFolder = count($groupedParts) > 1; ?>
                         <?php if ($multiFolder): ?>
                         <h3 class="parts-group-header" tabindex="0" role="button" aria-expanded="<?= $autoCollapse ? 'false' : 'true' ?>">
-                            <span class="folder-toggle" aria-hidden="true"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
+                            <span class="folder-toggle" aria-hidden="true"><?= $autoCollapse ? '<i class="fa-solid fa-chevron-right"></i>' : '<i class="fa-solid fa-chevron-down"></i>' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
                             <input type="checkbox" class="folder-checkbox" title="Select all parts in this folder" aria-label="Select all parts in this folder">
                             <?php endif; ?>
@@ -658,7 +658,7 @@ require_once 'includes/header.php';
                             <?php foreach ($dirParts as $part): $partIndex++; ?>
                             <div class="part-item<?= ($partIndex > $partLimit && count($dirParts) > $partLimit) ? ' part-hidden' : '' ?>" data-part-id="<?= $part['id'] ?>" data-part-path="/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
                                 <?php if (canEdit()): ?>
-                                <span class="drag-handle" title="Drag to reorder" aria-hidden="true">&#8942;&#8942;</span>
+                                <span class="drag-handle" title="Drag to reorder" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>
                                 <?php endif; ?>
                                 <?php if (canEdit() || canDelete()): ?>
                                 <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>" aria-label="Select <?= htmlspecialchars($part['name']) ?>">
@@ -690,7 +690,7 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                     <div class="dropdown part-actions-dropdown">
                                         <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="More actions" aria-haspopup="true" aria-expanded="false">
-                                            &#8943;
+                                            <i class="fa-solid fa-ellipsis"></i>
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right" role="menu">
                                             <button type="button" class="dropdown-item calc-dimensions-btn" role="menuitem" data-part-id="<?= $part['id'] ?>">Calculate Dimensions</button>
@@ -747,7 +747,7 @@ require_once 'includes/header.php';
                     <?php if (isFeatureEnabled('attachments') && (!empty($attachments['images']) || !empty($attachments['documents']) || canEdit())): ?>
                     <div class="model-attachments collapsible-section">
                         <h3 class="collapsible-header" tabindex="0" role="button" aria-expanded="true">
-                            <span class="folder-toggle" aria-hidden="true">&#9660;</span>
+                            <span class="folder-toggle" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
                             Attachments
                         </h3>
                         <div class="collapsible-body">
@@ -765,8 +765,8 @@ require_once 'includes/header.php';
                                          data-lightbox-src="<?= htmlspecialchars('/assets/' . $att['file_path']) ?>" data-lightbox-alt="<?= htmlspecialchars($att['original_filename']) ?>"
                                         >
                                     <?php if (canEdit()): ?>
-                                    <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" title="Set as model thumbnail">&#128247;</button>
-                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
+                                    <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" title="Set as model thumbnail"><i class="fa-solid fa-camera"></i></button>
+                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete"><i class="fa-solid fa-xmark"></i></button>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -787,7 +787,7 @@ require_once 'includes/header.php';
                                     </a>
                                     <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>
                                     <?php if (canEdit()): ?>
-                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
+                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete"><i class="fa-solid fa-xmark"></i></button>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -820,7 +820,7 @@ require_once 'includes/header.php';
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3 id="preview-part-name">Part Preview</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div id="part-preview-container" style="width: 100%; height: 400px;"></div>
@@ -834,7 +834,7 @@ require_once 'includes/header.php';
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3 id="create-folder-title">Create Folder</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <form id="create-folder-form" method="post">
@@ -853,7 +853,7 @@ require_once 'includes/header.php';
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3 id="move-folder-title">Move to Folder</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div id="move-folder-list" class="folder-picker">
@@ -883,7 +883,7 @@ require_once 'includes/header.php';
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3 id="upload-version-title">Upload New Version</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <form id="upload-version-form" method="post">
@@ -906,7 +906,7 @@ require_once 'includes/header.php';
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3 id="batch-rename-title">Batch Rename Parts</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">

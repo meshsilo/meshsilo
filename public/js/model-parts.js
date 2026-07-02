@@ -557,8 +557,8 @@
                     el.dataset.virtual = 'true';
                     el.innerHTML =
                         '<h3 class="parts-group-header" tabindex="0" role="button" aria-expanded="true">' +
-                            '<span class="folder-toggle" aria-hidden="true">&#9660;</span> ' +
-                            name +
+                            '<span class="folder-toggle" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span> ' +
+                            escapeHtml(name) +
                             (childCount ? ' <span class="folder-part-count">(' + childCount + ')</span>' : '') +
                         '</h3>' +
                         '<div class="parts-list"></div>';
@@ -819,6 +819,8 @@
         (function() {
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js';
+            script.integrity = 'sha384-HZZ/fukV+9G8gwTNjN7zQDG0Sp7MsZy5DDN6VfY3Be7V9dvQpEpR2jF2HlyFUUjU';
+            script.crossOrigin = 'anonymous';
             script.onload = initSortable;
             document.head.appendChild(script);
         })();

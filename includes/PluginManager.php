@@ -887,9 +887,70 @@ class PluginManager
         }
     }
 
+    /**
+     * Validate that a URL's host resolves only to public IP addresses.
+     * Prevents SSRF against loopback / private / link-local targets:
+     * RFC1918 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 127.0.0.0/8,
+     * 169.254.0.0/16, ::1, fc00::/7, and other reserved ranges. Fails closed
+     * when the host cannot be resolved.
+     *
+     * SHORTCUT: pre-fetch DNS check only (TOCTOU / DNS-rebinding still possible);
+     * pin the resolved IP into the fetch if plugin registry URLs ever become
+     * attacker-controlled rather than admin-entered.
+     */
+    private function isPublicUrl(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        if (empty($host)) {
+            return false;
+        }
+
+        // Strip IPv6 literal brackets, e.g. [::1]
+        $host = trim($host, '[]');
+
+        // Collect candidate IPs: a literal host, or DNS-resolved A/AAAA records
+        $ips = [];
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $ips[] = $host;
+        } else {
+            $v4 = gethostbynamel($host);
+            if (is_array($v4)) {
+                $ips = array_merge($ips, $v4);
+            }
+            $records = @dns_get_record($host, DNS_AAAA);
+            if (is_array($records)) {
+                foreach ($records as $record) {
+                    if (!empty($record['ipv6'])) {
+                        $ips[] = $record['ipv6'];
+                    }
+                }
+            }
+        }
+
+        // Could not resolve to any address -- fail closed
+        if (empty($ips)) {
+            return false;
+        }
+
+        // Reject if ANY resolved IP is private, reserved, loopback or link-local
+        foreach ($ips as $ip) {
+            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function addRepository(string $name, string $url): bool
     {
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        // Block SSRF: refuse repositories that point at private/internal hosts
+        if (!$this->isPublicUrl($url)) {
+            logWarning('Blocked plugin repository with non-public host', ['url' => $url]);
             return false;
         }
 
@@ -922,6 +983,12 @@ class PluginManager
         // Validate URL scheme to prevent SSRF
         $scheme = parse_url($repoUrl, PHP_URL_SCHEME);
         if (!in_array(strtolower($scheme ?? ''), ['http', 'https'], true)) {
+            return null;
+        }
+
+        // Block SSRF: refuse to fetch from private/internal hosts
+        if (!$this->isPublicUrl($repoUrl)) {
+            logWarning('Blocked plugin registry fetch to non-public host', ['url' => $repoUrl]);
             return null;
         }
 

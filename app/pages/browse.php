@@ -161,8 +161,8 @@ require_once 'includes/header.php';
                     </select>
 
                     <div class="view-toggle">
-                        <a href="<?= BrowseQuery::buildUrl(['view' => 'grid']) ?>" class="view-toggle-btn <?= $view === 'grid' ? 'active' : '' ?>" title="Grid view">&#9638;</a>
-                        <a href="<?= BrowseQuery::buildUrl(['view' => 'list']) ?>" class="view-toggle-btn <?= $view === 'list' ? 'active' : '' ?>" title="List view">&#9776;</a>
+                        <a href="<?= BrowseQuery::buildUrl(['view' => 'grid']) ?>" class="view-toggle-btn <?= $view === 'grid' ? 'active' : '' ?>" title="Grid view"><i class="fa-solid fa-table-cells"></i></a>
+                        <a href="<?= BrowseQuery::buildUrl(['view' => 'list']) ?>" class="view-toggle-btn <?= $view === 'list' ? 'active' : '' ?>" title="List view"><i class="fa-solid fa-list"></i></a>
                     </div>
                 </div>
 
@@ -239,14 +239,14 @@ require_once 'includes/header.php';
                     <?php if ($search): ?>
                     <span class="filter-chip">
                         Search: <?= htmlspecialchars($search) ?>
-                        <a href="<?= BrowseQuery::buildUrl(['q' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove search filter">&times;</a>
+                        <a href="<?= BrowseQuery::buildUrl(['q' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove search filter"><i class="fa-solid fa-xmark"></i></a>
                     </span>
                     <?php endif; ?>
 
                     <?php if (isFeatureEnabled('categories') && $activeCategory): ?>
                     <span class="filter-chip">
                         <?= htmlspecialchars($activeCategory) ?>
-                        <a href="<?= BrowseQuery::buildUrl(['category' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove category filter">&times;</a>
+                        <a href="<?= BrowseQuery::buildUrl(['category' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove category filter"><i class="fa-solid fa-xmark"></i></a>
                     </span>
                     <?php endif; ?>
 
@@ -254,7 +254,7 @@ require_once 'includes/header.php';
                         <?php foreach ($activeTags as $activeTag): ?>
                         <span class="filter-chip" style="background-color: <?= htmlspecialchars($activeTag['color']) ?>">
                             <?= htmlspecialchars($activeTag['name']) ?>
-                            <a href="<?= BrowseQuery::buildUrlWithoutTag($activeTag['id']) ?>" class="filter-chip-remove" aria-label="Remove tag filter">&times;</a>
+                            <a href="<?= BrowseQuery::buildUrlWithoutTag($activeTag['id']) ?>" class="filter-chip-remove" aria-label="Remove tag filter"><i class="fa-solid fa-xmark"></i></a>
                         </span>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -262,21 +262,21 @@ require_once 'includes/header.php';
                     <?php if ($fileType !== ''): ?>
                     <span class="filter-chip">
                         Type: <?= htmlspecialchars(strtoupper($fileType)) ?>
-                        <a href="<?= BrowseQuery::buildUrl(['file_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove file type filter">&times;</a>
+                        <a href="<?= BrowseQuery::buildUrl(['file_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove file type filter"><i class="fa-solid fa-xmark"></i></a>
                     </span>
                     <?php endif; ?>
 
                     <?php if ($printType !== ''): ?>
                     <span class="filter-chip">
                         Print: <?= htmlspecialchars(strtoupper($printType)) ?>
-                        <a href="<?= BrowseQuery::buildUrl(['print_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove print type filter">&times;</a>
+                        <a href="<?= BrowseQuery::buildUrl(['print_type' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove print type filter"><i class="fa-solid fa-xmark"></i></a>
                     </span>
                     <?php endif; ?>
 
                     <?php if ($collection !== ''): ?>
                     <span class="filter-chip">
                         Collection: <?= htmlspecialchars($collection) ?>
-                        <a href="<?= BrowseQuery::buildUrl(['collection' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove collection filter">&times;</a>
+                        <a href="<?= BrowseQuery::buildUrl(['collection' => null, 'page' => 1]) ?>" class="filter-chip-remove" aria-label="Remove collection filter"><i class="fa-solid fa-xmark"></i></a>
                     </span>
                     <?php endif; ?>
                 </div>

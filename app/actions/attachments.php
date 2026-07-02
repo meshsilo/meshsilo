@@ -50,8 +50,8 @@ switch ($action) {
     if (function_exists('logException')) {
         logException($e, ['action' => 'attachments']);
     }
-    http_response_code(500);
-    jsonError($e->getMessage());
+    // Do not leak internal exception details to the client
+    jsonError('An error occurred processing the attachment', 500);
 }
 
 /**

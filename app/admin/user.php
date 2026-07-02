@@ -102,6 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
 
+            // Force the target user to re-authenticate everywhere by destroying
+            // their sessions. When an admin edits their own account, keep the
+            // current session so they are not logged out mid-request.
+            require_once __DIR__ . '/../../includes/DatabaseSessionHandler.php';
+            if (class_exists('DatabaseSessionHandler') && method_exists('DatabaseSessionHandler', 'destroyUserSessions')) {
+                DatabaseSessionHandler::destroyUserSessions((int)$userId, $isCurrentUser ? session_id() : null);
+            }
+
             $message = 'Password changed successfully.';
             logAdmin('User password changed', ['user_id' => $userId, 'username' => $user['username']]);
             logAudit('Password changed by admin', ['target_user_id' => $userId, 'target_username' => $user['username']]);
@@ -172,7 +180,7 @@ require_once __DIR__ . '/../../includes/header.php';
             <div class="admin-content">
                 <div class="page-header">
                     <h1>
-                        <a href="<?= route('admin.users') ?>" class="back-link" aria-label="Back to users">&larr;</a>
+                        <a href="<?= route('admin.users') ?>" class="back-link" aria-label="Back to users"><i class="fa-solid fa-arrow-left"></i></a>
                         Edit User: <?= htmlspecialchars($user['username']) ?>
                         <?php if ($user['is_admin']): ?>
                         <span class="badge badge-admin">Admin</span>
@@ -279,7 +287,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 $hasPerm = in_array($perm, $userPermissions);
                             ?>
                             <div class="permission-item <?= $hasPerm ? 'has-permission' : 'no-permission' ?>">
-                                <span class="permission-status"><?= $hasPerm ? '&#10003;' : '&#10005;' ?></span>
+                                <span class="permission-status"><?= $hasPerm ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>' ?></span>
                                 <span class="permission-name"><?= htmlspecialchars($desc) ?></span>
                             </div>
                             <?php endforeach; ?>

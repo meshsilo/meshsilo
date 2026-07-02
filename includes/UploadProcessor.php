@@ -13,6 +13,11 @@ declare(strict_types=1);
  */
 class UploadProcessor
 {
+    // Decompression-bomb guards for zip extraction.
+    private const MAX_ZIP_TOTAL_UNCOMPRESSED = 2147483648; // 2 GB total uncompressed
+    private const MAX_ZIP_ENTRIES = 10000;                 // reject archives with too many entries
+    private const MAX_ZIP_COMPRESSION_RATIO = 100;         // per-entry uncompressed/compressed ceiling
+
     /**
      * Process a single model file upload.
      *
@@ -85,6 +90,33 @@ class UploadProcessor
             return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'Failed to open ZIP file'];
         }
         $zipEntryCount = $zip->numFiles;
+
+        // Decompression-bomb guard: enforce an entry-count cap, a total
+        // uncompressed-size cap, and a per-entry compression-ratio ceiling
+        // BEFORE extracting anything to disk.
+        if ($zipEntryCount > self::MAX_ZIP_ENTRIES) {
+            $zip->close();
+            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'ZIP archive has too many entries (' . $zipEntryCount . ')'];
+        }
+        $totalUncompressed = 0;
+        for ($i = 0; $i < $zipEntryCount; $i++) {
+            $stat = $zip->statIndex($i);
+            if ($stat === false) {
+                continue;
+            }
+            $totalUncompressed += (int)$stat['size'];
+            if ($totalUncompressed > self::MAX_ZIP_TOTAL_UNCOMPRESSED) {
+                $zip->close();
+                return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'ZIP archive uncompressed size exceeds the allowed limit'];
+            }
+            // Only flag entries that are both highly compressed and non-trivial
+            // in size, so ordinary small text/config files are not rejected.
+            if ($stat['comp_size'] > 0 && $stat['size'] > 1048576
+                && ($stat['size'] / $stat['comp_size']) > self::MAX_ZIP_COMPRESSION_RATIO) {
+                $zip->close();
+                return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'ZIP archive contains an entry with a suspicious compression ratio'];
+            }
+        }
         $zip->close();
 
         $extractDir = sys_get_temp_dir() . '/silo_' . uniqid();
@@ -302,6 +334,31 @@ class UploadProcessor
             return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'Failed to open ZIP file'];
         }
 
+        // Decompression-bomb guard (mirrors processZip): reject archives with too
+        // many entries or an implausible total/per-entry uncompressed size before
+        // writing anything to disk.
+        if ($zip->numFiles > self::MAX_ZIP_ENTRIES) {
+            $zip->close();
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'ZIP has too many entries'];
+        }
+        $totalUncompressed = 0;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            if ($stat === false) {
+                continue;
+            }
+            $totalUncompressed += $stat['size'];
+            if ($totalUncompressed > self::MAX_ZIP_TOTAL_UNCOMPRESSED) {
+                $zip->close();
+                return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'ZIP uncompressed size exceeds limit'];
+            }
+            if ($stat['size'] > 1048576 && $stat['comp_size'] > 0
+                && ($stat['size'] / $stat['comp_size']) > self::MAX_ZIP_COMPRESSION_RATIO) {
+                $zip->close();
+                return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'ZIP entry compression ratio exceeds limit'];
+            }
+        }
+
         $extractDir = sys_get_temp_dir() . '/silo_addparts_' . uniqid();
         mkdir($extractDir, 0755, true);
         $realExtractDir = realpath($extractDir);
@@ -398,7 +455,8 @@ class UploadProcessor
 
     public static function createModelFolder(?string $folderName = null): string
     {
-        $folderId = $folderName ?? uniqid();
+        // Unguessable folder id (uniqid() is time-based and predictable).
+        $folderId = $folderName ?? bin2hex(random_bytes(16));
         $folderPath = UPLOAD_PATH . $folderId . '/';
         if (!file_exists($folderPath)) {
             mkdir($folderPath, 0755, true);
@@ -432,13 +490,31 @@ class UploadProcessor
         $subDir = '';
         if ($originalPath && dirname($originalPath) !== '.') {
             $subDir = preg_replace('/[^a-zA-Z0-9._\/-]/', '_', dirname($originalPath));
-            $subDir = trim($subDir, '/') . '/';
+            // The charset above still permits '..' - strip traversal sequences
+            // until stable so a crafted original_path cannot escape the folder.
+            do {
+                $prev = $subDir;
+                $subDir = str_replace(['../', '..\\', '..'], '', $subDir);
+            } while ($subDir !== $prev);
+            $subDir = trim($subDir, '/');
+            $subDir = $subDir === '' ? '' : $subDir . '/';
             $folderPath .= $subDir;
         }
 
         $filePath = $folderPath . $filename;
         if (!file_exists($folderPath)) {
             mkdir($folderPath, 0755, true);
+        }
+
+        // Containment assertion: the resolved destination directory must stay
+        // under UPLOAD_PATH before we write anything (defense-in-depth).
+        $destDirReal = realpath(dirname($filePath));
+        $baseReal = realpath(UPLOAD_PATH);
+        if ($destDirReal === false || $baseReal === false || strpos($destDirReal, $baseReal) !== 0) {
+            if (function_exists('logWarning')) {
+                logWarning('saveModelFile: destination escaped upload path', ['file_path' => $filePath]);
+            }
+            return false;
         }
 
         $moved = @rename($tmpPath, $filePath);
@@ -452,8 +528,13 @@ class UploadProcessor
             return false;
         }
 
+        // Set ownership from the current session so ownership checks are not
+        // no-ops on main-path uploads. Null when there is no session (e.g. CLI).
+        $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
+        $userId = is_array($currentUser) ? ($currentUser['id'] ?? null) : null;
+
         try {
-            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash, description, creator, collection, source_url, parent_id, original_path) VALUES (:name, :filename, :file_path, :file_size, :file_type, :file_hash, :description, :creator, :collection, :source_url, :parent_id, :original_path)');
+            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, file_hash, description, creator, collection, source_url, parent_id, original_path, user_id) VALUES (:name, :filename, :file_path, :file_size, :file_type, :file_hash, :description, :creator, :collection, :source_url, :parent_id, :original_path, :user_id)');
             $stmt->bindValue(':name', $name, PDO::PARAM_STR);
             $stmt->bindValue(':filename', $filename, PDO::PARAM_STR);
             $stmt->bindValue(':file_path', 'assets/' . $folderId . '/' . $subDir . $filename, PDO::PARAM_STR);
@@ -466,6 +547,7 @@ class UploadProcessor
             $stmt->bindValue(':source_url', '', PDO::PARAM_STR);
             $stmt->bindValue(':parent_id', $parentId, PDO::PARAM_INT);
             $stmt->bindValue(':original_path', $originalPath, PDO::PARAM_STR);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stmt->execute();
 
             $modelId = (int)$db->lastInsertRowID();
@@ -499,8 +581,13 @@ class UploadProcessor
      */
     public static function createParentModel($db, array $metadata, int $totalSize, string $folderId)
     {
+        // Owner: prefer an explicitly supplied user_id (e.g. background job),
+        // otherwise fall back to the current session. Null when neither exists.
+        $currentUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
+        $userId = $metadata['user_id'] ?? (is_array($currentUser) ? ($currentUser['id'] ?? null) : null);
+
         try {
-            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, creator, collection, source_url, part_count) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :creator, :collection, :source_url, 0)');
+            $stmt = $db->prepare('INSERT INTO models (name, filename, file_path, file_size, file_type, description, creator, collection, source_url, part_count, user_id) VALUES (:name, :filename, :file_path, :file_size, :file_type, :description, :creator, :collection, :source_url, 0, :user_id)');
             $stmt->bindValue(':name', $metadata['name'] ?? '', PDO::PARAM_STR);
             $stmt->bindValue(':filename', $folderId, PDO::PARAM_STR);
             $stmt->bindValue(':file_path', 'assets/' . $folderId, PDO::PARAM_STR);
@@ -510,6 +597,7 @@ class UploadProcessor
             $stmt->bindValue(':creator', $metadata['creator'] ?? '', PDO::PARAM_STR);
             $stmt->bindValue(':collection', $metadata['collection'] ?? '', PDO::PARAM_STR);
             $stmt->bindValue(':source_url', $metadata['source_url'] ?? '', PDO::PARAM_STR);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stmt->execute();
 
             $parentId = (int)$db->lastInsertRowID();

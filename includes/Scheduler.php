@@ -596,17 +596,28 @@ class Scheduler
                     }
 
                     foreach ($orphanedRows as $row) {
-                        // Remove the assets folder if it exists
-                        $assetDir = __DIR__ . '/../storage/' . ($row['file_path'] ?? '');
-                        if (is_dir($assetDir)) {
-                            $files = new \RecursiveIteratorIterator(
-                                new \RecursiveDirectoryIterator($assetDir, \RecursiveDirectoryIterator::SKIP_DOTS),
-                                \RecursiveIteratorIterator::CHILD_FIRST
-                            );
-                            foreach ($files as $f) {
-                                $f->isDir() ? @rmdir($f->getRealPath()) : @unlink($f->getRealPath());
+                        // Remove the assets folder if it exists.
+                        // Guard: an empty file_path would resolve to the storage/
+                        // root and the recursive delete would wipe everything, so
+                        // skip empty paths. Also require the resolved realpath to be
+                        // strictly INSIDE storage/assets/ before any recursive delete.
+                        $filePath = $row['file_path'] ?? '';
+                        if ($filePath !== '') {
+                            $assetDir = __DIR__ . '/../storage/' . $filePath;
+                            $base = realpath(__DIR__ . '/../storage/assets');
+                            $real = realpath($assetDir);
+                            if ($base !== false && $real !== false
+                                && strpos($real, $base . DIRECTORY_SEPARATOR) === 0
+                                && is_dir($real)) {
+                                $files = new \RecursiveIteratorIterator(
+                                    new \RecursiveDirectoryIterator($real, \RecursiveDirectoryIterator::SKIP_DOTS),
+                                    \RecursiveIteratorIterator::CHILD_FIRST
+                                );
+                                foreach ($files as $f) {
+                                    $f->isDir() ? @rmdir($f->getRealPath()) : @unlink($f->getRealPath());
+                                }
+                                @rmdir($real);
                             }
-                            @rmdir($assetDir);
                         }
                         $delStmt = $db->prepare("DELETE FROM models WHERE id = :id");
                         $delStmt->bindValue(':id', $row['id'], PDO::PARAM_INT);

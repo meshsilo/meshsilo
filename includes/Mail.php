@@ -222,10 +222,24 @@ class Mail
      */
     public function template(string $name, array $data = []): self
     {
-        $__templatePath = dirname(__DIR__) . '/templates/email/' . $name . '.php';
+        // Prevent local file inclusion via path traversal
+        $name = basename($name);
+        if (!preg_match('/^[A-Za-z0-9_-]+$/', $name)) {
+            throw new \Exception("Invalid email template name: $name");
+        }
+
+        $__templateDir = dirname(__DIR__) . '/templates/email/';
+        $__templatePath = $__templateDir . $name . '.php';
 
         if (!file_exists($__templatePath)) {
             throw new \Exception("Email template not found: $name");
+        }
+
+        // Ensure the resolved path stays within the templates directory
+        $__realPath = realpath($__templatePath);
+        $__realDir = realpath($__templateDir);
+        if ($__realPath === false || $__realDir === false || strpos($__realPath, $__realDir . DIRECTORY_SEPARATOR) !== 0) {
+            throw new \Exception("Invalid email template path: $name");
         }
 
         // Filter out reserved variable names to prevent injection attacks
@@ -371,10 +385,19 @@ class Mail
     {
         $headers = $this->buildHeaders();
         $body = $this->buildBody();
+        $headerString = implode("\r\n", $headers);
 
         $to = $this->formatRecipients($this->to);
 
-        return mail($to, $this->subject, $body, implode("\r\n", $headers));
+        $result = mail($to, $this->subject, $body, $headerString);
+
+        // Deliver BCC recipients individually so their addresses are never
+        // exposed in a Bcc header seen by other recipients.
+        foreach ($this->bcc as $recipient) {
+            $result = mail($recipient['email'], $this->subject, $body, $headerString) && $result;
+        }
+
+        return $result;
     }
 
     /**
@@ -388,8 +411,14 @@ class Mail
         $password = $this->config['password'];
         $encryption = $this->config['encryption'];
 
-        // Connect to SMTP server
-        $context = stream_context_create();
+        // Connect to SMTP server with an authenticated TLS context
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+                'peer_name' => $host,
+            ],
+        ]);
 
         if ($encryption === 'ssl') {
             $host = 'ssl://' . $host;
@@ -417,7 +446,10 @@ class Mail
         // STARTTLS if needed
         if ($encryption === 'tls') {
             $this->smtpCommand($socket, "STARTTLS");
-            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if (stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) !== true) {
+                fclose($socket);
+                throw new \Exception("Failed to establish STARTTLS encryption with SMTP server");
+            }
             $this->smtpCommand($socket, "EHLO " . gethostname());
         }
 
@@ -444,7 +476,11 @@ class Mail
         $this->smtpCommand($socket, "DATA");
 
         // Send headers and body
-        $message = implode("\r\n", $this->buildHeaders()) . "\r\n\r\n" . $this->buildBody();
+        $message = implode("\r\n", $this->buildSmtpHeaders()) . "\r\n\r\n" . $this->buildBody();
+        // Normalize to CRLF line endings and dot-stuff per RFC 5321 so a body
+        // line beginning with '.' cannot truncate DATA or smuggle commands.
+        $message = preg_replace('/\r\n|\r|\n/', "\r\n", $message);
+        $message = preg_replace('/(^|\r\n)\./', '$1..', $message);
         fwrite($socket, $message . "\r\n.\r\n");
         $this->smtpGetResponse($socket);
 
@@ -531,10 +567,8 @@ class Mail
             $headers[] = "Cc: " . $this->formatRecipients($this->cc);
         }
 
-        // BCC
-        if (!empty($this->bcc)) {
-            $headers[] = "Bcc: " . $this->formatRecipients($this->bcc);
-        }
+        // BCC recipients are delivered via the envelope (SMTP RCPT TO or
+        // individual mail() sends), never as a header, to avoid disclosure.
 
         // Content type
         $boundary = $this->boundary;
@@ -558,6 +592,36 @@ class Mail
     }
 
     /**
+     * Build headers for the SMTP path, adding Subject/To/Date which the
+     * mail() function otherwise supplies separately.
+     */
+    private function buildSmtpHeaders(): array
+    {
+        $headers = $this->buildHeaders();
+        $smtpHeaders = [
+            "Subject: " . $this->encodeHeader($this->subject),
+            "To: " . $this->formatRecipients($this->to),
+            "Date: " . date('r'),
+        ];
+        // Insert right after the From header produced by buildHeaders().
+        array_splice($headers, 1, 0, $smtpHeaders);
+        return $headers;
+    }
+
+    /**
+     * Encode a header value using RFC 2047 when it contains non-ASCII,
+     * with an ASCII-safe fallback when mbstring is unavailable.
+     */
+    private function encodeHeader(string $value): string
+    {
+        $value = $this->sanitizeHeaderValue($value);
+        if (function_exists('mb_encode_mimeheader') && preg_match('/[^\x20-\x7E]/', $value)) {
+            return mb_encode_mimeheader($value, 'UTF-8', 'B', '');
+        }
+        return $value;
+    }
+
+    /**
      * Build email body
      */
     private function buildBody(): string
@@ -572,10 +636,12 @@ class Mail
             $body .= chunk_split(base64_encode($this->body)) . "\r\n";
 
             foreach ($this->attachments as $attachment) {
+                $safeName = $this->sanitizeAttachmentName($attachment['name']);
+                $safeType = $this->sanitizeHeaderValue($attachment['type']);
                 $body .= "--{$boundary}\r\n";
-                $body .= "Content-Type: {$attachment['type']}; name=\"{$attachment['name']}\"\r\n";
+                $body .= "Content-Type: {$safeType}; name=\"{$safeName}\"\r\n";
                 $body .= "Content-Transfer-Encoding: base64\r\n";
-                $body .= "Content-Disposition: attachment; filename=\"{$attachment['name']}\"\r\n\r\n";
+                $body .= "Content-Disposition: attachment; filename=\"{$safeName}\"\r\n\r\n";
                 $body .= chunk_split(base64_encode(file_get_contents($attachment['path']))) . "\r\n";
             }
 
@@ -604,8 +670,41 @@ class Mail
     private function formatRecipients(array $recipients): string
     {
         return implode(', ', array_map(function ($r) {
-            return $r['name'] ? "{$r['name']} <{$r['email']}>" : $r['email'];
+            $name = $this->formatDisplayName($r['name']);
+            return $name !== '' ? "{$name} <{$r['email']}>" : $r['email'];
         }, $recipients));
+    }
+
+    /**
+     * Format a mailbox display name safely: strip control characters,
+     * RFC 2047 encode non-ASCII, and RFC 5322 quote names with specials.
+     */
+    private function formatDisplayName(string $name): string
+    {
+        $name = str_replace(["\r", "\n", "\0"], '', $name);
+        if ($name === '') {
+            return '';
+        }
+        if (function_exists('mb_encode_mimeheader') && preg_match('/[^\x20-\x7E]/', $name)) {
+            return mb_encode_mimeheader($name, 'UTF-8', 'B', '');
+        }
+        if (preg_match('/[<>,";:\\\\]/', $name)) {
+            return '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $name) . '"';
+        }
+        return $name;
+    }
+
+    /**
+     * Sanitize an attachment filename for MIME headers: strip control
+     * characters and double-quotes, RFC 2047 encode non-ASCII.
+     */
+    private function sanitizeAttachmentName(string $name): string
+    {
+        $name = str_replace(["\r", "\n", "\0", '"'], '', $name);
+        if (function_exists('mb_encode_mimeheader') && preg_match('/[^\x20-\x7E]/', $name)) {
+            return mb_encode_mimeheader($name, 'UTF-8', 'B', '');
+        }
+        return $name;
     }
 }
 

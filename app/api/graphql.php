@@ -11,6 +11,8 @@
 
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/GraphQL.php';
+require_once __DIR__ . '/../../includes/api-auth.php';
+require_once __DIR__ . '/../../includes/RateLimiter.php';
 
 header('Content-Type: application/json');
 
@@ -23,8 +25,12 @@ if (!$cors->handle([])) {
 
 // Get current user ID if authenticated
 $userId = null;
+// Session callers keep existing behavior (mutations gated per-resolver). API-key
+// callers may only run mutations when the key carries write/admin scope.
+$canMutate = true;
+$apiToken = null;
 if (isLoggedIn()) {
-    $userId = getCurrentUserId();
+    $userId = getCurrentUser()['id'] ?? null;
 } else {
     // Check for API key authentication via X-API-Key header or Authorization: Bearer
     $token = null;
@@ -37,14 +43,47 @@ if (isLoggedIn()) {
         }
     }
     if ($token) {
+        $apiToken = $token;
         $db = getDB();
-        $stmt = $db->prepare("SELECT user_id FROM api_keys WHERE key_hash = :hash AND is_active = 1 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)");
+        $stmt = $db->prepare("SELECT ak.user_id, ak.permissions, u.is_admin
+            FROM api_keys ak
+            JOIN users u ON ak.user_id = u.id
+            WHERE ak.key_hash = :hash AND ak.is_active = 1 AND (ak.expires_at IS NULL OR ak.expires_at > CURRENT_TIMESTAMP)");
         $stmt->execute([':hash' => hash('sha256', $token)]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row) {
             $userId = $row['user_id'];
+            // Reuse the REST permission convention: admin keys and admin users pass;
+            // otherwise the key must explicitly carry the write scope to mutate.
+            $apiKeyUser = [
+                'permissions_array' => json_decode($row['permissions'] ?? '', true) ?: [],
+                'is_admin' => $row['is_admin'],
+            ];
+            $canMutate = apiHasPermission($apiKeyUser, API_PERM_WRITE);
         }
     }
+}
+
+// Require authentication: reject if there is no valid session and no valid API key
+if ($userId === null) {
+    http_response_code(401);
+    echo json_encode([
+        'errors' => [['message' => 'Unauthorized. Provide a valid API key via X-API-Key header or Authorization: Bearer, or sign in.']]
+    ]);
+    exit;
+}
+
+// Apply rate limiting (mirrors the REST API entry point)
+$rateLimitKey = $apiToken ?: ($userId ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+$tier = RateLimiter::getTierForUser($userId, $apiToken);
+$rateLimitResult = RateLimiter::check($rateLimitKey, $tier, 'api:graphql');
+RateLimiter::setHeaders($rateLimitResult);
+if (!$rateLimitResult['allowed']) {
+    http_response_code(429);
+    echo json_encode([
+        'errors' => [['message' => 'Rate limit exceeded. Retry after ' . max(0, ($rateLimitResult['reset'] ?? time()) - time()) . ' seconds.']]
+    ]);
+    exit;
 }
 
 // Parse request
@@ -118,7 +157,7 @@ if (!$isDebug) {
 }
 
 // Execute GraphQL query
-$result = GraphQL::execute($query, $variables, $userId);
+$result = GraphQL::execute($query, $variables, $userId, $canMutate);
 
 // Return result
 echo json_encode($result, JSON_PRETTY_PRINT);

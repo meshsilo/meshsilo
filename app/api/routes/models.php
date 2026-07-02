@@ -254,6 +254,11 @@ function downloadModel($id, $apiUser) {
         apiError('Model not found', 404);
     }
 
+    // Verify ownership - must own the model or be admin (same gate as updateModel/deleteModel)
+    if (empty($apiUser['is_admin']) && !empty($model['user_id']) && (int)$model['user_id'] !== (int)$apiUser['user_id']) {
+        apiError('Model not found', 404);
+    }
+
     $filePath = UPLOAD_PATH . $model['file_path'];
     if (!file_exists($filePath)) {
         apiError('File not found', 404);

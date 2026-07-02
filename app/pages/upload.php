@@ -56,7 +56,7 @@ require_once 'includes/header.php';
                 <?= csrf_field() ?>
                 <div class="upload-dropzone" id="dropzone">
                     <div class="dropzone-content">
-                        <span class="dropzone-icon" aria-hidden="true">&#8679;</span>
+                        <span class="dropzone-icon" aria-hidden="true"><i class="fa-solid fa-cloud-arrow-up"></i></span>
                         <p class="dropzone-text">Drag and drop your file here</p>
                         <p class="dropzone-subtext">or</p>
                         <div class="upload-buttons">

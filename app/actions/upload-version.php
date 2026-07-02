@@ -46,8 +46,12 @@ if (!in_array($ext, $allowedTypes)) {
     jsonError('Invalid file type. Only STL, 3MF, and GCODE allowed.');
 }
 
-// Calculate hash
-$hash = calculateContentHash($file['tmp_name'], $ext);
+// Calculate hash. The uploaded temp file has no extension, so calculateContentHash()
+// (which derives the type from the path) would hash a 3MF as a raw ZIP. Branch on the
+// real extension so 3MF versions are content-hashed like the other upload paths.
+$hash = ($ext === '3mf')
+    ? calculate3mfContentHash($file['tmp_name'])
+    : calculateContentHash($file['tmp_name']);
 
 // Create version directory if needed
 $versionDir = __DIR__ . '/../../storage/assets/versions/' . $modelId;
@@ -59,9 +63,22 @@ if (!is_dir($versionDir)) {
 $safeFileName = basename($file['name']);
 $safeFileName = preg_replace('/[^\w\-. ]/', '_', $safeFileName);
 
-// We need the version number before we can name the file, so determine it here
-// (the final assignment happens inside the transaction below)
-$db->beginTransaction();
+// Persist the archive, the new version row, and the model pointer atomically.
+// A write-locked transaction serializes the MAX(version_number)+1 allocation so
+// two concurrent uploads cannot claim the same version number.
+$pdo = $db->getPDO();
+$useImmediate = ($db->getType() !== 'mysql');
+
+if ($useImmediate) {
+    // SQLite: BEGIN IMMEDIATE takes the write lock up front so the allocation
+    // below is serialized. The Database wrapper exposes no beginTransaction();
+    // transactions go through the raw PDO handle (see dedup.php deleteIfOrphaned).
+    $db->exec('BEGIN IMMEDIATE');
+} else {
+    $pdo->beginTransaction();
+}
+
+$fullPath = null;
 try {
     // Get next version number inside the transaction to prevent races
     $stmt = $db->prepare('SELECT MAX(version_number) as max_ver FROM model_versions WHERE model_id = :model_id');
@@ -92,26 +109,26 @@ try {
         }
     }
 
-    $versionFilename = 'v' . $nextVersion . '_' . $safeFileName;
+    // Include a unique token in the file name so two uploads that race to the
+    // same version number cannot overwrite each other's vN_<name> file.
+    $uniqueToken = bin2hex(random_bytes(4));
+    $versionFilename = 'v' . $nextVersion . '_' . $uniqueToken . '_' . $safeFileName;
     $versionPath = 'versions/' . $modelId . '/' . $versionFilename;
     $fullPath = $versionDir . '/' . $versionFilename;
 
     if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
-        $db->rollBack();
-        jsonError('Failed to save file');
+        throw new RuntimeException('Failed to save file');
     }
 
-    // Add version record
+    // Add version record - must succeed or the whole upload is rolled back so
+    // the v0 archive row above is never committed on its own.
     $result = addModelVersion($modelId, $versionPath, $file['size'], $hash, $changelog, $user['id']);
+    if (!$result) {
+        throw new RuntimeException('Failed to create version record');
+    }
 
-    $db->commit();
-} catch (Exception $e) {
-    $db->rollBack();
-    throw $e;
-}
-
-if ($result) {
-    // Update main model to point to new file
+    // Update main model to point to new file (inside the transaction so the
+    // pointer commits atomically with the version row).
     $stmt = $db->prepare('UPDATE models SET file_path = :file_path, file_size = :file_size, file_hash = :file_hash, file_type = :file_type, current_version = :version WHERE id = :id');
     $stmt->bindValue(':file_path', $versionPath, PDO::PARAM_STR);
     $stmt->bindValue(':file_size', $file['size'], PDO::PARAM_INT);
@@ -121,14 +138,27 @@ if ($result) {
     $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $stmt->execute();
 
-    logActivity('upload_version', 'model', $modelId, $model['name'] . ' v' . $result);
-
-    jsonSuccess([
-        'version' => $result,
-        'message' => 'Version ' . $result . ' uploaded successfully'
-    ]);
-} else {
-    // Clean up file on failure
-    unlink($fullPath);
-    jsonError('Failed to create version record');
+    if ($useImmediate) {
+        $db->exec('COMMIT');
+    } else {
+        $pdo->commit();
+    }
+} catch (Throwable $e) {
+    if ($useImmediate) {
+        $db->exec('ROLLBACK');
+    } else {
+        $pdo->rollBack();
+    }
+    // Clean up the moved file if it was created before the failure.
+    if ($fullPath !== null && is_file($fullPath)) {
+        unlink($fullPath);
+    }
+    jsonError($e->getMessage() ?: 'Failed to create version record');
 }
+
+logActivity('upload_version', 'model', $modelId, $model['name'] . ' v' . $result);
+
+jsonSuccess([
+    'version' => $result,
+    'message' => 'Version ' . $result . ' uploaded successfully'
+]);

@@ -66,7 +66,7 @@ function basePath($path = '')
 {
     // Always use absolute paths from root for assets
     // This ensures CSS/JS work regardless of the current URL path
-    if (preg_match('#^(css|js|images)/#', $path)) {
+    if (preg_match('#^(css|js|images|vendor)/#', $path)) {
         return '/public/' . $path;
     }
     return '/' . ltrim($path, '/');
@@ -153,6 +153,22 @@ if (is_dir(dirname(__DIR__) . '/plugins')) {
     $pluginManager->loadActivePlugins();
 }
 
+// The site logo lives under storage/assets and is referenced as /assets/{logo}
+// on the unauthenticated auth pages (login, forgot/reset password). Now that
+// /assets/ requests route through PHP (see docker/nginx.conf) instead of being
+// served directly by nginx, the login gate would otherwise redirect the logo
+// request to /login and break the image. Exempt ONLY the configured logo file
+// -- not all of /assets/ -- so private model files and attachments stay gated.
+if (php_sapi_name() !== 'cli' && function_exists('getSetting') && class_exists('PluginManager')) {
+    $logoPath = getSetting('logo_path', '');
+    if ($logoPath !== '') {
+        PluginManager::getInstance()->addFilter('public_routes', function (array $routes) use ($logoPath) {
+            $routes[] = '/assets/' . ltrim($logoPath, '/');
+            return $routes;
+        });
+    }
+}
+
 // Enforce authentication (after plugins load so they can register public routes)
 if (php_sapi_name() !== 'cli') {
     enforceAuthentication();
@@ -167,3 +183,11 @@ if (empty($router->getNamedRoutes())) {
 
 // Set up error handling
 setupErrorHandler();
+
+// Apply configurable security headers for web (non-CLI) responses. nginx sets
+// these when it fronts the app, but this covers PHP-served responses (built-in
+// server, Apache, or a proxy that strips them). SecurityHeaders::apply() no-ops
+// if headers were already sent, so it is safe to call here before any output.
+if (php_sapi_name() !== 'cli' && class_exists('SecurityHeaders')) {
+    SecurityHeaders::apply();
+}

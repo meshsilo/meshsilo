@@ -71,7 +71,7 @@ if (!empty($model['thumbnail_path']) && function_exists('image_srcset')) {
         <span class="archived-badge" style="position: absolute; bottom: 0.5rem; left: 0.5rem;">Archived</span>
         <?php endif; ?>
         <?php if ($opts['favoriteButton']): ?>
-        <button type="button" class="model-card-favorite favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(<?= $model['id'] ?>, this)" title="Remove from favorites" aria-label="Remove from favorites"><span aria-hidden="true">&#9829;</span></button>
+        <button type="button" class="model-card-favorite favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(<?= $model['id'] ?>, this)" title="Remove from favorites" aria-label="Remove from favorites"><span aria-hidden="true"><i class="fa-solid fa-heart"></i></span></button>
         <?php endif; ?>
     </div>
     <div class="model-info">

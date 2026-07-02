@@ -123,6 +123,40 @@ class TusServer
             ];
         }
 
+        // Defense-in-depth: never let a declared length exceed the global cap
+        // (handleCreate already checks this, but the sidecar is on disk).
+        $maxFileSize = defined('MAX_FILE_SIZE') ? MAX_FILE_SIZE : 0;
+        if ($maxFileSize > 0 && (int)$info['length'] > $maxFileSize) {
+            return [
+                'status' => 413,
+                'headers' => $this->tusHeaders(),
+                'body' => 'Upload exceeds maximum file size',
+            ];
+        }
+
+        // Reject writes to an already-complete upload.
+        if ($offset >= $info['length']) {
+            return [
+                'status' => 409,
+                'headers' => $this->tusHeaders([
+                    'Upload-Offset' => (string)$info['offset'],
+                ]),
+                'body' => 'Upload already complete',
+            ];
+        }
+
+        // Reject any chunk that would grow the file past its declared length -
+        // this also caps the effective per-PATCH body size.
+        if ($offset + strlen($data) > $info['length']) {
+            return [
+                'status' => 413,
+                'headers' => $this->tusHeaders([
+                    'Upload-Offset' => (string)$info['offset'],
+                ]),
+                'body' => 'Chunk exceeds declared upload length',
+            ];
+        }
+
         // Append chunk to data file
         $dataPath = $this->dataPath($uploadId);
         $expectedBytes = strlen($data);

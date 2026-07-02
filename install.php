@@ -11,8 +11,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 
-// Prevent running if already installed
-if (file_exists(__DIR__ . '/storage/db/config.local.php') || file_exists(__DIR__ . '/config.local.php')) {
+// Prevent running if already installed.
+// Must check ALL THREE paths that includes/config.php honors, otherwise an
+// install written to the legacy db/config.local.php location could be re-run.
+if (file_exists(__DIR__ . '/storage/db/config.local.php')
+    || file_exists(__DIR__ . '/db/config.local.php')
+    || file_exists(__DIR__ . '/config.local.php')) {
     http_response_code(200);
     ?>
     <!DOCTYPE html>

@@ -18,6 +18,9 @@ class ImageConverter
 {
     private const CONVERTIBLE_EXTENSIONS = ['jpg', 'jpeg', 'png'];
 
+    // Decompression-bomb guard: refuse to decode images beyond ~40 MP.
+    private const MAX_IMAGE_PIXELS = 40000000;
+
     /**
      * Check whether WebP conversion is enabled in admin settings.
      * Default ON when the setting is missing.
@@ -60,6 +63,11 @@ class ImageConverter
             return null;
         }
 
+        // Reject decompression-bomb images before allocating decode memory.
+        if (($imageInfo[0] * $imageInfo[1]) > self::MAX_IMAGE_PIXELS) {
+            return null;
+        }
+
         if ($destPath === null) {
             $destPath = preg_replace('/\.(jpe?g|png|gif)$/i', '', $sourcePath) . '.webp';
         }
@@ -71,6 +79,9 @@ class ImageConverter
             try {
                 $formats = \Imagick::queryFormats();
                 if (in_array('WEBP', $formats, true)) {
+                    // Cap Imagick memory/map usage as an extra decode guard.
+                    \Imagick::setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 512 * 1024 * 1024);
+                    \Imagick::setResourceLimit(\Imagick::RESOURCETYPE_MAP, 512 * 1024 * 1024);
                     $imagick = new \Imagick($sourcePath);
                     $imagick->setImageFormat('webp');
                     $imagick->setImageCompressionQuality($quality);

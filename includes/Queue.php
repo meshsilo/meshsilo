@@ -488,12 +488,21 @@ class Queue
         $class = $job['job_class'];
         $data = $job['payload'];
 
+        // Allowlist the job class name: only simple identifiers (letters,
+        // digits, underscore) are permitted. This blocks path separators,
+        // "..", and namespace/traversal tricks that could load or instantiate
+        // an arbitrary class from an attacker-controlled payload.
+        if (!is_string($class) || !preg_match('/^[A-Za-z0-9_]+$/', $class)) {
+            throw new \Exception("Invalid job class name");
+        }
+
         try {
             // Check if job class exists
             if (!class_exists($class)) {
-                // Try to load from jobs directory
+                // Try to load ONLY from the fixed jobs/ directory. The regex
+                // guard above guarantees $class cannot escape this directory.
                 $file = dirname(__DIR__) . '/jobs/' . $class . '.php';
-                if (file_exists($file)) {
+                if (is_file($file)) {
                     require_once $file;
                 }
             }

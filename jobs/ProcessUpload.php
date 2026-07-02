@@ -60,7 +60,7 @@ class ProcessUpload extends Job
             'description' => isset($metadata['description']) ? base64_decode($metadata['description']) : '',
             'creator' => isset($metadata['creator']) ? base64_decode($metadata['creator']) : '',
             'collection' => isset($metadata['collection']) ? base64_decode($metadata['collection']) : '',
-            'source_url' => isset($metadata['source_url']) ? base64_decode($metadata['source_url']) : '',
+            'source_url' => isset($metadata['source_url']) ? self::sanitizeSourceUrl(base64_decode($metadata['source_url'])) : '',
             'categories' => isset($metadata['categories']) ? json_decode(base64_decode($metadata['categories']), true) : [],
             'user_id' => $data['user_id'] ?? null,
         ];
@@ -185,6 +185,12 @@ class ProcessUpload extends Job
             }
         }
 
+        // Sanitize the client-supplied filename (from decoded TUS metadata) -
+        // strip any path components and restrict to a safe charset so it cannot
+        // traverse out of $modelDir.
+        $filename = basename($filename);
+        $filename = preg_replace('/[^A-Za-z0-9._-]/', '_', $filename);
+
         // Handle filename collision
         $baseName = pathinfo($filename, PATHINFO_FILENAME);
         $destPath = $modelDir . '/' . $subDir . $filename;
@@ -196,6 +202,15 @@ class ProcessUpload extends Job
             $relativePath = $relativeDir . '/' . $subDir . $newFilename;
             $filename = $newFilename;
             $counter++;
+        }
+
+        // Containment assertion: the resolved destination directory must stay
+        // inside $modelDir before we move the file (defense-in-depth).
+        $destDirReal = realpath(dirname($destPath));
+        $modelDirReal = realpath($modelDir);
+        if ($destDirReal === false || $modelDirReal === false || strpos($destDirReal, $modelDirReal) !== 0) {
+            $tusServer->cleanup($uploadId);
+            throw new \Exception("ProcessUpload add-part: destination path escapes model dir: $destPath");
         }
 
         // Move from tus staging to final location
@@ -249,6 +264,33 @@ class ProcessUpload extends Job
             'parent_id' => $parentId,
             'filename' => $filename,
         ]);
+    }
+
+    /**
+     * Only allow http/https or relative source URLs to be stored - this job
+     * re-decodes the TUS metadata and updates the model row, which would
+     * otherwise overwrite the value already sanitized by the TUS endpoint.
+     * Anything with a non-http(s) scheme (javascript:, data:, ...) becomes ''.
+     */
+    private static function sanitizeSourceUrl(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+        // Reject control-character obfuscation (e.g. "java\tscript:"): browsers strip
+        // these before resolving the scheme, so they'd sneak past the check below as a
+        // "relative" URL. A legitimate URL contains no raw control characters.
+        if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+            return '';
+        }
+        // Has an explicit scheme? Only http/https are permitted.
+        if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*:#', $url)) {
+            $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+            return in_array($scheme, ['http', 'https'], true) ? $url : '';
+        }
+        // No scheme -> relative URL, allowed as-is.
+        return $url;
     }
 
     private function failModel($db, int $modelId, string $error): void

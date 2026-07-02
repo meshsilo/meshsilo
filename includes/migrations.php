@@ -213,6 +213,105 @@ function getSpecialMigrations(): array
                 $db->exec('CREATE UNIQUE INDEX idx_plugin_repositories_url ON plugin_repositories (url)');
             },
         ],
+        [
+            'name' => 'Deduplicate model versions and add unique (model_id, version_number) index',
+            'description' => 'Remove duplicate model_versions rows sharing a (model_id, version_number) and add a unique index so each model has at most one row per version number',
+            'check' => function ($db) {
+                // Nothing to index until the model_versions table exists.
+                if (!tableExists($db, 'model_versions')) {
+                    return true;
+                }
+                return indexExists($db, 'model_versions', 'idx_model_versions_model_ver');
+            },
+            'apply' => function ($db) {
+                if (!tableExists($db, 'model_versions')) {
+                    return;
+                }
+                // De-duplicate BEFORE creating the index, otherwise the unique
+                // index creation fails on any existing collisions. Keep the row
+                // with the lowest id per (model_id, version_number); wrapped in a
+                // derived table to work around MySQL error 1093.
+                $db->exec('DELETE FROM model_versions WHERE id NOT IN (SELECT min_id FROM (SELECT MIN(id) AS min_id FROM model_versions GROUP BY model_id, version_number) AS keep)');
+                // Add unique index to prevent future duplicates
+                $db->exec('CREATE UNIQUE INDEX idx_model_versions_model_ver ON model_versions (model_id, version_number)');
+            },
+        ],
+        [
+            'name' => 'Backfill owner (user_id) on legacy models',
+            'description' => 'Assign an owner to models with a NULL user_id so ownership checks apply. Prefers the earliest upload actor from activity_log; falls back to the lowest-id admin. Orphaned content becomes admin-owned (fail-closed) rather than editable/deletable by any user.',
+            'check' => function ($db) {
+                // Nothing to do until the models.user_id column exists.
+                if (!tableExists($db, 'models') || !columnExists($db, 'models', 'user_id')) {
+                    return true;
+                }
+                $nullCount = (int)$db->querySingle('SELECT COUNT(*) FROM models WHERE user_id IS NULL');
+                if ($nullCount === 0) {
+                    return true; // no legacy orphans left to assign
+                }
+                // If there is no admin to attribute orphans to, we cannot safely
+                // proceed; treat as applied so it does not block other migrations
+                // (it will re-run once an admin account exists).
+                $adminCount = (int)$db->querySingle('SELECT COUNT(*) FROM users WHERE is_admin = 1');
+                return $adminCount === 0;
+            },
+            'apply' => function ($db) {
+                if (!tableExists($db, 'models') || !columnExists($db, 'models', 'user_id')) {
+                    return;
+                }
+                $fallback = $db->querySingle('SELECT id FROM users WHERE is_admin = 1 ORDER BY id ASC LIMIT 1');
+                $fallback = ($fallback !== null && $fallback !== false) ? (int)$fallback : 0;
+                if (!$fallback) {
+                    if (function_exists('logWarning')) {
+                        logWarning('Ownership backfill skipped: no admin user to assign orphaned models to');
+                    }
+                    return;
+                }
+
+                $hasActivity = tableExists($db, 'activity_log');
+
+                $stmt = $db->prepare('SELECT id, parent_id FROM models WHERE user_id IS NULL');
+                $stmt->execute();
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $fromLog = 0;
+                $toFallback = 0;
+                foreach ($rows as $row) {
+                    $modelId = (int)$row['id'];
+                    $ownerId = null;
+
+                    if ($hasActivity) {
+                        // Uploads are logged against the parent model's id.
+                        $lookupId = !empty($row['parent_id']) ? (int)$row['parent_id'] : $modelId;
+                        $a = $db->prepare(
+                            "SELECT user_id FROM activity_log
+                             WHERE entity_type = 'model' AND entity_id = :mid
+                               AND user_id IS NOT NULL
+                               AND action IN ('upload', 'upload_version', 'create', 'add_part')
+                             ORDER BY id ASC LIMIT 1"
+                        );
+                        $a->execute([':mid' => $lookupId]);
+                        $found = $a->fetch(PDO::FETCH_ASSOC);
+                        if ($found && $found['user_id'] !== null) {
+                            $ownerId = (int)$found['user_id'];
+                        }
+                    }
+
+                    if ($ownerId === null) {
+                        $ownerId = $fallback;
+                        $toFallback++;
+                    } else {
+                        $fromLog++;
+                    }
+
+                    $u = $db->prepare('UPDATE models SET user_id = :uid WHERE id = :mid');
+                    $u->execute([':uid' => $ownerId, ':mid' => $modelId]);
+                }
+
+                if (function_exists('logInfo')) {
+                    logInfo("Ownership backfill: assigned $fromLog model(s) from activity_log, $toFallback to fallback admin #$fallback");
+                }
+            },
+        ],
     ];
 }
 

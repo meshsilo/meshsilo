@@ -177,7 +177,7 @@ require_once 'includes/header.php';
                             <?php if ($node['thumbnail']): ?>
                             <img src="<?= basePath('assets/' . $node['thumbnail']) ?>" alt="<?= htmlspecialchars($node['name']) ?>" class="node-thumbnail" loading="lazy" decoding="async">
                             <?php else: ?>
-                            <div class="node-thumbnail placeholder">&#9653;</div>
+                            <div class="node-thumbnail placeholder"><i class="fa-solid fa-cube"></i></div>
                             <?php endif; ?>
                             <div class="node-info">
                                 <span class="node-name"><?= htmlspecialchars($node['name']) ?></span>
@@ -279,7 +279,7 @@ require_once 'includes/header.php';
                         <?php if ($related['thumbnail']): ?>
                         <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="<?= htmlspecialchars($related['name']) ?>" class="related-thumbnail" loading="lazy" decoding="async">
                         <?php else: ?>
-                        <div class="related-thumbnail placeholder">&#9653;</div>
+                        <div class="related-thumbnail placeholder"><i class="fa-solid fa-cube"></i></div>
                         <?php endif; ?>
                         <div class="related-info">
                             <span class="related-name"><?= htmlspecialchars($related['name']) ?></span>
@@ -304,7 +304,7 @@ require_once 'includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="remix-modal-title">Mark as Remix</h3>
-            <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
             <div class="form-group">

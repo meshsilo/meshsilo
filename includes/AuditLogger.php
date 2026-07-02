@@ -281,6 +281,22 @@ class AuditLogger
     }
 
     /**
+     * Neutralize CSV/spreadsheet formula injection.
+     *
+     * Any cell whose first character is a formula trigger (= + - @ tab CR) is
+     * prefixed with a single apostrophe so spreadsheet apps treat it as text
+     * instead of executing it as a formula.
+     */
+    private static function sanitizeCsvField($value): string
+    {
+        $value = (string)$value;
+        if ($value !== '' && strpos("=+-@\t\r", $value[0]) !== false) {
+            return "'" . $value;
+        }
+        return $value;
+    }
+
+    /**
      * Export audit logs to CSV
      */
     public static function exportCSV($filters = [], $filename = null)
@@ -311,9 +327,11 @@ class AuditLogger
             'Request ID'
         ]);
 
-        // Data rows
+        // Data rows. Every field is passed through sanitizeCsvField() to
+        // neutralize spreadsheet formula injection from attacker-influenced
+        // values (user_agent, resource_name, event_name, ip, old/new values).
         foreach ($result['data'] as $row) {
-            fputcsv($output, [
+            $fields = [
                 $row['created_at'],
                 $row['event_type'],
                 $row['event_name'],
@@ -328,7 +346,8 @@ class AuditLogger
                 is_array($row['new_value']) ? json_encode($row['new_value']) : $row['new_value'],
                 $row['session_id'],
                 $row['request_id']
-            ]);
+            ];
+            fputcsv($output, array_map(fn($v) => self::sanitizeCsvField($v), $fields));
         }
 
         rewind($output);

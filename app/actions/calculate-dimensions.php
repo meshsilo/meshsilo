@@ -21,13 +21,19 @@ require_once __DIR__ . '/../../includes/dedup.php';
 
 try {
     $db = getDB();
-    $stmt = $db->prepare('SELECT id, file_path, file_type, dedup_path, part_count FROM models WHERE id = :id');
+    $stmt = $db->prepare('SELECT id, file_path, file_type, dedup_path, part_count, user_id FROM models WHERE id = :id');
     $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
     $result = $stmt->execute();
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) {
         jsonError('Model not found in database');
+    }
+
+    // Ownership check - only the owner (or an admin) may recalculate dimensions
+    $user = getCurrentUser();
+    if (!empty($model['user_id']) && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+        jsonError('Permission denied', 403);
     }
 
     $isMultiPart = ($model['part_count'] ?? 0) > 0;

@@ -450,7 +450,7 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="metrics-grid">
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon" aria-hidden="true">&#128202;</span>
+                <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-memory"></i></span>
                 <span class="metric-title">Memory Usage</span>
             </div>
             <div class="metric-value" id="memory-percent"><?= $metrics['memory']['percent'] ?>%</div>
@@ -466,7 +466,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon" aria-hidden="true">&#128190;</span>
+                <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-hard-drive"></i></span>
                 <span class="metric-title">Disk Usage</span>
             </div>
             <div class="metric-value" id="disk-percent"><?= $metrics['disk']['percent'] ?>%</div>
@@ -482,7 +482,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon" aria-hidden="true">&#128100;</span>
+                <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
                 <span class="metric-title">Active Sessions</span>
             </div>
             <div class="metric-value" id="active-sessions"><?= $metrics['active_sessions'] ?></div>
@@ -491,7 +491,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon" aria-hidden="true">&#9888;</span>
+                <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
                 <span class="metric-title">Errors (24h)</span>
             </div>
             <div class="metric-value <?= $metrics['errors_24h'] > 0 ? 'text-danger' : 'text-success' ?>"
@@ -501,7 +501,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon" aria-hidden="true">&#128196;</span>
+                <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
                 <span class="metric-title">Requests/Hour</span>
             </div>
             <div class="metric-value" id="requests-hour"><?= $metrics['requests_hour'] ?></div>
@@ -510,7 +510,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
         <div class="metric-card">
             <div class="metric-header">
-                <span class="metric-icon">&#128230;</span>
+                <span class="metric-icon"><i class="fa-solid fa-database"></i></span>
                 <span class="metric-title">Database</span>
             </div>
             <div class="metric-value" id="db-size"><?= formatBytes($metrics['database']['size']) ?></div>
@@ -523,14 +523,26 @@ require_once __DIR__ . '/../../includes/header.php';
         <h2>Service Status</h2>
         <div class="metrics-grid" id="services-container">
             <?php
-            $serviceIcons = ['database' => '&#128451;', 'storage' => '&#128190;', 'cache' => '&#9889;', 'search' => '&#128269;'];
-            $statusIcons = ['healthy' => '&#10004;', 'warning' => '&#9888;', 'degraded' => '&#9888;', 'critical' => '&#10008;', 'down' => '&#10008;', 'configured' => '&#10004;'];
+            $serviceIcons = [
+                'database' => '<i class="fa-solid fa-database"></i>',
+                'storage' => '<i class="fa-solid fa-hard-drive"></i>',
+                'cache' => '<i class="fa-solid fa-bolt"></i>',
+                'search' => '<i class="fa-solid fa-magnifying-glass"></i>',
+            ];
+            $statusIcons = [
+                'healthy' => '<i class="fa-solid fa-check"></i>',
+                'warning' => '<i class="fa-solid fa-triangle-exclamation"></i>',
+                'degraded' => '<i class="fa-solid fa-triangle-exclamation"></i>',
+                'critical' => '<i class="fa-solid fa-xmark"></i>',
+                'down' => '<i class="fa-solid fa-xmark"></i>',
+                'configured' => '<i class="fa-solid fa-check"></i>',
+            ];
             ?>
             <?php foreach ($services as $name => $service): ?>
             <?php if (is_array($service) && isset($service['status'])): ?>
             <div class="metric-card">
                 <div class="metric-header">
-                    <span class="metric-icon" aria-hidden="true"><?= $serviceIcons[$name] ?? '&#9881;' ?></span>
+                    <span class="metric-icon" aria-hidden="true"><?= $serviceIcons[$name] ?? '<i class="fa-solid fa-gear"></i>' ?></span>
                     <span class="metric-title"><?= ucfirst(htmlspecialchars($name)) ?></span>
                 </div>
                 <div class="metric-value service-status-value status-color-<?= htmlspecialchars($service['status']) ?>">
@@ -545,7 +557,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php foreach ($service as $subName => $subService): ?>
                 <div class="metric-card">
                     <div class="metric-header">
-                        <span class="metric-icon" aria-hidden="true">&#9881;</span>
+                        <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-gear"></i></span>
                         <span class="metric-title"><?= htmlspecialchars($subService['name'] ?? ucfirst($subName)) ?></span>
                     </div>
                     <div class="metric-value service-status-value status-color-<?= htmlspecialchars($subService['status'] ?? 'unknown') ?>">
@@ -565,7 +577,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="info-grid">
             <div class="info-card">
                 <div class="info-card-header">
-                    <span class="info-card-icon" aria-hidden="true">&#9881;</span>
+                    <span class="info-card-icon" aria-hidden="true"><i class="fa-solid fa-gear"></i></span>
                     <h3>PHP Configuration</h3>
                 </div>
                 <div class="info-items">
@@ -579,7 +591,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="info-card">
                 <div class="info-card-header">
-                    <span class="info-card-icon" aria-hidden="true">&#128202;</span>
+                    <span class="info-card-icon" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
                     <h3>Application</h3>
                 </div>
                 <div class="info-items">
@@ -713,12 +725,14 @@ function getStatusMessage($services) {
 }
 
 .status-icon::before {
+    font-family: "Font Awesome 7 Free";
+    font-weight: 900;
     font-size: 1.25rem;
 }
 
-.status-healthy .status-icon::before { content: "✔"; }
-.status-warning .status-icon::before { content: "⚠"; }
-.status-critical .status-icon::before, .status-down .status-icon::before { content: "✖"; }
+.status-healthy .status-icon::before { content: "\f00c"; }
+.status-warning .status-icon::before { content: "\f071"; }
+.status-critical .status-icon::before, .status-down .status-icon::before { content: "\f00d"; }
 
 .header-actions {
     display: flex;

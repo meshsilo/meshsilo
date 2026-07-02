@@ -9,6 +9,10 @@ if (!isLoggedIn()) {
 
 requireCsrfJson();
 
+if (!canEdit()) {
+    jsonError('Permission denied', 403);
+}
+
 $parentId = isset($_POST['parent_id']) ? (int)$_POST['parent_id'] : 0;
 $partIds = isset($_POST['part_ids']) ? array_map('intval', (array)$_POST['part_ids']) : [];
 

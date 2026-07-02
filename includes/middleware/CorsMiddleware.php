@@ -114,12 +114,17 @@ class CorsMiddleware implements MiddlewareInterface
             return true;
         }
 
-        // Pattern matching (e.g., *.example.com)
+        // Pattern matching (e.g., *.example.com). Each '*' matches a single
+        // hostname label ([^.]+) rather than '.*', so the wildcard cannot span
+        // dots or swallow extra host segments. Segments are preg_quote'd (dots
+        // escaped) and the pattern is anchored (^...$) so that *.example.com
+        // only matches real single-level subdomains -- never attacker.com or
+        // evil.example.com.attacker.com.
         foreach ($allowedOrigins as $allowed) {
             if ($allowed !== '*' && strpos($allowed, '*') !== false) {
-                // Split on *, quote each segment, then join with .*
+                // Split on *, quote each segment, then join with a label matcher
                 $segments = explode('*', $allowed);
-                $pattern = implode('.*', array_map(function ($s) {
+                $pattern = implode('[^.]+', array_map(function ($s) {
                     return preg_quote($s, '/');
                 }, $segments));
                 if (preg_match('/^' . $pattern . '$/', $origin)) {

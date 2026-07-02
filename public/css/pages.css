@@ -38,7 +38,9 @@ details.settings-section > summary h2 {
 }
 
 details.settings-section > summary h2::after {
-    content: '\25BC';
+    content: '\f078';
+    font-family: "Font Awesome 7 Free";
+    font-weight: 900;
     font-size: 0.75rem;
     color: var(--color-text-muted);
     transition: transform 0.2s ease;

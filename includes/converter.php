@@ -729,18 +729,29 @@ function convertPartTo3MF($partId)
     try {
         $converter = new STLConverter();
 
-        // Generate new filename - place output next to source file
+        // Generate new filename - place output next to source file. When the
+        // source is dedup'd the output lands in the shared _dedup folder, so the
+        // physical file name must be unique per part (two parts named cube.stl
+        // would otherwise both write cube.3mf and clobber each other). Only the
+        // stored path is disambiguated with the part id; the user-facing
+        // `filename` column stays clean.
         $newFilename = preg_replace('/\.stl$/i', '.3mf', $part['filename']);
-        $newFilePath = dirname($stlPath) . '/' . $newFilename;
+        if (!empty($part['dedup_path'])) {
+            $outputBasename = pathinfo($newFilename, PATHINFO_FILENAME) . '_p' . $partId . '.3mf';
+        } else {
+            $outputBasename = $newFilename;
+        }
+        $newFilePath = dirname($stlPath) . '/' . $outputBasename;
 
         // Convert the file
         $result = $converter->convertTo3MF($stlPath, $newFilePath);
 
         if ($result['success'] && $result['savings'] > 0) {
-            // Compute new DB-relative file_path
+            // Compute new DB-relative file_path (kept in sync with the physical
+            // output name above so the DB points at the file we actually wrote)
             if (!empty($part['dedup_path'])) {
                 // Source was dedup'd - new file sits next to dedup file
-                $newDbFilePath = dirname($part['dedup_path']) . '/' . $newFilename;
+                $newDbFilePath = dirname($part['dedup_path']) . '/' . $outputBasename;
             } else {
                 $newDbFilePath = preg_replace('/\.stl$/i', '.3mf', $part['file_path']);
             }

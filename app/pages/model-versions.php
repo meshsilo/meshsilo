@@ -183,7 +183,7 @@ require_once 'includes/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="revert-modal-title">Revert to Version</h3>
-            <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
             <p>Are you sure you want to revert to <strong>v<span id="revert-version-number"></span></strong>?</p>

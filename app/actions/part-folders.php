@@ -83,6 +83,15 @@ function movePartFile($db, int $partId, string $newOriginalPath): void
     }
 }
 
+/**
+ * Strip characters that could enable stored XSS or break rendering from a
+ * folder name. Keeps normal path characters and '/' for nested folders.
+ */
+function sanitizeFolderName(string $name): string
+{
+    return preg_replace('/[<>"\'\x00-\x1F]/', '', $name);
+}
+
 if (!isLoggedIn()) {
     jsonError('Not authenticated', 401);
 }
@@ -125,7 +134,7 @@ if ($modelId) {
 switch ($action) {
     case 'create':
         // Validate folder name (allow / for nested folders, block \)
-        $folderName = trim($_POST['folder_name'] ?? '');
+        $folderName = sanitizeFolderName(trim($_POST['folder_name'] ?? ''));
         $folderName = trim($folderName, '/');
         if ($folderName === '' || $folderName === 'Root' || strpos($folderName, '\\') !== false || strpos($folderName, '..') !== false) {
             jsonError('Invalid folder name');
@@ -138,7 +147,7 @@ switch ($action) {
 
     case 'rename':
         $oldFolder = trim($_POST['old_folder'] ?? '');
-        $newFolder = trim($_POST['new_folder'] ?? '');
+        $newFolder = sanitizeFolderName(trim($_POST['new_folder'] ?? ''));
 
         $newFolder = trim($newFolder, '/');
         if ($oldFolder === '' || $newFolder === '' || $newFolder === 'Root') {
@@ -174,7 +183,7 @@ switch ($action) {
         break;
 
     case 'delete':
-        $folderName = trim($_POST['folder_name'] ?? '');
+        $folderName = sanitizeFolderName(trim($_POST['folder_name'] ?? ''));
         $folderName = trim($folderName, '/');
         if ($folderName === '' || $folderName === 'Root') {
             jsonError('Invalid folder name');
@@ -211,7 +220,7 @@ switch ($action) {
 
     case 'move':
         $partIds = $_POST['part_ids'] ?? [];
-        $targetFolder = trim($_POST['target_folder'] ?? '');
+        $targetFolder = sanitizeFolderName(trim($_POST['target_folder'] ?? ''));
 
         if (empty($partIds)) {
             jsonError('No parts specified');
@@ -263,7 +272,7 @@ switch ($action) {
         break;
 
     case 'set_print_type':
-        $folderName = trim($_POST['folder_name'] ?? '');
+        $folderName = sanitizeFolderName(trim($_POST['folder_name'] ?? ''));
         $printType = trim($_POST['print_type'] ?? '');
 
         if ($printType !== '' && !in_array($printType, ['fdm', 'sla'])) {

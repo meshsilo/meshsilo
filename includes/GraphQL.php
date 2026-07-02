@@ -28,7 +28,7 @@ class GraphQL
     /**
      * Execute a GraphQL query
      */
-    public static function execute(string $query, ?array $variables = null, ?int $userId = null): array
+    public static function execute(string $query, ?array $variables = null, ?int $userId = null, bool $canMutate = true): array
     {
         try {
             self::init();
@@ -39,7 +39,7 @@ class GraphQL
                 return ['errors' => $parsed['errors']];
             }
 
-            $result = self::resolveOperation($parsed, $variables, $userId);
+            $result = self::resolveOperation($parsed, $variables, $userId, $canMutate);
 
             return ['data' => $result];
         } catch (Exception $e) {
@@ -240,9 +240,16 @@ class GraphQL
     /**
      * Resolve the parsed operation
      */
-    private static function resolveOperation(array $parsed, ?array $variables, ?int $userId): array
+    private static function resolveOperation(array $parsed, ?array $variables, ?int $userId, bool $canMutate = true): array
     {
         self::validateQueryComplexity($parsed['selections']);
+
+        // API-key callers without write/admin scope may not run mutations. Session
+        // callers pass $canMutate = true and stay gated by each mutation's own
+        // permission checks (canEdit / ownership).
+        if ($parsed['type'] === 'mutation' && !$canMutate) {
+            throw new Exception('Write permission required. This API key does not have write access.');
+        }
 
         $result = [];
 
@@ -466,6 +473,7 @@ class GraphQL
             $db = self::$db;
             $public = $args['public'] ?? true;
             $owner = $args['owner'] ?? null;
+            $isAdmin = self::requestingUserIsAdmin($userId);
 
             $where = [];
             $params = [];
@@ -480,6 +488,13 @@ class GraphQL
             } elseif (!$public && $userId) {
                 $where[] = 'user_id = :user_id';
                 $params[':user_id'] = $userId;
+            }
+
+            // SECURITY: non-admin callers may only see public collections or their own.
+            // Prevents leaking other users' private collections (e.g. public:false + owner:<other>).
+            if (!$isAdmin) {
+                $where[] = '(is_public = 1 OR user_id = :req_user)';
+                $params[':req_user'] = $userId;
             }
 
             if (empty($where)) {
@@ -628,6 +643,22 @@ class GraphQL
             }
 
             $db = self::$db;
+            $isAdmin = function_exists('isAdmin') && isAdmin();
+
+            // Verify the model exists and enforce ownership before mutating counts,
+            // so callers cannot inflate download counts for arbitrary models.
+            $stmt = $db->prepare("SELECT id, user_id FROM models WHERE id = :id");
+            $stmt->execute([':id' => $modelId]);
+            $model = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$model) {
+                return ['success' => false, 'message' => 'Model not found'];
+            }
+
+            if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$userId && !$isAdmin) {
+                return ['success' => false, 'message' => 'Permission denied'];
+            }
+
             $stmt = $db->prepare("UPDATE models SET download_count = download_count + 1 WHERE id = :id");
             $stmt->execute([':id' => $modelId]);
 
@@ -636,15 +667,52 @@ class GraphQL
     }
 
     /**
+     * Determine whether the requesting user is an administrator.
+     * Looked up once per user id and cached for the duration of the request.
+     */
+    private static array $adminCache = [];
+
+    private static function requestingUserIsAdmin(?int $userId): bool
+    {
+        if (!$userId) {
+            return false;
+        }
+        if (!array_key_exists($userId, self::$adminCache)) {
+            $stmt = self::$db->prepare("SELECT is_admin FROM users WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+            self::$adminCache[$userId] = (bool)$stmt->fetchColumn();
+        }
+        return self::$adminCache[$userId];
+    }
+
+    /**
      * Resolve a model with requested fields
      */
     private static function resolveModel(array $model, array $selections, ?int $userId): array
     {
         $db = self::$db;
-        $result = $model;
+
+        // Only expose fields the caller requested that are also declared as scalar
+        // fields on the Model type. Prevents internal columns (dedup_path, file_hash,
+        // original_path, thumbnail_path, upload_status, nest_folders, original_size, ...)
+        // from leaking to any authenticated caller.
+        $scalarTypes = ['Int', 'String', 'Boolean', 'Float', 'ID'];
+        $allowedScalars = [];
+        foreach (self::$types['Model'] ?? [] as $fieldName => $fieldType) {
+            if (in_array($fieldType, $scalarTypes, true)) {
+                $allowedScalars[] = $fieldName;
+            }
+        }
+
+        $result = [];
 
         foreach ($selections as $field) {
             $name = $field['name'];
+
+            if (in_array($name, $allowedScalars, true)) {
+                $result[$name] = array_key_exists($name, $model) ? $model[$name] : null;
+                continue;
+            }
 
             switch ($name) {
                 case 'category':
@@ -671,7 +739,10 @@ class GraphQL
 
                 case 'owner':
                     if ($model['user_id']) {
-                        $stmt = $db->prepare("SELECT id, username, is_admin FROM users WHERE id = :id");
+                        // Only administrators may see other users' is_admin flag.
+                        // Column list is a fixed whitelist (no user input) - safe to interpolate.
+                        $cols = self::requestingUserIsAdmin($userId) ? 'id, username, is_admin' : 'id, username';
+                        $stmt = $db->prepare("SELECT $cols FROM users WHERE id = :id");
                         $stmt->execute([':id' => $model['user_id']]);
                         $result['owner'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
                     } else {

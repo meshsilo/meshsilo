@@ -23,19 +23,22 @@ class Encryption
             return;
         }
 
-        // Try to load master key from environment or config
+        // Prefer key material from the environment or a local (0600) key file
+        // over the database, so the master key is not sourced from
+        // application-managed storage when a stronger source is available.
         $key = getenv('SILO_ENCRYPTION_KEY');
 
-        if (!$key && function_exists('getSetting')) {
-            $key = getSetting('encryption_master_key', '');
-        }
-
         if (!$key) {
-            // Check for key file
+            // Check for key file (created with 0600 permissions by setMasterKey)
             $keyFile = __DIR__ . '/../storage/.encryption_key';
             if (file_exists($keyFile)) {
                 $key = trim(file_get_contents($keyFile));
             }
+        }
+
+        // Backward-compatible fallback for installs that only store the key in the DB
+        if (!$key && function_exists('getSetting')) {
+            $key = getSetting('encryption_master_key', '');
         }
 
         if ($key) {
@@ -413,14 +416,25 @@ class Encryption
             return fopen($encryptedPath, 'rb');
         }
 
-        // Create temp file with decrypted content
-        $tempPath = sys_get_temp_dir() . '/silo_dec_' . md5($encryptedPath . microtime());
+        // Create the temp file up front with tempnam() so it exists with
+        // owner-only (0600) permissions BEFORE any plaintext is written into
+        // it. Writing decrypted plaintext into the shared sys_get_temp_dir()
+        // with the default umask would otherwise leave it world-readable.
+        $tempPath = tempnam(sys_get_temp_dir(), 'silo_dec_');
+        if ($tempPath === false) {
+            throw new Exception('Failed to create temporary file for decryption');
+        }
+        @chmod($tempPath, 0600);
+
         self::decryptFile($encryptedPath, $tempPath);
+        @chmod($tempPath, 0600);
 
         // Open stream and register cleanup
         $stream = fopen($tempPath, 'rb');
 
-        // Clean up temp file when stream closes
+        // Backstop cleanup: remove the temp file at shutdown. (The stream is
+        // handed to the caller, so consumption cannot be detected here; the
+        // 0600 permissions above prevent exposure while it lives.)
         register_shutdown_function(function () use ($tempPath) {
             if (file_exists($tempPath)) {
                 unlink($tempPath);
@@ -628,16 +642,57 @@ class EncryptedStorage implements StorageInterface
             return null;
         }
 
-        // Check if content is encrypted
-        if (strlen($content) > 0 && ord($content[0]) === 1) {
+        if (strlen($content) === 0) {
+            return $content;
+        }
+
+        $version = ord($content[0]);
+
+        // v1: single-block AES-256-GCM written by Encryption::encrypt() via put().
+        if ($version === 1) {
             try {
                 return Encryption::decrypt($content, 'storage');
             } catch (Exception $e) {
-                // May not be encrypted, return as-is
-                return $content;
+                // Decrypt failure must NOT leak ciphertext as plaintext.
+                if (function_exists('logError')) {
+                    logError('EncryptedStorage: failed to decrypt v1 content for ' . $path . ': ' . $e->getMessage());
+                }
+                return null;
             }
         }
 
+        // v2: chunked AES-256-GCM file format written by Encryption::encryptFile()
+        // via putFile(). It has no in-memory decryptor, so round-trip through
+        // owner-only (0600) temp files.
+        if ($version === 2) {
+            $encTmp = tempnam(sys_get_temp_dir(), 'silo_encget_');
+            $decTmp = tempnam(sys_get_temp_dir(), 'silo_decget_');
+            try {
+                if ($encTmp === false || $decTmp === false) {
+                    throw new Exception('Failed to create temporary files for decryption');
+                }
+                @chmod($decTmp, 0600);
+                file_put_contents($encTmp, $content);
+                Encryption::decryptFile($encTmp, $decTmp);
+                @chmod($decTmp, 0600);
+                $plaintext = file_get_contents($decTmp);
+                return $plaintext === false ? null : $plaintext;
+            } catch (Exception $e) {
+                if (function_exists('logError')) {
+                    logError('EncryptedStorage: failed to decrypt v2 content for ' . $path . ': ' . $e->getMessage());
+                }
+                return null;
+            } finally {
+                if ($encTmp !== false && file_exists($encTmp)) {
+                    @unlink($encTmp);
+                }
+                if ($decTmp !== false && file_exists($decTmp)) {
+                    @unlink($decTmp);
+                }
+            }
+        }
+
+        // Not encrypted, return as-is.
         return $content;
     }
 

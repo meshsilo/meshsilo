@@ -501,6 +501,8 @@ ModelViewer.prototype.loadOpenCascade = async function() {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js';
+        script.integrity = 'sha384-aVztxQSjf255XBq24hbQrvW7xTn+NRcot+BKchvpuSJQ+Frxa6C5UKH94/EBBOmc';
+        script.crossOrigin = 'anonymous';
         script.onload = () => {
             // Initialize occt-import-js
             if (typeof occtimportjs !== 'undefined') {

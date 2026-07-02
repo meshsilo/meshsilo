@@ -129,7 +129,7 @@ class Cache
                 if ($this->redis) {
                     $value = $this->redis->get($prefixedKey);
                     if ($value !== false) {
-                        return unserialize($value);
+                        return unserialize($value, ['allowed_classes' => false]);
                     }
                 }
                 return $default;
@@ -140,7 +140,7 @@ class Cache
                 if (!$success) {
                     return $default;
                 }
-                $unserialized = @unserialize($value);
+                $unserialized = @unserialize($value, ['allowed_classes' => false]);
                 if ($unserialized === false && $value !== serialize(false)) {
                     return $default;
                 }
@@ -265,7 +265,7 @@ class Cache
                 foreach ($files as $file) {
                     $content = @file_get_contents($file);
                     if ($content !== false) {
-                        $data = @unserialize($content);
+                        $data = @unserialize($content, ['allowed_classes' => false]);
                         if (is_array($data) && isset($data['key']) && fnmatch($fullPattern, $data['key'])) {
                             if (@unlink($file)) {
                                 $count++;
@@ -472,7 +472,7 @@ class Cache
             return $default;
         }
 
-        $data = @unserialize($content);
+        $data = @unserialize($content, ['allowed_classes' => false]);
         if ($data === false) {
             @unlink($file);
             return $default;
@@ -521,7 +521,7 @@ class Cache
                 continue;
             }
 
-            $data = @unserialize($content);
+            $data = @unserialize($content, ['allowed_classes' => false]);
             if ($data === false || ($data['expires'] !== 0 && $data['expires'] < time())) {
                 @unlink($file);
                 $count++;

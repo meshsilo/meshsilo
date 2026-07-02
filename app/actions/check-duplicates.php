@@ -12,6 +12,12 @@ if (!isLoggedIn()) {
     jsonError('Not authenticated', 401);
 }
 
+if (!canUpload()) {
+    jsonError('Permission denied', 403);
+}
+
+requireCsrfJson();
+
 if (!isFeatureEnabled('duplicate_detection')) {
     jsonSuccess(['duplicates' => []]);
 }

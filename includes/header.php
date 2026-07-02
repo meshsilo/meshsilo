@@ -54,6 +54,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
     <link rel="icon" type="image/png" sizes="16x16" href="<?= basePath('images/favicon-16.png') ?>">
     <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
+    <link rel="stylesheet" href="<?= basePath('vendor/fontawesome/css/all.min.css') ?>?v=<?= filemtime(__DIR__ . '/../public/vendor/fontawesome/css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/base.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/base.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/layout.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/layout.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/components.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/components.css') ?>">
@@ -89,7 +90,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <script src="<?= basePath('js/edit-model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/edit-model-page.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($needsTusJs)): ?>
-    <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" integrity="sha384-UlHjK3F7TCQCEUpnoa1ohMbP2oaWB3Aypv4gMo511vaZ86uUZ0Zv7UzZ0J1zRUT1" crossorigin="anonymous" defer></script>
     <?php endif; ?>
     <?php if (!empty($adminPage)): ?>
     <script src="<?= basePath('js/admin-pages.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/admin-pages.js') ?>" defer></script>
@@ -125,7 +126,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
             }
             var toast = document.createElement('div');
             toast.className = 'toast toast-' + type;
-            toast.innerHTML = '<span class="toast-message"></span><button type="button" class="toast-close" aria-label="Close">&times;</button>';
+            toast.innerHTML = '<span class="toast-message"></span><button type="button" class="toast-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>';
             toast.querySelector('.toast-message').textContent = message;
             toast.querySelector('.toast-close').onclick = function() {
                 toast.classList.remove('show');
@@ -291,7 +292,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
         function updateThemeIcon(theme) {
             const icon = document.getElementById('theme-icon');
             if (icon) {
-                icon.textContent = theme === 'light' ? '\u263E' : '\u2600';
+                icon.innerHTML = theme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>';
             }
         }
 
@@ -349,7 +350,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
                     if (data.conversions && convRemaining > 0) {
                         var c = data.conversions;
                         html += '<div class="queue-job queue-job-processing">' +
-                            '<span class="queue-job-status">&#9881;</span>' +
+                            '<span class="queue-job-status"><i class="fa-solid fa-gear"></i></span>' +
                             '<span class="queue-job-name">Converting: ' + c.completed + '/' + c.total + ' completed</span>' +
                             (c.failed > 0 ? '<span class="queue-job-time" style="color:var(--color-danger)">' + c.failed + ' failed</span>' : '') +
                             '</div>';
@@ -359,7 +360,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
                     data.jobs.forEach(function(job) {
                         if (job.name === 'Convert Stl To3mf') return;
                         var statusClass = job.status === 'processing' ? 'queue-job-processing' : 'queue-job-pending';
-                        var statusIcon = job.status === 'processing' ? '&#9654;' : '&#9679;';
+                        var statusIcon = job.status === 'processing' ? '<i class="fa-solid fa-play"></i>' : '<i class="fa-solid fa-circle"></i>';
                         var ago = timeAgo(job.created_at);
                         html += '<div class="queue-job ' + statusClass + '">' +
                             '<span class="queue-job-status">' + statusIcon + '</span>' +
@@ -434,7 +435,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=<?= defined('APP_VERSION') ? APP_VERSION : '0' ?>')
+                navigator.serviceWorker.register('/sw.js?v=<?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '0' ?>')
                     .catch(function() {});
             });
         }
@@ -513,7 +514,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
         if (recentMatches.length > 0) {
             recentList.innerHTML = recentMatches.slice(0, 5).map(function(q) {
                 return '<li role="option"><a href="' + escapeHtml(browseBase + '?q=' + encodeURIComponent(q)) + '" class="search-dropdown-item search-dropdown-recent">' +
-                       '<span class="search-dropdown-icon">&#128336;</span>' + highlightMatch(q, query) + '</a></li>';
+                       '<span class="search-dropdown-icon"><i class="fa-solid fa-clock"></i></span>' + highlightMatch(q, query) + '</a></li>';
             }).join('');
             recentSection.hidden = false;
         } else {
@@ -526,7 +527,7 @@ var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0
                 var badge = s.match === 'part' ? ' <span class="search-match-badge">part match</span>'
                           : s.type === 'tag' ? ' <span class="search-match-badge">tag</span>'
                           : s.type === 'category' ? ' <span class="search-match-badge">category</span>' : '';
-                var icon = s.type === 'tag' ? '&#127991;' : s.type === 'category' ? '&#128193;' : '&#128196;';
+                var icon = s.type === 'tag' ? '<i class="fa-solid fa-tag"></i>' : s.type === 'category' ? '<i class="fa-solid fa-folder"></i>' : '<i class="fa-solid fa-file-lines"></i>';
                 var href = s.url ? s.url : SILO_MODEL_BASE + s.id;
                 return '<li role="option"><a href="' + href + '" class="search-dropdown-item">' +
                        '<span class="search-dropdown-icon">' + icon + '</span>' + highlightMatch(s.name, query) + badge + '</a></li>';
@@ -712,24 +713,24 @@ endif; ?>
                         </div>
                         <div class="search-dropdown-section" hidden>
                             <a id="search-browse-link" href="<?= route('browse') ?>" class="search-dropdown-item search-browse-all">
-                                <span class="search-dropdown-icon">&#128269;</span>Search for "<span class="search-browse-query"></span>"
+                                <span class="search-dropdown-icon"><i class="fa-solid fa-magnifying-glass"></i></span>Search for "<span class="search-browse-query"></span>"
                             </a>
                         </div>
                     </div>
                 </div>
                 <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme) : ?>
                 <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-                    <span id="theme-icon"><?= $currentTheme === 'light' ? '&#9790;' : '&#9728;' ?></span>
+                    <span id="theme-icon"><?= $currentTheme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>' ?></span>
                 </button>
                 <?php endif; ?>
                 <?php if (isLoggedIn()) : ?>
                     <?php $user = getCurrentUser(); ?>
                     <?php if (isFeatureEnabled('favorites')) : ?>
-                    <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
+                    <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites"><i class="fa-solid fa-heart"></i></a>
                     <?php endif; ?>
                     <div class="queue-indicator" id="queue-indicator" title="Background Tasks">
                         <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()">
-                            &#128339;<span class="queue-badge" id="queue-badge" style="display:none;">0</span>
+                            <i class="fa-solid fa-list-check"></i><span class="queue-badge" id="queue-badge" style="display:none;">0</span>
                         </button>
                         <div class="queue-dropdown" id="queue-dropdown">
                             <div class="queue-dropdown-header">Background Tasks</div>
@@ -744,15 +745,15 @@ endif; ?>
                     <div class="user-dropdown">
                         <button type="button" class="user-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
                             <span class="user-name"><?= htmlspecialchars($user['username']) ?></span>
-                            <span class="dropdown-arrow">&#9662;</span>
+                            <span class="dropdown-arrow"><i class="fa-solid fa-chevron-down"></i></span>
                         </button>
                         <div class="user-dropdown-menu" role="menu">
-                            <a href="<?= route('settings') ?>" role="menuitem">&#9881; Settings</a>
+                            <a href="<?= route('settings') ?>" role="menuitem"><i class="fa-solid fa-gear"></i> Settings</a>
                             <?php if (isFeatureEnabled('favorites')) : ?>
-                            <a href="<?= route('favorites') ?>" role="menuitem">&#9829; Favorites</a>
+                            <a href="<?= route('favorites') ?>" role="menuitem"><i class="fa-solid fa-heart"></i> Favorites</a>
                             <?php endif; ?>
                             <div class="dropdown-divider" role="separator"></div>
-                            <a href="<?= route('logout') ?>" role="menuitem">&#10140; Log Out</a>
+                            <a href="<?= route('logout') ?>" role="menuitem"><i class="fa-solid fa-right-from-bracket"></i> Log Out</a>
                         </div>
                     </div>
                 <?php else : ?>
