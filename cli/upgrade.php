@@ -314,16 +314,7 @@ function error($message) {
     echo COLOR_RED . "✗ " . $message . COLOR_RESET . "\n";
 }
 
-function formatBytes($bytes) {
-    if ($bytes >= 1073741824) {
-        return number_format($bytes / 1073741824, 2) . ' GB';
-    } elseif ($bytes >= 1048576) {
-        return number_format($bytes / 1048576, 2) . ' MB';
-    } elseif ($bytes >= 1024) {
-        return number_format($bytes / 1024, 2) . ' KB';
-    }
-    return $bytes . ' bytes';
-}
+// formatBytes() is provided globally by includes/helpers.php (loaded via config.php).
 
 function createPreUpgradeBackup($dbType, $dbPath) {
     $timestamp = date('Y-m-d_H-i-s');

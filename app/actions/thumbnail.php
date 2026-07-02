@@ -71,7 +71,7 @@ function uploadThumbnail() {
     }
 
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -176,7 +176,7 @@ function deleteThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -225,7 +225,7 @@ function generateThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -278,7 +278,7 @@ function setFromAttachment() {
     }
 
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied');
         return;
     }

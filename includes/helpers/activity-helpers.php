@@ -94,30 +94,6 @@ function getActivityLog($limit = 50, $offset = 0, $filters = [])
     }
 }
 
-// Clean old activity log entries
-function cleanActivityLog()
-{
-    $retentionDays = (int)getSetting('activity_log_retention_days', '90');
-    if ($retentionDays <= 0) {
-        return true;
-    }
-
-    try {
-        $db = getDB();
-        $type = $db->getType();
-
-        if ($type === 'mysql') {
-            $stmt = $db->prepare('DELETE FROM activity_log WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY)');
-        } else {
-            $stmt = $db->prepare("DELETE FROM activity_log WHERE created_at < datetime('now', '-' || :days || ' days')");
-        }
-        $stmt->execute([':days' => $retentionDays]);
-        return true;
-    } catch (Exception $e) {
-        return false;
-    }
-}
-
 // =====================
 // Recently Viewed Functions
 // =====================

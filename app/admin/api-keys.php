@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             if ($result) {
                 $_SESSION['new_api_key'] = $result['key'];
                 $_SESSION['new_api_key_name'] = $result['name'];
+                AuditLogger::logAdmin('api_key_created', ['resource_type' => 'api_key', 'resource_id' => $result['id'], 'resource_name' => $name]);
                 header('Location: ' . route('admin.api-keys', [], ['created' => '1']));
                 exit;
             } else {
@@ -51,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
     } elseif ($action === 'revoke') {
         $keyId = (int)($_POST['key_id'] ?? 0);
         if (revokeApiKey($keyId)) {
+            AuditLogger::logAdmin('api_key_revoked', ['resource_type' => 'api_key', 'resource_id' => $keyId]);
             $success = 'API key revoked successfully';
         } else {
             $error = 'Failed to revoke API key';

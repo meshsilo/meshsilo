@@ -47,7 +47,7 @@ if (!$model) {
 }
 
 // Check permission
-if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if (!userCanModifyModel($model, $user)) {
     jsonError('Permission denied', 403);
 }
 

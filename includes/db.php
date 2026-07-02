@@ -318,6 +318,27 @@ class Database
         return $this->pdo;
     }
 
+    // Transaction control passthrough to the underlying PDO handle
+    public function beginTransaction(): bool
+    {
+        return $this->pdo->beginTransaction();
+    }
+
+    public function commit(): bool
+    {
+        return $this->pdo->commit();
+    }
+
+    public function rollBack(): bool
+    {
+        return $this->pdo->rollBack();
+    }
+
+    public function inTransaction(): bool
+    {
+        return $this->pdo->inTransaction();
+    }
+
     /**
      * Normalize SQLite-specific SQL syntax for MySQL compatibility.
      * Converts INSERT OR IGNORE → INSERT IGNORE, INSERT OR REPLACE → REPLACE INTO,

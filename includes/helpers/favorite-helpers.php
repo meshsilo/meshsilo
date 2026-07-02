@@ -84,19 +84,6 @@ function getUserFavorites($userId = null, $limit = 50)
     }
 }
 
-// Get favorite count for a model
-function getModelFavoriteCount($modelId)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('SELECT COUNT(*) FROM favorites WHERE model_id = :model_id');
-        $stmt->execute([':model_id' => $modelId]);
-        return (int)$stmt->fetchColumn();
-    } catch (Exception $e) {
-        return 0;
-    }
-}
-
 // Get both favorite status and count in a single query
 function getModelFavoriteInfo($modelId, $userId = null)
 {

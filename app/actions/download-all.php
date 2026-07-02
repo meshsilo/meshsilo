@@ -33,7 +33,7 @@ if (!$model) {
 // Check ownership - user must own the model or be admin
 $user = getCurrentUser();
 $ownerId = $model['user_id'] ?? null;
-if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
+if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
     http_response_code(403);
     echo 'Access denied';
     exit;

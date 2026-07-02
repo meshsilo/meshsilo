@@ -173,7 +173,6 @@ $router->group(['prefix' => '/actions'], function ($router) {
 
     // Thumbnails
     $router->post('/thumbnail', ['file' => 'app/actions/thumbnail.php'], 'actions.thumbnail');
-    $router->post('/webp-thumbnail', ['file' => 'app/actions/webp-thumbnail.php'], 'actions.thumbnail.webp');
 
     // Attachments (images and PDFs)
     $router->post('/attachments', ['file' => 'app/actions/attachments.php'], 'actions.attachments');

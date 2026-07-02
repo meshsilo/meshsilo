@@ -120,11 +120,6 @@ class LocalStorage implements StorageInterface
         }
         return $this->basePath . '/' . $path;
     }
-
-    public function getBasePath()
-    {
-        return $this->basePath;
-    }
 }
 
 /**
@@ -384,43 +379,11 @@ function getStorage()
 }
 
 /**
- * Store a file in the configured storage
- */
-function storeFile($path, $localFile)
-{
-    return getStorage()->putFile($path, $localFile);
-}
-
-/**
  * Get a file from storage
  */
 function getFile($path)
 {
     return getStorage()->get($path);
-}
-
-/**
- * Delete a file from storage
- */
-function deleteFile($path)
-{
-    return getStorage()->delete($path);
-}
-
-/**
- * Check if file exists in storage
- */
-function fileExists($path)
-{
-    return getStorage()->exists($path);
-}
-
-/**
- * Get URL for a file (may be pre-signed for S3)
- */
-function getFileUrl($path, $expiry = 3600)
-{
-    return getStorage()->url($path, $expiry);
 }
 
 /**

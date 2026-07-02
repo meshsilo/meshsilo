@@ -1,0 +1,16 @@
+# PHPStan configuration for MeshSilo.
+#
+# PHPStan's default 128M memory limit is too low for this codebase and the
+# process crashes. Always run with an explicit higher limit, e.g.:
+#
+#     vendor/bin/phpstan analyse --memory-limit=1G
+#
+# (There is no config key for the memory limit; it must be passed on the CLI.)
+
+parameters:
+    level: 2
+    paths:
+        - includes
+        - app
+        - jobs
+        - cli

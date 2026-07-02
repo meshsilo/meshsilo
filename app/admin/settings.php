@@ -258,6 +258,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
 
     $message = 'Settings saved successfully.';
 
+    AuditLogger::logAdmin('settings_updated', ['resource_type' => 'settings']);
+
     // Plugin hook: admin_settings_saved - plugins save their own settings from the same form
     if (class_exists('PluginManager')) {
         PluginManager::applyFilter('admin_settings_saved', null, $_POST);

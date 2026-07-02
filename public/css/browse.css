@@ -41,47 +41,6 @@
     background-color: var(--color-surface-hover);
 }
 
-.search-result-name {
-    display: block;
-    font-weight: 500;
-}
-
-.search-result-name mark {
-    background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
-    color: inherit;
-    padding: 0 2px;
-    border-radius: 2px;
-}
-
-.search-result-creator {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    margin-top: 0.25rem;
-}
-
-.search-view-all {
-    display: block;
-    padding: 0.75rem 1rem;
-    text-align: center;
-    background-color: var(--color-bg);
-    color: var(--color-primary);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: background-color 0.15s;
-}
-
-.search-view-all:hover {
-    background-color: var(--color-surface-hover);
-}
-
-.search-no-results {
-    padding: 1rem;
-    text-align: center;
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
-}
-
 
 /* =====================
    Tags

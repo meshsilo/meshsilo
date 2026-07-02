@@ -111,9 +111,7 @@ $db = getDB();
 $user = getCurrentUser();
 
 // CSRF protection
-if (!Csrf::check()) {
-    jsonError('Invalid CSRF token', 403);
-}
+requireCsrfJson();
 
 // Verify model ownership (user must own the model or be admin)
 if ($modelId) {

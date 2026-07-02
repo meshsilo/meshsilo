@@ -158,117 +158,6 @@ class ScrollAnimations {
 }
 
 // =====================
-// Search Functionality
-// =====================
-class SearchHandler {
-    constructor() {
-        this.searchBar = document.querySelector('.search-bar');
-        this.searchResults = null;
-        this.debounceTimer = null;
-        this.init();
-    }
-
-    init() {
-        if (!this.searchBar) return;
-
-        // Create search results dropdown
-        this.searchResults = document.createElement('div');
-        this.searchResults.className = 'search-results';
-        this.searchBar.parentNode.style.position = 'relative';
-        this.searchBar.parentNode.appendChild(this.searchResults);
-
-        // Bind events
-        this.searchBar.addEventListener('input', (e) => this.handleInput(e));
-        this.searchBar.addEventListener('focus', () => this.showResults());
-        this.searchBar.addEventListener('keydown', (e) => this.handleKeydown(e));
-        document.addEventListener('click', (e) => this.handleClickOutside(e));
-    }
-
-    handleInput(e) {
-        const query = e.target.value.trim();
-
-        clearTimeout(this.debounceTimer);
-
-        if (query.length < 2) {
-            this.hideResults();
-            return;
-        }
-
-        this.debounceTimer = setTimeout(() => this.search(query), 300);
-    }
-
-    async search(query) {
-        try {
-            const response = await fetch(`/actions/search-suggest?q=${encodeURIComponent(query)}&limit=5`);
-            if (!response.ok) throw new Error('Search failed');
-
-            const results = await response.json();
-            this.renderResults(results, query);
-        } catch (err) {
-            DEBUG && console.warn('Search error:', err);
-            this.searchResults.innerHTML = '<div class="search-no-results">Search unavailable</div>';
-            this.showResults();
-        }
-    }
-
-    renderResults(results, query) {
-        if (!results || results.length === 0) {
-            this.searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
-            this.showResults();
-            return;
-        }
-
-        const html = results.map(model => `
-            <a href="${SILO_MODEL_BASE}${model.id}" class="search-result-item">
-                <span class="search-result-name">${this.highlight(model.name, query)}</span>
-                ${model.creator ? `<span class="search-result-creator">by ${this.escapeHtml(model.creator)}</span>` : ''}
-            </a>
-        `).join('');
-
-        this.searchResults.innerHTML = html + `
-            <a href="/browse?q=${encodeURIComponent(query)}" class="search-view-all">
-                View all results
-            </a>
-        `;
-        this.showResults();
-    }
-
-    highlight(text, query) {
-        const escaped = escapeHtml(text);
-        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return escaped.replace(regex, '<mark>$1</mark>');
-    }
-
-    handleKeydown(e) {
-        if (e.key === 'Escape') {
-            this.hideResults();
-            this.searchBar.blur();
-        } else if (e.key === 'Enter') {
-            const query = this.searchBar.value.trim();
-            if (query) {
-                window.location.href = `/browse?q=${encodeURIComponent(query)}`;
-            }
-        }
-    }
-
-    handleClickOutside(e) {
-        if (!this.searchBar.contains(e.target) && !this.searchResults.contains(e.target)) {
-            this.hideResults();
-        }
-    }
-
-    showResults() {
-        if (this.searchResults.innerHTML) {
-            this.searchResults.classList.add('active');
-        }
-    }
-
-    hideResults() {
-        this.searchResults.classList.remove('active');
-    }
-}
-
-// =====================
 // Toast Notifications
 // =====================
 class ToastManager {
@@ -603,7 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.siloUI = {
         lazyLoader: new LazyModelLoader(),
         scrollAnimations: new ScrollAnimations(),
-        search: new SearchHandler(),
         toasts: new ToastManager(),
         cardEffects: new CardEffects(),
         keyboard: new KeyboardShortcuts(),

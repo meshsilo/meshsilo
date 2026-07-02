@@ -84,20 +84,6 @@ function incrementDownloadCount($modelId)
     }
 }
 
-// Get download count
-function getDownloadCount($modelId)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('SELECT download_count FROM models WHERE id = :id');
-        $stmt->execute([':id' => $modelId]);
-        $row = $stmt->fetch();
-        return $row ? (int)$row['download_count'] : 0;
-    } catch (Exception $e) {
-        return 0;
-    }
-}
-
 // =====================
 // Storage Usage Functions
 // =====================
@@ -123,25 +109,6 @@ function getStorageUsageByCategory()
                 GROUP BY m.id
             ) ms ON ms.model_id = mc.model_id
             GROUP BY c.id, c.name
-            ORDER BY total_size DESC
-        ');
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (\Throwable $e) {
-        return [];
-    }
-}
-
-function getStorageUsageByUser()
-{
-    try {
-        $db = getDB();
-        $stmt = $db->query('
-            SELECT u.id, u.username,
-                   COUNT(m.id) as model_count,
-                   SUM(m.original_size) as total_size
-            FROM users u
-            LEFT JOIN models m ON m.user_id = u.id AND m.parent_id IS NULL
-            GROUP BY u.id, u.username
             ORDER BY total_size DESC
         ');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -571,3 +571,58 @@ class AuditLogger
         return $stats;
     }
 }
+
+/*
+ * Global convenience wrappers
+ *
+ * Thin procedural aliases so page and action scripts can record audit events
+ * without referencing the AuditLogger class directly. Each is guarded with
+ * function_exists() so this file stays safe to include more than once and so a
+ * host application that already defines these names keeps its own version.
+ *
+ * Callers pass a flat context array; it is stored under the audit_log
+ * "metadata" column. AuditLogger::log() only persists a fixed set of keys
+ * (resource_type, resource_id, resource_name, old_value, new_value, metadata),
+ * of which "metadata" is the free-form one, so wrapping the flat array there
+ * ensures arbitrary caller context is not silently dropped.
+ */
+
+if (!function_exists('logAdmin')) {
+    /**
+     * Record an administrative action in the audit log.
+     */
+    function logAdmin($event, $meta = [])
+    {
+        return AuditLogger::logAdmin($event, ['metadata' => $meta]);
+    }
+}
+
+if (!function_exists('logAudit')) {
+    /**
+     * Record a generic audit-trail event (an admin-initiated action).
+     */
+    function logAudit($event, $meta = [])
+    {
+        return AuditLogger::logAdmin($event, ['metadata' => $meta]);
+    }
+}
+
+if (!function_exists('logSecurityEvent')) {
+    /**
+     * Record a security-relevant event in the audit log.
+     */
+    function logSecurityEvent($event, $meta = [], $severity = AuditLogger::SEVERITY_WARNING)
+    {
+        return AuditLogger::logSecurity($event, ['metadata' => $meta], $severity);
+    }
+}
+
+if (!function_exists('logDataChange')) {
+    /**
+     * Record a data change (old/new values) in the audit log.
+     */
+    function logDataChange($resourceType, $resourceId, $oldValue, $newValue, $resourceName = null)
+    {
+        return AuditLogger::logDataChange($resourceType, $resourceId, $oldValue, $newValue, $resourceName);
+    }
+}

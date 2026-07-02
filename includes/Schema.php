@@ -38,8 +38,6 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_backup_codes TEXT,
     two_factor_enabled_at $ts NULL,
     two_factor_last_used $bigint,
-    storage_limit_mb $int DEFAULT 0,
-    model_limit $int DEFAULT 0,
     created_at $ts DEFAULT CURRENT_TIMESTAMP
 )$engine;
 
@@ -76,10 +74,6 @@ CREATE TABLE IF NOT EXISTS models (
     thumbnail_path {$varchar(500)},
     folder_id $int,
     approval_status {$varchar(20)} DEFAULT 'approved',
-    approved_by $int,
-    approved_at $ts NULL,
-    rating_avg $double DEFAULT 0,
-    rating_count $int DEFAULT 0,
     view_count $int DEFAULT 0,
     integrity_hash {$varchar(64)},
     integrity_checked_at $ts NULL,
@@ -194,17 +188,6 @@ CREATE TABLE IF NOT EXISTS recently_viewed (
     FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
 )$engine;
 
-CREATE TABLE IF NOT EXISTS print_queue (
-    id $autoId,
-    user_id $int NOT NULL,
-    model_id $int NOT NULL,
-    priority $int DEFAULT 0,
-    notes TEXT,
-    added_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
-)$engine;
-
 CREATE TABLE IF NOT EXISTS model_versions (
     id $autoId,
     model_id $int NOT NULL,
@@ -246,70 +229,6 @@ CREATE TABLE IF NOT EXISTS api_request_log (
     FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
 )$engine;
 
-CREATE TABLE IF NOT EXISTS print_photos (
-    id $autoId,
-    model_id $int NOT NULL,
-    user_id $int,
-    filename {$varchar(255)} NOT NULL,
-    file_path {$varchar(500)} NOT NULL,
-    caption TEXT,
-    is_primary $tinyint DEFAULT 0,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-)$engine;
-
-CREATE TABLE IF NOT EXISTS printers (
-    id $autoId,
-    user_id $int,
-    name {$varchar(255)} NOT NULL,
-    manufacturer {$varchar(255)},
-    model {$varchar(255)},
-    bed_x {$decimal(10,2)},
-    bed_y {$decimal(10,2)},
-    bed_z {$decimal(10,2)},
-    print_type {$varchar(50)} DEFAULT 'fdm',
-    is_default $tinyint DEFAULT 0,
-    notes TEXT,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS print_history (
-    id $autoId,
-    model_id $int NOT NULL,
-    user_id $int,
-    printer_id $int,
-    print_date $ts DEFAULT CURRENT_TIMESTAMP,
-    duration_minutes $int,
-    filament_used_g {$decimal(10,2)},
-    filament_type {$varchar(100)},
-    filament_color {$varchar(100)},
-    success $tinyint DEFAULT 1,
-    quality_rating $int,
-    notes TEXT,
-    settings TEXT,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (printer_id) REFERENCES printers(id) ON DELETE SET NULL
-)$engine;
-
-CREATE TABLE IF NOT EXISTS model_ratings (
-    id $autoId,
-    model_id $int NOT NULL,
-    user_id $int NOT NULL,
-    printability $int,
-    quality $int,
-    difficulty $int,
-    review TEXT,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    updated_at $ts DEFAULT CURRENT_TIMESTAMP$onUpdate,
-    {$uniqueKey('unique_rating', 'model_id, user_id')},
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-)$engine;
-
 CREATE TABLE IF NOT EXISTS folders (
     id $autoId,
     parent_id $int,
@@ -335,52 +254,6 @@ CREATE TABLE IF NOT EXISTS related_models (
     {$uniqueKey('unique_relation', 'model_id, related_model_id')},
     FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
     FOREIGN KEY (related_model_id) REFERENCES models(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS teams (
-    id $autoId,
-    name {$varchar(255)} NOT NULL,
-    description TEXT,
-    owner_id $int NOT NULL,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS team_members (
-    id $autoId,
-    team_id $int NOT NULL,
-    user_id $int NOT NULL,
-    role {$varchar(50)} DEFAULT 'member',
-    joined_at $ts DEFAULT CURRENT_TIMESTAMP,
-    {$uniqueKey('unique_membership', 'team_id, user_id')},
-    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS team_models (
-    id $autoId,
-    team_id $int NOT NULL,
-    model_id $int NOT NULL,
-    shared_by $int NOT NULL,
-    permissions {$varchar(50)} DEFAULT 'read',
-    shared_at $ts DEFAULT CURRENT_TIMESTAMP,
-    {$uniqueKey('unique_share', 'team_id, model_id')},
-    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    FOREIGN KEY (shared_by) REFERENCES users(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS team_invites (
-    id $autoId,
-    team_id $int NOT NULL,
-    email {$varchar(255)} NOT NULL,
-    role {$varchar(50)} DEFAULT 'member',
-    token {$varchar(64)} NOT NULL UNIQUE,
-    invited_by $int NOT NULL,
-    status {$varchar(20)} DEFAULT 'pending',
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
-    FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE
 )$engine;
 
 CREATE TABLE IF NOT EXISTS integrity_log (
@@ -432,69 +305,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at $int NOT NULL DEFAULT 0,
     created_at $ts DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS model_analysis (
-    id $autoId,
-    model_id $int NOT NULL UNIQUE,
-    overhang_percentage {$decimal(5,2)},
-    support_required $tinyint DEFAULT 0,
-    optimal_orientation TEXT,
-    thin_wall_warnings TEXT,
-    printability_score $int,
-    analysis_warnings TEXT,
-    estimated_print_time $int,
-    estimated_filament_grams {$decimal(10,2)},
-    analyzed_at $ts NULL,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS import_jobs (
-    id $autoId,
-    source_url {$varchar(500)} NOT NULL,
-    source_type {$varchar(50)} NOT NULL,
-    status {$varchar(20)} DEFAULT 'pending',
-    total_items $int DEFAULT 0,
-    imported_items $int DEFAULT 0,
-    failed_items $int DEFAULT 0,
-    settings TEXT,
-    error_log TEXT,
-    created_by $int NOT NULL,
-    started_at $ts NULL,
-    completed_at $ts NULL,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
-)$engine;
-
-CREATE TABLE IF NOT EXISTS import_job_items (
-    id $autoId,
-    job_id $int NOT NULL,
-    external_id {$varchar(100)},
-    external_url {$varchar(500)},
-    name {$varchar(255)},
-    status {$varchar(20)} DEFAULT 'pending',
-    model_id $int,
-    error_message TEXT,
-    metadata TEXT,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (job_id) REFERENCES import_jobs(id) ON DELETE CASCADE,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE SET NULL
-)$engine;
-
-CREATE TABLE IF NOT EXISTS conversion_queue (
-    id $autoId,
-    model_id $int NOT NULL,
-    source_format {$varchar(10)} NOT NULL,
-    target_format {$varchar(10)} NOT NULL,
-    status {$varchar(20)} DEFAULT 'pending',
-    priority $int DEFAULT 0,
-    error_message TEXT,
-    queued_by $int,
-    started_at $ts NULL,
-    completed_at $ts NULL,
-    created_at $ts DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE,
-    FOREIGN KEY (queued_by) REFERENCES users(id) ON DELETE SET NULL
 )$engine;
 
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -772,8 +582,6 @@ function ensureColumns($db)
         'thumbnail_path' => $type === 'mysql' ? 'VARCHAR(500)' : 'TEXT',
         'folder_id' => $type === 'mysql' ? 'INT' : 'INTEGER',
         'approval_status' => ($type === 'mysql' ? "VARCHAR(20)" : "TEXT") . " DEFAULT 'approved'",
-        'approved_by' => $type === 'mysql' ? 'INT' : 'INTEGER',
-        'approved_at' => $type === 'mysql' ? 'TIMESTAMP NULL' : 'DATETIME',
         'parent_id' => $type === 'mysql' ? 'INT' : 'INTEGER',
         'original_path' => $type === 'mysql' ? 'VARCHAR(500)' : 'TEXT',
         'part_count' => ($type === 'mysql' ? 'INT' : 'INTEGER') . ' DEFAULT 0',
@@ -781,8 +589,6 @@ function ensureColumns($db)
         'original_size' => $type === 'mysql' ? 'BIGINT' : 'INTEGER',
         'file_hash' => $type === 'mysql' ? 'VARCHAR(64)' : 'TEXT',
         'dedup_path' => $type === 'mysql' ? 'VARCHAR(500)' : 'TEXT',
-        'rating_avg' => 'REAL DEFAULT 0',
-        'rating_count' => 'INTEGER DEFAULT 0',
         'view_count' => 'INTEGER DEFAULT 0',
         'integrity_hash' => $type === 'mysql' ? 'VARCHAR(64)' : 'TEXT',
         'integrity_checked_at' => $type === 'mysql' ? 'DATETIME' : 'DATETIME',
@@ -808,8 +614,6 @@ function ensureColumns($db)
         'two_factor_backup_codes' => 'TEXT',
         'two_factor_enabled_at' => $type === 'mysql' ? 'DATETIME' : 'DATETIME',
         'two_factor_last_used' => $type === 'mysql' ? 'BIGINT' : 'INTEGER',
-        'storage_limit_mb' => 'INTEGER DEFAULT 0',
-        'model_limit' => 'INTEGER DEFAULT 0',
     ];
 
     foreach ($userColumns as $column => $dataType) {
@@ -883,11 +687,6 @@ function ensureIndexes($db)
         'idx_password_resets_email' => ['password_resets', 'email'],
         'idx_password_resets_token' => ['password_resets', 'token'],
         'idx_password_resets_expires' => ['password_resets', 'expires_at'],
-        'idx_import_jobs_status' => ['import_jobs', 'status'],
-        'idx_import_jobs_user' => ['import_jobs', 'created_by'],
-        'idx_import_items_job' => ['import_job_items', 'job_id'],
-        'idx_import_items_status' => ['import_job_items', 'status'],
-        'idx_conversion_status' => ['conversion_queue', 'status, priority'],
         'idx_rate_limit_hits_key' => ['rate_limit_hits', 'key_hash'],
     ];
 

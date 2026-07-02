@@ -83,24 +83,6 @@ function removeRelatedModel($modelId, $relatedModelId)
 // Version History Functions
 // =====================
 
-function getModelVersions($modelId)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('
-            SELECT mv.*, u.username as created_by_name
-            FROM model_versions mv
-            LEFT JOIN users u ON mv.created_by = u.id
-            WHERE mv.model_id = :model_id
-            ORDER BY mv.version_number DESC
-        ');
-        $stmt->execute([':model_id' => $modelId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (\Throwable $e) {
-        return [];
-    }
-}
-
 function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog = '', $createdBy = null)
 {
     try {
@@ -135,33 +117,9 @@ function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog =
     }
 }
 
-function getModelVersion($modelId, $versionNumber)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('SELECT id, model_id, version_number, file_path, file_size, file_hash, changelog, created_by, created_at FROM model_versions WHERE model_id = :model_id AND version_number = :version');
-        $stmt->execute([':model_id' => $modelId, ':version' => $versionNumber]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        return null;
-    }
-}
-
 // =====================
 // Part Ordering Functions
 // =====================
-
-function updatePartOrder($partId, $sortOrder)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('UPDATE models SET sort_order = :sort_order WHERE id = :id');
-        $stmt->execute([':sort_order' => $sortOrder, ':id' => $partId]);
-        return true;
-    } catch (Exception $e) {
-        return false;
-    }
-}
 
 function reorderParts($parentId, $partIds)
 {

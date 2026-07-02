@@ -32,7 +32,7 @@ try {
 
     // Ownership check - only the owner (or an admin) may recalculate dimensions
     $user = getCurrentUser();
-    if (!empty($model['user_id']) && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+    if (!userCanModifyModel($model, $user)) {
         jsonError('Permission denied', 403);
     }
 

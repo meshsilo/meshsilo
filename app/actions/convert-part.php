@@ -116,7 +116,7 @@ if ($action === 'estimate') {
     // Verify ownership (owner-or-admin) before queuing
     $user = getCurrentUser();
     $ownerId = partOwnerId($partId);
-    if (!empty($ownerId) && (int)$ownerId !== (int)$user['id'] && !$user['is_admin']) {
+    if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
         jsonError('Permission denied', 403);
     }
 
@@ -154,7 +154,7 @@ if ($action === 'estimate') {
         if ($part && $part['file_type'] === 'stl' && !isPartAlreadyQueued($id)) {
             // Verify ownership (owner-or-admin) before queuing; skip unauthorized parts
             $ownerId = partOwnerId($id);
-            if (!empty($ownerId) && (int)$ownerId !== (int)$user['id'] && !$user['is_admin']) {
+            if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
                 continue;
             }
             Queue::push('ConvertStlTo3mf', ['model_id' => $id], 'conversions');

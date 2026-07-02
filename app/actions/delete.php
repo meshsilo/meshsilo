@@ -152,7 +152,7 @@ if (!$model) {
 
 // Ownership check: only the owner or an admin may delete
 $user = getCurrentUser();
-if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if (!userCanModifyModel($model, $user)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'You do not own this model']);
     exit;

@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../../includes/config.php';
+// Loaded explicitly so the global logAdmin()/logAudit() wrappers are defined:
+// they are plain functions, which the class autoloader does not resolve.
+require_once __DIR__ . '/../../includes/AuditLogger.php';
 
 // Require user management permission
 if (!isLoggedIn() || !canManageUsers()) {

@@ -342,11 +342,14 @@ class SavedSearches
     {
         $params = self::toQueryParams($search);
 
+        // Point at the browse page (HTML results), not /search which returns
+        // raw JSON. Browse reads the same param names this builds (q, category,
+        // tag, file_type, sort); params browse doesn't use are ignored.
         if (function_exists('route')) {
-            return route('search', [], $params);
+            return route('browse', [], $params);
         }
 
-        return '/search?' . http_build_query($params);
+        return '/browse?' . http_build_query($params);
     }
 
     /**

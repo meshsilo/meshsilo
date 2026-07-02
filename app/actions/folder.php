@@ -353,7 +353,7 @@ function moveModelToFolder() {
         jsonError('Model not found');
         return;
     }
-    if (!empty($model['user_id']) && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+    if (!userCanModifyModel($model, $user)) {
         jsonError('Permission denied', 403);
         return;
     }

@@ -257,29 +257,6 @@ class SignedUrl
     }
 }
 
-/**
- * Middleware to verify signed URLs
- */
-class SignedUrlMiddleware implements MiddlewareInterface
-{
-    public function handle(array $params): bool
-    {
-        if (!SignedUrl::verify()) {
-            http_response_code(403);
-
-            header('Content-Type: application/json');
-            echo json_encode([
-                'error' => SignedUrl::isExpired() ? 'Link expired' : 'Invalid signature',
-                'expired' => SignedUrl::isExpired()
-            ]);
-
-            return false;
-        }
-
-        return true;
-    }
-}
-
 // Helper functions for templates
 
 /**

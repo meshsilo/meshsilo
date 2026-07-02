@@ -118,7 +118,7 @@ function uploadAttachment() {
 
     // Verify ownership - user must own the model or be an admin
     $user = getCurrentUser();
-    if (!$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
+    if (!userCanModifyModel($model, $user)) {
         jsonError('Not authorized to modify this model');
         return;
     }
@@ -252,7 +252,7 @@ function deleteAttachment() {
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     $user = getCurrentUser();
-    if ($model && !$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
+    if ($model && !userCanModifyModel($model, $user)) {
         jsonError('Not authorized to modify this model');
         return;
     }

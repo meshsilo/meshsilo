@@ -97,25 +97,11 @@ function getAvailableFeatures(): array
             'category' => 'Integration',
             'default' => true,
         ],
-        'import_jobs' => [
-            'name' => 'Bulk Import',
-            'description' => 'Import models from external sources in bulk',
-            'icon' => 'download',
-            'category' => 'Import/Export',
-            'default' => false,
-        ],
         'two_factor_auth' => [
             'name' => 'Two-Factor Authentication',
             'description' => 'TOTP-based 2FA with backup codes',
             'icon' => 'shield',
             'category' => 'Security',
-            'default' => true,
-        ],
-        'model_ratings' => [
-            'name' => 'Model Ratings',
-            'description' => 'Allow users to rate and review models',
-            'icon' => 'star',
-            'category' => 'Community',
             'default' => true,
         ],
         'favorites' => [
@@ -373,9 +359,7 @@ function getFeaturePresets(): array
             'description' => 'Core features only - uploading, browsing, and basic organization',
             'features' => [
                 'api_keys' => false,
-                'import_jobs' => false,
                 'two_factor_auth' => false,
-                'model_ratings' => false,
                 'favorites' => true,
                 'activity_log' => false,
                 'attachments' => false,
@@ -397,9 +381,7 @@ function getFeaturePresets(): array
             'description' => 'Recommended for most users - includes collaboration and printing features',
             'features' => [
                 'api_keys' => false,
-                'import_jobs' => false,
                 'two_factor_auth' => true,
-                'model_ratings' => true,
                 'favorites' => true,
                 'activity_log' => true,
                 'attachments' => true,
@@ -421,9 +403,7 @@ function getFeaturePresets(): array
             'description' => 'All features enabled - full integration, compliance, and analytics',
             'features' => [
                 'api_keys' => true,
-                'import_jobs' => true,
                 'two_factor_auth' => true,
-                'model_ratings' => true,
                 'favorites' => true,
                 'activity_log' => true,
                 'attachments' => true,
@@ -477,7 +457,6 @@ function getFeatureUsageStats(): array
     $tableQueries = [
         'api_keys' => 'api_keys',
         'favorites' => 'favorites',
-        'model_ratings' => 'model_ratings',
         'activity_log' => 'activity_log',
         'attachments' => 'model_attachments',
         'tags' => 'tags',

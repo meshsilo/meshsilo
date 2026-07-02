@@ -265,7 +265,7 @@ class STLConverter
                 'triangles' => $this->triangleCount
             ];
         } catch (Exception $e) {
-            if (isset($handle) && is_resource($handle)) fclose($handle);
+            if (is_resource($handle)) fclose($handle);
             $this->cleanupTempStorage();
             throw $e;
         }
@@ -323,7 +323,7 @@ class STLConverter
                 'triangles' => $this->triangleCount
             ];
         } catch (Exception $e) {
-            if (isset($handle) && is_resource($handle)) fclose($handle);
+            if (is_resource($handle)) fclose($handle);
             $this->cleanupTempStorage();
             throw $e;
         }

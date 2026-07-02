@@ -44,7 +44,7 @@ $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
 $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $ownerResult = $stmt->execute();
 $ownerInfo = $ownerResult->fetchArray(PDO::FETCH_ASSOC);
-if ($ownerInfo && $ownerInfo['user_id'] && (int)$ownerInfo['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if ($ownerInfo && !userCanModifyModel(['user_id' => $ownerInfo['user_id']], $user)) {
     jsonError('Permission denied - not model owner', 403);
 }
 

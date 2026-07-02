@@ -586,36 +586,3 @@ class TwoFactor
         return QRCode::toSVG($url);
     }
 }
-
-/**
- * 2FA Middleware
- *
- * Requires 2FA verification for users with 2FA enabled
- */
-class TwoFactorMiddleware implements MiddlewareInterface
-{
-    public function handle(array $params): bool
-    {
-        // Check if user is logged in
-        if (!function_exists('isLoggedIn') || !isLoggedIn()) {
-            return true; // Let auth middleware handle this
-        }
-
-        $user = getCurrentUser();
-
-        // Check if 2FA is enabled for this user
-        if (!TwoFactor::isEnabled($user['id'])) {
-            return true; // No 2FA required
-        }
-
-        // Check if 2FA has been verified this session
-        if (!empty($_SESSION['2fa_verified']) && $_SESSION['2fa_verified'] === $user['id']) {
-            return true; // Already verified
-        }
-
-        // Redirect to 2FA verification page
-        $_SESSION['2fa_return_url'] = $_SERVER['REQUEST_URI'];
-        header('Location: ' . (function_exists('route') ? route('2fa.verify') : '/2fa-verify'));
-        exit;
-    }
-}
