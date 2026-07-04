@@ -237,7 +237,7 @@ include __DIR__ . '/../../includes/header.php';
     <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
     <div class="admin-content">
-        <div class="admin-header">
+        <div class="page-header">
             <h1>CLI Tools</h1>
             <p>Run optimization and maintenance commands from the web interface</p>
         </div>

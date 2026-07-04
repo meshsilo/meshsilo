@@ -9,6 +9,13 @@ class LazyModelLoader {
         this.observer = null;
         this.loadedViewers = new WeakSet();
         this.pendingElements = new Set();
+        // LRU cap on live WebGL contexts. Browsers allow only ~16 total, so keep a
+        // bounded working set and dispose the least-recently-visible viewer when a
+        // new thumbnail needs a context (it re-creates when scrolled back). Only
+        // models without a static thumbnail use a live viewer, so this is a safety net.
+        this.viewers = new Map();   // thumbnail -> { viewer, container }; insertion order = LRU
+        this.visible = new Set();   // thumbnails currently in the viewport (never evicted)
+        this.MAX_LIVE_VIEWERS = 12;
         this.init();
     }
 
@@ -39,11 +46,50 @@ class LazyModelLoader {
 
     handleIntersection(entries) {
         entries.forEach(entry => {
-            if (entry.isIntersecting && !this.loadedViewers.has(entry.target)) {
-                this.loadedViewers.add(entry.target);
-                this.loadViewer(entry.target);
+            if (entry.isIntersecting) {
+                this.visible.add(entry.target);
+                if (this.viewers.has(entry.target)) {
+                    this.touch(entry.target); // already live: mark most-recently-used
+                } else if (!this.loadedViewers.has(entry.target)) {
+                    this.loadedViewers.add(entry.target);
+                    this.loadViewer(entry.target);
+                }
+            } else {
+                this.visible.delete(entry.target);
             }
         });
+    }
+
+    // Move a live viewer to the most-recently-used position (end of the Map).
+    touch(thumbnail) {
+        const entry = this.viewers.get(thumbnail);
+        if (entry) {
+            this.viewers.delete(thumbnail);
+            this.viewers.set(thumbnail, entry);
+        }
+    }
+
+    // At the cap, dispose the oldest off-screen viewer to free a WebGL context.
+    evictIfNeeded() {
+        if (this.viewers.size < this.MAX_LIVE_VIEWERS) return;
+        for (const [thumb, entry] of this.viewers) {
+            if (this.visible.has(thumb)) continue; // never tear down a visible viewer
+            this.disposeViewer(thumb, entry);
+            return;
+        }
+        // All live viewers are on-screen: allow going slightly over rather than
+        // dispose something the user is looking at.
+    }
+
+    // Tear down a live viewer; its card re-creates one when scrolled back into view.
+    disposeViewer(thumbnail, entry) {
+        try { entry.viewer.dispose(); } catch (e) { /* already gone */ }
+        if (entry.container && entry.container.parentNode) {
+            entry.container.remove();
+        }
+        this.viewers.delete(thumbnail);
+        this.loadedViewers.delete(thumbnail);
+        thumbnail.classList.remove('has-viewer', 'loaded');
     }
 
     loadViewer(thumbnail) {
@@ -83,6 +129,9 @@ class LazyModelLoader {
             const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
             const bgColor = isLightTheme ? 0xf8fafc : 0x1e293b;
 
+            // Free a WebGL context slot (LRU) before creating a new one.
+            this.evictIfNeeded();
+
             // Initialize viewer - wrap in try-catch for WebGL errors
             let viewer;
             try {
@@ -91,6 +140,8 @@ class LazyModelLoader {
                     interactive: false,
                     backgroundColor: bgColor
                 });
+                // Track for LRU eviction (newest = most-recently-used, at the Map end).
+                this.viewers.set(thumbnail, { viewer: viewer, container: viewerContainer });
             } catch (e) {
                 DEBUG && console.warn('WebGL not available for thumbnail:', e.message);
                 thumbnail.classList.remove('loading', 'lazy-load-placeholder');
@@ -106,6 +157,7 @@ class LazyModelLoader {
                 thumbnail.classList.add('load-error');
                 viewer.dispose();
                 viewerContainer.remove();
+                this.viewers.delete(thumbnail);
             }, 15000); // 15 second timeout
 
             viewer.loadModel(url, fileType)
@@ -121,6 +173,7 @@ class LazyModelLoader {
                     thumbnail.classList.add('load-error');
                     viewer.dispose();
                     viewerContainer.remove();
+                    this.viewers.delete(thumbnail);
                 });
         }, 200); // 200ms delay
     }

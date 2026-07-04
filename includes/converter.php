@@ -90,16 +90,15 @@ class STLConverter
         $this->tempDb->exec('
             CREATE TABLE vertices (
                 id INTEGER PRIMARY KEY,
-                key BLOB UNIQUE,
-                x REAL,
-                y REAL,
-                z REAL
+                key BLOB UNIQUE
             )
         ');
 
-        // Prepare cached statements — id is assigned manually (no AUTOINCREMENT)
+        // Prepare cached statements - id is assigned manually (no AUTOINCREMENT).
+        // Coordinates are recovered by unpacking `key` (the packed x/y/z), so we do
+        // not store them a second time in x/y/z columns.
         $this->insertVertexStmt = $this->tempDb->prepare(
-            'INSERT OR IGNORE INTO vertices (id, key, x, y, z) VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO vertices (id, key) VALUES (?, ?)'
         );
         $this->selectVertexStmt = $this->tempDb->prepare(
             'SELECT id FROM vertices WHERE key = ?'
@@ -161,19 +160,20 @@ class STLConverter
     {
         $key = pack('d3', $x, $y, $z);
 
-        // Try to insert with the next available ID (ignored if key already exists)
-        $this->insertVertexStmt->execute([$this->vertexCount, $key, $x, $y, $z]);
-        if ($this->insertVertexStmt->rowCount() > 0) {
-            // New vertex inserted
-            return $this->vertexCount++;
+        // Most vertex references are shared duplicates (a mesh vertex is typically
+        // used by ~6 triangles), so look it up first: a hit is a single index probe.
+        // Only a genuinely new vertex pays for an INSERT. This avoids the failed-insert
+        // probe the old insert-then-select paid on every duplicate reference.
+        $this->selectVertexStmt->execute([$key]);
+        $id = $this->selectVertexStmt->fetchColumn();
+        $this->selectVertexStmt->closeCursor();
+        if ($id !== false) {
+            return (int)$id;
         }
 
-        // Duplicate key — look up the existing ID
-        $this->selectVertexStmt->execute([$key]);
-        $row = $this->selectVertexStmt->fetch(PDO::FETCH_NUM);
-        $this->selectVertexStmt->closeCursor();
-
-        return (int)$row[0];
+        // New vertex - assign the next sequential id.
+        $this->insertVertexStmt->execute([$this->vertexCount, $key]);
+        return $this->vertexCount++;
     }
 
     /**
@@ -360,11 +360,13 @@ class STLConverter
 
         // Stream vertices from SQLite in batches of 1000
         fwrite($handle, "        <vertices>\n");
-        $stmt = $this->tempDb->query('SELECT x, y, z FROM vertices ORDER BY id');
+        // Recover coordinates by unpacking the dedup key (id order = insertion order).
+        $stmt = $this->tempDb->query('SELECT key FROM vertices ORDER BY id');
         $buffer = '';
         $bufCount = 0;
         while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
-            $buffer .= sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />' . "\n", $row[0], $row[1], $row[2]);
+            $c = unpack('d3', $row[0]);
+            $buffer .= sprintf('          <vertex x="%.6f" y="%.6f" z="%.6f" />' . "\n", $c[1], $c[2], $c[3]);
             if (++$bufCount >= 1000) {
                 fwrite($handle, $buffer);
                 $buffer = '';

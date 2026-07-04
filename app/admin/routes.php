@@ -95,9 +95,9 @@ require_once __DIR__ . '/../../includes/header.php';
 <?php require_once __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
 <div class="admin-content">
-    <div class="admin-header">
+    <div class="page-header">
         <h1>Route Debugging</h1>
-        <p class="admin-subtitle">View registered routes, test URL matching, and manage route cache</p>
+        <p>View registered routes, test URL matching, and manage route cache</p>
     </div>
 
     <?php if ($message): ?>
