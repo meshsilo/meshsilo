@@ -21,46 +21,37 @@ function initCompareViewers() {
 }
 
 function loadModelByType(modelPath, modelType, onLoad, onError) {
-    const ext = (modelType || '').toLowerCase();
+    // Reuse the canonical loader dispatch from viewer-loaders.js
+    // (ModelViewer.prototype.loadModel) instead of maintaining a parallel,
+    // drifting copy of the per-format loaders. A lightweight host object
+    // receives the loaded model while neutralizing ModelViewer's scene
+    // side-effects (centering/scaling/animation), so the compare page keeps
+    // its own orchestration: native-unit geometry stats, custom camera fit,
+    // overlay material overrides, and two-viewer camera sync.
+    const host = Object.create(ModelViewer.prototype);
+    host.model = null;
+    host.clearModel = function() { this.model = null; };
+    host.centerAndScaleModel = function() {};
+    host.startAnimation = function() {};
 
-    if (ext === 'stl') {
-        new THREE.STLLoader().load(modelPath, function(geometry) {
-            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
-            onLoad(new THREE.Mesh(geometry, material));
-        }, undefined, onError);
-    } else if (ext === '3mf') {
-        new THREE.ThreeMFLoader().load(modelPath, function(group) {
-            onLoad(group);
-        }, undefined, onError);
-    } else if (ext === 'obj') {
-        new THREE.OBJLoader().load(modelPath, function(group) {
-            onLoad(group);
-        }, undefined, onError);
-    } else if (ext === 'ply') {
-        new THREE.PLYLoader().load(modelPath, function(geometry) {
-            geometry.computeVertexNormals();
-            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
-            onLoad(new THREE.Mesh(geometry, material));
-        }, undefined, onError);
-    } else if (ext === 'glb' || ext === 'gltf') {
-        new THREE.GLTFLoader().load(modelPath, function(gltf) {
-            onLoad(gltf.scene);
-        }, undefined, onError);
-    } else if (ext === 'fbx' && THREE.FBXLoader) {
-        new THREE.FBXLoader().load(modelPath, function(group) {
-            onLoad(group);
-        }, undefined, onError);
-    } else if (ext === 'dae' && THREE.ColladaLoader) {
-        new THREE.ColladaLoader().load(modelPath, function(collada) {
-            onLoad(collada.scene);
-        }, undefined, onError);
-    } else {
-        // Fallback: try STL loader
-        new THREE.STLLoader().load(modelPath, function(geometry) {
-            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
-            onLoad(new THREE.Mesh(geometry, material));
-        }, undefined, onError);
-    }
+    const type = (modelType || '').toLowerCase();
+
+    host.loadModel(modelPath, type).then(
+        function(object) { onLoad(object); },
+        function(error) {
+            // Preserve compare's original behavior: attempt an STL parse for
+            // unrecognized extensions before surfacing the error.
+            const msg = (error && error.message) ? String(error.message) : '';
+            if (msg.indexOf('Unsupported file type') === 0) {
+                host.loadSTL(modelPath).then(
+                    function(object) { onLoad(object); },
+                    function(stlError) { onError(stlError); }
+                );
+            } else {
+                onError(error);
+            }
+        }
+    );
 }
 
 function getGeometryStats(object) {

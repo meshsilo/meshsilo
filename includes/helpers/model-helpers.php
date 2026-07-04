@@ -46,6 +46,7 @@ function getRelatedModels($modelId)
         $stmt->execute([':model_id' => $modelId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (\Throwable $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -63,6 +64,7 @@ function addRelatedModel($modelId, $relatedModelId, $relationshipType = 'related
         $stmt->execute([':model_id' => $relatedModelId, ':related_id' => $modelId, ':type' => $relationshipType]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -75,6 +77,7 @@ function removeRelatedModel($modelId, $relatedModelId)
         $stmt->execute([':model_id1' => $modelId, ':related_id1' => $relatedModelId, ':related_id2' => $relatedModelId, ':model_id2' => $modelId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -113,6 +116,7 @@ function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog =
 
         return $nextVersion;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -133,6 +137,7 @@ function reorderParts($parentId, $partIds)
         $db->commit();
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         if (isset($db)) {
             $db->rollBack();
         }
@@ -152,6 +157,7 @@ function updateModelDimensions($modelId, $dimX, $dimY, $dimZ, $unit = 'mm')
         $stmt->execute([':x' => $dimX, ':y' => $dimY, ':z' => $dimZ, ':unit' => $unit, ':id' => $modelId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -168,6 +174,7 @@ function getModelDimensions($modelId)
         }
         return null;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return null;
     }
 }

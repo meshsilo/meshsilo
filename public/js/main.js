@@ -352,7 +352,7 @@ class KeyboardShortcuts {
             const link = card.querySelector('a[href*="/model/"]') || card;
             const modelId = card.dataset.modelId;
             if (modelId) {
-                window.location.href = SILO_MODEL_BASE + modelId;
+                window.location.href = window.SiloConfig.modelBase + modelId;
             } else if (link.href) {
                 window.location.href = link.href;
             }
@@ -460,29 +460,8 @@ class BackToTop {
 // =====================
 // Modal Focus Trap
 // =====================
-window.trapFocus = function(modal) {
-    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    first.focus();
-    modal._focusTrapHandler = function(e) {
-        if (e.key !== 'Tab') return;
-        if (e.shiftKey) {
-            if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-        } else {
-            if (document.activeElement === last) { e.preventDefault(); first.focus(); }
-        }
-    };
-    modal.addEventListener('keydown', modal._focusTrapHandler);
-};
-
-window.releaseFocus = function(modal) {
-    if (modal._focusTrapHandler) {
-        modal.removeEventListener('keydown', modal._focusTrapHandler);
-        delete modal._focusTrapHandler;
-    }
-};
+// window.trapFocus / window.releaseFocus relocated to public/js/ui-common.js
+// (loaded before main.js in includes/header.php).
 
 // =====================
 // Initialize Everything
@@ -531,12 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Expose toast function globally for use in other scripts
-window.showToast = (message, type, duration) => {
-    if (window.siloUI?.toasts) {
-        window.siloUI.toasts.show(message, type, duration);
-    }
-};
+// window.showToast relocated to public/js/ui-common.js
+// (loaded before main.js in includes/header.php).
 
 // Global batch-apply helper for bulk operations
 window.batchApply = async function(action, extraFields, options = {}) {
@@ -573,12 +548,8 @@ window.batchApply = async function(action, extraFields, options = {}) {
     }
 };
 
-// Global HTML escaping utility (safe for both text and attribute context)
-window.escapeHtml = function(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-};
+// window.escapeHtml relocated to public/js/ui-common.js
+// (loaded before main.js in includes/header.php).
 
 // Password visibility toggle (delegated)
 const _eyeOpen = '<i class="fa-solid fa-eye"></i>';

@@ -39,6 +39,7 @@ function getFirstPartsForModels(array $modelIds)
 
         return $partsByParent;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -80,6 +81,7 @@ function incrementDownloadCount($modelId)
         $stmt->execute([':id' => $modelId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -113,6 +115,7 @@ function getStorageUsageByCategory()
         ');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (\Throwable $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -128,6 +131,7 @@ function getTotalStorageUsage()
         ');
         return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return ['model_count' => 0, 'total_size' => 0];
     }
 }
@@ -165,6 +169,7 @@ function getDedupStorageSavings()
             'saved_percent' => $totalSize > 0 ? round(($totalSize - $actualSize) / $totalSize * 100, 1) : 0
         ];
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return ['total_size' => 0, 'actual_size' => 0, 'saved_size' => 0, 'saved_percent' => 0];
     }
 }

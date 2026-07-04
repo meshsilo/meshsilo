@@ -655,7 +655,12 @@ function getSystemMemory(): ?array
     return null;
 }
 
-function convertPartTo3MF($partId)
+/**
+ * Force a GC pass, then throw when system memory is too high for a
+ * conversion. Throws (rather than returning an error) so the queue worker
+ * retries the job with backoff instead of recording a hard failure.
+ */
+function convertPartCheckMemory(): void
 {
     // Force garbage collection before memory check so previous conversion
     // memory is properly released (PHP doesn't free immediately otherwise)
@@ -674,6 +679,161 @@ function convertPartTo3MF($partId)
             ));
         }
     }
+}
+
+/**
+ * Estimate the temp-file disk footprint for converting $stlPath and return
+ * an error message when free space is insufficient, or null when there is
+ * enough room (or the triangle count can't be read from the header).
+ */
+function convertPartCheckDiskSpace(string $stlPath): ?string
+{
+    // Check available disk space — conversion needs temp files
+    // Estimate: triangle file (12 bytes/tri) + SQLite DB (~180 bytes/vertex)
+    // Use binary header to get triangle count for the estimate
+    $diskEstimateTriangles = 0;
+    if (filesize($stlPath) >= 84) {
+        $fh = fopen($stlPath, 'rb');
+        if ($fh) {
+            fseek($fh, 80);
+            $data = fread($fh, 4);
+            if (strlen($data) === 4) {
+                $diskEstimateTriangles = unpack('V', $data)[1];
+            }
+            fclose($fh);
+        }
+    }
+    if ($diskEstimateTriangles > 0) {
+        $cacheDir = __DIR__ . '/../storage/cache';
+        $checkDir = is_writable($cacheDir) ? $cacheDir : sys_get_temp_dir();
+        $neededBytes = ($diskEstimateTriangles * 12) + ($diskEstimateTriangles * 3 * 60);
+        $freeBytes = disk_free_space($checkDir);
+        if ($freeBytes !== false && $freeBytes < $neededBytes) {
+            return sprintf(
+                'Insufficient disk space for conversion temp files (need %s, have %s)',
+                formatBytes($neededBytes),
+                formatBytes($freeBytes)
+            );
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Compute the output paths for a part conversion:
+ *  - newFilename    user-facing 3MF filename (dedup id NOT applied)
+ *  - outputBasename physical file name (disambiguated with _p<id> when dedup'd)
+ *  - newFilePath    absolute path to write the 3MF to
+ *  - newDbFilePath  DB-relative file_path kept in sync with the physical name
+ *
+ * When the source is dedup'd the output lands in the shared _dedup folder, so
+ * the physical file name must be unique per part (two parts named cube.stl
+ * would otherwise both write cube.3mf and clobber each other). Only the stored
+ * path is disambiguated with the part id; the `filename` column stays clean.
+ */
+function convertPartResolveOutputPath(array $part, string $stlPath, $partId): array
+{
+    $newFilename = preg_replace('/\.stl$/i', '.3mf', $part['filename']);
+    if (!empty($part['dedup_path'])) {
+        $outputBasename = pathinfo($newFilename, PATHINFO_FILENAME) . '_p' . $partId . '.3mf';
+    } else {
+        $outputBasename = $newFilename;
+    }
+    $newFilePath = dirname($stlPath) . '/' . $outputBasename;
+
+    // DB-relative file_path stays in sync with the physical output name above
+    // so the DB points at the file we actually wrote.
+    if (!empty($part['dedup_path'])) {
+        // Source was dedup'd - new file sits next to dedup file
+        $newDbFilePath = dirname($part['dedup_path']) . '/' . $outputBasename;
+    } else {
+        $newDbFilePath = preg_replace('/\.stl$/i', '.3mf', $part['file_path']);
+    }
+
+    return [
+        'newFilename' => $newFilename,
+        'outputBasename' => $outputBasename,
+        'newFilePath' => $newFilePath,
+        'newDbFilePath' => $newDbFilePath,
+    ];
+}
+
+/**
+ * Persist a completed conversion. On a space-saving result: update the model
+ * row, drop the dedup link, remove the now-redundant STL (only when no other
+ * model still references the shared dedup file), and log. Otherwise remove the
+ * unhelpful 3MF and report it. Returns the convertPartTo3MF response array.
+ */
+function convertPartApplyResult($db, array $part, array $result, array $paths, string $stlPath, $partId): array
+{
+    if ($result['success'] && $result['savings'] > 0) {
+        // Calculate new file hash (content-based for 3MF)
+        $newFileHash = calculateContentHash($paths['newFilePath']);
+
+        $stmt = $db->prepare('
+            UPDATE models
+            SET filename = :filename,
+                file_path = :file_path,
+                file_type = :file_type,
+                file_size = :file_size,
+                file_hash = :file_hash,
+                original_size = :original_size,
+                dedup_path = NULL
+            WHERE id = :id
+        ');
+        $stmt->bindValue(':filename', $paths['newFilename'], PDO::PARAM_STR);
+        $stmt->bindValue(':file_path', $paths['newDbFilePath'], PDO::PARAM_STR);
+        $stmt->bindValue(':file_type', '3mf', PDO::PARAM_STR);
+        $stmt->bindValue(':file_size', $result['new_size'], PDO::PARAM_INT);
+        $stmt->bindValue(':file_hash', $newFileHash, PDO::PARAM_STR);
+        $stmt->bindValue(':original_size', $result['original_size'], PDO::PARAM_INT);
+        $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        // Delete original STL file only if not shared via dedup
+        if (!empty($part['dedup_path'])) {
+            // Check if other models still reference this dedup file
+            $refStmt = $db->prepare('SELECT COUNT(*) as cnt FROM models WHERE dedup_path = :dedup_path AND id != :id');
+            $refStmt->bindValue(':dedup_path', $part['dedup_path'], PDO::PARAM_STR);
+            $refStmt->bindValue(':id', $partId, PDO::PARAM_INT);
+            $refResult = $refStmt->execute();
+            $refCount = $refResult ? ($refResult->fetchArray(PDO::FETCH_ASSOC)['cnt'] ?? 0) : 0;
+
+            if ($refCount == 0) {
+                unlink($stlPath);
+            }
+        } else {
+            unlink($stlPath);
+        }
+
+        logInfo('Part converted to 3MF', [
+            'part_id' => $partId,
+            'original_size' => $result['original_size'],
+            'new_size' => $result['new_size'],
+            'savings' => $result['savings']
+        ]);
+
+        return [
+            'success' => true,
+            'original_size' => $result['original_size'],
+            'new_size' => $result['new_size'],
+            'savings' => $result['savings'],
+            'savings_percent' => $result['savings_percent']
+        ];
+    } else {
+        // Remove the 3MF if it wasn't beneficial
+        if (is_file($paths['newFilePath'])) {
+            unlink($paths['newFilePath']);
+        }
+        return ['success' => false, 'error' => 'Conversion would not save space'];
+    }
+}
+
+function convertPartTo3MF($partId)
+{
+    // Reject up front when memory is too high (throws for queue retry/backoff).
+    convertPartCheckMemory();
 
     $db = getDB();
 
@@ -697,125 +857,20 @@ function convertPartTo3MF($partId)
         return ['success' => false, 'error' => 'File not found on disk'];
     }
 
-    // Check available disk space — conversion needs temp files
-    // Estimate: triangle file (12 bytes/tri) + SQLite DB (~180 bytes/vertex)
-    // Use binary header to get triangle count for the estimate
-    $diskEstimateTriangles = 0;
-    if (filesize($stlPath) >= 84) {
-        $fh = fopen($stlPath, 'rb');
-        if ($fh) {
-            fseek($fh, 80);
-            $data = fread($fh, 4);
-            if (strlen($data) === 4) {
-                $diskEstimateTriangles = unpack('V', $data)[1];
-            }
-            fclose($fh);
-        }
-    }
-    if ($diskEstimateTriangles > 0) {
-        $cacheDir = __DIR__ . '/../storage/cache';
-        $checkDir = is_writable($cacheDir) ? $cacheDir : sys_get_temp_dir();
-        $neededBytes = ($diskEstimateTriangles * 12) + ($diskEstimateTriangles * 3 * 60);
-        $freeBytes = disk_free_space($checkDir);
-        if ($freeBytes !== false && $freeBytes < $neededBytes) {
-            return ['success' => false, 'error' => sprintf(
-                'Insufficient disk space for conversion temp files (need %s, have %s)',
-                formatBytes($neededBytes),
-                formatBytes($freeBytes)
-            )];
-        }
+    $diskError = convertPartCheckDiskSpace($stlPath);
+    if ($diskError !== null) {
+        return ['success' => false, 'error' => $diskError];
     }
 
     try {
         $converter = new STLConverter();
 
-        // Generate new filename - place output next to source file. When the
-        // source is dedup'd the output lands in the shared _dedup folder, so the
-        // physical file name must be unique per part (two parts named cube.stl
-        // would otherwise both write cube.3mf and clobber each other). Only the
-        // stored path is disambiguated with the part id; the user-facing
-        // `filename` column stays clean.
-        $newFilename = preg_replace('/\.stl$/i', '.3mf', $part['filename']);
-        if (!empty($part['dedup_path'])) {
-            $outputBasename = pathinfo($newFilename, PATHINFO_FILENAME) . '_p' . $partId . '.3mf';
-        } else {
-            $outputBasename = $newFilename;
-        }
-        $newFilePath = dirname($stlPath) . '/' . $outputBasename;
+        $paths = convertPartResolveOutputPath($part, $stlPath, $partId);
 
         // Convert the file
-        $result = $converter->convertTo3MF($stlPath, $newFilePath);
+        $result = $converter->convertTo3MF($stlPath, $paths['newFilePath']);
 
-        if ($result['success'] && $result['savings'] > 0) {
-            // Compute new DB-relative file_path (kept in sync with the physical
-            // output name above so the DB points at the file we actually wrote)
-            if (!empty($part['dedup_path'])) {
-                // Source was dedup'd - new file sits next to dedup file
-                $newDbFilePath = dirname($part['dedup_path']) . '/' . $outputBasename;
-            } else {
-                $newDbFilePath = preg_replace('/\.stl$/i', '.3mf', $part['file_path']);
-            }
-
-            // Calculate new file hash (content-based for 3MF)
-            $newFileHash = calculateContentHash($newFilePath);
-
-            $stmt = $db->prepare('
-                UPDATE models
-                SET filename = :filename,
-                    file_path = :file_path,
-                    file_type = :file_type,
-                    file_size = :file_size,
-                    file_hash = :file_hash,
-                    original_size = :original_size,
-                    dedup_path = NULL
-                WHERE id = :id
-            ');
-            $stmt->bindValue(':filename', $newFilename, PDO::PARAM_STR);
-            $stmt->bindValue(':file_path', $newDbFilePath, PDO::PARAM_STR);
-            $stmt->bindValue(':file_type', '3mf', PDO::PARAM_STR);
-            $stmt->bindValue(':file_size', $result['new_size'], PDO::PARAM_INT);
-            $stmt->bindValue(':file_hash', $newFileHash, PDO::PARAM_STR);
-            $stmt->bindValue(':original_size', $result['original_size'], PDO::PARAM_INT);
-            $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
-            $stmt->execute();
-
-            // Delete original STL file only if not shared via dedup
-            if (!empty($part['dedup_path'])) {
-                // Check if other models still reference this dedup file
-                $refStmt = $db->prepare('SELECT COUNT(*) as cnt FROM models WHERE dedup_path = :dedup_path AND id != :id');
-                $refStmt->bindValue(':dedup_path', $part['dedup_path'], PDO::PARAM_STR);
-                $refStmt->bindValue(':id', $partId, PDO::PARAM_INT);
-                $refResult = $refStmt->execute();
-                $refCount = $refResult ? ($refResult->fetchArray(PDO::FETCH_ASSOC)['cnt'] ?? 0) : 0;
-
-                if ($refCount == 0) {
-                    unlink($stlPath);
-                }
-            } else {
-                unlink($stlPath);
-            }
-
-            logInfo('Part converted to 3MF', [
-                'part_id' => $partId,
-                'original_size' => $result['original_size'],
-                'new_size' => $result['new_size'],
-                'savings' => $result['savings']
-            ]);
-
-            return [
-                'success' => true,
-                'original_size' => $result['original_size'],
-                'new_size' => $result['new_size'],
-                'savings' => $result['savings'],
-                'savings_percent' => $result['savings_percent']
-            ];
-        } else {
-            // Remove the 3MF if it wasn't beneficial
-            if (is_file($newFilePath)) {
-                unlink($newFilePath);
-            }
-            return ['success' => false, 'error' => 'Conversion would not save space'];
-        }
+        return convertPartApplyResult($db, $part, $result, $paths, $stlPath, $partId);
     } catch (Exception $e) {
         logException($e, ['action' => 'convert_to_3mf', 'part_id' => $partId]);
         return ['success' => false, 'error' => $e->getMessage()];

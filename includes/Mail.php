@@ -402,123 +402,41 @@ class Mail
 
     /**
      * Send using SMTP
+     *
+     * Builds the raw RFC 5322 message and delegates the wire protocol to
+     * SmtpClient. Bcc addresses are passed into the envelope recipient list
+     * (RCPT TO) only; buildSmtpHeaders() never emits a Bcc header.
      */
     private function sendSmtp(): bool
     {
-        $host = $this->config['host'];
-        $port = $this->config['port'];
-        $username = $this->config['username'];
-        $password = $this->config['password'];
-        $encryption = $this->config['encryption'];
+        require_once __DIR__ . '/SmtpClient.php';
 
-        // Connect to SMTP server with an authenticated TLS context
-        $context = stream_context_create([
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true,
-                'peer_name' => $host,
-            ],
-        ]);
-
-        if ($encryption === 'ssl') {
-            $host = 'ssl://' . $host;
-        }
-
-        $socket = @stream_socket_client(
-            "$host:$port",
-            $errno,
-            $errstr,
-            30,
-            STREAM_CLIENT_CONNECT,
-            $context
+        $client = new SmtpClient(
+            $this->config['host'],
+            (int)$this->config['port'],
+            $this->config['username'],
+            $this->config['password'],
+            $this->config['encryption']
         );
 
-        if (!$socket) {
-            throw new \Exception("Failed to connect to SMTP server: $errstr ($errno)");
-        }
+        $message = implode("\r\n", $this->buildSmtpHeaders()) . "\r\n\r\n" . $this->buildBody();
 
-        // Read greeting
-        $this->smtpGetResponse($socket);
-
-        // EHLO
-        $this->smtpCommand($socket, "EHLO " . gethostname());
-
-        // STARTTLS if needed
-        if ($encryption === 'tls') {
-            $this->smtpCommand($socket, "STARTTLS");
-            if (stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) !== true) {
-                fclose($socket);
-                throw new \Exception("Failed to establish STARTTLS encryption with SMTP server");
-            }
-            $this->smtpCommand($socket, "EHLO " . gethostname());
-        }
-
-        // Authenticate
-        if ($username && $password) {
-            $this->smtpCommand($socket, "AUTH LOGIN");
-            $this->smtpCommand($socket, base64_encode($username));
-            $this->smtpCommand($socket, base64_encode($password));
-        }
-
-        // Send email
-        $this->smtpCommand($socket, "MAIL FROM:<{$this->from}>");
-
+        // Envelope recipients: To, then Cc, then Bcc. Bcc is delivered here
+        // only, never as a header, so it stays hidden from other recipients.
+        $recipients = [];
         foreach ($this->to as $recipient) {
-            $this->smtpCommand($socket, "RCPT TO:<{$recipient['email']}>");
+            $recipients[] = $recipient['email'];
         }
         foreach ($this->cc as $recipient) {
-            $this->smtpCommand($socket, "RCPT TO:<{$recipient['email']}>");
+            $recipients[] = $recipient['email'];
         }
         foreach ($this->bcc as $recipient) {
-            $this->smtpCommand($socket, "RCPT TO:<{$recipient['email']}>");
+            $recipients[] = $recipient['email'];
         }
 
-        $this->smtpCommand($socket, "DATA");
-
-        // Send headers and body
-        $message = implode("\r\n", $this->buildSmtpHeaders()) . "\r\n\r\n" . $this->buildBody();
-        // Normalize to CRLF line endings and dot-stuff per RFC 5321 so a body
-        // line beginning with '.' cannot truncate DATA or smuggle commands.
-        $message = preg_replace('/\r\n|\r|\n/', "\r\n", $message);
-        $message = preg_replace('/(^|\r\n)\./', '$1..', $message);
-        fwrite($socket, $message . "\r\n.\r\n");
-        $this->smtpGetResponse($socket);
-
-        // Quit
-        $this->smtpCommand($socket, "QUIT");
-        fclose($socket);
+        $client->send($message, $this->from, $recipients);
 
         return true;
-    }
-
-    /**
-     * Send SMTP command
-     */
-    private function smtpCommand($socket, string $command): string
-    {
-        fwrite($socket, $command . "\r\n");
-        return $this->smtpGetResponse($socket);
-    }
-
-    /**
-     * Get SMTP response
-     */
-    private function smtpGetResponse($socket): string
-    {
-        $response = '';
-        while ($line = fgets($socket, 515)) {
-            $response .= $line;
-            if (substr($line, 3, 1) === ' ') {
-                break;
-            }
-        }
-
-        $code = (int)substr($response, 0, 3);
-        if ($code >= 400) {
-            throw new \Exception("SMTP error: $response");
-        }
-
-        return $response;
     }
 
     /**

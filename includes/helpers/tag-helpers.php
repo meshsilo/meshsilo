@@ -24,6 +24,7 @@ function getAllTags($useCache = true)
         Cache::getInstance()->set($cacheKey, $tags, 300);
         return $tags;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -52,6 +53,7 @@ function getModelTags($modelId)
         }
         return $tags;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -93,6 +95,7 @@ function getTagsForModels(array $modelIds)
 
         return $tagsByModel;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -108,6 +111,7 @@ function addTagToModel($modelId, $tagId)
         $stmt->execute([':model_id' => $modelId, ':tag_id' => $tagId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -121,6 +125,7 @@ function removeTagFromModel($modelId, $tagId)
         $stmt->execute([':model_id' => $modelId, ':tag_id' => $tagId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -141,6 +146,7 @@ function createTag($name, $color = '#6366f1')
         invalidateTagsCache();
         return $db->lastInsertId();
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -155,6 +161,7 @@ function deleteTag($tagId)
         invalidateTagsCache();
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -169,6 +176,7 @@ function getTagByName($name)
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return null;
     }
 }

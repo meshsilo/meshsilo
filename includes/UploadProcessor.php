@@ -91,60 +91,25 @@ class UploadProcessor
         }
         $zipEntryCount = $zip->numFiles;
 
-        // Decompression-bomb guard: enforce an entry-count cap, a total
-        // uncompressed-size cap, and a per-entry compression-ratio ceiling
-        // BEFORE extracting anything to disk.
-        if ($zipEntryCount > self::MAX_ZIP_ENTRIES) {
-            $zip->close();
-            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'ZIP archive has too many entries (' . $zipEntryCount . ')'];
-        }
-        $totalUncompressed = 0;
-        for ($i = 0; $i < $zipEntryCount; $i++) {
-            $stat = $zip->statIndex($i);
-            if ($stat === false) {
-                continue;
-            }
-            $totalUncompressed += (int)$stat['size'];
-            if ($totalUncompressed > self::MAX_ZIP_TOTAL_UNCOMPRESSED) {
-                $zip->close();
-                return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'ZIP archive uncompressed size exceeds the allowed limit'];
-            }
-            // Only flag entries that are both highly compressed and non-trivial
-            // in size, so ordinary small text/config files are not rejected.
-            if ($stat['comp_size'] > 0 && $stat['size'] > 1048576
-                && ($stat['size'] / $stat['comp_size']) > self::MAX_ZIP_COMPRESSION_RATIO) {
-                $zip->close();
-                return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => 'ZIP archive contains an entry with a suspicious compression ratio'];
-            }
-        }
+        // Decompression-bomb guard (entry-count / total-uncompressed /
+        // per-entry-ratio) BEFORE extracting anything to disk.
+        $validationError = self::validateZipSafety($zip);
         $zip->close();
+        if ($validationError !== null) {
+            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => $validationError];
+        }
 
         $extractDir = sys_get_temp_dir() . '/silo_' . uniqid();
         mkdir($extractDir, 0755, true);
 
-        // Prefer the `unzip` binary (InfoZIP) — it handles every compression
-        // method PHP's libzip does, plus Deflate64 (method 9, common in
-        // Windows-made zips), LZMA (14), and more. Fall back to
-        // ZipArchive::extractTo only when the binary isn't installed (rare:
-        // Docker image includes it; Linux/macOS dev boxes usually have it).
+        // Prefer the `unzip` binary (InfoZIP) for its broader compression-method
+        // coverage (Deflate64 method 9, common in Windows-made zips; LZMA; ...);
+        // otherwise fall back to a streaming ZipArchive extraction. Both paths
+        // are zip-slip contained: InfoZIP refuses ../ and absolute paths, and the
+        // streaming fallback applies a per-entry realpath check. See safeExtractZip().
         $extractMethod = null;
         $extractError = null;
-        if (self::unzipBinaryAvailable()) {
-            $result = self::extractWithUnzipBinary($zipPath, $extractDir);
-            $extractMethod = 'unzip';
-            if (!$result['success']) {
-                $extractError = "unzip binary failed (exit {$result['exit_code']}): {$result['stderr']}";
-            }
-        } else {
-            $zip = new \ZipArchive();
-            $zip->open($zipPath);
-            $ok = @$zip->extractTo($extractDir);
-            $extractMethod = 'ZipArchive::extractTo';
-            if (!$ok) {
-                $extractError = 'ZipArchive::extractTo returned false: ' . $zip->getStatusString();
-            }
-            $zip->close();
-        }
+        self::safeExtractZip($zipPath, $extractDir, true, $extractMethod, $extractError);
 
         if ($extractError && function_exists('logWarning')) {
             logWarning('ZIP extraction error', [
@@ -154,52 +119,14 @@ class UploadProcessor
             ]);
         }
 
-        // Scan extracted files
-        $modelFiles = [];
-        $imageFiles = [];
-        $attachmentFiles = [];
-        $imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-        $textExtensions = ['txt', 'md'];
-        $pdfExtensions = ['pdf'];
-
-        // Track every extension we see for diagnostics — when we can't find
-        // model files, this tells the user what was actually in their zip vs.
-        // what the system recognizes as a model.
-        $extensionsSeen = [];
-        $totalFilesScanned = 0;
-
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS)
-        );
-
-        foreach ($iterator as $fileInfo) {
-            if (!$fileInfo->isFile()) continue;
-            $totalFilesScanned++;
-            $fileExt = strtolower($fileInfo->getExtension());
-            $extensionsSeen[$fileExt] = ($extensionsSeen[$fileExt] ?? 0) + 1;
-
-            if (function_exists('isModelExtension') && isModelExtension($fileExt)) {
-                $relativePath = str_replace($extractDir . '/', '', $fileInfo->getPathname());
-                $modelFiles[] = [
-                    'path' => $fileInfo->getPathname(),
-                    'filename' => $fileInfo->getFilename(),
-                    'relative_path' => $relativePath,
-                    'size' => $fileInfo->getSize(),
-                ];
-            } elseif (in_array($fileExt, $imageExtensions)) {
-                $imageFiles[] = ['path' => $fileInfo->getPathname(), 'filename' => $fileInfo->getFilename(), 'extension' => $fileExt];
-                $attachmentFiles[] = ['path' => $fileInfo->getPathname(), 'filename' => $fileInfo->getFilename(), 'extension' => $fileExt, 'type' => 'image'];
-            } elseif (in_array($fileExt, array_merge($textExtensions, $pdfExtensions))) {
-                $attachmentFiles[] = [
-                    'path' => $fileInfo->getPathname(),
-                    'filename' => $fileInfo->getFilename(),
-                    'extension' => $fileExt,
-                    'type' => in_array($fileExt, $textExtensions) ? 'text' : 'pdf',
-                ];
-            }
-        }
-
-        usort($modelFiles, fn($a, $b) => strcmp($a['relative_path'], $b['relative_path']));
+        // Scan extracted files: classify into models / images / attachments and
+        // collect diagnostics (extensions seen, total scanned) in a single pass.
+        $scan = self::scanModelFiles($extractDir);
+        $modelFiles = $scan['models'];
+        $imageFiles = $scan['images'];
+        $attachmentFiles = $scan['attachments'];
+        $extensionsSeen = $scan['extensions_seen'];
+        $totalFilesScanned = $scan['total_scanned'];
 
         if (empty($modelFiles)) {
             // Build a diagnostic summary: what did we actually find?
@@ -328,86 +255,24 @@ class UploadProcessor
             mkdir(UPLOAD_PATH . $folderId, 0755, true);
         }
 
-        // Open zip and extract to temp
+        // Open zip to validate before writing anything to disk.
         $zip = new \ZipArchive();
         if ($zip->open($zipPath) !== true) {
             return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'Failed to open ZIP file'];
         }
-
-        // Decompression-bomb guard (mirrors processZip): reject archives with too
-        // many entries or an implausible total/per-entry uncompressed size before
-        // writing anything to disk.
-        if ($zip->numFiles > self::MAX_ZIP_ENTRIES) {
-            $zip->close();
-            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'ZIP has too many entries'];
-        }
-        $totalUncompressed = 0;
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $stat = $zip->statIndex($i);
-            if ($stat === false) {
-                continue;
-            }
-            $totalUncompressed += $stat['size'];
-            if ($totalUncompressed > self::MAX_ZIP_TOTAL_UNCOMPRESSED) {
-                $zip->close();
-                return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'ZIP uncompressed size exceeds limit'];
-            }
-            if ($stat['size'] > 1048576 && $stat['comp_size'] > 0
-                && ($stat['size'] / $stat['comp_size']) > self::MAX_ZIP_COMPRESSION_RATIO) {
-                $zip->close();
-                return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => 'ZIP entry compression ratio exceeds limit'];
-            }
+        $validationError = self::validateZipSafety($zip);
+        $zip->close();
+        if ($validationError !== null) {
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => $validationError];
         }
 
+        // Streaming extraction with a per-entry realpath zip-slip containment check.
         $extractDir = sys_get_temp_dir() . '/silo_addparts_' . uniqid();
         mkdir($extractDir, 0755, true);
-        $realExtractDir = realpath($extractDir);
+        self::safeExtractZip($zipPath, $extractDir);
 
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $filename = $zip->getNameIndex($i);
-            if (substr($filename, -1) === '/') continue;
-
-            $targetPath = $extractDir . '/' . $filename;
-            $targetDir = dirname($targetPath);
-            if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
-
-            $realTargetPath = realpath($targetDir) . '/' . basename($filename);
-            if (strpos($realTargetPath, $realExtractDir) !== 0) {
-                if (function_exists('logWarning')) logWarning('ZIP path traversal blocked', ['filename' => $filename]);
-                continue;
-            }
-
-            $stream = $zip->getStream($filename);
-            if ($stream !== false) {
-                $outFile = fopen($realTargetPath, 'w');
-                if ($outFile !== false) {
-                    stream_copy_to_stream($stream, $outFile);
-                    fclose($outFile);
-                }
-                fclose($stream);
-            }
-        }
-        $zip->close();
-
-        // Collect model files
-        $modelFiles = [];
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS)
-        );
-        foreach ($iterator as $fileInfo) {
-            if (!$fileInfo->isFile()) continue;
-            $ext = strtolower($fileInfo->getExtension());
-            if (function_exists('isModelExtension') && isModelExtension($ext)) {
-                $relativePath = str_replace($extractDir . '/', '', $fileInfo->getPathname());
-                $modelFiles[] = [
-                    'path' => $fileInfo->getPathname(),
-                    'filename' => $fileInfo->getFilename(),
-                    'relative_path' => $relativePath,
-                    'size' => $fileInfo->getSize(),
-                ];
-            }
-        }
-        usort($modelFiles, fn($a, $b) => strcmp($a['relative_path'], $b['relative_path']));
+        // Collect model files (sorted by relative path).
+        $modelFiles = self::scanModelFiles($extractDir)['models'];
 
         if (empty($modelFiles)) {
             self::cleanupExtractDir($extractDir);
@@ -657,6 +522,169 @@ class UploadProcessor
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────
+
+    /**
+     * Decompression-bomb guard shared by both zip import paths. Enforces an
+     * entry-count cap, a total-uncompressed-size cap, and a per-entry
+     * compression-ratio ceiling on an already-open archive, BEFORE any bytes
+     * are written to disk.
+     *
+     * @return string|null  Error message when the archive is rejected, null when safe.
+     */
+    private static function validateZipSafety(\ZipArchive $zip): ?string
+    {
+        $entryCount = $zip->numFiles;
+        if ($entryCount > self::MAX_ZIP_ENTRIES) {
+            return 'ZIP archive has too many entries (' . $entryCount . ')';
+        }
+        $totalUncompressed = 0;
+        for ($i = 0; $i < $entryCount; $i++) {
+            $stat = $zip->statIndex($i);
+            if ($stat === false) {
+                continue;
+            }
+            $totalUncompressed += (int)$stat['size'];
+            if ($totalUncompressed > self::MAX_ZIP_TOTAL_UNCOMPRESSED) {
+                return 'ZIP archive uncompressed size exceeds the allowed limit';
+            }
+            // Only flag entries that are both highly compressed and non-trivial
+            // in size, so ordinary small text/config files are not rejected.
+            if ($stat['comp_size'] > 0 && $stat['size'] > 1048576
+                && ($stat['size'] / $stat['comp_size']) > self::MAX_ZIP_COMPRESSION_RATIO) {
+                return 'ZIP archive contains an entry with a suspicious compression ratio';
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Single extraction implementation used by both zip import paths.
+     *
+     * When $preferUnzipBinary is set and the InfoZIP `unzip` binary is present,
+     * it is used for its broader compression-method coverage (Deflate64, LZMA,
+     * ...); InfoZIP supplies its own zip-slip protection (it refuses ../ and
+     * absolute paths). Otherwise each entry is streamed out with
+     * ZipArchive::getStream and its destination is validated with a per-entry
+     * realpath containment check so a crafted entry name cannot escape
+     * $destDir. No extraction path bypasses containment.
+     *
+     * @param string      $method  Out: extraction method used ('unzip' | 'ZipArchive stream').
+     * @param string|null $error   Out: extraction error detail, or null on success.
+     * @return bool  True when extraction succeeded.
+     */
+    private static function safeExtractZip(string $zipPath, string $destDir, bool $preferUnzipBinary = false, ?string &$method = null, ?string &$error = null): bool
+    {
+        $error = null;
+
+        if ($preferUnzipBinary && self::unzipBinaryAvailable()) {
+            $method = 'unzip';
+            $result = self::extractWithUnzipBinary($zipPath, $destDir);
+            if (!$result['success']) {
+                $error = "unzip binary failed (exit {$result['exit_code']}): {$result['stderr']}";
+            }
+            return $result['success'];
+        }
+
+        $method = 'ZipArchive stream';
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            $error = 'ZipArchive::open failed during extraction';
+            return false;
+        }
+
+        $realExtractDir = realpath($destDir);
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $filename = $zip->getNameIndex($i);
+            if ($filename === false || substr($filename, -1) === '/') continue;
+
+            $targetPath = $destDir . '/' . $filename;
+            $targetDir = dirname($targetPath);
+            if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
+
+            // Zip-slip containment: the resolved destination must stay under the
+            // extraction root before we write anything.
+            $realTargetPath = realpath($targetDir) . '/' . basename($filename);
+            if (strpos($realTargetPath, $realExtractDir) !== 0) {
+                if (function_exists('logWarning')) logWarning('ZIP path traversal blocked', ['filename' => $filename]);
+                continue;
+            }
+
+            $stream = $zip->getStream($filename);
+            if ($stream !== false) {
+                $outFile = fopen($realTargetPath, 'w');
+                if ($outFile !== false) {
+                    stream_copy_to_stream($stream, $outFile);
+                    fclose($outFile);
+                }
+                fclose($stream);
+            }
+        }
+        $zip->close();
+        return true;
+    }
+
+    /**
+     * Recursively scan an extracted directory and classify its files into model
+     * files, images, and attachments, collecting diagnostics in a single pass.
+     * Model files are returned sorted by relative path.
+     *
+     * @return array{models: array, images: array, attachments: array, extensions_seen: array, total_scanned: int}
+     */
+    private static function scanModelFiles(string $dir): array
+    {
+        $models = [];
+        $images = [];
+        $attachments = [];
+        $extensionsSeen = [];
+        $totalScanned = 0;
+
+        $imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+        $textExtensions = ['txt', 'md'];
+        $pdfExtensions = ['pdf'];
+
+        if (is_dir($dir)) {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            foreach ($iterator as $fileInfo) {
+                if (!$fileInfo->isFile()) continue;
+                $totalScanned++;
+                $fileExt = strtolower($fileInfo->getExtension());
+                $extensionsSeen[$fileExt] = ($extensionsSeen[$fileExt] ?? 0) + 1;
+
+                if (function_exists('isModelExtension') && isModelExtension($fileExt)) {
+                    $relativePath = str_replace($dir . '/', '', $fileInfo->getPathname());
+                    $models[] = [
+                        'path' => $fileInfo->getPathname(),
+                        'filename' => $fileInfo->getFilename(),
+                        'relative_path' => $relativePath,
+                        'size' => $fileInfo->getSize(),
+                    ];
+                } elseif (in_array($fileExt, $imageExtensions)) {
+                    $images[] = ['path' => $fileInfo->getPathname(), 'filename' => $fileInfo->getFilename(), 'extension' => $fileExt];
+                    $attachments[] = ['path' => $fileInfo->getPathname(), 'filename' => $fileInfo->getFilename(), 'extension' => $fileExt, 'type' => 'image'];
+                } elseif (in_array($fileExt, array_merge($textExtensions, $pdfExtensions))) {
+                    $attachments[] = [
+                        'path' => $fileInfo->getPathname(),
+                        'filename' => $fileInfo->getFilename(),
+                        'extension' => $fileExt,
+                        'type' => in_array($fileExt, $textExtensions) ? 'text' : 'pdf',
+                    ];
+                }
+            }
+        }
+
+        usort($models, fn($a, $b) => strcmp($a['relative_path'], $b['relative_path']));
+
+        return [
+            'models' => $models,
+            'images' => $images,
+            'attachments' => $attachments,
+            'extensions_seen' => $extensionsSeen,
+            'total_scanned' => $totalScanned,
+        ];
+    }
 
     /**
      * Cached check for the InfoZIP `unzip` binary. Cached because this can

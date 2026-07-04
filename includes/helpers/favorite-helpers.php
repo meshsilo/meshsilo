@@ -21,6 +21,7 @@ function isModelFavorited($modelId, $userId = null)
         $stmt->execute([':model_id' => $modelId, ':user_id' => $userId]);
         return $stmt->fetch() !== false;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -49,6 +50,7 @@ function toggleFavorite($modelId, $userId = null)
             return ['success' => true, 'favorited' => true];
         }
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
@@ -80,6 +82,7 @@ function getUserFavorites($userId = null, $limit = 50)
         }
         return $favorites;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -107,6 +110,7 @@ function getModelFavoriteInfo($modelId, $userId = null)
             'count' => (int)($row['count'] ?? 0),
         ];
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return ['is_favorited' => false, 'count' => 0];
     }
 }

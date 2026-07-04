@@ -45,6 +45,7 @@ function logActivity($action, $entityType, $entityId = null, $entityName = null,
 
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -90,6 +91,7 @@ function getActivityLog($limit = 50, $offset = 0, $filters = [])
         }
         return $activities;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -148,6 +150,7 @@ function recordModelView($modelId)
 
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -187,6 +190,7 @@ function getRecentlyViewed($limit = 10)
         }
         return $models;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
