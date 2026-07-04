@@ -62,7 +62,6 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="stylesheet" href="<?= basePath('css/upload.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/upload.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/viewer.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/viewer.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/model-detail.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/model-detail.css') ?>">
-    <link rel="stylesheet" href="<?= basePath('css/annotations.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/annotations.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/lightbox.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/lightbox.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/browse.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/browse.css') ?>">
     <?php if (!empty($adminPage)): ?>

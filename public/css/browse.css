@@ -158,12 +158,6 @@
     color: var(--color-danger-hover, #dc2626);
 }
 
-.favorite-count {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    margin-left: 0.25rem;
-}
-
 /* =====================
    Batch Selection Mode
    ===================== */
@@ -225,7 +219,8 @@
     display: none;
 }
 
-.model-select-checkbox input {
+.model-select-checkbox input,
+.model-list-checkbox input {
     width: 18px;
     height: 18px;
     cursor: pointer;
@@ -235,12 +230,6 @@
     flex-shrink: 0;
     display: none;
     padding-right: 0.5rem;
-}
-
-.model-list-checkbox input {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
 }
 
 body.batch-mode .model-card,
@@ -473,11 +462,6 @@ body.batch-mode .model-list-item:hover {
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
-}
-
-.filter-label {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
 }
 
 /* =====================

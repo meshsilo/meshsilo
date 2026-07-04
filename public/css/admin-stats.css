@@ -31,12 +31,6 @@
     font-size: 0.875rem;
 }
 
-.stats-sections {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 1.5rem;
-}
-
 .stats-table-container {
     overflow-x: auto;
 }
@@ -222,7 +216,8 @@
 }
 
 @media (max-width: 768px) {
-    .stats-grid {
+    .stats-grid,
+    .health-grid {
         grid-template-columns: 1fr 1fr;
     }
 
@@ -230,16 +225,8 @@
         grid-column: span 1;
     }
 
-    .stats-sections {
-        grid-template-columns: 1fr;
-    }
-
     .stat-value {
         font-size: 1.5rem;
-    }
-
-    .health-grid {
-        grid-template-columns: 1fr 1fr;
     }
 
     .timeline-grid {

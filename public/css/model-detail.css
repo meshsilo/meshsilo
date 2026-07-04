@@ -386,22 +386,9 @@
 }
 
 /* Model Attachments Section */
-.model-attachments {
+.model-attachments,
+.model-content-sidebar .model-attachments {
     margin-top: 0;
-}
-
-.model-attachments .attachments-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.model-attachments .attachments-header h2 {
-    font-size: 1.125rem;
-    margin: 0;
 }
 
 .attachment-section {
@@ -434,10 +421,6 @@
 }
 
 .model-content-sidebar {
-}
-
-.model-content-sidebar .model-attachments {
-    margin-top: 0;
 }
 
 .model-content-sidebar .model-attachments .collapsible-body {
@@ -771,12 +754,6 @@
     margin-bottom: 0;
 }
 
-.nest-folders-toggle.active {
-    background-color: var(--color-primary);
-    color: white;
-    border-color: var(--color-primary);
-}
-
 .add-parts-progress {
     margin: 1rem 0;
     padding: 0.75rem 1rem;
@@ -926,7 +903,8 @@
     border: 1px solid var(--color-border);
 }
 
-.convert-btn {
+.convert-btn,
+.mass-actions .btn {
     white-space: nowrap;
 }
 
@@ -970,12 +948,7 @@
     margin-left: auto;
 }
 
-.mass-actions .btn {
-    white-space: nowrap;
-}
-
-.mass-actions select,
-.mass-action-select {
+.mass-actions select {
     background-color: transparent;
     padding: 0.25rem 1.75rem 0.25rem 0.5rem;
     font-size: 0.75rem;
@@ -984,8 +957,7 @@
     background-position: right 0.4rem center;
 }
 
-.mass-actions select:hover,
-.mass-action-select:hover {
+.mass-actions select:hover {
     color: var(--color-text);
     border-color: var(--color-primary);
 }
@@ -1070,21 +1042,6 @@
     border: 1px solid var(--color-border);
 }
 
-.dropdown-item-danger {
-    color: var(--color-danger, #ef4444);
-}
-
-.dropdown-item-danger:hover {
-    background-color: var(--color-danger, #ef4444);
-    color: white;
-}
-
-.part-dimensions {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    margin-left: 0.5rem;
-}
-
 /* Part actions adjustments for dropdown */
 .part-actions {
     display: flex;
@@ -1156,11 +1113,6 @@
 
     .attachment-document {
         flex-wrap: wrap;
-    }
-
-    .attachment-document .attachment-actions {
-        width: 100%;
-        margin-top: 0.5rem;
     }
 }
 

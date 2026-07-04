@@ -203,16 +203,6 @@
     margin-top: 1.5rem;
 }
 
-.group-badge {
-    display: inline-block;
-    background-color: var(--color-primary);
-    color: white;
-    padding: 0.125rem 0.5rem;
-    border-radius: var(--radius);
-    font-size: 0.625rem;
-    font-weight: 600;
-}
-
 /* Inline form for user groups */
 .inline-form {
     display: flex;
