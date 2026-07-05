@@ -156,4 +156,55 @@ class TwoFactorTest extends SiloTestCase
         $result = TwoFactor::verifyBackupCode('12345678', $hashed);
         $this->assertSame(0, $result);
     }
+
+    // --- TOTP replay prevention ---
+    // A one-time code, once accepted, must be rejected on reuse within its
+    // validity window. Reverting the `$counter <= $lastUsed` guard in
+    // isTotpReplay() must fail this test.
+
+    public function testTotpCounterCannotBeReplayed(): void
+    {
+        require_once __DIR__ . '/../../includes/SchemaMigrations.php'; // provides columnExists()
+
+        // Isolated in-memory DB passed directly to the guard (no shared-state coupling).
+        $db = new TestDatabase('sqlite', ['path' => ':memory:']);
+        $db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, two_factor_last_used INTEGER DEFAULT 0)');
+        $db->exec('INSERT INTO users (id, two_factor_last_used) VALUES (1, 0)');
+
+        $isReplay = new ReflectionMethod(TwoFactor::class, 'isTotpReplay');
+
+        // First use of a time-step counter is accepted (and recorded as the watermark).
+        $this->assertFalse($isReplay->invoke(null, $db, 1, 100), 'first use of a counter must be accepted');
+        // Reusing the same counter is a replay -> rejected.
+        $this->assertTrue($isReplay->invoke(null, $db, 1, 100), 'reusing the same counter must be rejected');
+        // An older counter (behind the watermark) is also rejected.
+        $this->assertTrue($isReplay->invoke(null, $db, 1, 99), 'an older counter must be rejected');
+        // A newer counter advances past the watermark and is accepted.
+        $this->assertFalse($isReplay->invoke(null, $db, 1, 101), 'a newer counter must be accepted');
+    }
+
+    // --- Backup-code single-use ---
+    // A backup code, once accepted by verifyForUser(), is removed from the
+    // user's stored codes so it cannot be replayed. Reverting the removal
+    // UPDATE must fail this test.
+
+    public function testBackupCodeCannotBeReusedForUser(): void
+    {
+        $db = getDB();
+        $db->exec('DROP TABLE IF EXISTS users');
+        $db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, two_factor_secret TEXT, two_factor_backup_codes TEXT, two_factor_last_used INTEGER DEFAULT 0)');
+
+        $hashed = TwoFactor::hashBackupCodes(['11112222', '33334444']);
+        $stmt = $db->prepare('INSERT INTO users (id, two_factor_secret, two_factor_backup_codes) VALUES (1, :sec, :codes)');
+        $stmt->bindValue(':sec', self::TEST_SECRET, PDO::PARAM_STR);
+        $stmt->bindValue(':codes', json_encode($hashed), PDO::PARAM_STR);
+        $stmt->execute();
+
+        // First use is accepted and consumes the code.
+        $this->assertTrue(TwoFactor::verifyForUser(1, '11112222'), 'first use of a backup code must be accepted');
+        // Reuse of the same code must now be rejected (single-use).
+        $this->assertFalse(TwoFactor::verifyForUser(1, '11112222'), 'a used backup code must not be accepted again');
+        // A different, unused code still works.
+        $this->assertTrue(TwoFactor::verifyForUser(1, '33334444'), 'an unused backup code must still be accepted');
+    }
 }
