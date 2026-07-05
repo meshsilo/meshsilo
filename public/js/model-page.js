@@ -171,6 +171,7 @@
         }
 
         // Dropdown toggle handling
+        let anyDropdownOpen = false;
         document.querySelectorAll('.dropdown-toggle').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -183,10 +184,12 @@
                     const t = d.querySelector('.dropdown-toggle');
                     if (t) t.setAttribute('aria-expanded', 'false');
                 });
+                anyDropdownOpen = false;
 
                 // Toggle this dropdown
                 if (!wasOpen) {
                     dropdown.classList.add('open');
+                    anyDropdownOpen = true;
                     this.setAttribute('aria-expanded', 'true');
                     positionDropdownMenu(dropdown);
 
@@ -207,11 +210,13 @@
 
         // Close dropdowns when clicking outside (but not when interacting with inline controls)
         function closeAllDropdowns() {
+            if (!anyDropdownOpen) return;   // cheap no-op on the common scroll/outside-click path
             document.querySelectorAll('.dropdown.open').forEach(d => {
                 d.classList.remove('open');
                 const t = d.querySelector('.dropdown-toggle');
                 if (t) t.setAttribute('aria-expanded', 'false');
             });
+            anyDropdownOpen = false;
         }
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.dropdown')) {

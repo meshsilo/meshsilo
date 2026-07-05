@@ -197,6 +197,13 @@ function ensureIndexes($db)
         'idx_password_resets_token' => ['password_resets', 'token'],
         'idx_password_resets_expires' => ['password_resets', 'expires_at'],
         'idx_rate_limit_hits_key' => ['rate_limit_hits', 'key_hash'],
+        // Composite/FK indexes needed by both SQLite and MySQL (browse grid, category
+        // filter, batched first-part lookups, owner joins, annotation cascade).
+        'idx_models_parent_created' => ['models', 'parent_id, created_at'],
+        'idx_models_parent_original' => ['models', 'parent_id, original_path'],
+        'idx_model_categories_composite' => ['model_categories', 'category_id, model_id'],
+        'idx_models_user_id' => ['models', 'user_id'],
+        'idx_annotations_model_id' => ['annotations', 'model_id'],
     ];
 
     foreach ($indexes as $indexName => [$table, $columns]) {
@@ -212,11 +219,8 @@ function ensureIndexes($db)
     // MySQL-only composite indexes
     if ($type === 'mysql') {
         $compositeIndexes = [
-            'idx_models_parent_created' => ['models', 'parent_id, created_at'],
-            'idx_models_parent_original' => ['models', 'parent_id, original_path'],
             'idx_recently_viewed_user_time' => ['recently_viewed', 'user_id, viewed_at'],
             'idx_activity_user_time' => ['activity_log', 'user_id, created_at'],
-            'idx_model_categories_composite' => ['model_categories', 'category_id, model_id'],
         ];
 
         foreach ($compositeIndexes as $indexName => [$table, $columns]) {

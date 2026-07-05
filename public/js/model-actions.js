@@ -15,8 +15,11 @@
                 const data = await response.json();
                 if (data.success) {
                     btn.classList.toggle('favorited', data.favorited);
-                    btn.innerHTML = data.favorited ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
-                    btn.title = data.favorited ? 'Remove from favorites' : 'Add to favorites';
+                    btn.innerHTML = data.favorited ? '<i class="fa-solid fa-heart" aria-hidden="true"></i>' : '<i class="fa-regular fa-heart" aria-hidden="true"></i>';
+                    var favLabel = data.favorited ? 'Remove from favorites' : 'Add to favorites';
+                    btn.title = favLabel;
+                    btn.setAttribute('aria-label', favLabel);
+                    btn.setAttribute('aria-pressed', data.favorited ? 'true' : 'false');
                 }
             } catch (err) {
                 console.error('Failed to toggle favorite:', err);

@@ -113,6 +113,11 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
                 refreshQueueStatus();
                 setInterval(refreshQueueStatus, 15000);
             });
+            // While the tab is hidden the interval fires but refreshQueueStatus() bails early;
+            // refresh once immediately when the tab becomes visible again.
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) refreshQueueStatus();
+            });
             document.addEventListener('click', function(e) {
                 var indicator = document.getElementById('queue-indicator');
                 if (indicator && indicator.classList.contains('open') && !indicator.contains(e.target)) {
@@ -194,22 +199,22 @@ endif; ?>
                     </div>
                 </div>
                 <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme) : ?>
-                <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-                    <span id="theme-icon"><?= $currentTheme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>' ?></span>
+                <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+                    <span id="theme-icon" aria-hidden="true"><?= $currentTheme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>' ?></span>
                 </button>
                 <?php endif; ?>
                 <?php if (isLoggedIn()) : ?>
                     <?php $user = getCurrentUser(); ?>
                     <?php if (isFeatureEnabled('favorites')) : ?>
-                    <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites"><i class="fa-solid fa-heart"></i></a>
+                    <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites" aria-label="My favorites"><i class="fa-solid fa-heart" aria-hidden="true"></i></a>
                     <?php endif; ?>
-                    <div class="queue-indicator" id="queue-indicator" title="Background Tasks">
-                        <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()">
-                            <i class="fa-solid fa-list-check"></i><span class="queue-badge" id="queue-badge" style="display:none;">0</span>
+                    <div class="queue-indicator" id="queue-indicator">
+                        <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()" aria-label="Background tasks" aria-haspopup="true" aria-expanded="false" aria-controls="queue-dropdown">
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="queue-badge" id="queue-badge" style="display:none;">0</span>
                         </button>
                         <div class="queue-dropdown" id="queue-dropdown">
                             <div class="queue-dropdown-header">Background Tasks</div>
-                            <div class="queue-dropdown-body" id="queue-dropdown-body">
+                            <div class="queue-dropdown-body" id="queue-dropdown-body" aria-live="polite">
                                 <div class="queue-empty">No active tasks</div>
                             </div>
                         </div>

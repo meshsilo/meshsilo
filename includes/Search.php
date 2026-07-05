@@ -535,7 +535,7 @@ class Search
         $stmt = $this->db->prepare("
             SELECT DISTINCT name
             FROM models
-            WHERE LOWER(name) LIKE :query
+            WHERE name LIKE :query
             AND is_archived = 0
             ORDER BY download_count DESC
             LIMIT :limit
@@ -553,7 +553,7 @@ class Search
         $stmt = $this->db->prepare("
             SELECT DISTINCT name
             FROM tags
-            WHERE LOWER(name) LIKE :query
+            WHERE name LIKE :query
             LIMIT :limit
         ");
         $stmt->bindValue(':query', $query . '%', PDO::PARAM_STR);

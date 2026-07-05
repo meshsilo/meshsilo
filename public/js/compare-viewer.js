@@ -148,27 +148,37 @@ function createScene(container) {
     dl2.position.set(-1, -1, -1);
     scene.add(dl2);
 
+    const api = { scene, camera, renderer, controls, paused: false };
+
     function animate() {
-        if (!document.hidden) {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        } else {
+        if (api.paused) return;                  // explicitly paused (e.g. hidden behind overlay)
+        if (document.hidden) {                    // tab hidden: resume when it returns
             document.addEventListener('visibilitychange', function onVisible() {
                 document.removeEventListener('visibilitychange', onVisible);
-                requestAnimationFrame(animate);
+                animate();
             });
+            return;
         }
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
     }
+    api.pause = function() { api.paused = true; };
+    api.resume = function() { if (api.paused) { api.paused = false; animate(); } };
     animate();
 
+    // Debounce resize so a drag-resize does one buffer realloc on settle, not dozens mid-drag.
+    let resizeTimer = null;
     window.addEventListener('resize', function() {
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }, 150);
     });
 
-    return { scene, camera, renderer, controls };
+    return api;
 }
 
 function initViewer(containerId, modelPath, modelType, viewerIndex) {
@@ -224,12 +234,21 @@ function toggleOverlayMode(enabled) {
     if (enabled) {
         panel.style.display = 'none';
         overlay.style.display = '';
+        // Stop the two side-by-side render loops while they're hidden behind the overlay.
+        if (viewer1) viewer1.pause();
+        if (viewer2) viewer2.pause();
         if (!overlayViewer) {
             initOverlayViewer();
+        } else {
+            overlayViewer.resume();
         }
     } else {
         panel.style.display = '';
         overlay.style.display = 'none';
+        // Resume the panel viewers; stop the now-hidden overlay loop.
+        if (overlayViewer) overlayViewer.pause();
+        if (viewer1) viewer1.resume();
+        if (viewer2) viewer2.resume();
     }
 }
 

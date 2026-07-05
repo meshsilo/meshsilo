@@ -104,7 +104,8 @@ define('PUBLIC_PAGE', true);
 
             <form method="post" autocomplete="off">
                 <?= Csrf::field() ?>
-                <input type="text" name="code" class="code-input" maxlength="8" pattern="[0-9a-zA-Z]+" inputmode="numeric" autofocus placeholder="000000" required>
+                <label for="twofa-code" class="sr-only">Authentication or backup code</label>
+                <input type="text" id="twofa-code" name="code" class="code-input" maxlength="8" pattern="[0-9a-zA-Z]+" inputmode="numeric" autofocus placeholder="000000" required>
                 <button type="submit" class="verify-btn">Verify</button>
             </form>
 

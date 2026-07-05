@@ -282,7 +282,8 @@ require_once 'includes/header.php';
                     </div>
                     <?php endif; ?>
                     <div class="form-group" style="margin-top:0.75rem;margin-bottom:0">
-                        <input type="text" name="new_categories" class="form-input" placeholder="Add new categories (comma-separated, e.g. Minis, Terrain)">
+                        <label for="new_categories" class="sr-only">Add new categories</label>
+                        <input type="text" id="new_categories" name="new_categories" class="form-input" placeholder="Add new categories (comma-separated, e.g. Minis, Terrain)">
                         <small class="form-help">New categories will be created automatically. Existing names are matched without regard to capitalization.</small>
                     </div>
                 </fieldset>

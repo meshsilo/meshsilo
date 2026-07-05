@@ -87,10 +87,10 @@
             const checkboxes = folder.querySelectorAll('.part-checkbox');
             checkboxes.forEach(cb => cb.checked = checkbox.checked);
             updateMassActionsVisibility();
-            updateAllCheckboxStates();
+            updateAllCheckboxStates(folder);
         }
 
-        function updateAllCheckboxStates() {
+        function updateAllCheckboxStates(scope) {
             const selectAllCheckbox = document.getElementById('select-all-parts');
             const allPartCheckboxes = document.querySelectorAll('.part-checkbox');
             const checkedCount = document.querySelectorAll('.part-checkbox:checked').length;
@@ -99,11 +99,14 @@
                 selectAllCheckbox.checked = checkedCount === allPartCheckboxes.length && allPartCheckboxes.length > 0;
                 selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < allPartCheckboxes.length;
             }
-            updateFolderCheckboxes();
+            updateFolderCheckboxes(scope);
         }
 
-        function updateFolderCheckboxes() {
-            document.querySelectorAll('.parts-group').forEach(folder => {
+        // Pass a single .parts-group as `scope` to recompute only that folder's checkbox
+        // (toggling one part only changes its own folder); omit to recompute every folder.
+        function updateFolderCheckboxes(scope) {
+            const folders = scope ? [scope] : document.querySelectorAll('.parts-group');
+            folders.forEach(folder => {
                 const folderCheckbox = folder.querySelector('.folder-checkbox');
                 if (!folderCheckbox) return;
                 const partCheckboxes = folder.querySelectorAll('.part-checkbox');
@@ -116,7 +119,7 @@
         partCheckboxes.forEach(cb => {
             cb.addEventListener('change', function() {
                 updateMassActionsVisibility();
-                updateAllCheckboxStates();
+                updateAllCheckboxStates(this.closest('.parts-group'));
             });
         });
 

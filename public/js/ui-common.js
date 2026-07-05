@@ -235,13 +235,18 @@ function toggleQueueDropdown() {
     var dropdown = document.getElementById('queue-dropdown');
     var indicator = document.getElementById('queue-indicator');
     if (dropdown && indicator) {
-        indicator.classList.toggle('open');
+        var isOpen = indicator.classList.toggle('open');
+        var btn = indicator.querySelector('.queue-btn');
+        if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     }
 }
 
 var _lastConversionRemaining = -1;
+var _lastQueueHtml = null;
+var _anyIndicatorActive = false;
 
 function refreshQueueStatus() {
+    if (document.hidden) return;
     fetch('/actions/queue-status', {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -254,10 +259,11 @@ function refreshQueueStatus() {
         var convRemaining = data.conversions ? data.conversions.remaining : 0;
         var hasActivity = data.active > 0 || convRemaining > 0;
 
+        var html;
         if (hasActivity) {
             badge.textContent = data.active;
             badge.style.display = '';
-            var html = '';
+            html = '';
 
             // Show conversion progress if active
             if (data.conversions && convRemaining > 0) {
@@ -281,10 +287,15 @@ function refreshQueueStatus() {
                     '<span class="queue-job-time">' + ago + '</span>' +
                     '</div>';
             });
-            body.innerHTML = html;
         } else {
             badge.style.display = 'none';
-            body.innerHTML = '<div class="queue-empty">No active tasks</div>';
+            html = '<div class="queue-empty">No active tasks</div>';
+        }
+
+        // Only touch the DOM when the rendered markup actually changed (idle path is a no-op).
+        if (html !== _lastQueueHtml) {
+            body.innerHTML = html;
+            _lastQueueHtml = html;
         }
 
         // Detect conversion completion: was converting, now done
@@ -304,6 +315,10 @@ function refreshQueueStatus() {
 }
 
 function updateConvertingIndicators(modelIds, partIds) {
+    // Common idle path: nothing converting now and nothing marked last tick -> no DOM query.
+    if (modelIds.length === 0 && partIds.length === 0 && !_anyIndicatorActive) return;
+    _anyIndicatorActive = modelIds.length > 0 || partIds.length > 0;
+
     // Model cards on browse/home/search/category/collection pages (grid and list views)
     document.querySelectorAll('.model-card[data-model-id], .model-list-item[data-model-id]').forEach(function(card) {
         var id = parseInt(card.dataset.modelId);
@@ -324,6 +339,8 @@ function updateConvertingIndicators(modelIds, partIds) {
 
 function showConversionToast(message) {
     var toast = document.createElement('div');
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
     toast.textContent = message;
     toast.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--color-success,#22c55e);color:#fff;padding:0.75rem 1.5rem;border-radius:var(--radius,0.5rem);z-index:9999;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.5s;';
     document.body.appendChild(toast);

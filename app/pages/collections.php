@@ -33,16 +33,23 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row;
 }
 
-// Get a thumbnail for each collection from its first model
+// Get one thumbnail per collection in a single grouped query (was one query per collection)
+$thumbsByCollection = [];
+$thumbResult = $db->query('
+    SELECT collection, MIN(thumbnail_path) AS thumbnail_path
+    FROM models
+    WHERE parent_id IS NULL
+      AND thumbnail_path IS NOT NULL
+      AND thumbnail_path != ""
+      AND collection IS NOT NULL
+      AND collection != ""
+    GROUP BY collection
+');
+while ($thumbRow = $thumbResult->fetchArray(PDO::FETCH_ASSOC)) {
+    $thumbsByCollection[$thumbRow['collection']] = $thumbRow['thumbnail_path'];
+}
 foreach ($collections as &$col) {
-    $col['thumbnail'] = null;
-    $thumbStmt = $db->prepare('SELECT thumbnail_path FROM models WHERE collection = :name AND parent_id IS NULL AND thumbnail_path IS NOT NULL AND thumbnail_path != "" LIMIT 1');
-    $thumbStmt->bindValue(':name', $col['name'], PDO::PARAM_STR);
-    $thumbResult = $thumbStmt->execute();
-    $thumbRow = $thumbResult->fetchArray(PDO::FETCH_ASSOC);
-    if ($thumbRow) {
-        $col['thumbnail'] = $thumbRow['thumbnail_path'];
-    }
+    $col['thumbnail'] = $thumbsByCollection[$col['name']] ?? null;
 }
 unset($col);
 

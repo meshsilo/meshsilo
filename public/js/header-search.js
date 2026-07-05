@@ -46,6 +46,7 @@
 
     function renderDropdown(suggestions, recentMatches, browseBase, query) {
         var dropdown = document.getElementById('search-dropdown');
+        var input = document.getElementById('search-input');
         var recentSection = document.getElementById('search-recent');
         var recentList = document.getElementById('search-recent-list');
         var resultsSection = document.getElementById('search-results');
@@ -92,7 +93,7 @@
 
         var hasContent = recentMatches.length > 0 || suggestions.length > 0 || (query && query.length > 0);
         dropdown.hidden = !hasContent;
-        input.setAttribute('aria-expanded', hasContent ? 'true' : 'false');
+        if (input) input.setAttribute('aria-expanded', hasContent ? 'true' : 'false');
         activeIndex = -1;
     }
 
