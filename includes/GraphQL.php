@@ -105,8 +105,10 @@ class GraphQL
             $query = substr($query, 0, -1);
         }
 
+        $parenDepth = 0;
         $chars = str_split($query);
-        for ($i = 0; $i < count($chars); $i++) {
+        $len = count($chars);
+        for ($i = 0; $i < $len; $i++) {
             $char = $chars[$i];
 
             if ($char === '"' && ($i === 0 || $chars[$i - 1] !== '\\')) {
@@ -118,18 +120,52 @@ class GraphQL
                     $depth++;
                 } elseif ($char === '}') {
                     $depth--;
+                } elseif ($char === '(') {
+                    $parenDepth++;
+                } elseif ($char === ')') {
+                    $parenDepth--;
                 }
             }
 
-            if ($depth === 0 && !$inString && ($char === "\n" || $char === ',')) {
+            // Fields are separated by whitespace or commas at the top level
+            // (outside strings, selection-set braces, and argument parens).
+            $isSeparator = !$inString && $depth === 0 && $parenDepth === 0
+                && ($char === ',' || $char === ' ' || $char === "\t"
+                    || $char === "\n" || $char === "\r");
+
+            if ($isSeparator) {
+                // Whitespace/comma that is internal to a single field is not a
+                // boundary: (a) after an alias colon ("alias: field"), or (b)
+                // right before this field's own argument list "(" or selection
+                // set "{". Only split when the next significant char begins a
+                // new field.
+                $trimmedCurrent = rtrim($current);
+                if ($trimmedCurrent !== '' && substr($trimmedCurrent, -1) === ':') {
+                    $current .= $char;
+                    continue;
+                }
+                $next = '';
+                for ($j = $i + 1; $j < $len; $j++) {
+                    $c = $chars[$j];
+                    if ($c === ',' || $c === ' ' || $c === "\t" || $c === "\n" || $c === "\r") {
+                        continue;
+                    }
+                    $next = $c;
+                    break;
+                }
+                if ($next === '{' || $next === '(' || $next === ':') {
+                    $current .= $char;
+                    continue;
+                }
                 $current = trim($current);
-                if ($current) {
+                if ($current !== '') {
                     $selections[] = self::parseField($current);
                 }
                 $current = '';
-            } else {
-                $current .= $char;
+                continue;
             }
+
+            $current .= $char;
         }
 
         $current = trim($current);

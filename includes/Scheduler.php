@@ -229,26 +229,34 @@ class Scheduler
             return in_array($value, $values);
         }
 
-        // Range (e.g., "1-5")
-        if (strpos($pattern, '-') !== false) {
-            [$start, $end] = array_map('intval', explode('-', $pattern));
-            return $value >= $start && $value <= $end;
-        }
-
-        // Step (e.g., "*/5")
+        // Step (e.g., "*/5", "0-30/5", "5/10") - checked before the plain range
+        // so a range-with-step honors its step instead of degrading to the range.
         if (strpos($pattern, '/') !== false) {
-            [$range, $step] = explode('/', $pattern);
-            $step = (int)$step;
+            [$range, $stepStr] = explode('/', $pattern, 2);
+            $step = (int)$stepStr;
+            if ($step <= 0) {
+                return false;
+            }
 
             if ($range === '*') {
                 return $value % $step === 0;
             }
 
-            // Range with step (e.g., "0-30/5")
             if (strpos($range, '-') !== false) {
+                // Range with step (e.g., "0-30/5")
                 [$start, $end] = array_map('intval', explode('-', $range));
-                return $value >= $start && $value <= $end && ($value - $start) % $step === 0;
+            } else {
+                // Open-ended step from a start value (e.g., "5/10")
+                $start = (int)$range;
+                $end = $max;
             }
+            return $value >= $start && $value <= $end && ($value - $start) % $step === 0;
+        }
+
+        // Range (e.g., "1-5")
+        if (strpos($pattern, '-') !== false) {
+            [$start, $end] = array_map('intval', explode('-', $pattern));
+            return $value >= $start && $value <= $end;
         }
 
         // Exact match
