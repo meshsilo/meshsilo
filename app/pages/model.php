@@ -595,9 +595,9 @@ require_once 'includes/header.php';
 
                         <?php if (canEdit()): ?>
                         <div class="attachment-upload">
-                            <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" multiple style="display:none" aria-label="Upload attachments">
+                            <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.rtf,.csv" multiple style="display:none" aria-label="Upload attachments">
                             <button type="button" class="btn btn-secondary btn-small trigger-attachment-upload">Add Attachment</button>
-                            <span class="attachment-hint">Images, PDFs &amp; Text Files</span>
+                            <span class="attachment-hint">Images, PDFs, Office docs &amp; Text Files</span>
                         </div>
                         <?php endif; ?>
 

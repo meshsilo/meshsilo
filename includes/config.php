@@ -58,7 +58,12 @@ if (!defined('ALLOWED_EXTENSIONS')) {
 }
 // Extensions that are attachments (images, documents) rather than 3D models
 if (!defined('ATTACHMENT_EXTENSIONS')) {
-    define('ATTACHMENT_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md']);
+    define('ATTACHMENT_EXTENSIONS', [
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md',
+        // Office documents
+        'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+        'odt', 'ods', 'odp', 'rtf', 'csv',
+    ]);
 }
 
 // Helper function to get base path for public assets
