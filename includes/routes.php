@@ -408,22 +408,21 @@ $router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
 
 // ============================================================================
 // API ROUTES
-// Note: The API has its own routing in api/index.php
-// These routes redirect to the API for clean URL access
+// Note: The API has its own routing in api/index.php, which parses
+// resource/id/sub-resource segments, optional version prefixes (/api/v1/...),
+// and plugin-registered resources (api_routes filter). Everything under /api
+// is therefore dispatched to it via a catch-all instead of per-resource
+// routes, which silently 404'd sub-resource and versioned URLs the API
+// implements (e.g. /api/models/{id}/parts, /api/v1/models, /api/health).
 // ============================================================================
 
 $router->group(['prefix' => '/api'], function ($router) {
-    // GraphQL endpoint
+    // GraphQL endpoint (registered before the catch-all: first match wins)
     $router->any('/graphql', ['file' => 'app/api/graphql.php'], 'api.graphql');
 
-    // Redirect to API handler
-    $router->any('/models', ['file' => 'app/api/index.php'], 'api.models');
-    $router->any('/models/{id:\d+}', ['file' => 'app/api/index.php', 'map' => ['id' => 'id']], 'api.model');
-    $router->any('/categories', ['file' => 'app/api/index.php'], 'api.categories');
-    $router->any('/categories/{id:\d+}', ['file' => 'app/api/index.php', 'map' => ['id' => 'id']], 'api.category');
-    $router->any('/tags', ['file' => 'app/api/index.php'], 'api.tags');
-    $router->any('/collections', ['file' => 'app/api/index.php'], 'api.collections');
-    $router->any('/stats', ['file' => 'app/api/index.php'], 'api.stats');
+    // API root (info payload) and all other API URLs
+    $router->any('/', ['file' => 'app/api/index.php'], 'api.index');
+    $router->any('/{path:.+}', ['file' => 'app/api/index.php'], 'api.dispatch');
 });
 
 // ============================================================================
