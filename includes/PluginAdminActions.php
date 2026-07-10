@@ -42,21 +42,27 @@ class PluginAdminActions
         switch ($action) {
             case 'enable':
                 $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($post['plugin_id'] ?? ''));
-                if ($pluginId !== '' && $pluginManager->enablePlugin($pluginId)) {
+                $result = $pluginId !== ''
+                    ? $pluginManager->enablePlugin($pluginId)
+                    : ['success' => false, 'error' => 'Invalid plugin ID'];
+                if ($result['success']) {
                     $message = 'Plugin enabled successfully.';
                     logInfo('Plugin enabled', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Failed to enable plugin. Check that all dependencies are met and the minimum version requirement is satisfied.';
+                    $error = 'Failed to enable plugin: ' . ($result['error'] ?? 'Unknown error');
                 }
                 break;
 
             case 'disable':
                 $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($post['plugin_id'] ?? ''));
-                if ($pluginId !== '' && $pluginManager->disablePlugin($pluginId)) {
+                $result = $pluginId !== ''
+                    ? $pluginManager->disablePlugin($pluginId)
+                    : ['success' => false, 'error' => 'Invalid plugin ID'];
+                if ($result['success']) {
                     $message = 'Plugin disabled successfully.';
                     logInfo('Plugin disabled', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Failed to disable plugin. Another active plugin may depend on it.';
+                    $error = 'Failed to disable plugin: ' . ($result['error'] ?? 'Unknown error');
                 }
                 break;
 

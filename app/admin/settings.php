@@ -262,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
 
     // Plugin hook: admin_settings_saved - plugins save their own settings from the same form
     if (class_exists('PluginManager')) {
-        PluginManager::applyFilter('admin_settings_saved', null, $_POST);
+        PluginManager::doAction('admin_settings_saved', $_POST);
     }
 }
 

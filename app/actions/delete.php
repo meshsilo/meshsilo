@@ -189,10 +189,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         exit;
     }
 
-    // Plugin hook: allow plugins to prevent deletion or perform pre-deletion cleanup
+    // Plugin hook: allow plugins to prevent deletion or perform pre-deletion cleanup.
+    // applyGate fails closed: a crashing plugin denies the deletion.
     if (class_exists('PluginManager')) {
         $deleteTarget = $part ?? $model;
-        $allowed = PluginManager::applyFilter('before_delete', true, $deleteTarget, getCurrentUser());
+        $allowed = PluginManager::applyGate('before_delete', true, $deleteTarget, getCurrentUser());
         if ($allowed !== true) {
             $_SESSION['error'] = is_string($allowed) ? $allowed : 'Deletion blocked';
             header('Location: ../model.php?id=' . $modelId);
@@ -238,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
             // Plugin hook: notify plugins after successful part deletion
             if (class_exists('PluginManager')) {
-                PluginManager::applyFilter('after_delete', null, $part, getCurrentUser());
+                PluginManager::doAction('after_delete', $part, getCurrentUser());
             }
 
             $_SESSION['success'] = 'Part "' . $part['name'] . '" has been deleted.';
@@ -343,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
             // Plugin hook: notify plugins after successful model deletion
             if (class_exists('PluginManager')) {
-                PluginManager::applyFilter('after_delete', null, $model, getCurrentUser());
+                PluginManager::doAction('after_delete', $model, getCurrentUser());
             }
 
             $_SESSION['success'] = 'Model "' . $model['name'] . '" has been deleted.';

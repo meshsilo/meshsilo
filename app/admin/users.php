@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 }
 
                 if (class_exists('PluginManager')) {
-                    PluginManager::applyFilter('user_registered', null, $userId, [
+                    PluginManager::doAction('user_registered', $userId, [
                         'username' => $username,
                         'email' => $email,
                         'method' => 'admin'

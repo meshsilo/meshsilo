@@ -313,6 +313,8 @@ class UploadProcessor
             logInfo('Added parts from ZIP', ['parent_id' => $parentModelId, 'added' => $addedCount]);
         }
 
+        self::fireAfterUploadHook($parentModelId, '', 'zip');
+
         return ['success' => true, 'parent_id' => $parentModelId, 'part_count' => $addedCount, 'error' => ''];
     }
 
@@ -818,7 +820,7 @@ class UploadProcessor
     private static function fireAfterUploadHook(int $parentId, string $name, string $fileType): void
     {
         if (class_exists('PluginManager')) {
-            PluginManager::applyFilter('after_upload', null, $parentId, [
+            PluginManager::doAction('after_upload', $parentId, [
                 'name' => $name,
                 'file_type' => $fileType,
                 'user_id' => function_exists('isLoggedIn') && isLoggedIn() ? (getCurrentUser()['id'] ?? null) : null,

@@ -198,7 +198,7 @@ class Events
 
         // Allow plugins to handle event dispatching (e.g., webhooks)
         if (class_exists('PluginManager')) {
-            PluginManager::applyFilter('event_dispatched', null, $event, $data);
+            PluginManager::doAction('event_dispatched', $event, $data);
         }
 
         return $results;

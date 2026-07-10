@@ -40,7 +40,7 @@ switch ($action) {
 
         $result = $pluginManager->enablePlugin($pluginId);
 
-        if ($result) {
+        if ($result['success']) {
             logInfo('Plugin enabled', [
                 'plugin_id' => $pluginId,
                 'by' => getCurrentUser()['username']
@@ -48,7 +48,7 @@ switch ($action) {
             jsonSuccess(['message' => 'Plugin enabled']);
         } else {
             http_response_code(400);
-            jsonError('Failed to enable plugin');
+            jsonError('Failed to enable plugin: ' . ($result['error'] ?? 'Unknown error'));
         }
         break;
 
@@ -61,7 +61,7 @@ switch ($action) {
 
         $result = $pluginManager->disablePlugin($pluginId);
 
-        if ($result) {
+        if ($result['success']) {
             logInfo('Plugin disabled', [
                 'plugin_id' => $pluginId,
                 'by' => getCurrentUser()['username']
@@ -69,7 +69,7 @@ switch ($action) {
             jsonSuccess(['message' => 'Plugin disabled']);
         } else {
             http_response_code(400);
-            jsonError('Failed to disable plugin');
+            jsonError('Failed to disable plugin: ' . ($result['error'] ?? 'Unknown error'));
         }
         break;
 

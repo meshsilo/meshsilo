@@ -10,7 +10,7 @@
 function triggerWebhook($event, $payload)
 {
     if (class_exists('PluginManager')) {
-        PluginManager::applyFilter('trigger_webhook', null, $event, $payload);
+        PluginManager::doAction('trigger_webhook', $event, $payload);
     }
 }
 

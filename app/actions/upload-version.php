@@ -158,6 +158,16 @@ try {
 
 logActivity('upload_version', 'model', $modelId, $model['name'] . ' v' . $result);
 
+// Plugin hook: version uploads are uploads too (virus scan, indexing, notifications)
+if (class_exists('PluginManager')) {
+    PluginManager::doAction('after_upload', $modelId, [
+        'name' => $model['name'],
+        'file_type' => $ext,
+        'user_id' => $user['id'] ?? null,
+        'version' => $result,
+    ]);
+}
+
 jsonSuccess([
     'version' => $result,
     'message' => 'Version ' . $result . ' uploaded successfully'

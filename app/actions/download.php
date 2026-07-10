@@ -57,9 +57,10 @@ if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
     downloadError(403, 'Access denied');
 }
 
-// Plugin hook: before_download - access control, quota checks, download analytics
+// Plugin hook: before_download - access control, quota checks, download analytics.
+// applyGate fails closed: a crashing plugin denies the download.
 if (class_exists('PluginManager')) {
-    $allowed = PluginManager::applyFilter('before_download', true, $part, getCurrentUser());
+    $allowed = PluginManager::applyGate('before_download', true, $part, getCurrentUser());
     if ($allowed !== true) {
         http_response_code(403);
         echo is_string($allowed) ? $allowed : 'Download blocked';

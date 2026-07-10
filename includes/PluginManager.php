@@ -22,6 +22,9 @@ require_once __DIR__ . '/plugin/PluginRepository.php';
  */
 class PluginManager
 {
+    /** Marker prefix for encrypted setting values stored in plugins.settings. */
+    private const ENC_PREFIX = 'enc:v1:';
+
     private static ?self $instance = null;
     private array $plugins = [];
     private array $activePlugins = [];
@@ -76,7 +79,10 @@ class PluginManager
         }
 
         foreach ($dirs as $entry) {
-            if ($entry === '.' || $entry === '..') {
+            // Skip hidden entries: '.', '..', and transient dirs like the
+            // '.backup-<id>-<ts>' folders created during upgrades, whose
+            // stale manifests must never shadow the live plugin.
+            if ($entry === '' || $entry[0] === '.') {
                 continue;
             }
 
@@ -92,6 +98,15 @@ class PluginManager
 
             $manifest = json_decode($json, true);
             if (!is_array($manifest) || empty($manifest['id']) || empty($manifest['name']) || empty($manifest['version'])) {
+                continue;
+            }
+
+            if (isset($this->plugins[$manifest['id']])) {
+                logWarning('Duplicate plugin ID found during discovery; keeping first', [
+                    'id' => $manifest['id'],
+                    'kept_dir' => $this->plugins[$manifest['id']]['_dir'],
+                    'skipped_dir' => $entry,
+                ]);
                 continue;
             }
 
@@ -122,8 +137,34 @@ class PluginManager
     public function loadActivePlugins(): void
     {
         foreach ($this->activePlugins as $id => $active) {
-            $this->bootPlugin($id);
+            $this->bootPluginWithDependencies($id, []);
         }
+    }
+
+    /**
+     * Boot a plugin after its active requires_plugins dependencies, so a
+     * dependent plugin can call into its dependency during boot regardless
+     * of activation order. Circular requirements fall back to registration
+     * order rather than recursing forever.
+     *
+     * @param list<string> $stack Plugin ids currently being resolved (cycle guard).
+     */
+    private function bootPluginWithDependencies(string $id, array $stack): void
+    {
+        if (isset($this->bootedPlugins[$id]) || in_array($id, $stack, true)) {
+            return;
+        }
+
+        $requires = $this->plugins[$id]['requires_plugins'] ?? [];
+        if (is_array($requires)) {
+            foreach ($requires as $dep) {
+                if (is_string($dep) && isset($this->activePlugins[$dep])) {
+                    $this->bootPluginWithDependencies($dep, [...$stack, $id]);
+                }
+            }
+        }
+
+        $this->bootPlugin($id);
     }
 
     public function bootPlugin(string $id): void
@@ -242,24 +283,31 @@ class PluginManager
     // Lifecycle Methods
     // ========================================================================
 
-    public function enablePlugin(string $id): bool
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function enablePlugin(string $id): array
     {
         if (!isset($this->plugins[$id])) {
-            return false;
+            return ['success' => false, 'error' => "Plugin not found: $id"];
         }
 
         $manifest = $this->plugins[$id];
 
         if (defined('MESHSILO_VERSION') && !empty($manifest['min_silo_version'])) {
             if (version_compare(MESHSILO_VERSION, $manifest['min_silo_version'], '<')) {
-                return false;
+                return [
+                    'success' => false,
+                    'error' => 'Requires MeshSilo ' . $manifest['min_silo_version']
+                        . ' or newer (current: ' . MESHSILO_VERSION . ')',
+                ];
             }
         }
 
         if (!empty($manifest['requires_plugins']) && is_array($manifest['requires_plugins'])) {
             foreach ($manifest['requires_plugins'] as $dep) {
                 if (!$this->isPluginActive($dep)) {
-                    return false;
+                    return ['success' => false, 'error' => "Requires plugin '$dep' to be active first"];
                 }
             }
         }
@@ -294,14 +342,17 @@ class PluginManager
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin enabled: $id");
 
-            return true;
+            return ['success' => true];
         } catch (\Exception $e) {
             logError("Failed to enable plugin: $id", ['error' => $e->getMessage()]);
-            return false;
+            return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
         }
     }
 
-    public function disablePlugin(string $id): bool
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function disablePlugin(string $id): array
     {
         try {
             // Check if other active plugins depend on this one
@@ -312,7 +363,7 @@ class PluginManager
                 $otherManifest = $this->plugins[$otherId] ?? [];
                 $requires = $otherManifest['requires_plugins'] ?? [];
                 if (is_array($requires) && in_array($id, $requires, true)) {
-                    return false;
+                    return ['success' => false, 'error' => "Cannot disable: active plugin '$otherId' depends on it"];
                 }
             }
 
@@ -332,10 +383,10 @@ class PluginManager
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin disabled: $id");
 
-            return true;
+            return ['success' => true];
         } catch (\Exception $e) {
             logError("Failed to disable plugin: $id", ['error' => $e->getMessage()]);
-            return false;
+            return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
         }
     }
 
@@ -501,7 +552,7 @@ class PluginManager
     public function uninstallPlugin(string $id): bool
     {
         if ($this->isPluginActive($id)) {
-            if (!$this->disablePlugin($id)) {
+            if (!$this->disablePlugin($id)['success']) {
                 return false;
             }
         }
@@ -570,14 +621,19 @@ class PluginManager
         $this->scripts[] = ['plugin' => $pluginId, 'path' => $relativePath];
     }
 
+    /**
+     * Register a filter hook. Higher priority runs first (note: the reverse
+     * of WordPress, where lower priority runs first).
+     */
     public function addFilter(string $hook, callable $callback, int $priority = 10): void
     {
         $this->hooks->addFilter($hook, $callback, $priority, $this->currentPluginId);
     }
 
     /**
-     * Register an action hook (event listener).
-     * Unlike filters, actions don't return/modify a value — they just execute.
+     * Register an action hook (event listener). Higher priority runs first
+     * (the reverse of WordPress, where lower priority runs first).
+     * Unlike filters, actions don't return/modify a value - they just execute.
      */
     public function addAction(string $event, callable $callback, int $priority = 10): void
     {
@@ -585,7 +641,36 @@ class PluginManager
     }
 
     /**
-     * Fire an action event. All registered listeners are called.
+     * Unregister a previously added filter callback.
+     */
+    public function removeFilter(string $hook, callable $callback): bool
+    {
+        return $this->hooks->removeFilter($hook, $callback);
+    }
+
+    /**
+     * Unregister a previously added action callback.
+     */
+    public function removeAction(string $event, callable $callback): bool
+    {
+        return $this->hooks->removeAction($event, $callback);
+    }
+
+    public function hasFilter(string $hook): bool
+    {
+        return $this->hooks->hasFilter($hook);
+    }
+
+    public function hasAction(string $event): bool
+    {
+        return $this->hooks->hasAction($event);
+    }
+
+    /**
+     * Fire an action event. All registered listeners are called - both
+     * addAction listeners and legacy addFilter registrations under the same
+     * name (called as ($value=null, ...$args), matching the historical
+     * applyFilter($event, null, ...) dispatch of event-shaped hooks).
      */
     public static function doAction(string $event, mixed ...$args): void
     {
@@ -593,11 +678,12 @@ class PluginManager
     }
 
     /**
-     * Get a plugin setting value.
+     * Get a plugin setting value. Encrypted values (password-type fields
+     * saved while encryption is configured) are decrypted transparently.
      */
     public function getSetting(string $pluginId, string $key, mixed $default = null): mixed
     {
-        return $this->settingsStore->get($pluginId, $key, $default);
+        return $this->decryptSettingValue($this->settingsStore->get($pluginId, $key, $default), $default);
     }
 
     /**
@@ -609,11 +695,43 @@ class PluginManager
     }
 
     /**
-     * Get all settings for a plugin.
+     * Get all settings for a plugin. Encrypted values are decrypted.
      */
     public function getSettings(string $pluginId): array
     {
-        return $this->settingsStore->getAll($pluginId);
+        return array_map(
+            fn(mixed $value): mixed => $this->decryptSettingValue($value, ''),
+            $this->settingsStore->getAll($pluginId)
+        );
+    }
+
+    /**
+     * Decrypt a setting value written by savePluginSettings for a
+     * password-type field. Non-encrypted values pass through untouched;
+     * an undecryptable value (missing/rotated key) yields $default so
+     * ciphertext never leaks to callers or forms.
+     */
+    private function decryptSettingValue(mixed $value, mixed $default): mixed
+    {
+        if (!is_string($value) || !str_starts_with($value, self::ENC_PREFIX)) {
+            return $value;
+        }
+
+        if (!class_exists('Encryption') || !Encryption::isEnabled()) {
+            logWarning('Cannot decrypt plugin setting: encryption not configured');
+            return $default;
+        }
+
+        try {
+            $raw = base64_decode(substr($value, strlen(self::ENC_PREFIX)), true);
+            if ($raw === false) {
+                return $default;
+            }
+            return Encryption::decrypt($raw, 'plugin-settings');
+        } catch (\Throwable $e) {
+            logWarning('Failed to decrypt plugin setting', ['error' => $e->getMessage()]);
+            return $default;
+        }
     }
 
     /**
@@ -654,6 +772,9 @@ class PluginManager
             $default = $field['default'] ?? '';
             $description = htmlspecialchars($field['description'] ?? '');
             $value = $savedSettings[$key] ?? $default;
+            // Tolerate non-scalar values written before save-side validation
+            // existed; htmlspecialchars() would TypeError on them.
+            $value = is_scalar($value) ? (string)$value : '';
             $inputName = 'plugin_settings[' . htmlspecialchars($key) . ']';
 
             $html .= '<div class="form-group">';
@@ -705,21 +826,55 @@ class PluginManager
 
     /**
      * Save plugin settings from form POST data.
+     *
+     * Only fields declared in the manifest are saved (prevents arbitrary key
+     * injection), values are coerced to scalars by declared type (a crafted
+     * plugin_settings[key][] POST would otherwise store an array and crash
+     * the settings form render), and password-type values are encrypted at
+     * rest when encryption is configured.
      */
     public function savePluginSettings(string $pluginId, array $postData): bool
     {
         $manifest = $this->plugins[$pluginId] ?? [];
         $fields = $manifest['settings'] ?? [];
-        if (empty($fields)) {
+        if (empty($fields) || !is_array($fields)) {
             return false;
         }
 
-        // Only save declared fields (prevent arbitrary key injection)
-        $allowedKeys = array_column($fields, 'key');
-        foreach ($allowedKeys as $key) {
-            if (array_key_exists($key, $postData)) {
-                $this->setSetting($pluginId, $key, $postData[$key]);
+        foreach ($fields as $field) {
+            $key = $field['key'] ?? '';
+            if ($key === '' || !array_key_exists($key, $postData)) {
+                continue;
             }
+
+            $value = $postData[$key];
+            if (!is_scalar($value) && $value !== null) {
+                logWarning('Ignored non-scalar plugin setting value', ['plugin' => $pluginId, 'key' => $key]);
+                continue;
+            }
+            $value = (string)($value ?? '');
+
+            $type = $field['type'] ?? 'text';
+            if ($type === 'checkbox') {
+                $value = $value === '1' ? '1' : '0';
+            } elseif ($type === 'number' && $value !== '' && !is_numeric($value)) {
+                logWarning('Ignored non-numeric plugin setting value', ['plugin' => $pluginId, 'key' => $key]);
+                continue;
+            }
+
+            if ($type === 'password' && $value !== '' && class_exists('Encryption') && Encryption::isEnabled()) {
+                try {
+                    $value = self::ENC_PREFIX . base64_encode(Encryption::encrypt($value, 'plugin-settings'));
+                } catch (\Throwable $e) {
+                    logWarning('Failed to encrypt plugin setting; storing as plaintext', [
+                        'plugin' => $pluginId,
+                        'key' => $key,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $this->setSetting($pluginId, $key, $value);
         }
 
         return true;
@@ -810,6 +965,20 @@ class PluginManager
     public static function applyFilter(string $hook, mixed $value, mixed ...$args): mixed
     {
         return self::getInstance()->hooks->applyFilter($hook, $value, ...$args);
+    }
+
+    /**
+     * Run an allow/deny gate (e.g. before_download, before_delete) through
+     * the filter chain. Allowed only when the result is exactly true; a
+     * listener may return false or a string denial reason. Unlike
+     * applyFilter, a listener that throws DENIES the operation - security
+     * gates fail closed.
+     *
+     * @return mixed true to allow; false or a string denial reason otherwise
+     */
+    public static function applyGate(string $hook, mixed $default, mixed ...$args): mixed
+    {
+        return self::getInstance()->hooks->applyGate($hook, $default, ...$args);
     }
 
     // ========================================================================
@@ -931,9 +1100,17 @@ class PluginManager
             return ['success' => false, 'error' => 'Invalid plugin.json in downloaded plugin'];
         }
 
-        // All files downloaded and validated — swap into place
+        // All files downloaded and validated - swap into place. Move any
+        // existing install aside first so a failed swap can be rolled back
+        // instead of leaving the plugin destroyed (mirrors installPlugin's
+        // zip upgrade path).
+        $backupDir = null;
         if (is_dir($destDir)) {
-            $this->recursiveDelete($destDir);
+            $backupDir = $pluginsDir . '/.backup-' . $pluginId . '-' . time();
+            if (!@rename($destDir, $backupDir)) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Failed to back up existing plugin for upgrade'];
+            }
         }
         // rename() fails across filesystem boundaries (common in Docker),
         // so fall back to recursive copy + delete
@@ -942,6 +1119,13 @@ class PluginManager
                 $this->recursiveCopy($tempDir, $destDir);
             } catch (\RuntimeException $e) {
                 $this->recursiveDelete($tempDir);
+                // Restore the previous install over any partial copy
+                if ($backupDir !== null) {
+                    if (is_dir($destDir)) {
+                        $this->recursiveDelete($destDir);
+                    }
+                    @rename($backupDir, $destDir);
+                }
                 logWarning('Plugin install failed during file copy', [
                     'plugin' => $pluginId,
                     'error' => $e->getMessage(),
@@ -953,6 +1137,9 @@ class PluginManager
                 ];
             }
             $this->recursiveDelete($tempDir);
+        }
+        if ($backupDir !== null && is_dir($backupDir)) {
+            $this->recursiveDelete($backupDir);
         }
 
         // Register in database
@@ -1021,7 +1208,7 @@ class PluginManager
             throw new \RuntimeException('Invalid response from GitHub API');
         }
 
-        // GitHub API errors return {"message": "..."} — detect and throw
+        // GitHub API errors return {"message": "..."} - detect and throw
         if (isset($items['message'])) {
             throw new \RuntimeException('GitHub API error: ' . $items['message']);
         }
@@ -1247,7 +1434,7 @@ class PluginManager
 
             // Remove stale destination file first. copy() cannot overwrite a
             // file the web server user doesn't own, but unlink() works as long
-            // as the parent directory is writable — this handles the common
+            // as the parent directory is writable - this handles the common
             // case of a previous partial install leaving read-only files.
             if (file_exists($dstPath) || is_link($dstPath)) {
                 @unlink($dstPath);
