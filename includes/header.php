@@ -54,6 +54,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
     <link rel="icon" type="image/png" sizes="16x16" href="<?= basePath('images/favicon-16.png') ?>">
     <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
+    <link rel="stylesheet" href="<?= basePath('vendor/fontawesome/css/all.min.css') ?>?v=<?= filemtime(__DIR__ . '/../public/vendor/fontawesome/css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/base.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/base.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/layout.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/layout.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/components.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/components.css') ?>">
@@ -61,7 +62,6 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <link rel="stylesheet" href="<?= basePath('css/upload.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/upload.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/viewer.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/viewer.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/model-detail.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/model-detail.css') ?>">
-    <link rel="stylesheet" href="<?= basePath('css/annotations.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/annotations.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/lightbox.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/lightbox.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/browse.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/browse.css') ?>">
     <?php if (!empty($adminPage)): ?>
@@ -78,7 +78,9 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <?php endif; ?>
     <?php if (!empty($needsModelPageJs)): ?>
     <script src="<?= basePath('js/model-parts.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts.js') ?>" defer></script>
-    <script src="<?= basePath('js/model-share.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-share.js') ?>" defer></script>
+    <script src="<?= basePath('js/model-parts-selection.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts-selection.js') ?>" defer></script>
+    <script src="<?= basePath('js/model-parts-folders.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts-folders.js') ?>" defer></script>
+    <script src="<?= basePath('js/model-parts-upload.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-parts-upload.js') ?>" defer></script>
     <script src="<?= basePath('js/model-attachments.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-attachments.js') ?>" defer></script>
     <script src="<?= basePath('js/model-actions.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-actions.js') ?>" defer></script>
     <script src="<?= basePath('js/model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/model-page.js') ?>" defer></script>
@@ -90,356 +92,19 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <script src="<?= basePath('js/edit-model-page.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/edit-model-page.js') ?>" defer></script>
     <?php endif; ?>
     <?php if (!empty($needsTusJs)): ?>
-    <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" integrity="sha384-UlHjK3F7TCQCEUpnoa1ohMbP2oaWB3Aypv4gMo511vaZ86uUZ0Zv7UzZ0J1zRUT1" crossorigin="anonymous" defer></script>
     <?php endif; ?>
     <?php if (!empty($adminPage)): ?>
     <script src="<?= basePath('js/admin-pages.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/admin-pages.js') ?>" defer></script>
     <?php endif; ?>
     <script src="<?= basePath('js/main.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/main.js') ?>" defer></script>
     <script>
-        // Focus trap for modals (accessibility)
-        function trapFocus(el) {
-            el.addEventListener('keydown', function(e) {
-                if (e.key !== 'Tab') return;
-                var focusable = el.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
-                if (focusable.length === 0) return;
-                var first = focusable[0], last = focusable[focusable.length - 1];
-                if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
-                else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
-            });
-        }
-
-        // Toast notification helper (works before main.js loads)
-        function showToast(message, type) {
-            type = type || 'info';
-            if (window.siloUI && window.siloUI.toasts) {
-                window.siloUI.toasts.show(message, type);
-                return;
-            }
-            var container = document.querySelector('.toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.className = 'toast-container';
-                container.setAttribute('aria-live', 'polite');
-                container.setAttribute('role', 'status');
-                document.body.appendChild(container);
-            }
-            var toast = document.createElement('div');
-            toast.className = 'toast toast-' + type;
-            toast.innerHTML = '<span class="toast-message"></span><button type="button" class="toast-close" aria-label="Close">&times;</button>';
-            toast.querySelector('.toast-message').textContent = message;
-            toast.querySelector('.toast-close').onclick = function() {
-                toast.classList.remove('show');
-                setTimeout(function() { toast.remove(); }, 300);
-            };
-            container.appendChild(toast);
-            requestAnimationFrame(function() { toast.classList.add('show'); });
-            setTimeout(function() {
-                toast.classList.remove('show');
-                setTimeout(function() { toast.remove(); }, 300);
-            }, 4000);
-        }
-
-        // Confirm dialog replacement (returns Promise)
-        function showConfirm(message) {
-            return new Promise(function(resolve) {
-                var existing = document.getElementById('confirm-modal');
-                if (existing) existing.remove();
-                var overlay = document.createElement('div');
-                overlay.id = 'confirm-modal';
-                overlay.className = 'modal modal-overlay';
-                overlay.style.display = 'flex';
-                overlay.setAttribute('role', 'dialog');
-                overlay.setAttribute('aria-modal', 'true');
-                overlay.setAttribute('aria-label', 'Confirm action');
-                overlay.innerHTML =
-                    '<div class="modal-content" style="max-width:400px">' +
-                        '<div class="modal-header"><h3>Confirm</h3></div>' +
-                        '<div class="modal-body" style="padding:1.5rem"><p></p></div>' +
-                        '<div class="modal-footer" style="display:flex;gap:0.5rem;justify-content:flex-end;padding:1rem 1.5rem">' +
-                            '<button type="button" class="btn btn-secondary" id="confirm-cancel">Cancel</button>' +
-                            '<button type="button" class="btn btn-danger" id="confirm-ok">Confirm</button>' +
-                        '</div>' +
-                    '</div>';
-                overlay.querySelector('.modal-body p').textContent = message;
-                document.body.appendChild(overlay);
-                overlay.querySelector('#confirm-cancel').focus();
-                trapFocus(overlay);
-                overlay.querySelector('#confirm-ok').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(true); };
-                overlay.querySelector('#confirm-cancel').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(false); };
-                overlay.addEventListener('click', function(e) { if (e.target === overlay) { releaseFocus(overlay); overlay.remove(); resolve(false); } });
-            });
-        }
-
-        // Prompt dialog replacement (returns Promise<string|null>)
-        function showPrompt(message, defaultValue) {
-            defaultValue = defaultValue || '';
-            return new Promise(function(resolve) {
-                var existing = document.getElementById('prompt-modal');
-                if (existing) existing.remove();
-                var overlay = document.createElement('div');
-                overlay.id = 'prompt-modal';
-                overlay.className = 'modal modal-overlay';
-                overlay.style.display = 'flex';
-                overlay.setAttribute('role', 'dialog');
-                overlay.setAttribute('aria-modal', 'true');
-                overlay.setAttribute('aria-label', 'Input required');
-                overlay.innerHTML =
-                    '<div class="modal-content" style="max-width:400px">' +
-                        '<div class="modal-header"><h3>Input</h3></div>' +
-                        '<div class="modal-body" style="padding:1.5rem"><p></p>' +
-                            '<input type="text" id="prompt-input" class="form-control" style="width:100%;margin-top:0.75rem;padding:0.5rem;border:1px solid var(--color-border);border-radius:var(--radius);background:var(--color-surface);color:var(--color-text)">' +
-                        '</div>' +
-                        '<div class="modal-footer" style="display:flex;gap:0.5rem;justify-content:flex-end;padding:1rem 1.5rem">' +
-                            '<button type="button" class="btn btn-secondary" id="prompt-cancel">Cancel</button>' +
-                            '<button type="button" class="btn btn-primary" id="prompt-ok">OK</button>' +
-                        '</div>' +
-                    '</div>';
-                overlay.querySelector('.modal-body p').textContent = message;
-                var input = overlay.querySelector('#prompt-input');
-                input.value = defaultValue;
-                document.body.appendChild(overlay);
-                trapFocus(overlay);
-                input.focus();
-                input.select();
-                function submit() { var v = input.value; releaseFocus(overlay); overlay.remove(); resolve(v); }
-                overlay.querySelector('#prompt-ok').onclick = submit;
-                overlay.querySelector('#prompt-cancel').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(null); };
-                input.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { releaseFocus(overlay); overlay.remove(); resolve(null); } });
-                overlay.addEventListener('click', function(e) { if (e.target === overlay) { releaseFocus(overlay); overlay.remove(); resolve(null); } });
-            });
-        }
-
-        // Global data-confirm handler for forms and buttons
-        document.addEventListener('submit', function(e) {
-            var msg = e.target.getAttribute('data-confirm');
-            if (!msg) return;
-            e.preventDefault();
-            showConfirm(msg).then(function(ok) {
-                if (ok) {
-                    e.target.removeAttribute('data-confirm');
-                    e.target.submit();
-                }
-            });
-        });
-        document.addEventListener('click', function(e) {
-            var btn = e.target.closest('button[data-confirm], a[data-confirm]');
-            if (!btn) return;
-            e.preventDefault();
-            showConfirm(btn.getAttribute('data-confirm')).then(function(ok) {
-                if (ok) {
-                    if (btn.tagName === 'A') {
-                        window.location.href = btn.href;
-                    } else if (btn.type === 'submit' && btn.form) {
-                        btn.removeAttribute('data-confirm');
-                        btn.click();
-                    }
-                }
-            });
-        });
-
-        // Relative time formatting
-        function formatRelativeTime(dateStr) {
-            if (!dateStr) return '';
-            var now = new Date();
-            var then = new Date(dateStr.replace(' ', 'T'));
-            if (isNaN(then)) return dateStr;
-            var diff = Math.floor((now - then) / 1000);
-            if (diff < 60) return 'just now';
-            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-            if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
-            if (diff < 2592000) return Math.floor(diff / 604800) + 'w ago';
-            return '';
-        }
-
-        // Apply relative timestamps on load
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('[data-timestamp]').forEach(function(el) {
-                var rel = formatRelativeTime(el.dataset.timestamp);
-                if (rel) {
-                    el.title = el.textContent.trim();
-                    el.textContent = rel;
-                }
-            });
-        });
-
-        // Global Escape key: close any open modal overlay
-        document.addEventListener('keydown', function(e) {
-            if (e.key !== 'Escape') return;
-            var modals = document.querySelectorAll('.modal-overlay[style*="flex"], .modal-overlay[style*="block"]');
-            modals.forEach(function(m) { m.style.display = 'none'; });
-        });
-
-        // Copy current page URL to clipboard
-        function copyPageUrl() {
-            navigator.clipboard.writeText(window.location.href).then(function() {
-                showToast('Link copied to clipboard', 'success');
-            }).catch(function() {
-                showToast('Failed to copy link', 'error');
-            });
-        }
-
-        // Theme toggle functionality
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            html.setAttribute('data-theme', newTheme);
-            document.cookie = 'meshsilo_theme=' + newTheme + ';path=/;max-age=31536000';
-            updateThemeIcon(newTheme);
-        }
-        function updateThemeIcon(theme) {
-            const icon = document.getElementById('theme-icon');
-            if (icon) {
-                icon.textContent = theme === 'light' ? '\u263E' : '\u2600';
-            }
-        }
-
-        // Mobile menu toggle
-        function toggleMobileMenu() {
-            const nav = document.querySelector('.main-nav');
-            const toggle = document.querySelector('.mobile-menu-toggle');
-            const isOpen = nav.classList.toggle('mobile-open');
-            toggle.setAttribute('aria-expanded', isOpen);
-            document.body.classList.toggle('mobile-menu-open', isOpen);
-        }
-
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', function(e) {
-            const nav = document.querySelector('.main-nav');
-            const toggle = document.querySelector('.mobile-menu-toggle');
-            if (nav && nav.classList.contains('mobile-open') &&
-                !nav.contains(e.target) && !toggle.contains(e.target)) {
-                nav.classList.remove('mobile-open');
-                toggle.setAttribute('aria-expanded', 'false');
-                document.body.classList.remove('mobile-menu-open');
-            }
-        });
-
-        // Queue indicator
-        function toggleQueueDropdown() {
-            var dropdown = document.getElementById('queue-dropdown');
-            var indicator = document.getElementById('queue-indicator');
-            if (dropdown && indicator) {
-                indicator.classList.toggle('open');
-            }
-        }
-
-        var _lastConversionRemaining = -1;
-
-        function refreshQueueStatus() {
-            fetch('/actions/queue-status', {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                var badge = document.getElementById('queue-badge');
-                var body = document.getElementById('queue-dropdown-body');
-                if (!badge || !body) return;
-
-                var convRemaining = data.conversions ? data.conversions.remaining : 0;
-                var hasActivity = data.active > 0 || convRemaining > 0;
-
-                if (hasActivity) {
-                    badge.textContent = data.active;
-                    badge.style.display = '';
-                    var html = '';
-
-                    // Show conversion progress if active
-                    if (data.conversions && convRemaining > 0) {
-                        var c = data.conversions;
-                        html += '<div class="queue-job queue-job-processing">' +
-                            '<span class="queue-job-status">&#9881;</span>' +
-                            '<span class="queue-job-name">Converting: ' + c.completed + '/' + c.total + ' completed</span>' +
-                            (c.failed > 0 ? '<span class="queue-job-time" style="color:var(--color-danger)">' + c.failed + ' failed</span>' : '') +
-                            '</div>';
-                    }
-
-                    // Show other jobs
-                    data.jobs.forEach(function(job) {
-                        if (job.name === 'Convert Stl To3mf') return;
-                        var statusClass = job.status === 'processing' ? 'queue-job-processing' : 'queue-job-pending';
-                        var statusIcon = job.status === 'processing' ? '&#9654;' : '&#9679;';
-                        var ago = timeAgo(job.created_at);
-                        html += '<div class="queue-job ' + statusClass + '">' +
-                            '<span class="queue-job-status">' + statusIcon + '</span>' +
-                            '<span class="queue-job-name">' + escapeHtml(job.name) + '</span>' +
-                            '<span class="queue-job-time">' + ago + '</span>' +
-                            '</div>';
-                    });
-                    body.innerHTML = html;
-                } else {
-                    badge.style.display = 'none';
-                    body.innerHTML = '<div class="queue-empty">No active tasks</div>';
-                }
-
-                // Detect conversion completion: was converting, now done
-                if (_lastConversionRemaining > 0 && convRemaining === 0) {
-                    showConversionToast('All conversions completed');
-                    // Auto-reload model pages so file types update
-                    if (document.querySelector('.parts-section')) {
-                        setTimeout(function() { location.reload(); }, 1500);
-                    }
-                }
-                _lastConversionRemaining = convRemaining;
-
-                // Apply/remove loading spinners on model cards and part items
-                updateConvertingIndicators(data.converting_model_ids || [], data.converting_part_ids || []);
-            })
-            .catch(function() {});
-        }
-
-        function updateConvertingIndicators(modelIds, partIds) {
-            // Model cards on browse/home/search/category/collection pages (grid and list views)
-            document.querySelectorAll('.model-card[data-model-id], .model-list-item[data-model-id]').forEach(function(card) {
-                var id = parseInt(card.dataset.modelId);
-                card.classList.toggle('converting', modelIds.indexOf(id) !== -1);
-            });
-
-            // Part items on model page
-            document.querySelectorAll('.part-item[data-part-id]').forEach(function(item) {
-                var id = parseInt(item.dataset.partId);
-                var nameEl = item.querySelector('.part-name');
-                if (partIds.indexOf(id) !== -1) {
-                    if (nameEl) nameEl.classList.add('part-converting');
-                } else {
-                    if (nameEl) nameEl.classList.remove('part-converting');
-                }
-            });
-        }
-
-        function showConversionToast(message) {
-            var toast = document.createElement('div');
-            toast.textContent = message;
-            toast.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--color-success,#22c55e);color:#fff;padding:0.75rem 1.5rem;border-radius:var(--radius,0.5rem);z-index:9999;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.5s;';
-            document.body.appendChild(toast);
-            setTimeout(function() { toast.style.opacity = '0'; }, 2500);
-            setTimeout(function() { toast.remove(); }, 3000);
-        }
-
-        function timeAgo(dateStr) {
-            var now = new Date();
-            var then = new Date(dateStr.replace(' ', 'T') + 'Z');
-            var diff = Math.floor((now - then) / 1000);
-            if (diff < 60) return 'just now';
-            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-            return Math.floor(diff / 86400) + 'd ago';
-        }
-
-        function escapeHtml(str) {
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-        }
-
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .catch(function() {});
-            });
-        }
+    window.SiloConfig = {
+        modelBase: '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0]), '0'), ENT_QUOTES) ?>',
+        swVersion: '<?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '0' ?>'
+    };
     </script>
+    <script src="<?= basePath('js/ui-common.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/ui-common.js') ?>" defer></script>
     <?php if (isLoggedIn()) : ?>
         <?= Csrf::metaTag() ?>
         <?= Csrf::ajaxSetupScript() ?>
@@ -447,6 +112,11 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
             document.addEventListener('DOMContentLoaded', function() {
                 refreshQueueStatus();
                 setInterval(refreshQueueStatus, 15000);
+            });
+            // While the tab is hidden the interval fires but refreshQueueStatus() bails early;
+            // refresh once immediately when the tab becomes visible again.
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) refreshQueueStatus();
             });
             document.addEventListener('click', function(e) {
                 var indicator = document.getElementById('queue-indicator');
@@ -462,199 +132,10 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
 <?php if (class_exists('PluginManager')) : ?>
     <?= PluginManager::applyFilter('head_tags', '') ?>
 <?php endif; ?>
-<script>
-var SILO_MODEL_BASE = '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0]), '0'), ENT_QUOTES) ?>';
-(function() {
-    'use strict';
-
-    var RECENT_KEY = 'silo_recent_searches';
-    var MAX_RECENT = 10;
-    var debounceTimer = null;
-
-    function getRecent() {
-        try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
-        catch(e) { return []; }
-    }
-
-    function saveRecent(query) {
-        if (!query.trim()) return;
-        var list = getRecent().filter(function(q) { return q !== query; });
-        list.unshift(query);
-        if (list.length > MAX_RECENT) list = list.slice(0, MAX_RECENT);
-        try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); }
-        catch(e) {}
-    }
-
-    function clearRecent() {
-        try { localStorage.removeItem(RECENT_KEY); }
-        catch(e) {}
-    }
-
-    var activeIndex = -1;
-
-    function escapeHtml(str) {
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-    }
-
-    function highlightMatch(text, query) {
-        if (!query) return escapeHtml(text);
-        var escaped = escapeHtml(text);
-        var re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-        return escaped.replace(re, '<strong>$1</strong>');
-    }
-
-    function renderDropdown(suggestions, recentMatches, browseBase, query) {
-        var dropdown = document.getElementById('search-dropdown');
-        var recentSection = document.getElementById('search-recent');
-        var recentList = document.getElementById('search-recent-list');
-        var resultsSection = document.getElementById('search-results');
-        var resultsList = document.getElementById('search-results-list');
-
-        // Recent searches section
-        if (recentMatches.length > 0) {
-            recentList.innerHTML = recentMatches.slice(0, 5).map(function(q) {
-                return '<li role="option"><a href="' + escapeHtml(browseBase + '?q=' + encodeURIComponent(q)) + '" class="search-dropdown-item search-dropdown-recent">' +
-                       '<span class="search-dropdown-icon">&#128336;</span>' + highlightMatch(q, query) + '</a></li>';
-            }).join('');
-            recentSection.hidden = false;
-        } else {
-            recentSection.hidden = true;
-        }
-
-        // Model suggestions section
-        if (suggestions.length > 0) {
-            resultsList.innerHTML = suggestions.map(function(s) {
-                var badge = s.match === 'part' ? ' <span class="search-match-badge">part match</span>'
-                          : s.type === 'tag' ? ' <span class="search-match-badge">tag</span>'
-                          : s.type === 'category' ? ' <span class="search-match-badge">category</span>' : '';
-                var icon = s.type === 'tag' ? '&#127991;' : s.type === 'category' ? '&#128193;' : '&#128196;';
-                var href = s.url ? s.url : SILO_MODEL_BASE + s.id;
-                return '<li role="option"><a href="' + href + '" class="search-dropdown-item">' +
-                       '<span class="search-dropdown-icon">' + icon + '</span>' + highlightMatch(s.name, query) + badge + '</a></li>';
-            }).join('');
-            resultsSection.hidden = false;
-        } else {
-            resultsSection.hidden = true;
-        }
-
-        // "Search for ..." link at bottom
-        var searchLink = document.getElementById('search-browse-link');
-        if (query && query.length > 0) {
-            if (searchLink) {
-                searchLink.href = browseBase + '?q=' + encodeURIComponent(query);
-                searchLink.querySelector('.search-browse-query').textContent = query;
-                searchLink.parentElement.hidden = false;
-            }
-        } else {
-            if (searchLink) searchLink.parentElement.hidden = true;
-        }
-
-        var hasContent = recentMatches.length > 0 || suggestions.length > 0 || (query && query.length > 0);
-        dropdown.hidden = !hasContent;
-        input.setAttribute('aria-expanded', hasContent ? 'true' : 'false');
-        activeIndex = -1;
-    }
-
-    function closeDropdown() {
-        var dropdown = document.getElementById('search-dropdown');
-        if (dropdown) dropdown.hidden = true;
-        var input = document.getElementById('search-input');
-        if (input) input.setAttribute('aria-expanded', 'false');
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        var input = document.getElementById('search-input');
-        var form = document.getElementById('search-form');
-        var dropdown = document.getElementById('search-dropdown');
-        var clearBtn = document.getElementById('search-clear-recent');
-        var browseBase = form ? form.getAttribute('action') : '/browse';
-
-        if (!input || !dropdown) return;
-
-        // Save search to recent on form submit
-        form && form.addEventListener('submit', function() {
-            saveRecent(input.value.trim());
-        });
-
-        // Clear recent searches
-        clearBtn && clearBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            clearRecent();
-            closeDropdown();
-        });
-
-        // Input: debounce and fetch suggestions
-        input.addEventListener('input', function() {
-            clearTimeout(debounceTimer);
-            var q = input.value.trim();
-
-            if (q.length === 0) {
-                // Show only recent searches when no query
-                var recent = getRecent();
-                renderDropdown([], recent, browseBase, '');
-                return;
-            }
-
-            // Filter recent searches client-side as user types
-            var recentMatches = getRecent().filter(function(r) {
-                return r.toLowerCase().includes(q.toLowerCase());
-            });
-
-            debounceTimer = setTimeout(function() {
-                fetch('/actions/search-suggest?q=' + encodeURIComponent(q), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    renderDropdown(data.suggestions || [], recentMatches, browseBase, q);
-                })
-                .catch(function() {
-                    renderDropdown([], recentMatches, browseBase, q);
-                });
-            }, 300);
-        });
-
-        // Show recent searches when focused with empty input
-        input.addEventListener('focus', function() {
-            if (input.value.trim() === '') {
-                var recent = getRecent();
-                if (recent.length > 0) {
-                    renderDropdown([], recent, browseBase, '');
-                }
-            }
-        });
-
-        // Keyboard navigation
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') { closeDropdown(); return; }
-            var items = dropdown.querySelectorAll('.search-dropdown-item');
-            if (!items.length || dropdown.hidden) return;
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                activeIndex = (activeIndex + 1) % items.length;
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                activeIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
-            } else if (e.key === 'Enter' && activeIndex >= 0) {
-                e.preventDefault();
-                items[activeIndex].click();
-                return;
-            } else { return; }
-            items.forEach(function(el, i) { el.classList.toggle('active', i === activeIndex); });
-        });
-
-        // Close on click outside
-        document.addEventListener('click', function(e) {
-            var container = input.closest('.search-container');
-            if (container && !container.contains(e.target)) {
-                closeDropdown();
-            }
-        });
-    });
-})();
-</script>
+    <script src="<?= basePath('js/header-search.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/header-search.js') ?>" defer></script>
 </head>
-<body>
+<body<?= !empty($bodyClass) ? ' class="' . htmlspecialchars($bodyClass) . '"' : '' ?>>
+<?php if (empty($minimalHeader)): ?>
     <a href="#main-content" class="skip-to-content">Skip to content</a>
     <header class="site-header">
         <div class="header-content">
@@ -712,28 +193,28 @@ endif; ?>
                         </div>
                         <div class="search-dropdown-section" hidden>
                             <a id="search-browse-link" href="<?= route('browse') ?>" class="search-dropdown-item search-browse-all">
-                                <span class="search-dropdown-icon">&#128269;</span>Search for "<span class="search-browse-query"></span>"
+                                <span class="search-dropdown-icon"><i class="fa-solid fa-magnifying-glass"></i></span>Search for "<span class="search-browse-query"></span>"
                             </a>
                         </div>
                     </div>
                 </div>
                 <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme) : ?>
-                <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-                    <span id="theme-icon"><?= $currentTheme === 'light' ? '&#9790;' : '&#9728;' ?></span>
+                <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+                    <span id="theme-icon" aria-hidden="true"><?= $currentTheme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>' ?></span>
                 </button>
                 <?php endif; ?>
                 <?php if (isLoggedIn()) : ?>
                     <?php $user = getCurrentUser(); ?>
                     <?php if (isFeatureEnabled('favorites')) : ?>
-                    <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites">&#9829;</a>
+                    <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites" aria-label="My favorites"><i class="fa-solid fa-heart" aria-hidden="true"></i></a>
                     <?php endif; ?>
-                    <div class="queue-indicator" id="queue-indicator" title="Background Tasks">
-                        <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()">
-                            &#128339;<span class="queue-badge" id="queue-badge" style="display:none;">0</span>
+                    <div class="queue-indicator" id="queue-indicator">
+                        <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()" aria-label="Background tasks" aria-haspopup="true" aria-expanded="false" aria-controls="queue-dropdown">
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="queue-badge" id="queue-badge" style="display:none;">0</span>
                         </button>
                         <div class="queue-dropdown" id="queue-dropdown">
                             <div class="queue-dropdown-header">Background Tasks</div>
-                            <div class="queue-dropdown-body" id="queue-dropdown-body">
+                            <div class="queue-dropdown-body" id="queue-dropdown-body" aria-live="polite">
                                 <div class="queue-empty">No active tasks</div>
                             </div>
                         </div>
@@ -744,15 +225,15 @@ endif; ?>
                     <div class="user-dropdown">
                         <button type="button" class="user-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
                             <span class="user-name"><?= htmlspecialchars($user['username']) ?></span>
-                            <span class="dropdown-arrow">&#9662;</span>
+                            <span class="dropdown-arrow"><i class="fa-solid fa-chevron-down"></i></span>
                         </button>
                         <div class="user-dropdown-menu" role="menu">
-                            <a href="<?= route('settings') ?>" role="menuitem">&#9881; Settings</a>
+                            <a href="<?= route('settings') ?>" role="menuitem"><i class="fa-solid fa-gear"></i> Settings</a>
                             <?php if (isFeatureEnabled('favorites')) : ?>
-                            <a href="<?= route('favorites') ?>" role="menuitem">&#9829; Favorites</a>
+                            <a href="<?= route('favorites') ?>" role="menuitem"><i class="fa-solid fa-heart"></i> Favorites</a>
                             <?php endif; ?>
                             <div class="dropdown-divider" role="separator"></div>
-                            <a href="<?= route('logout') ?>" role="menuitem">&#10140; Log Out</a>
+                            <a href="<?= route('logout') ?>" role="menuitem"><i class="fa-solid fa-right-from-bracket"></i> Log Out</a>
                         </div>
                     </div>
                 <?php else : ?>
@@ -761,5 +242,6 @@ endif; ?>
             </div>
         </div>
     </header>
+<?php endif; ?>
 
-    <main id="main-content">
+    <main id="main-content"<?= !empty($minimalHeader) ? ' class="auth-main"' : '' ?>>

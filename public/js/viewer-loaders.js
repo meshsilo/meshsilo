@@ -501,6 +501,8 @@ ModelViewer.prototype.loadOpenCascade = async function() {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js';
+        script.integrity = 'sha384-aVztxQSjf255XBq24hbQrvW7xTn+NRcot+BKchvpuSJQ+Frxa6C5UKH94/EBBOmc';
+        script.crossOrigin = 'anonymous';
         script.onload = () => {
             // Initialize occt-import-js
             if (typeof occtimportjs !== 'undefined') {
@@ -652,14 +654,23 @@ ModelViewer.prototype.clearModel = function() {
     }
     if (this.model) {
         this.scene.remove(this.model);
-        // Dispose all geometries and materials in the tree (handles Group/multi-mesh models)
+        // Dispose geometries, materials AND their textures. material.dispose() does
+        // NOT free the textures attached to it (map, normalMap, roughnessMap, ...),
+        // so textured models (glTF/FBX/3MF) would otherwise leak GPU memory on swap.
+        var disposeMaterial = function(m) {
+            for (var key in m) {
+                var val = m[key];
+                if (val && val.isTexture) val.dispose();
+            }
+            m.dispose();
+        };
         this.model.traverse(function(child) {
             if (child.geometry) child.geometry.dispose();
             if (child.material) {
                 if (Array.isArray(child.material)) {
-                    child.material.forEach(function(m) { m.dispose(); });
+                    child.material.forEach(disposeMaterial);
                 } else {
-                    child.material.dispose();
+                    disposeMaterial(child.material);
                 }
             }
         });

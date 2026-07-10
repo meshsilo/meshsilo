@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         ];
 
         SecurityHeaders::saveConfig($config);
+        AuditLogger::logSecurity('security_headers_updated', ['resource_type' => 'security_config']);
         $success = 'Security headers configuration saved.';
     }
 }

@@ -2,11 +2,23 @@
 
 declare(strict_types=1);
 
+// Cohesive collaborators extracted from this god object. They live in a
+// plugin/ subdirectory that the fallback autoloader does not scan, so require
+// them explicitly here -- loading PluginManager always makes them available.
+require_once __DIR__ . '/plugin/PluginHookDispatcher.php';
+require_once __DIR__ . '/plugin/PluginSettingsStore.php';
+require_once __DIR__ . '/plugin/PluginRepository.php';
+
 /**
  * Plugin Manager
  *
  * Core plugin engine for MeshSilo. Handles plugin discovery, lifecycle
  * management, asset injection, routing, and repository integration.
+ *
+ * This class is a backward-compatible facade: its public API is unchanged.
+ * Internally it delegates cohesive concerns to collaborators -- hook dispatch
+ * (PluginHookDispatcher), settings persistence (PluginSettingsStore), and
+ * repository/registry management (PluginRepository).
  */
 class PluginManager
 {
@@ -18,14 +30,19 @@ class PluginManager
     private array $adminPages = [];
     private array $styles = [];
     private array $scripts = [];
-    private array $filters = [];
-    private array $actions = [];
     private array $bootErrors = [];
     private string $pluginsDir;
     private string $currentPluginId = '';
+    private PluginHookDispatcher $hooks;
+    private PluginSettingsStore $settingsStore;
+    private PluginRepository $repository;
 
     private function __construct()
     {
+        $this->hooks = new PluginHookDispatcher();
+        $this->settingsStore = new PluginSettingsStore();
+        $this->repository = new PluginRepository();
+
         $this->pluginsDir = dirname(__DIR__) . '/plugins';
         if (!is_dir($this->pluginsDir)) {
             @mkdir($this->pluginsDir, 0755, true);
@@ -189,14 +206,14 @@ class PluginManager
                 $features[] = 'Route: ' . $r['method'] . ' ' . $r['pattern'];
             }
         }
-        foreach ($this->filters as $hook => $callbacks) {
+        foreach ($this->hooks->getFilters() as $hook => $callbacks) {
             foreach ($callbacks as $cb) {
                 if (($cb['plugin'] ?? '') === $id) {
                     $features[] = 'Filter: ' . $hook;
                 }
             }
         }
-        foreach ($this->actions as $event => $callbacks) {
+        foreach ($this->hooks->getActions() as $event => $callbacks) {
             foreach ($callbacks as $cb) {
                 if (($cb['plugin'] ?? '') === $id) {
                     $features[] = 'Action: ' . $event;
@@ -555,8 +572,7 @@ class PluginManager
 
     public function addFilter(string $hook, callable $callback, int $priority = 10): void
     {
-        $this->filters[$hook][] = ['callback' => $callback, 'priority' => $priority, 'plugin' => $this->currentPluginId];
-        usort($this->filters[$hook], fn(array $a, array $b) => $b['priority'] <=> $a['priority']);
+        $this->hooks->addFilter($hook, $callback, $priority, $this->currentPluginId);
     }
 
     /**
@@ -565,8 +581,7 @@ class PluginManager
      */
     public function addAction(string $event, callable $callback, int $priority = 10): void
     {
-        $this->actions[$event][] = ['callback' => $callback, 'priority' => $priority, 'plugin' => $this->currentPluginId];
-        usort($this->actions[$event], fn(array $a, array $b) => $b['priority'] <=> $a['priority']);
+        $this->hooks->addAction($event, $callback, $priority, $this->currentPluginId);
     }
 
     /**
@@ -574,21 +589,7 @@ class PluginManager
      */
     public static function doAction(string $event, mixed ...$args): void
     {
-        $instance = self::getInstance();
-        if (empty($instance->actions[$event])) {
-            return;
-        }
-
-        foreach ($instance->actions[$event] as $action) {
-            try {
-                ($action['callback'])(...$args);
-            } catch (\Throwable $e) {
-                logError("Plugin action error on '{$event}'", [
-                    'plugin' => $action['plugin'] ?? 'unknown',
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        self::getInstance()->hooks->doAction($event, ...$args);
     }
 
     /**
@@ -596,19 +597,7 @@ class PluginManager
      */
     public function getSetting(string $pluginId, string $key, mixed $default = null): mixed
     {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
-            $stmt->execute([':id' => $pluginId]);
-            $row = $stmt->fetch();
-            if (!$row || empty($row['settings'])) {
-                return $default;
-            }
-            $settings = json_decode($row['settings'], true);
-            return $settings[$key] ?? $default;
-        } catch (\Exception $e) {
-            return $default;
-        }
+        return $this->settingsStore->get($pluginId, $key, $default);
     }
 
     /**
@@ -616,27 +605,7 @@ class PluginManager
      */
     public function setSetting(string $pluginId, string $key, mixed $value): bool
     {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
-            $stmt->execute([':id' => $pluginId]);
-            $row = $stmt->fetch();
-            $settings = ($row && !empty($row['settings'])) ? json_decode($row['settings'], true) : [];
-            if (!is_array($settings)) $settings = [];
-            $settings[$key] = $value;
-
-            $type = $db->getType();
-            if ($type === 'mysql') {
-                $stmt = $db->prepare('UPDATE plugins SET settings = :settings, updated_at = NOW() WHERE id = :id');
-            } else {
-                $stmt = $db->prepare('UPDATE plugins SET settings = :settings, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
-            }
-            $stmt->execute([':settings' => json_encode($settings), ':id' => $pluginId]);
-            return true;
-        } catch (\Exception $e) {
-            logError("Failed to save plugin setting", ['plugin' => $pluginId, 'key' => $key, 'error' => $e->getMessage()]);
-            return false;
-        }
+        return $this->settingsStore->set($pluginId, $key, $value);
     }
 
     /**
@@ -644,19 +613,7 @@ class PluginManager
      */
     public function getSettings(string $pluginId): array
     {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
-            $stmt->execute([':id' => $pluginId]);
-            $row = $stmt->fetch();
-            if (!$row || empty($row['settings'])) {
-                return [];
-            }
-            $settings = json_decode($row['settings'], true);
-            return is_array($settings) ? $settings : [];
-        } catch (\Exception $e) {
-            return [];
-        }
+        return $this->settingsStore->getAll($pluginId);
     }
 
     /**
@@ -852,24 +809,7 @@ class PluginManager
 
     public static function applyFilter(string $hook, mixed $value, mixed ...$args): mixed
     {
-        $instance = self::getInstance();
-        if (empty($instance->filters[$hook])) {
-            return $value;
-        }
-
-        foreach ($instance->filters[$hook] as $filter) {
-            try {
-                $value = ($filter['callback'])($value, ...$args);
-            } catch (\Throwable $e) {
-                logError("Plugin filter error on '{$hook}'", [
-                    'plugin' => $filter['plugin'] ?? 'unknown',
-                    'error' => $e->getMessage(),
-                ]);
-                // Continue with unmodified value — don't let one broken plugin crash the page
-            }
-        }
-
-        return $value;
+        return self::getInstance()->hooks->applyFilter($hook, $value, ...$args);
     }
 
     // ========================================================================
@@ -878,89 +818,22 @@ class PluginManager
 
     public function getRepositories(): array
     {
-        try {
-            $db = getDB();
-            $result = $db->query('SELECT id, name, url, is_official, registry_cache, last_fetched FROM plugin_repositories');
-            return $result->fetchAll();
-        } catch (\Exception $e) {
-            return [];
-        }
+        return $this->repository->getRepositories();
     }
 
     public function addRepository(string $name, string $url): bool
     {
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            return false;
-        }
-
-        try {
-            $db = getDB();
-            $stmt = $db->prepare('INSERT INTO plugin_repositories (name, url, is_official) VALUES (:name, :url, 0)');
-            $stmt->execute([':name' => $name, ':url' => $url]);
-            return true;
-        } catch (\Exception $e) {
-            logError('Failed to add plugin repository', ['error' => $e->getMessage()]);
-            return false;
-        }
+        return $this->repository->addRepository($name, $url);
     }
 
     public function removeRepository(int $id): bool
     {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare('DELETE FROM plugin_repositories WHERE id = :id AND is_official = 0');
-            $stmt->execute([':id' => $id]);
-            return true;
-        } catch (\Exception $e) {
-            logError('Failed to remove plugin repository', ['error' => $e->getMessage()]);
-            return false;
-        }
+        return $this->repository->removeRepository($id);
     }
 
     public function fetchRegistry(string $repoUrl): ?array
     {
-        // Validate URL scheme to prevent SSRF
-        $scheme = parse_url($repoUrl, PHP_URL_SCHEME);
-        if (!in_array(strtolower($scheme ?? ''), ['http', 'https'], true)) {
-            return null;
-        }
-
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 10,
-                'header' => 'User-Agent: MeshSilo/' . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0'),
-            ],
-        ]);
-
-        $response = @file_get_contents($repoUrl, false, $context);
-        if ($response === false) {
-            return null;
-        }
-
-        $registry = json_decode($response, true);
-        if (!is_array($registry) || !isset($registry['plugins'])) {
-            return null;
-        }
-
-        try {
-            $db = getDB();
-            $type = $db->getType();
-
-            if ($type === 'mysql') {
-                $stmt = $db->prepare(
-                    'UPDATE plugin_repositories SET registry_cache = :cache, last_fetched = NOW() WHERE url = :url'
-                );
-            } else {
-                $stmt = $db->prepare(
-                    'UPDATE plugin_repositories SET registry_cache = :cache, last_fetched = CURRENT_TIMESTAMP WHERE url = :url'
-                );
-            }
-            $stmt->execute([':cache' => json_encode($registry), ':url' => $repoUrl]);
-        } catch (\Exception $e) {
-            logWarning('Failed to cache plugin registry', ['error' => $e->getMessage()]);
-        }
-
-        return $registry;
+        return $this->repository->fetchRegistry($repoUrl);
     }
 
     public function getAvailablePlugins(): array

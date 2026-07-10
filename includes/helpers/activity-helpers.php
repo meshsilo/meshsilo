@@ -45,6 +45,7 @@ function logActivity($action, $entityType, $entityId = null, $entityName = null,
 
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -90,31 +91,8 @@ function getActivityLog($limit = 50, $offset = 0, $filters = [])
         }
         return $activities;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
-    }
-}
-
-// Clean old activity log entries
-function cleanActivityLog()
-{
-    $retentionDays = (int)getSetting('activity_log_retention_days', '90');
-    if ($retentionDays <= 0) {
-        return true;
-    }
-
-    try {
-        $db = getDB();
-        $type = $db->getType();
-
-        if ($type === 'mysql') {
-            $stmt = $db->prepare('DELETE FROM activity_log WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY)');
-        } else {
-            $stmt = $db->prepare("DELETE FROM activity_log WHERE created_at < datetime('now', '-' || :days || ' days')");
-        }
-        $stmt->execute([':days' => $retentionDays]);
-        return true;
-    } catch (Exception $e) {
-        return false;
     }
 }
 
@@ -131,7 +109,7 @@ function recordModelView($modelId)
         $userId = $user ? $user['id'] : null;
         $sessionId = session_id();
 
-        // Delete existing entry for this model (user or session based)
+        // Delete existing entry + insert new one (keeps it at the top)
         if ($userId) {
             $stmt = $db->prepare('DELETE FROM recently_viewed WHERE model_id = :model_id AND user_id = :user_id');
             $stmt->execute([':model_id' => $modelId, ':user_id' => $userId]);
@@ -140,7 +118,6 @@ function recordModelView($modelId)
             $stmt->execute([':model_id' => $modelId, ':session_id' => $sessionId]);
         }
 
-        // Insert new entry
         $stmt = $db->prepare('
             INSERT INTO recently_viewed (user_id, session_id, model_id)
             VALUES (:user_id, :session_id, :model_id)
@@ -151,21 +128,29 @@ function recordModelView($modelId)
             ':model_id' => $modelId
         ]);
 
-        // Limit to 50 most recent per user/session using parameterized queries
-        if ($userId) {
-            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE user_id = :user_id AND id NOT IN (SELECT id FROM (SELECT id FROM recently_viewed WHERE user_id = :user_id2 ORDER BY viewed_at DESC LIMIT 50) AS keep)');
-            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
-            $stmt->bindValue(':user_id2', $userId, PDO::PARAM_INT);
-            $stmt->execute();
-        } else {
-            $stmt = $db->prepare('DELETE FROM recently_viewed WHERE session_id = :session_id AND id NOT IN (SELECT id FROM (SELECT id FROM recently_viewed WHERE session_id = :session_id2 ORDER BY viewed_at DESC LIMIT 50) AS keep)');
-            $stmt->bindValue(':session_id', $sessionId, PDO::PARAM_STR);
-            $stmt->bindValue(':session_id2', $sessionId, PDO::PARAM_STR);
-            $stmt->execute();
+        // Increment view count on the model
+        $db->prepare('UPDATE models SET view_count = view_count + 1 WHERE id = :id')
+            ->execute([':id' => $modelId]);
+
+        // Overflow cleanup: only run occasionally (every ~10th view) to avoid
+        // an expensive subquery on every single page load
+        if (mt_rand(1, 10) === 1) {
+            if ($userId) {
+                $stmt = $db->prepare('DELETE FROM recently_viewed WHERE user_id = :user_id AND id NOT IN (SELECT id FROM (SELECT id FROM recently_viewed WHERE user_id = :user_id2 ORDER BY viewed_at DESC LIMIT 50) AS keep)');
+                $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+                $stmt->bindValue(':user_id2', $userId, PDO::PARAM_INT);
+                $stmt->execute();
+            } else {
+                $stmt = $db->prepare('DELETE FROM recently_viewed WHERE session_id = :session_id AND id NOT IN (SELECT id FROM (SELECT id FROM recently_viewed WHERE session_id = :session_id2 ORDER BY viewed_at DESC LIMIT 50) AS keep)');
+                $stmt->bindValue(':session_id', $sessionId, PDO::PARAM_STR);
+                $stmt->bindValue(':session_id2', $sessionId, PDO::PARAM_STR);
+                $stmt->execute();
+            }
         }
 
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -205,6 +190,7 @@ function getRecentlyViewed($limit = 10)
         }
         return $models;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }

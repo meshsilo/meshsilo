@@ -5,6 +5,8 @@
  * Includes conversion progress and model/part IDs being converted.
  */
 
+require_once __DIR__ . '/../../includes/config.php';
+
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
@@ -94,8 +96,9 @@ try {
                 }
             }
 
-            // Auto-cleanup: if no remaining conversions, delete all completed conversion jobs
-            if ($remaining === 0 && $completed > 0) {
+            // Auto-cleanup: if no remaining conversions, delete all completed conversion jobs.
+            // Only mutate on POST - GET requests must stay read-only.
+            if ($remaining === 0 && $completed > 0 && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $db->exec("DELETE FROM jobs WHERE job_class = 'ConvertStlTo3mf' AND status IN ('completed', 'failed')");
                 $conversions = null;
             }

@@ -24,6 +24,7 @@ function getAllTags($useCache = true)
         Cache::getInstance()->set($cacheKey, $tags, 300);
         return $tags;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -52,6 +53,7 @@ function getModelTags($modelId)
         }
         return $tags;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -93,6 +95,7 @@ function getTagsForModels(array $modelIds)
 
         return $tagsByModel;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -108,6 +111,7 @@ function addTagToModel($modelId, $tagId)
         $stmt->execute([':model_id' => $modelId, ':tag_id' => $tagId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -121,6 +125,7 @@ function removeTagFromModel($modelId, $tagId)
         $stmt->execute([':model_id' => $modelId, ':tag_id' => $tagId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -128,13 +133,20 @@ function removeTagFromModel($modelId, $tagId)
 // Create a new tag
 function createTag($name, $color = '#6366f1')
 {
+    // Sanitize: reject empty names and strip HTML metacharacters (defense-in-depth against stored XSS)
+    $name = trim($name);
+    if ($name === '') {
+        return false;
+    }
+    $name = preg_replace('/[<>"\']/', '', $name);
     try {
         $db = getDB();
         $stmt = $db->prepare('INSERT INTO tags (name, color) VALUES (:name, :color)');
-        $stmt->execute([':name' => trim($name), ':color' => $color]);
+        $stmt->execute([':name' => $name, ':color' => $color]);
         invalidateTagsCache();
         return $db->lastInsertId();
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -149,6 +161,7 @@ function deleteTag($tagId)
         invalidateTagsCache();
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -160,8 +173,10 @@ function getTagByName($name)
         $db = getDB();
         $stmt = $db->prepare('SELECT id, name, color FROM tags WHERE LOWER(name) = LOWER(:name)');
         $stmt->execute([':name' => trim($name)]);
-        return $stmt->fetch();
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return null;
     }
 }

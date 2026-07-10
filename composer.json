@@ -1,7 +1,7 @@
 {
     "name": "silo/silo",
     "description": "Digital Asset Manager for 3D Print Files",
-    "version": "1.0.0",
+    "version": "0.7.0",
     "type": "project",
     "license": "AGPL-3.0-or-later",
     "keywords": [

@@ -1,6 +1,6 @@
 /**
- * Model Actions — Favorites, Archive, Tags, and Part Data
- * Handles favorite toggling, archive/unarchive, tag management, and per-part calculated data.
+ * Model Actions — Favorites, Archive, Tags, External Links, and Part Data
+ * Handles favorite toggling, archive/unarchive, tag management, external links, and per-part calculated data.
  * Loaded on the model detail page before model-page.js.
  */
 
@@ -15,8 +15,11 @@
                 const data = await response.json();
                 if (data.success) {
                     btn.classList.toggle('favorited', data.favorited);
-                    btn.innerHTML = data.favorited ? '&#9829;' : '&#9825;';
-                    btn.title = data.favorited ? 'Remove from favorites' : 'Add to favorites';
+                    btn.innerHTML = data.favorited ? '<i class="fa-solid fa-heart" aria-hidden="true"></i>' : '<i class="fa-regular fa-heart" aria-hidden="true"></i>';
+                    var favLabel = data.favorited ? 'Remove from favorites' : 'Add to favorites';
+                    btn.title = favLabel;
+                    btn.setAttribute('aria-label', favLabel);
+                    btn.setAttribute('aria-pressed', data.favorited ? 'true' : 'false');
                 }
             } catch (err) {
                 console.error('Failed to toggle favorite:', err);
@@ -118,24 +121,29 @@
                 const matching = allTags.filter(t => t.name.toLowerCase().includes(value));
                 if (matching.length === 0 && value.length > 0) {
                     // Show option to create new tag
-                    tagSuggestions.innerHTML = `
-                        <button type="button" class="tag-suggestion" onclick="addTag('${value.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: var(--color-primary);"></span>
-                            <span>Create "${value}"</span>
-                        </button>
-                    `;
+                    const safeValue = escapeHtml(value);
+                    tagSuggestions.innerHTML =
+                        '<button type="button" class="tag-suggestion" data-tag-name="' + safeValue + '">' +
+                            '<span class="tag-color-dot" style="background-color: var(--color-primary);"></span>' +
+                            '<span>Create "' + safeValue + '"</span>' +
+                        '</button>';
                 } else {
                     tagSuggestions.innerHTML = matching.map(t => {
                         const safeColor = t.color && /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)$/.test(t.color) ? t.color : '#6b7280';
-                        return `
-                        <button type="button" class="tag-suggestion" onclick="addTagById(${t.id}, '${t.name.replace(/'/g, "\\'")}')">
-                            <span class="tag-color-dot" style="background-color: ${safeColor};"></span>
-                            <span>${t.name}</span>
-                        </button>
-                    `;
+                        const safeName = escapeHtml(t.name);
+                        return '<button type="button" class="tag-suggestion" data-tag-id="' + t.id + '" data-tag-name="' + safeName + '">' +
+                            '<span class="tag-color-dot" style="background-color: ' + safeColor + ';"></span>' +
+                            '<span>' + safeName + '</span>' +
+                        '</button>';
                     }).join('');
                 }
                 tagSuggestions.style.display = matching.length > 0 || value.length > 0 ? 'block' : 'none';
+            });
+
+            // Delegated: tag suggestion clicks
+            tagSuggestions.addEventListener('click', function(e) {
+                const btn = e.target.closest('.tag-suggestion');
+                if (btn) addTag(btn.dataset.tagName);
             });
 
             tagInput.addEventListener('keydown', function(e) {
@@ -173,10 +181,6 @@
             }
         }
 
-        async function addTagById(_tagId, tagName) {
-            await addTag(tagName);
-        }
-
         async function removeTag(modelId, tagId, element) {
             try {
                 const response = await fetch('/actions/tag', {
@@ -192,6 +196,103 @@
                 }
             } catch (err) {
                 console.error('Failed to remove tag:', err);
+            }
+        }
+
+        // External Links
+        function toggleAddLinkForm() {
+            const form = document.getElementById('add-link-form');
+            const btn = document.getElementById('add-link-toggle');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('link-title').focus();
+            } else {
+                form.style.display = 'none';
+                btn.style.display = '';
+                document.getElementById('link-title').value = '';
+                document.getElementById('link-url').value = '';
+                document.getElementById('link-type').value = 'other';
+            }
+        }
+
+        async function addModelLink() {
+            const title = document.getElementById('link-title').value.trim();
+            const url = document.getElementById('link-url').value.trim();
+            const linkType = document.getElementById('link-type').value;
+
+            if (!title || !url) {
+                showToast('Title and URL are required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/actions/model-links', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'add',
+                        model_id: ModelPageConfig.modelId,
+                        title: title,
+                        url: url,
+                        link_type: linkType
+                    })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const list = document.getElementById('model-links-list');
+                    const empty = document.getElementById('model-links-empty');
+                    if (empty) empty.remove();
+
+                    const link = result.link;
+                    const item = document.createElement('div');
+                    item.className = 'model-link-item';
+                    item.dataset.linkId = link.id;
+                    item.innerHTML =
+                        '<span class="model-link-type type-' + escapeHtml(link.link_type) + '">' + escapeHtml(link.link_type) + '</span>' +
+                        '<a href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener noreferrer" class="model-link-title">' + escapeHtml(link.title) + '</a>' +
+                        '<button type="button" class="model-link-delete" aria-label="Remove link" onclick="deleteModelLink(' + link.id + ')" title="Remove link"><i class="fa-solid fa-xmark"></i></button>';
+                    list.appendChild(item);
+
+                    toggleAddLinkForm();
+                } else {
+                    showToast(result.error, 'error');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function deleteModelLink(linkId) {
+            if (!await showConfirm('Remove this link?')) return;
+
+            try {
+                const response = await fetch('/actions/model-links', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', link_id: linkId })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const item = document.querySelector('[data-link-id="' + linkId + '"]');
+                    if (item) item.remove();
+
+                    // Show empty state if no links remain
+                    const list = document.getElementById('model-links-list');
+                    if (!list.querySelector('.model-link-item')) {
+                        const p = document.createElement('p');
+                        p.className = 'model-links-empty';
+                        p.id = 'model-links-empty';
+                        p.textContent = 'No external links yet.';
+                        list.appendChild(p);
+                    }
+                } else {
+                    showToast(result.error, 'error');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
             }
         }
 

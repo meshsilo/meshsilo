@@ -43,7 +43,7 @@ switch ($action) {
         if (!$model) {
             jsonError('Model not found');
         }
-        if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+        if (!userCanModifyModel($model, $user)) {
             jsonError('Permission denied', 403);
         }
 
@@ -71,7 +71,7 @@ switch ($action) {
         if (!$model) {
             jsonError('Model not found');
         }
-        if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+        if (!userCanModifyModel($model, $user)) {
             jsonError('Permission denied', 403);
         }
 

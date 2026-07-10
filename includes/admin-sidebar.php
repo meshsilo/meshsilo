@@ -10,9 +10,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="system">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>System</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
+                            <i class="fa-solid fa-chevron-down nav-toggle-icon" aria-hidden="true"></i>
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.health') ?>" <?= ($adminPage ?? '') === 'health' ? 'class="active" aria-current="page"' : '' ?>>System Health</a>
@@ -28,9 +26,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="users">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Users & Auth</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
+                            <i class="fa-solid fa-chevron-down nav-toggle-icon" aria-hidden="true"></i>
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.users') ?>" <?= ($adminPage ?? '') === 'users' ? 'class="active" aria-current="page"' : '' ?>>Users</a>
@@ -41,9 +37,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="content">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Content</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
+                            <i class="fa-solid fa-chevron-down nav-toggle-icon" aria-hidden="true"></i>
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.models') ?>" <?= ($adminPage ?? '') === 'models' ? 'class="active" aria-current="page"' : '' ?>>Models</a>
@@ -62,9 +56,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="security">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Security</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
+                            <i class="fa-solid fa-chevron-down nav-toggle-icon" aria-hidden="true"></i>
                         </button>
                         <div class="nav-links">
                             <?php if (isFeatureEnabled('api_keys')) : ?>
@@ -81,9 +73,7 @@ if (!function_exists('isFeatureEnabled')) {
                     <div class="nav-category" data-category="advanced">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span>Advanced</span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
+                            <i class="fa-solid fa-chevron-down nav-toggle-icon" aria-hidden="true"></i>
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active" aria-current="page"' : '' ?>>Routes</a>
@@ -101,9 +91,7 @@ if (class_exists('PluginManager')) {
                     <div class="nav-category" data-category="plugin-<?= htmlspecialchars(strtolower(str_replace(' ', '-', $category))) ?>">
                         <button class="nav-section" type="button" aria-expanded="true">
                             <span><?= htmlspecialchars($category) ?></span>
-                            <svg class="nav-toggle-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M3 4.5L6 7.5L9 4.5"/>
-                            </svg>
+                            <i class="fa-solid fa-chevron-down nav-toggle-icon" aria-hidden="true"></i>
                         </button>
                         <div class="nav-links">
                             <?php foreach ($items as $item) : ?>

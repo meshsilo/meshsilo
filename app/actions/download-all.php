@@ -33,7 +33,7 @@ if (!$model) {
 // Check ownership - user must own the model or be admin
 $user = getCurrentUser();
 $ownerId = $model['user_id'] ?? null;
-if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
+if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
     http_response_code(403);
     echo 'Access denied';
     exit;
@@ -68,10 +68,21 @@ foreach ($parts as $part) {
     $filePath = getAbsoluteFilePath($part);
     if ($filePath && is_file($filePath)) {
         // Use original path structure if available, otherwise just filename
-        $zipEntryPath = $part['original_path'] ?? $part['filename'];
-        // Prevent Zip Slip: remove path traversal sequences
-        $zipEntryPath = str_replace(['../', '..\\'], '', $zipEntryPath);
-        $zipEntryPath = ltrim($zipEntryPath, '/\\');
+        $rawEntryPath = str_replace('\\', '/', (string)($part['original_path'] ?? $part['filename']));
+        // Prevent Zip Slip: rebuild the entry path segment-by-segment, dropping any
+        // traversal ('..'), current-dir ('.'), or empty segments so the result can
+        // never contain a path-traversal sequence.
+        $safeSegments = [];
+        foreach (explode('/', $rawEntryPath) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                continue;
+            }
+            $safeSegments[] = $segment;
+        }
+        $zipEntryPath = implode('/', $safeSegments);
+        if ($zipEntryPath === '') {
+            $zipEntryPath = basename($filePath);
+        }
         $zip->addFile($filePath, $zipEntryPath);
     }
 }

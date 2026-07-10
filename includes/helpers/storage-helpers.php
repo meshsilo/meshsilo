@@ -39,6 +39,7 @@ function getFirstPartsForModels(array $modelIds)
 
         return $partsByParent;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -80,21 +81,8 @@ function incrementDownloadCount($modelId)
         $stmt->execute([':id' => $modelId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
-    }
-}
-
-// Get download count
-function getDownloadCount($modelId)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('SELECT download_count FROM models WHERE id = :id');
-        $stmt->execute([':id' => $modelId]);
-        $row = $stmt->fetch();
-        return $row ? (int)$row['download_count'] : 0;
-    } catch (Exception $e) {
-        return 0;
     }
 }
 
@@ -106,39 +94,28 @@ function getStorageUsageByCategory()
 {
     try {
         $db = getDB();
-        // Sum file sizes of parent models AND their parts, grouped by category
+        // Pre-compute each parent model's total size (itself + parts) to avoid
+        // double-counting when a model belongs to multiple categories.
         $stmt = $db->query('
             SELECT c.id, c.name,
-                   COUNT(DISTINCT m.id) as model_count,
-                   COALESCE(SUM(COALESCE(all_models.file_size, 0)), 0) as total_size
+                   COUNT(DISTINCT ms.model_id) as model_count,
+                   COALESCE(SUM(ms.total_size), 0) as total_size
             FROM categories c
             LEFT JOIN model_categories mc ON mc.category_id = c.id
-            LEFT JOIN models m ON m.id = mc.model_id AND m.parent_id IS NULL
-            LEFT JOIN models all_models ON (all_models.id = m.id OR all_models.parent_id = m.id)
+            LEFT JOIN (
+                SELECT m.id as model_id,
+                       COALESCE(SUM(COALESCE(all_models.file_size, 0)), 0) as total_size
+                FROM models m
+                LEFT JOIN models all_models ON all_models.id = m.id OR all_models.parent_id = m.id
+                WHERE m.parent_id IS NULL
+                GROUP BY m.id
+            ) ms ON ms.model_id = mc.model_id
             GROUP BY c.id, c.name
             ORDER BY total_size DESC
         ');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (\Throwable $e) {
-        return [];
-    }
-}
-
-function getStorageUsageByUser()
-{
-    try {
-        $db = getDB();
-        $stmt = $db->query('
-            SELECT u.id, u.username,
-                   COUNT(m.id) as model_count,
-                   SUM(m.original_size) as total_size
-            FROM users u
-            LEFT JOIN models m ON m.user_id = u.id AND m.parent_id IS NULL
-            GROUP BY u.id, u.username
-            ORDER BY total_size DESC
-        ');
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (\Throwable $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -154,6 +131,7 @@ function getTotalStorageUsage()
         ');
         return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return ['model_count' => 0, 'total_size' => 0];
     }
 }
@@ -191,6 +169,7 @@ function getDedupStorageSavings()
             'saved_percent' => $totalSize > 0 ? round(($totalSize - $actualSize) / $totalSize * 100, 1) : 0
         ];
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return ['total_size' => 0, 'actual_size' => 0, 'saved_size' => 0, 'saved_percent' => 0];
     }
 }

@@ -1,6 +1,6 @@
 // model-page.js — Model detail page initialization and shared utilities
 // PHP data is injected by model.php via window.ModelPageConfig = {...}
-// Depends on: model-parts.js, model-share.js, model-attachments.js, model-actions.js
+// Depends on: model-parts.js, model-attachments.js, model-actions.js
 
         // Add click handlers to part items
         document.querySelectorAll('.part-preview-trigger').forEach(trigger => {
@@ -171,6 +171,7 @@
         }
 
         // Dropdown toggle handling
+        let anyDropdownOpen = false;
         document.querySelectorAll('.dropdown-toggle').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -183,10 +184,12 @@
                     const t = d.querySelector('.dropdown-toggle');
                     if (t) t.setAttribute('aria-expanded', 'false');
                 });
+                anyDropdownOpen = false;
 
                 // Toggle this dropdown
                 if (!wasOpen) {
                     dropdown.classList.add('open');
+                    anyDropdownOpen = true;
                     this.setAttribute('aria-expanded', 'true');
                     positionDropdownMenu(dropdown);
 
@@ -207,11 +210,13 @@
 
         // Close dropdowns when clicking outside (but not when interacting with inline controls)
         function closeAllDropdowns() {
+            if (!anyDropdownOpen) return;   // cheap no-op on the common scroll/outside-click path
             document.querySelectorAll('.dropdown.open').forEach(d => {
                 d.classList.remove('open');
                 const t = d.querySelector('.dropdown-toggle');
                 if (t) t.setAttribute('aria-expanded', 'false');
             });
+            anyDropdownOpen = false;
         }
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.dropdown')) {
@@ -231,14 +236,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── Favorite button ──────────────────────────────────────────────
     document.querySelector('.favorite-btn')?.addEventListener('click', function() {
         toggleFavorite(ModelPageConfig.modelId, this);
-    });
-
-    // ── Share modal open ─────────────────────────────────────────────
-    document.querySelector('.open-share-modal')?.addEventListener('click', openShareModal);
-
-    // ── Share modal close (backdrop click handled in openShareModal listener) ─
-    document.getElementById('share-modal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeShareModal();
     });
 
     // ── Password visibility toggle ───────────────────────────────────
@@ -283,7 +280,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── Modal close buttons — map parent modal ID to close function ───
     const modalClosers = {
         'part-preview-modal': closePartPreview,
-        'share-modal': closeShareModal,
         'create-folder-modal': closeCreateFolderModal,
         'move-folder-modal': closeMoveFolderModal,
         'upload-version-modal': closeUploadVersionModal,

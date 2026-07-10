@@ -27,7 +27,7 @@ if (!$model) {
 
 // Check ownership - must be owner or admin (matches update-model.php validation)
 $user = getCurrentUser();
-if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if (!userCanModifyModel($model, $user)) {
     $_SESSION['error'] = 'You can only edit your own models.';
     header('Location: ' . route('model.show', ['id' => $modelId]));
     exit;
@@ -62,6 +62,13 @@ while ($row = $collResult->fetchArray(PDO::FETCH_ASSOC)) {
     $collections[] = $row['name'];
 }
 
+// Load distinct creators for autocomplete
+$creators = [];
+$creatorsResult = $db->query("SELECT DISTINCT creator FROM models WHERE creator != '' ORDER BY creator LIMIT 200");
+while ($row = $creatorsResult->fetchArray(PDO::FETCH_ASSOC)) {
+    $creators[] = $row['creator'];
+}
+
 $message = '';
 $messageType = '';
 
@@ -71,9 +78,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = trim($_POST['description'] ?? '');
     $creator = trim($_POST['creator'] ?? '');
     $sourceUrl = trim($_POST['source_url'] ?? '');
+    // Reject control-character obfuscation (e.g. "java\tscript:") before the scheme
+    // test: parse_url() returns an empty scheme for these, but browsers strip the
+    // control chars and execute the underlying javascript: URL. A valid URL has none.
+    if ($sourceUrl !== '' && preg_match('/[\x00-\x1F\x7F]/', $sourceUrl)) {
+        $sourceUrl = '';
+    }
+    // Reject non-http(s) schemes (e.g. javascript:) to prevent stored XSS; allow empty and relative URLs.
+    $sourceScheme = strtolower((string)parse_url($sourceUrl, PHP_URL_SCHEME));
+    if ($sourceUrl !== '' && $sourceScheme !== '' && !in_array($sourceScheme, ['http', 'https'], true)) {
+        $sourceUrl = '';
+    }
     $license = trim($_POST['license'] ?? '');
     $collection = trim($_POST['collection'] ?? '');
     $categoryIds = $_POST['categories'] ?? [];
+    $newCategoryNames = array_filter(array_map('trim', explode(',', $_POST['new_categories'] ?? '')));
+    $nestFolders = isset($_POST['nest_folders']) ? 1 : 0;
 
     if (!Csrf::validate()) {
         $message = 'Security validation failed. Please try again.';
@@ -82,38 +102,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'Name is required';
         $messageType = 'error';
     } else {
+        // Normalize collection: resolve to canonical name or insert as new
+        if (!empty($collection)) {
+            $colCheck = $db->prepare('SELECT name FROM collections WHERE LOWER(name) = LOWER(:name)');
+            $colCheck->bindValue(':name', $collection, PDO::PARAM_STR);
+            $colResult = $colCheck->execute();
+            $existingCol = $colResult ? $colResult->fetchArray(PDO::FETCH_ASSOC) : null;
+            if ($existingCol) {
+                $collection = $existingCol['name'];
+            } else {
+                try {
+                    $insColl = $db->prepare('INSERT INTO collections (name) VALUES (:name)');
+                    $insColl->bindValue(':name', $collection, PDO::PARAM_STR);
+                    $insColl->execute();
+                } catch (\Exception $e) {
+                    // ignore race condition
+                }
+            }
+        }
+
         // Update model
-        $stmt = $db->prepare('UPDATE models SET name = :name, description = :description, creator = :creator, source_url = :source_url, license = :license, collection = :collection WHERE id = :id');
+        $stmt = $db->prepare('UPDATE models SET name = :name, description = :description, creator = :creator, source_url = :source_url, license = :license, collection = :collection, nest_folders = :nest_folders WHERE id = :id');
         $stmt->bindValue(':name', $name);
         $stmt->bindValue(':description', $description);
         $stmt->bindValue(':creator', $creator);
         $stmt->bindValue(':source_url', $sourceUrl);
         $stmt->bindValue(':license', $license);
         $stmt->bindValue(':collection', $collection);
+        $stmt->bindValue(':nest_folders', $nestFolders, PDO::PARAM_INT);
         $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
         $stmt->execute();
-
-        // Auto-create new collection (matches upload.php pattern)
-        if (!empty($collection)) {
-            try {
-                $insColl = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
-                $insColl->bindValue(':name', $collection, PDO::PARAM_STR);
-                $insColl->execute();
-            } catch (\Exception $e) {
-                // Ignore — already exists
-            }
-        }
 
         // Update categories using prepared statements
         $deleteStmt = $db->prepare('DELETE FROM model_categories WHERE model_id = :model_id');
         $deleteStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
         $deleteStmt->execute();
 
-        $insertStmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
+        $insertStmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
         foreach ($categoryIds as $catId) {
             $insertStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
             $insertStmt->bindValue(':category_id', (int)$catId, PDO::PARAM_INT);
             $insertStmt->execute();
+        }
+
+        // Create and link new categories typed by the user
+        if (!empty($newCategoryNames)) {
+            foreach ($newCategoryNames as $catName) {
+                $catCheck = $db->prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(:name)');
+                $catCheck->bindValue(':name', $catName, PDO::PARAM_STR);
+                $catResult = $catCheck->execute();
+                $existingCat = $catResult ? $catResult->fetchArray(PDO::FETCH_ASSOC) : null;
+                if ($existingCat) {
+                    $catId = (int)$existingCat['id'];
+                } else {
+                    $catInsert = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
+                    $catInsert->bindValue(':name', $catName, PDO::PARAM_STR);
+                    $catInsert->execute();
+                    $catId = (int)$db->lastInsertRowID();
+                    if (function_exists('invalidateCategoriesCache')) {
+                        invalidateCategoriesCache();
+                    }
+                }
+                // Add to categories list so checkboxes reflect it on the refresh below
+                if (!in_array($catId, $categoryIds)) {
+                    $catInsertLink = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
+                    $catInsertLink->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+                    $catInsertLink->bindValue(':category_id', $catId, PDO::PARAM_INT);
+                    $catInsertLink->execute();
+                }
+            }
         }
 
         logActivity('edit', 'model', $modelId, $name);
@@ -127,7 +184,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $stmt->execute();
         $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
-        // Refresh categories
+        // Refresh all categories (new ones may have been created above)
+        $categories = [];
+        $catListResult = $db->query('SELECT * FROM categories ORDER BY name');
+        while ($row = $catListResult->fetchArray(PDO::FETCH_ASSOC)) {
+            $categories[] = $row;
+        }
+
+        // Refresh selected categories for this model
         $stmt = $db->prepare('SELECT category_id FROM model_categories WHERE model_id = :model_id');
         $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
         $catIdsResult = $stmt->execute();
@@ -147,7 +211,7 @@ require_once 'includes/header.php';
         <div class="page-container">
             <div class="page-header">
                 <h1>Edit Model</h1>
-                <p><a href="<?= route('model.show', ['id' => $modelId]) ?>">&larr; Back to model</a></p>
+                <p><a href="<?= route('model.show', ['id' => $modelId]) ?>"><i class="fa-solid fa-arrow-left"></i> Back to model</a></p>
             </div>
 
             <?php if ($message): ?>
@@ -173,7 +237,12 @@ require_once 'includes/header.php';
 
                 <div class="form-group">
                     <label for="creator">Creator</label>
-                    <input type="text" id="creator" name="creator" class="form-input" value="<?= htmlspecialchars($model['creator'] ?? '') ?>">
+                    <input type="text" id="creator" name="creator" class="form-input" autocomplete="off" list="creators-list" value="<?= htmlspecialchars($model['creator'] ?? '') ?>">
+                    <datalist id="creators-list">
+                        <?php foreach ($creators as $c): ?>
+                        <option value="<?= htmlspecialchars($c) ?>">
+                        <?php endforeach; ?>
+                    </datalist>
                 </div>
 
                 <div class="form-group">
@@ -200,9 +269,9 @@ require_once 'includes/header.php';
                     </select>
                 </div>
 
-                <?php if (!empty($categories)): ?>
                 <fieldset class="form-group">
                     <legend>Categories</legend>
+                    <?php if (!empty($categories)): ?>
                     <div class="checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
                         <?php foreach ($categories as $cat): ?>
                         <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem;">
@@ -211,8 +280,21 @@ require_once 'includes/header.php';
                         </label>
                         <?php endforeach; ?>
                     </div>
+                    <?php endif; ?>
+                    <div class="form-group" style="margin-top:0.75rem;margin-bottom:0">
+                        <label for="new_categories" class="sr-only">Add new categories</label>
+                        <input type="text" id="new_categories" name="new_categories" class="form-input" placeholder="Add new categories (comma-separated, e.g. Minis, Terrain)">
+                        <small class="form-help">New categories will be created automatically. Existing names are matched without regard to capitalization.</small>
+                    </div>
                 </fieldset>
-                <?php endif; ?>
+
+                <div class="form-group">
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="nest_folders" value="1" <?= !empty($model['nest_folders']) ? 'checked' : '' ?>>
+                        Nest subfolders inside parent folders
+                    </label>
+                    <small class="form-hint">When enabled, folders with paths like "Parent/Child" will be displayed as nested hierarchies on the model page.</small>
+                </div>
 
                 <div class="form-group">
                     <label>Tags</label>
@@ -220,7 +302,7 @@ require_once 'includes/header.php';
                         <?php foreach ($modelTags as $tag): ?>
                         <span class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>;" data-tag-id="<?= $tag['id'] ?>">
                             <?= htmlspecialchars($tag['name']) ?>
-                            <button type="button" class="model-tag-remove" aria-label="Remove tag <?= htmlspecialchars($tag['name']) ?>">&times;</button>
+                            <button type="button" class="model-tag-remove" aria-label="Remove tag <?= htmlspecialchars($tag['name']) ?>"><i class="fa-solid fa-xmark"></i></button>
                         </span>
                         <?php endforeach; ?>
                     </div>

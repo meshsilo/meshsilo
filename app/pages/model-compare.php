@@ -98,7 +98,7 @@ require_once 'includes/header.php';
         </div>
 
         <button type="button" id="swap-versions" class="btn btn-secondary" title="Swap versions" aria-label="Swap versions">
-            <span aria-hidden="true">&#8644;</span>
+            <span aria-hidden="true"><i class="fa-solid fa-right-left"></i></span>
         </button>
 
         <div class="selector-group">

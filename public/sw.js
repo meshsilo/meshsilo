@@ -3,7 +3,10 @@
  * Provides offline support and intelligent caching for PWA
  */
 
-const CACHE_VERSION = 'silo-v4';
+// Derive cache version from registration URL query param (?v=X) for deploy-time busting
+const SW_PARAMS = new URL(self.registration?.scope || self.location.href, self.location.href);
+const APP_VER = new URL(self.location.href).searchParams.get('v') || '0';
+const CACHE_VERSION = 'silo-v4-' + APP_VER;
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const DYNAMIC_CACHE = CACHE_VERSION + '-dynamic';
 const MODEL_CACHE = CACHE_VERSION + '-models';
@@ -115,6 +118,13 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // Skip authenticated per-user assets - never cache (would leak private
+    // thumbnails/attachments/previews across users on a shared browser)
+    if (url.pathname.startsWith('/assets/') ||
+        url.pathname.startsWith('/preview')) {
+        return;
+    }
+
     // Skip auth pages — they have CSRF tokens that must be fresh
     if (url.pathname === '/login' ||
         url.pathname === '/register' ||
@@ -128,8 +138,9 @@ self.addEventListener('fetch', event => {
     if (isModelFile(url.pathname)) {
         // 3D models: Cache-first with background refresh
         event.respondWith(staleWhileRevalidate(event.request, MODEL_CACHE));
-    } else if (isImageFile(url.pathname) || url.pathname.startsWith('/assets/')) {
-        // Images and uploaded assets: Cache-first
+    } else if (isImageFile(url.pathname)) {
+        // Static images (e.g. /public/images): Cache-first
+        // Note: per-user /assets/ images are skipped above and never reach here
         event.respondWith(cacheFirstWithLimit(event.request, IMAGE_CACHE));
     } else if (isStaticAsset(url.pathname)) {
         // Static assets (CSS/JS): Cache-first with network fallback

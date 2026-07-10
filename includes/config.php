@@ -1,7 +1,7 @@
 <?php
 
 // MeshSilo Version — resolved from VERSION file, git tag, or fallback
-$_version = '1.0.5';
+$_version = '0.7.0';
 $_versionFile = __DIR__ . '/../VERSION';
 if (file_exists($_versionFile) && trim(file_get_contents($_versionFile)) !== '') {
     $_version = trim(file_get_contents($_versionFile));
@@ -58,7 +58,12 @@ if (!defined('ALLOWED_EXTENSIONS')) {
 }
 // Extensions that are attachments (images, documents) rather than 3D models
 if (!defined('ATTACHMENT_EXTENSIONS')) {
-    define('ATTACHMENT_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md']);
+    define('ATTACHMENT_EXTENSIONS', [
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md',
+        // Office documents
+        'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+        'odt', 'ods', 'odp', 'rtf', 'csv',
+    ]);
 }
 
 // Helper function to get base path for public assets
@@ -66,7 +71,7 @@ function basePath($path = '')
 {
     // Always use absolute paths from root for assets
     // This ensures CSS/JS work regardless of the current URL path
-    if (preg_match('#^(css|js|images)/#', $path)) {
+    if (preg_match('#^(css|js|images|vendor)/#', $path)) {
         return '/public/' . $path;
     }
     return '/' . ltrim($path, '/');
@@ -79,8 +84,8 @@ Debug::init();
 require_once __DIR__ . '/db.php';
 
 // Register autoloader for lazy-loaded classes (SignedUrl, Events, TwoFactor,
-// Integrity, Scheduler, AuditLogger, Mail, Queue, Validator, QueryBuilder,
-// Search, HttpCache, Asset, Cache, Csrf, RateLimiter, Encryption, etc.)
+// Integrity, Scheduler, AuditLogger, Mail, Queue, Validator,
+// Search, Asset, Cache, Csrf, RateLimiter, Encryption, etc.)
 require_once __DIR__ . '/Autoloader.php';
 
 // Load site configuration from database (batch load for performance)
@@ -141,8 +146,8 @@ if (!interface_exists('MiddlewareInterface')) {
 require_once __DIR__ . '/ErrorHandler.php';
 
 // All other classes (Queue, Mail, SignedUrl, Events, TwoFactor, Integrity,
-// Scheduler, AuditLogger, Csrf, Validator, QueryBuilder, Cache, Search,
-// Asset, HttpCache, RateLimiter, Encryption) are autoloaded on first use
+// Scheduler, AuditLogger, Csrf, Validator, Cache, Search,
+// Asset, RateLimiter, Encryption) are autoloaded on first use
 // via the Autoloader registered above.
 
 // Load plugin system
@@ -151,6 +156,22 @@ if (is_dir(dirname(__DIR__) . '/plugins')) {
     $pluginManager = PluginManager::getInstance();
     $pluginManager->discoverPlugins();
     $pluginManager->loadActivePlugins();
+}
+
+// The site logo lives under storage/assets and is referenced as /assets/{logo}
+// on the unauthenticated auth pages (login, forgot/reset password). Now that
+// /assets/ requests route through PHP (see docker/nginx.conf) instead of being
+// served directly by nginx, the login gate would otherwise redirect the logo
+// request to /login and break the image. Exempt ONLY the configured logo file
+// -- not all of /assets/ -- so private model files and attachments stay gated.
+if (php_sapi_name() !== 'cli' && function_exists('getSetting') && class_exists('PluginManager')) {
+    $logoPath = getSetting('logo_path', '');
+    if ($logoPath !== '') {
+        PluginManager::getInstance()->addFilter('public_routes', function (array $routes) use ($logoPath) {
+            $routes[] = '/assets/' . ltrim($logoPath, '/');
+            return $routes;
+        });
+    }
 }
 
 // Enforce authentication (after plugins load so they can register public routes)
@@ -167,3 +188,11 @@ if (empty($router->getNamedRoutes())) {
 
 // Set up error handling
 setupErrorHandler();
+
+// Apply configurable security headers for web (non-CLI) responses. nginx sets
+// these when it fronts the app, but this covers PHP-served responses (built-in
+// server, Apache, or a proxy that strips them). SecurityHeaders::apply() no-ops
+// if headers were already sent, so it is safe to call here before any output.
+if (php_sapi_name() !== 'cli' && class_exists('SecurityHeaders')) {
+    SecurityHeaders::apply();
+}

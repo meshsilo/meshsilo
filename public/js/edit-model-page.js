@@ -32,7 +32,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .replace(/`(.+?)`/g, '<code>$1</code>')
                 .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
                     if (/^(https?:\/\/|\/)/i.test(url)) {
-                        return '<a href="' + url + '">' + text + '</a>';
+                        // url is already &<>-escaped by the replace above; escape quotes so it can't break out of the href attribute
+                        const safeUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        return '<a href="' + safeUrl + '">' + text + '</a>';
                     }
                     return text; // Strip the link if not http/https/relative
                 })
@@ -115,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
                 removeBtn.className = 'model-tag-remove';
-                removeBtn.innerHTML = '&times;';
+                removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
                 removeBtn.setAttribute('aria-label', 'Remove tag ' + data.tag.name);
                 tagEl.appendChild(removeBtn);
                 tagsContainer.appendChild(tagEl);

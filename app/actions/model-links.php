@@ -55,8 +55,7 @@ function canManageLinks($db, $user, $modelId) {
     if (!$model) return false;
 
     return (!empty($model['user_id']) && $model['user_id'] == $user['id'])
-        || !empty($user['is_admin'])
-        || canEdit();
+        || !empty($user['is_admin']);
 }
 
 function addLink($db, $user, $input) {
@@ -72,6 +71,13 @@ function addLink($db, $user, $input) {
 
     // Validate URL
     if (!filter_var($url, FILTER_VALIDATE_URL) && strpos($url, '/') !== 0) {
+        jsonError('Invalid URL');
+        return;
+    }
+
+    // Reject dangerous schemes (javascript:, data:, etc.) - only http/https or relative URLs allowed
+    $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+    if ($scheme !== '' && !in_array($scheme, ['http', 'https'], true)) {
         jsonError('Invalid URL');
         return;
     }

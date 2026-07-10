@@ -386,22 +386,9 @@
 }
 
 /* Model Attachments Section */
-.model-attachments {
+.model-attachments,
+.model-content-sidebar .model-attachments {
     margin-top: 0;
-}
-
-.model-attachments .attachments-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.model-attachments .attachments-header h2 {
-    font-size: 1.125rem;
-    margin: 0;
 }
 
 .attachment-section {
@@ -436,9 +423,26 @@
 .model-content-sidebar {
 }
 
-.model-content-sidebar .model-attachments {
-    margin-top: 0;
+.model-content-sidebar .model-attachments .collapsible-body {
+    max-height: 500px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
 }
+
+.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 2px;
+}
+
 
 .model-content-sidebar .model-attachments h3 {
     font-size: 1.125rem;
@@ -543,8 +547,9 @@
 }
 
 .parts-group-header {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text);
     margin-bottom: 0.75rem;
     padding: 0.5rem 0.75rem;
     background-color: var(--color-bg);
@@ -731,6 +736,51 @@
     text-align: center;
 }
 
+/* Nested subfolder styling — only target direct nesting level, not descendants */
+.nested-subfolder {
+    margin-left: 1rem;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--color-border);
+}
+
+/* Nested child folders use the same header style as top-level folders */
+.nested-subfolder.parts-group {
+    margin-bottom: 1.5rem;
+}
+
+.nested-subfolder.parts-group:last-child {
+    margin-bottom: 0;
+}
+
+.add-parts-progress {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface-hover);
+    border-radius: 8px;
+}
+
+.add-parts-progress .progress-bar {
+    height: 6px;
+    background: var(--color-border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.add-parts-progress .progress-bar-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 3px;
+    transition: width 0.2s ease;
+}
+
+.add-parts-progress-text {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
 /* File Type Badge */
 .model-parts .file-type-badge,
 .parts-list .file-type-badge {
@@ -853,7 +903,8 @@
     border: 1px solid var(--color-border);
 }
 
-.convert-btn {
+.convert-btn,
+.mass-actions .btn {
     white-space: nowrap;
 }
 
@@ -897,12 +948,7 @@
     margin-left: auto;
 }
 
-.mass-actions .btn {
-    white-space: nowrap;
-}
-
-.mass-actions select,
-.mass-action-select {
+.mass-actions select {
     background-color: transparent;
     padding: 0.25rem 1.75rem 0.25rem 0.5rem;
     font-size: 0.75rem;
@@ -911,8 +957,7 @@
     background-position: right 0.4rem center;
 }
 
-.mass-actions select:hover,
-.mass-action-select:hover {
+.mass-actions select:hover {
     color: var(--color-text);
     border-color: var(--color-primary);
 }
@@ -997,21 +1042,6 @@
     border: 1px solid var(--color-border);
 }
 
-.dropdown-item-danger {
-    color: var(--color-danger, #ef4444);
-}
-
-.dropdown-item-danger:hover {
-    background-color: var(--color-danger, #ef4444);
-    color: white;
-}
-
-.part-dimensions {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    margin-left: 0.5rem;
-}
-
 /* Part actions adjustments for dropdown */
 .part-actions {
     display: flex;
@@ -1044,8 +1074,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    flex: none;
+    flex: 1;
     min-width: 0;
+    overflow: hidden;
 }
 
 .model-parts .part-name {
@@ -1082,11 +1113,6 @@
 
     .attachment-document {
         flex-wrap: wrap;
-    }
-
-    .attachment-document .attachment-actions {
-        width: 100%;
-        margin-top: 0.5rem;
     }
 }
 
@@ -1163,10 +1189,6 @@
 
     .parts-group-actions {
         width: 100%;
-    }
-
-    .share-links-list {
-        overflow-x: auto;
     }
 
     .modal-content {

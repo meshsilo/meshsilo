@@ -50,8 +50,8 @@ switch ($action) {
     if (function_exists('logException')) {
         logException($e, ['action' => 'attachments']);
     }
-    http_response_code(500);
-    jsonError($e->getMessage());
+    // Do not leak internal exception details to the client
+    jsonError('An error occurred processing the attachment', 500);
 }
 
 /**
@@ -80,23 +80,40 @@ function uploadAttachment() {
     $imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     $pdfTypes = ['application/pdf'];
     $textTypes = ['text/plain', 'text/markdown', 'text/x-markdown'];
-    $allowedTypes = array_merge($imageTypes, $pdfTypes, $textTypes);
+    $officeTypes = [
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.oasis.opendocument.text',
+        'application/vnd.oasis.opendocument.spreadsheet',
+        'application/vnd.oasis.opendocument.presentation',
+        'application/rtf', 'text/rtf', 'text/csv',
+    ];
+    $allowedTypes = array_merge($imageTypes, $pdfTypes, $textTypes, $officeTypes);
 
-    // Also allow by extension for text files (MIME detection can be unreliable)
+    // Also allow by extension for text and office files: MIME sniffing is
+    // unreliable for office formats (docx/xlsx/pptx are ZIP-based, doc/xls/ppt
+    // are OLE containers, so finfo often reports application/zip or octet-stream).
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $textExtensions = ['txt', 'md'];
+    $officeExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', 'csv'];
     $isTextByExt = in_array($ext, $textExtensions);
+    $isOfficeByExt = in_array($ext, $officeExtensions);
 
-    if (!in_array($mimeType, $allowedTypes) && !$isTextByExt) {
-        jsonError('Invalid file type. Allowed: JPG, PNG, GIF, WebP, PDF, TXT, MD');
+    if (!in_array($mimeType, $allowedTypes) && !$isTextByExt && !$isOfficeByExt) {
+        jsonError('Invalid file type. Allowed: images, PDF, text, and office documents (DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP, RTF, CSV)');
         return;
     }
 
     $isImage = in_array($mimeType, $imageTypes);
     $isPdf = in_array($mimeType, $pdfTypes);
-    $isText = in_array($mimeType, $textTypes) || $isTextByExt;
+    $isOffice = in_array($mimeType, $officeTypes) || $isOfficeByExt;
+    $isText = (in_array($mimeType, $textTypes) || $isTextByExt) && !$isOffice;
 
-    // Max file size: 5MB for images, 20MB for PDFs, 1MB for text
+    // Max file size: 5MB for images, 1MB for text, 20MB otherwise (PDF/office)
     $maxSize = $isImage ? 5 * 1024 * 1024 : ($isText ? 1 * 1024 * 1024 : 20 * 1024 * 1024);
     if ($file['size'] > $maxSize) {
         $maxMB = $maxSize / (1024 * 1024);
@@ -118,7 +135,7 @@ function uploadAttachment() {
 
     // Verify ownership - user must own the model or be an admin
     $user = getCurrentUser();
-    if (!$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
+    if (!userCanModifyModel($model, $user)) {
         jsonError('Not authorized to modify this model');
         return;
     }
@@ -138,11 +155,11 @@ function uploadAttachment() {
     }
 
     $originalFilename = $file['name'];
-    $fileType = $isImage ? 'image' : ($isText ? 'text' : 'pdf');
+    $fileType = $isImage ? 'image' : ($isText ? 'text' : ($isOffice ? 'document' : 'pdf'));
     $ext = strtolower(pathinfo($originalFilename, PATHINFO_EXTENSION));
 
-    // Whitelist allowed extensions (defense-in-depth)
-    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'md'];
+    // Whitelist allowed extensions (defense-in-depth) - shared source of truth
+    $allowedExtensions = ATTACHMENT_EXTENSIONS;
     if (!in_array($ext, $allowedExtensions)) {
         $ext = $isImage ? 'png' : ($isText ? 'txt' : 'pdf'); // Fallback to safe extension
     }
@@ -252,7 +269,7 @@ function deleteAttachment() {
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     $user = getCurrentUser();
-    if ($model && !$user['is_admin'] && (!empty($model['user_id']) && $model['user_id'] != $user['id'])) {
+    if ($model && !userCanModifyModel($model, $user)) {
         jsonError('Not authorized to modify this model');
         return;
     }

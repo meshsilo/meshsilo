@@ -85,15 +85,28 @@ class RateLimiter
         self::init();
 
         $tiers = self::getTiers();
-        $tierConfig = $tiers[$tier] ?? $tiers['anonymous'];
+        $tierConfig = $tiers[$tier] ?? ($tiers['anonymous'] ?? null);
 
-        // Unlimited tier bypasses checks
-        if (
-            $tier === 'unlimited' ||
-            ($tierConfig['requests_per_minute'] == 0 &&
-             $tierConfig['requests_per_hour'] == 0 &&
-             $tierConfig['requests_per_day'] == 0)
-        ) {
+        // Fail closed: a missing/non-array tier config must NOT bypass limits.
+        // Fall back to a restrictive default rather than treating it as unlimited.
+        if (!is_array($tierConfig)) {
+            $tierConfig = [
+                'requests_per_minute' => 10,
+                'requests_per_hour' => 100,
+                'requests_per_day' => 1000,
+            ];
+        }
+
+        // Read limits with a -1 sentinel for missing keys so an absent limit is
+        // never mistaken for an explicit 0 (which would fail open as "unlimited").
+        $rpm = (int)($tierConfig['requests_per_minute'] ?? -1);
+        $rph = (int)($tierConfig['requests_per_hour'] ?? -1);
+        $rpd = (int)($tierConfig['requests_per_day'] ?? -1);
+
+        // Unlimited bypass ONLY for the explicit 'unlimited' tier or a tier whose
+        // three limits are all explicitly the integer 0. Missing/invalid keys
+        // (sentinel -1) can never trigger the bypass.
+        if ($tier === 'unlimited' || ($rpm === 0 && $rph === 0 && $rpd === 0)) {
             return [
                 'allowed' => true,
                 'remaining' => -1,
@@ -101,6 +114,13 @@ class RateLimiter
                 'tier' => $tier
             ];
         }
+
+        // Normalize limits for enforcement. A missing or invalid (negative) limit
+        // falls back to a restrictive default so a malformed tier fails closed.
+        // An explicit 0 keeps its meaning (that window is not limited).
+        $tierConfig['requests_per_minute'] = ($rpm >= 0) ? $rpm : 10;
+        $tierConfig['requests_per_hour'] = ($rph >= 0) ? $rph : 100;
+        $tierConfig['requests_per_day'] = ($rpd >= 0) ? $rpd : 1000;
 
         $now = time();
         $minuteWindow = $now - 60;
@@ -160,10 +180,10 @@ class RateLimiter
             $remaining = min($remaining, max(0, $dayRemaining));
         }
 
-        // Record this request
-        if ($allowed) {
-            self::record($key);
-        }
+        // Record every attempt (including denied ones) so brute-force
+        // attempts still count toward the window and can't be retried for free.
+        // The allow/deny decision above was computed from the prior counts.
+        self::record($key);
 
         return [
             'allowed' => $allowed,

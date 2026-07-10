@@ -46,6 +46,7 @@ function getRelatedModels($modelId)
         $stmt->execute([':model_id' => $modelId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (\Throwable $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
@@ -63,6 +64,7 @@ function addRelatedModel($modelId, $relatedModelId, $relationshipType = 'related
         $stmt->execute([':model_id' => $relatedModelId, ':related_id' => $modelId, ':type' => $relationshipType]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -75,6 +77,7 @@ function removeRelatedModel($modelId, $relatedModelId)
         $stmt->execute([':model_id1' => $modelId, ':related_id1' => $relatedModelId, ':related_id2' => $relatedModelId, ':model_id2' => $modelId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -82,24 +85,6 @@ function removeRelatedModel($modelId, $relatedModelId)
 // =====================
 // Version History Functions
 // =====================
-
-function getModelVersions($modelId)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('
-            SELECT mv.*, u.username as created_by_name
-            FROM model_versions mv
-            LEFT JOIN users u ON mv.created_by = u.id
-            WHERE mv.model_id = :model_id
-            ORDER BY mv.version_number DESC
-        ');
-        $stmt->execute([':model_id' => $modelId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (\Throwable $e) {
-        return [];
-    }
-}
 
 function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog = '', $createdBy = null)
 {
@@ -131,37 +116,14 @@ function addModelVersion($modelId, $filePath, $fileSize, $fileHash, $changelog =
 
         return $nextVersion;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
-    }
-}
-
-function getModelVersion($modelId, $versionNumber)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('SELECT id, model_id, version_number, file_path, file_size, file_hash, changelog, created_by, created_at FROM model_versions WHERE model_id = :model_id AND version_number = :version');
-        $stmt->execute([':model_id' => $modelId, ':version' => $versionNumber]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        return null;
     }
 }
 
 // =====================
 // Part Ordering Functions
 // =====================
-
-function updatePartOrder($partId, $sortOrder)
-{
-    try {
-        $db = getDB();
-        $stmt = $db->prepare('UPDATE models SET sort_order = :sort_order WHERE id = :id');
-        $stmt->execute([':sort_order' => $sortOrder, ':id' => $partId]);
-        return true;
-    } catch (Exception $e) {
-        return false;
-    }
-}
 
 function reorderParts($parentId, $partIds)
 {
@@ -175,6 +137,7 @@ function reorderParts($parentId, $partIds)
         $db->commit();
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         if (isset($db)) {
             $db->rollBack();
         }
@@ -194,6 +157,7 @@ function updateModelDimensions($modelId, $dimX, $dimY, $dimZ, $unit = 'mm')
         $stmt->execute([':x' => $dimX, ':y' => $dimY, ':z' => $dimZ, ':unit' => $unit, ':id' => $modelId]);
         return true;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -210,6 +174,7 @@ function getModelDimensions($modelId)
         }
         return null;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return null;
     }
 }

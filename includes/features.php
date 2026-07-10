@@ -97,32 +97,11 @@ function getAvailableFeatures(): array
             'category' => 'Integration',
             'default' => true,
         ],
-        'import_jobs' => [
-            'name' => 'Bulk Import',
-            'description' => 'Import models from external sources in bulk',
-            'icon' => 'download',
-            'category' => 'Import/Export',
-            'default' => false,
-        ],
         'two_factor_auth' => [
             'name' => 'Two-Factor Authentication',
             'description' => 'TOTP-based 2FA with backup codes',
             'icon' => 'shield',
             'category' => 'Security',
-            'default' => true,
-        ],
-        'share_links' => [
-            'name' => 'Share Links',
-            'description' => 'Create public share links with optional password/expiry',
-            'icon' => 'link',
-            'category' => 'Sharing',
-            'default' => true,
-        ],
-        'model_ratings' => [
-            'name' => 'Model Ratings',
-            'description' => 'Allow users to rate and review models',
-            'icon' => 'star',
-            'category' => 'Community',
             'default' => true,
         ],
         'favorites' => [
@@ -380,10 +359,7 @@ function getFeaturePresets(): array
             'description' => 'Core features only - uploading, browsing, and basic organization',
             'features' => [
                 'api_keys' => false,
-                'import_jobs' => false,
                 'two_factor_auth' => false,
-                'share_links' => true,
-                'model_ratings' => false,
                 'favorites' => true,
                 'activity_log' => false,
                 'attachments' => false,
@@ -405,10 +381,7 @@ function getFeaturePresets(): array
             'description' => 'Recommended for most users - includes collaboration and printing features',
             'features' => [
                 'api_keys' => false,
-                'import_jobs' => false,
                 'two_factor_auth' => true,
-                'share_links' => true,
-                'model_ratings' => true,
                 'favorites' => true,
                 'activity_log' => true,
                 'attachments' => true,
@@ -430,10 +403,7 @@ function getFeaturePresets(): array
             'description' => 'All features enabled - full integration, compliance, and analytics',
             'features' => [
                 'api_keys' => true,
-                'import_jobs' => true,
                 'two_factor_auth' => true,
-                'share_links' => true,
-                'model_ratings' => true,
                 'favorites' => true,
                 'activity_log' => true,
                 'attachments' => true,
@@ -487,8 +457,6 @@ function getFeatureUsageStats(): array
     $tableQueries = [
         'api_keys' => 'api_keys',
         'favorites' => 'favorites',
-        'model_ratings' => 'model_ratings',
-        'share_links' => 'share_links',
         'activity_log' => 'activity_log',
         'attachments' => 'model_attachments',
         'tags' => 'tags',
@@ -536,38 +504,39 @@ function getFeatureUsageStats(): array
 function getFeatureIcon(string $icon): string
 {
     $icons = [
-        'users' => '&#128101;',       // Team
-        'key' => '&#128273;',         // Key
-        'webhook' => '&#128268;',     // Link
-        'archive' => '&#128451;',     // Archive box
-        'file-text' => '&#128196;',   // Document
-        'printer' => '&#128424;',     // Printer
-        'settings' => '&#9881;',      // Gear
-        'history' => '&#128337;',     // Clock
-        'filter' => '&#128269;',      // Filter/magnifier
-        'activity' => '&#128200;',    // Chart
-        'download' => '&#11015;',     // Download arrow
-        'shield' => '&#128737;',      // Shield
-        'link' => '&#128279;',        // Link
-        'star' => '&#11088;',         // Star
-        'heart' => '&#9829;',         // Heart
-        'list' => '&#128203;',        // Clipboard
-        'image' => '&#128444;',       // Image
-        'tag' => '&#127991;',         // Tag/label
-        'folder' => '&#128193;',      // Folder
-        'layers' => '&#9776;',        // Layers/hamburger
-        'git' => '&#128260;',         // Git branch
-        'external' => '&#128279;',    // External link
-        'eye' => '&#128065;',         // Eye
-        'copy' => '&#128203;',        // Copy/clipboard
-        'cube' => '&#9645;',          // Cube
-        'moon' => '&#127769;',        // Moon
-        'edit' => '&#9998;',          // Pencil
-        'sliders' => '&#9881;',       // Sliders/gear
-        'unlock' => '&#128275;',      // Unlock/SSO
-        'server' => '&#128421;',      // Server/LDAP
-        'user' => '&#128100;',        // User/local account
+        'users' => 'fa-users',
+        'key' => 'fa-key',
+        'webhook' => 'fa-plug',
+        'archive' => 'fa-box-archive',
+        'file-text' => 'fa-file-lines',
+        'printer' => 'fa-print',
+        'settings' => 'fa-gear',
+        'history' => 'fa-clock-rotate-left',
+        'filter' => 'fa-filter',
+        'activity' => 'fa-chart-line',
+        'download' => 'fa-download',
+        'shield' => 'fa-shield-halved',
+        'link' => 'fa-link',
+        'star' => 'fa-star',
+        'heart' => 'fa-heart',
+        'list' => 'fa-clipboard-list',
+        'image' => 'fa-image',
+        'tag' => 'fa-tag',
+        'folder' => 'fa-folder',
+        'layers' => 'fa-layer-group',
+        'git' => 'fa-code-branch',
+        'external' => 'fa-arrow-up-right-from-square',
+        'eye' => 'fa-eye',
+        'copy' => 'fa-copy',
+        'cube' => 'fa-cube',
+        'moon' => 'fa-moon',
+        'edit' => 'fa-pen',
+        'sliders' => 'fa-sliders',
+        'unlock' => 'fa-unlock',
+        'server' => 'fa-server',
+        'user' => 'fa-user',
     ];
 
-    return $icons[$icon] ?? '&#9881;';
+    $faClass = $icons[$icon] ?? 'fa-gear';
+    return '<i class="fa-solid ' . $faClass . '"></i>';
 }

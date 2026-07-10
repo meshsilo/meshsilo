@@ -36,7 +36,7 @@ if (!$model) {
 
 // Verify ownership - only owner or admin can edit
 $user = getCurrentUser();
-if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if (!userCanModifyModel($model, $user)) {
     jsonError('Permission denied - not model owner', 403);
 }
 
@@ -82,8 +82,20 @@ if (isset($_POST['creator'])) {
 
 // Handle source_url
 if (isset($_POST['source_url'])) {
+    $sourceUrl = trim($_POST['source_url']);
+    // Reject control-character obfuscation (e.g. "java\tscript:") before the scheme
+    // test: parse_url() returns an empty scheme for these, but browsers strip the
+    // control chars and execute the underlying javascript: URL. A valid URL has none.
+    if ($sourceUrl !== '' && preg_match('/[\x00-\x1F\x7F]/', $sourceUrl)) {
+        $sourceUrl = '';
+    }
+    // Reject non-http(s) schemes (e.g. javascript:) to prevent stored XSS; allow empty and relative URLs.
+    $scheme = strtolower((string)parse_url($sourceUrl, PHP_URL_SCHEME));
+    if ($sourceUrl !== '' && $scheme !== '' && !in_array($scheme, ['http', 'https'], true)) {
+        $sourceUrl = '';
+    }
     $updates[] = 'source_url = :source_url';
-    $params[':source_url'] = trim($_POST['source_url']);
+    $params[':source_url'] = $sourceUrl;
     $logDetails['source_url'] = 'updated';
 }
 

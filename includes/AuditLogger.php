@@ -281,6 +281,22 @@ class AuditLogger
     }
 
     /**
+     * Neutralize CSV/spreadsheet formula injection.
+     *
+     * Any cell whose first character is a formula trigger (= + - @ tab CR) is
+     * prefixed with a single apostrophe so spreadsheet apps treat it as text
+     * instead of executing it as a formula.
+     */
+    private static function sanitizeCsvField($value): string
+    {
+        $value = (string)$value;
+        if ($value !== '' && strpos("=+-@\t\r", $value[0]) !== false) {
+            return "'" . $value;
+        }
+        return $value;
+    }
+
+    /**
      * Export audit logs to CSV
      */
     public static function exportCSV($filters = [], $filename = null)
@@ -311,9 +327,11 @@ class AuditLogger
             'Request ID'
         ]);
 
-        // Data rows
+        // Data rows. Every field is passed through sanitizeCsvField() to
+        // neutralize spreadsheet formula injection from attacker-influenced
+        // values (user_agent, resource_name, event_name, ip, old/new values).
         foreach ($result['data'] as $row) {
-            fputcsv($output, [
+            $fields = [
                 $row['created_at'],
                 $row['event_type'],
                 $row['event_name'],
@@ -328,7 +346,8 @@ class AuditLogger
                 is_array($row['new_value']) ? json_encode($row['new_value']) : $row['new_value'],
                 $row['session_id'],
                 $row['request_id']
-            ]);
+            ];
+            fputcsv($output, array_map(fn($v) => self::sanitizeCsvField($v), $fields));
         }
 
         rewind($output);
@@ -550,5 +569,60 @@ class AuditLogger
         }
 
         return $stats;
+    }
+}
+
+/*
+ * Global convenience wrappers
+ *
+ * Thin procedural aliases so page and action scripts can record audit events
+ * without referencing the AuditLogger class directly. Each is guarded with
+ * function_exists() so this file stays safe to include more than once and so a
+ * host application that already defines these names keeps its own version.
+ *
+ * Callers pass a flat context array; it is stored under the audit_log
+ * "metadata" column. AuditLogger::log() only persists a fixed set of keys
+ * (resource_type, resource_id, resource_name, old_value, new_value, metadata),
+ * of which "metadata" is the free-form one, so wrapping the flat array there
+ * ensures arbitrary caller context is not silently dropped.
+ */
+
+if (!function_exists('logAdmin')) {
+    /**
+     * Record an administrative action in the audit log.
+     */
+    function logAdmin($event, $meta = [])
+    {
+        return AuditLogger::logAdmin($event, ['metadata' => $meta]);
+    }
+}
+
+if (!function_exists('logAudit')) {
+    /**
+     * Record a generic audit-trail event (an admin-initiated action).
+     */
+    function logAudit($event, $meta = [])
+    {
+        return AuditLogger::logAdmin($event, ['metadata' => $meta]);
+    }
+}
+
+if (!function_exists('logSecurityEvent')) {
+    /**
+     * Record a security-relevant event in the audit log.
+     */
+    function logSecurityEvent($event, $meta = [], $severity = AuditLogger::SEVERITY_WARNING)
+    {
+        return AuditLogger::logSecurity($event, ['metadata' => $meta], $severity);
+    }
+}
+
+if (!function_exists('logDataChange')) {
+    /**
+     * Record a data change (old/new values) in the audit log.
+     */
+    function logDataChange($resourceType, $resourceId, $oldValue, $newValue, $resourceName = null)
+    {
+        return AuditLogger::logDataChange($resourceType, $resourceId, $oldValue, $newValue, $resourceName);
     }
 }

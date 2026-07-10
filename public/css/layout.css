@@ -67,10 +67,6 @@
 .search-bar:focus {
     border-color: var(--color-primary);
 }
-.search-bar:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: -2px;
-}
 
 /* Autocomplete dropdown */
 .search-container {
@@ -211,15 +207,6 @@ main {
 
 .section-header h2 {
     font-size: 1.5rem;
-}
-
-.view-all {
-    color: var(--color-primary);
-    font-weight: 500;
-}
-
-.view-all:hover {
-    text-decoration: underline;
 }
 
 /* Models Grid */
@@ -478,10 +465,6 @@ main {
         gap: 1rem;
         text-align: center;
         padding: 1.5rem 1rem;
-    }
-
-    .footer-brand {
-        justify-content: center;
     }
 
     .footer-nav {

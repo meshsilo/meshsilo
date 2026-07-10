@@ -34,7 +34,7 @@ $parentStmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
 $parentStmt->bindValue(':id', $part['parent_id'] ?? $part['id'], PDO::PARAM_INT);
 $parentStmt->execute();
 $parent = $parentStmt->fetch(PDO::FETCH_ASSOC);
-if ($parent && $parent['user_id'] !== null && (int)$parent['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if ($parent && !userCanModifyModel($parent, $user)) {
     jsonError('Permission denied', 403);
 }
 

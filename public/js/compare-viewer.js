@@ -21,46 +21,37 @@ function initCompareViewers() {
 }
 
 function loadModelByType(modelPath, modelType, onLoad, onError) {
-    const ext = (modelType || '').toLowerCase();
+    // Reuse the canonical loader dispatch from viewer-loaders.js
+    // (ModelViewer.prototype.loadModel) instead of maintaining a parallel,
+    // drifting copy of the per-format loaders. A lightweight host object
+    // receives the loaded model while neutralizing ModelViewer's scene
+    // side-effects (centering/scaling/animation), so the compare page keeps
+    // its own orchestration: native-unit geometry stats, custom camera fit,
+    // overlay material overrides, and two-viewer camera sync.
+    const host = Object.create(ModelViewer.prototype);
+    host.model = null;
+    host.clearModel = function() { this.model = null; };
+    host.centerAndScaleModel = function() {};
+    host.startAnimation = function() {};
 
-    if (ext === 'stl') {
-        new THREE.STLLoader().load(modelPath, function(geometry) {
-            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
-            onLoad(new THREE.Mesh(geometry, material));
-        }, undefined, onError);
-    } else if (ext === '3mf') {
-        new THREE.ThreeMFLoader().load(modelPath, function(group) {
-            onLoad(group);
-        }, undefined, onError);
-    } else if (ext === 'obj') {
-        new THREE.OBJLoader().load(modelPath, function(group) {
-            onLoad(group);
-        }, undefined, onError);
-    } else if (ext === 'ply') {
-        new THREE.PLYLoader().load(modelPath, function(geometry) {
-            geometry.computeVertexNormals();
-            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
-            onLoad(new THREE.Mesh(geometry, material));
-        }, undefined, onError);
-    } else if (ext === 'glb' || ext === 'gltf') {
-        new THREE.GLTFLoader().load(modelPath, function(gltf) {
-            onLoad(gltf.scene);
-        }, undefined, onError);
-    } else if (ext === 'fbx' && THREE.FBXLoader) {
-        new THREE.FBXLoader().load(modelPath, function(group) {
-            onLoad(group);
-        }, undefined, onError);
-    } else if (ext === 'dae' && THREE.ColladaLoader) {
-        new THREE.ColladaLoader().load(modelPath, function(collada) {
-            onLoad(collada.scene);
-        }, undefined, onError);
-    } else {
-        // Fallback: try STL loader
-        new THREE.STLLoader().load(modelPath, function(geometry) {
-            const material = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.4, metalness: 0.1 });
-            onLoad(new THREE.Mesh(geometry, material));
-        }, undefined, onError);
-    }
+    const type = (modelType || '').toLowerCase();
+
+    host.loadModel(modelPath, type).then(
+        function(object) { onLoad(object); },
+        function(error) {
+            // Preserve compare's original behavior: attempt an STL parse for
+            // unrecognized extensions before surfacing the error.
+            const msg = (error && error.message) ? String(error.message) : '';
+            if (msg.indexOf('Unsupported file type') === 0) {
+                host.loadSTL(modelPath).then(
+                    function(object) { onLoad(object); },
+                    function(stlError) { onError(stlError); }
+                );
+            } else {
+                onError(error);
+            }
+        }
+    );
 }
 
 function getGeometryStats(object) {
@@ -157,27 +148,37 @@ function createScene(container) {
     dl2.position.set(-1, -1, -1);
     scene.add(dl2);
 
+    const api = { scene, camera, renderer, controls, paused: false };
+
     function animate() {
-        if (!document.hidden) {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        } else {
+        if (api.paused) return;                  // explicitly paused (e.g. hidden behind overlay)
+        if (document.hidden) {                    // tab hidden: resume when it returns
             document.addEventListener('visibilitychange', function onVisible() {
                 document.removeEventListener('visibilitychange', onVisible);
-                requestAnimationFrame(animate);
+                animate();
             });
+            return;
         }
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
     }
+    api.pause = function() { api.paused = true; };
+    api.resume = function() { if (api.paused) { api.paused = false; animate(); } };
     animate();
 
+    // Debounce resize so a drag-resize does one buffer realloc on settle, not dozens mid-drag.
+    let resizeTimer = null;
     window.addEventListener('resize', function() {
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }, 150);
     });
 
-    return { scene, camera, renderer, controls };
+    return api;
 }
 
 function initViewer(containerId, modelPath, modelType, viewerIndex) {
@@ -233,12 +234,21 @@ function toggleOverlayMode(enabled) {
     if (enabled) {
         panel.style.display = 'none';
         overlay.style.display = '';
+        // Stop the two side-by-side render loops while they're hidden behind the overlay.
+        if (viewer1) viewer1.pause();
+        if (viewer2) viewer2.pause();
         if (!overlayViewer) {
             initOverlayViewer();
+        } else {
+            overlayViewer.resume();
         }
     } else {
         panel.style.display = '';
         overlay.style.display = 'none';
+        // Resume the panel viewers; stop the now-hidden overlay loop.
+        if (overlayViewer) overlayViewer.pause();
+        if (viewer1) viewer1.resume();
+        if (viewer2) viewer2.resume();
     }
 }
 

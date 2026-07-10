@@ -149,13 +149,16 @@ class PdfOptimizer
             return false;
         }
 
+        // -dSAFER: sandbox file access - disables PostScript operators that
+        //   could read/write arbitrary files or run external programs. Default
+        //   since gs 9.50, but set explicitly to cover older Ghostscript.
         // -dNOPAUSE -dBATCH: non-interactive
         // -dQUIET: suppress progress messages
         // -sDEVICE=pdfwrite: produce a PDF
         // -dCompatibilityLevel=1.4: broad reader compatibility
         // -dPDFSETTINGS=$preset: select compression preset
         $cmd = sprintf(
-            'gs -dNOPAUSE -dBATCH -dQUIET -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=%s -sOutputFile=%s %s 2>&1',
+            'gs -dSAFER -dNOPAUSE -dBATCH -dQUIET -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=%s -sOutputFile=%s %s 2>&1',
             escapeshellarg($preset),
             escapeshellarg($dest),
             escapeshellarg($source)

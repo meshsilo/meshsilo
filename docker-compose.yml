@@ -26,7 +26,9 @@ services:
       - MESHSILO_DB_PORT=3306
       - MESHSILO_DB_NAME=meshsilo
       - MESHSILO_DB_USER=meshsilo
-      - MESHSILO_DB_PASS=meshsilo_password
+      # Required: no default. Deploying without it fails loudly instead of
+      # shipping a known password. Set MESHSILO_DB_PASS in your .env file.
+      - MESHSILO_DB_PASS=${MESHSILO_DB_PASS:?set MESHSILO_DB_PASS in .env}
 
       # File Upload Settings (in bytes, default 100MB)
       - MESHSILO_MAX_UPLOAD_SIZE=104857600
@@ -58,10 +60,14 @@ services:
     container_name: meshsilo-db
     restart: unless-stopped
     environment:
-      - MYSQL_ROOT_PASSWORD=root_password_change_me
+      # Required: no defaults. Deploying without these fails loudly instead of
+      # shipping known credentials. Set them in your .env file.
+      # MYSQL_PASSWORD derives from MESHSILO_DB_PASS so the DB user password and
+      # the app's DB password always stay in sync.
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
       - MYSQL_DATABASE=meshsilo
       - MYSQL_USER=meshsilo
-      - MYSQL_PASSWORD=meshsilo_password
+      - MYSQL_PASSWORD=${MESHSILO_DB_PASS:?set MESHSILO_DB_PASS in .env}
     volumes:
       - meshsilo_mysql:/var/lib/mysql
     healthcheck:

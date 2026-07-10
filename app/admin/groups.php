@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             $groupId = createGroup($name, $description, $permissions);
             if ($groupId) {
                 logInfo('Group created', ['group_id' => $groupId, 'name' => $name]);
+                AuditLogger::logAdmin('group_created', ['resource_type' => 'group', 'resource_id' => $groupId, 'resource_name' => $name]);
                 $message = 'Group "' . $name . '" created successfully.';
             } else {
                 $error = 'Failed to create group. Name may already exist.';
@@ -55,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 // For system groups, only update permissions
                 if (updateSystemGroupPermissions($groupId, $permissions)) {
                     logInfo('System group permissions updated', ['group_id' => $groupId]);
+                    AuditLogger::logAdmin('group_updated', ['resource_type' => 'group', 'resource_id' => $groupId]);
                     $message = 'Group permissions updated successfully.';
                 } else {
                     $error = 'Failed to update group permissions.';
@@ -62,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             } else {
                 if (updateGroup($groupId, $name, $description, $permissions)) {
                     logInfo('Group updated', ['group_id' => $groupId, 'name' => $name]);
+                    AuditLogger::logAdmin('group_updated', ['resource_type' => 'group', 'resource_id' => $groupId, 'resource_name' => $name]);
                     $message = 'Group updated successfully.';
                 } else {
                     $error = 'Failed to update group.';
@@ -79,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         } else {
             if (deleteGroup($groupId)) {
                 logInfo('Group deleted', ['group_id' => $groupId, 'name' => $group['name']]);
+                AuditLogger::logAdmin('group_deleted', ['resource_type' => 'group', 'resource_id' => $groupId, 'resource_name' => $group['name']]);
                 $message = 'Group "' . $group['name'] . '" deleted successfully.';
             } else {
                 $error = 'Failed to delete group.';

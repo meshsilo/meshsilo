@@ -11,8 +11,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 
-// Prevent running if already installed
-if (file_exists(__DIR__ . '/storage/db/config.local.php') || file_exists(__DIR__ . '/config.local.php')) {
+// Prevent running if already installed.
+// Must check ALL THREE paths that includes/config.php honors, otherwise an
+// install written to the legacy db/config.local.php location could be re-run.
+if (file_exists(__DIR__ . '/storage/db/config.local.php')
+    || file_exists(__DIR__ . '/db/config.local.php')
+    || file_exists(__DIR__ . '/config.local.php')) {
     http_response_code(200);
     ?>
     <!DOCTYPE html>
@@ -443,11 +447,11 @@ function initializeSQLiteDatabase($config) {
         // Generate and save server UUID for license tracking
         $serverUuid = sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000,
+            random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
         );
         $stmt = $db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('server_uuid', :val)");
         $stmt->bindValue(':val', $serverUuid, SQLITE3_TEXT);
@@ -510,11 +514,11 @@ function initializeMySQLDatabase($config) {
         // Generate and save server UUID for license tracking
         $serverUuid = sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000,
+            random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
         );
         $stmt->execute([':k' => 'server_uuid', ':v' => $serverUuid, ':v2' => $serverUuid]);
 

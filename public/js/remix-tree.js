@@ -43,7 +43,7 @@ document.getElementById('remix-model-search').addEventListener('input', function
                     item.className = 'search-result-item';
                     item.dataset.id = model.id;
                     item.innerHTML = `
-                        <img src="${model.thumbnail ? window.RemixTreeConfig.assetsPath + model.thumbnail : window.RemixTreeConfig.placeholderImage}" alt="${escapeHtml(model.name)}">
+                        <img src="${escapeHtml(model.thumbnail ? window.RemixTreeConfig.assetsPath + model.thumbnail : window.RemixTreeConfig.placeholderImage)}" alt="${escapeHtml(model.name)}">
                         <span>${escapeHtml(model.name)}</span>
                     `;
                     item.addEventListener('click', function() {

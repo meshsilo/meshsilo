@@ -220,17 +220,11 @@
     color: var(--color-primary);
 }
 
-.badge-user {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text-muted);
-}
-
-.badge-success { background: var(--color-success); color: white; }
-.badge-danger { background: var(--color-danger); color: white; }
-.badge-warning { background: var(--color-warning); color: white; }
-.badge-secondary { background: var(--color-text-muted); color: white; }
-.badge-primary { background: var(--color-primary); color: white; }
-.badge-info { background: var(--color-info, #3b82f6); color: white; }
+.badge-success { background: #15803d; color: #fff; }
+.badge-danger { background: #b91c1c; color: #fff; }
+.badge-warning { background: #a16207; color: #fff; }
+.badge-secondary { background: #475569; color: #fff; }
+.badge-info { background: #1d4ed8; color: #fff; }
 
 /* Batch Rename Modal */
 .rename-preview {

@@ -13,6 +13,9 @@
 
 class ImageOptimizer
 {
+    // Decompression-bomb guard: refuse to decode images beyond ~40 MP.
+    private const MAX_IMAGE_PIXELS = 40000000;
+
     private static ?self $instance = null;
     private string $cachePath;
     private int $quality = 80;
@@ -110,6 +113,11 @@ class ImageOptimizer
             return null;
         }
 
+        // Reject decompression-bomb images before allocating decode memory.
+        if (($imageInfo[0] * $imageInfo[1]) > self::MAX_IMAGE_PIXELS) {
+            return null;
+        }
+
         $sourceImage = null;
         switch ($imageInfo[2]) {
             case IMAGETYPE_JPEG:
@@ -161,6 +169,11 @@ class ImageOptimizer
 
         $imageInfo = @getimagesize($fullSourcePath);
         if (!$imageInfo) {
+            return null;
+        }
+
+        // Reject decompression-bomb images before allocating decode memory.
+        if (($imageInfo[0] * $imageInfo[1]) > self::MAX_IMAGE_PIXELS) {
             return null;
         }
 

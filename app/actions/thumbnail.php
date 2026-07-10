@@ -71,7 +71,7 @@ function uploadThumbnail() {
     }
 
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -176,7 +176,7 @@ function deleteThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -225,7 +225,7 @@ function generateThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -278,7 +278,7 @@ function setFromAttachment() {
     }
 
     $ownerId = $model['user_id'] ?? null;
-    if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !$user['is_admin'] && !canEdit()) {
+    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
         jsonError('Permission denied');
         return;
     }
@@ -362,6 +362,12 @@ function resizeThumbnail($filePath, $maxDimension) {
 
     $width = $info[0];
     $height = $info[1];
+
+    // Decompression-bomb guard: refuse to decode images beyond a sane pixel
+    // budget (~40 MP) so a small file can't blow up GD's memory on decode.
+    if (($width * $height) > 40000000) {
+        return;
+    }
 
     if ($width <= $maxDimension && $height <= $maxDimension) {
         return; // No resize needed

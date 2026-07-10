@@ -31,8 +31,27 @@ function isPartAlreadyQueued(int $partId): bool
     return ($row['cnt'] ?? 0) > 0;
 }
 
-// Require edit permission
-if (!canEdit()) {
+/**
+ * Resolve the effective owner (user_id) of a part, preferring its parent
+ * model's owner when the part is a child. Returns null when no owner is set.
+ */
+function partOwnerId(int $partId): ?int
+{
+    $db = getDB();
+    $stmt = $db->prepare('
+        SELECT COALESCE(p.user_id, m.user_id) AS owner_id
+        FROM models m
+        LEFT JOIN models p ON p.id = m.parent_id
+        WHERE m.id = :id
+    ');
+    $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $row = $result->fetchArray(PDO::FETCH_ASSOC);
+    return isset($row['owner_id']) && $row['owner_id'] !== null ? (int)$row['owner_id'] : null;
+}
+
+// Require convert permission
+if (!canConvert()) {
     ob_end_clean();
     jsonError('Permission denied', 403);
 }
@@ -94,7 +113,14 @@ if ($action === 'estimate') {
         jsonError('Only STL files can be converted');
     }
 
-    // Check for duplicate — skip if already queued
+    // Verify ownership (owner-or-admin) before queuing
+    $user = getCurrentUser();
+    $ownerId = partOwnerId($partId);
+    if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
+        jsonError('Permission denied', 403);
+    }
+
+    // Check for duplicate - skip if already queued
     if (isPartAlreadyQueued($partId)) {
         jsonSuccess(['queued' => 0, 'message' => 'Already queued']);
     }
@@ -113,6 +139,7 @@ if ($action === 'estimate') {
     ob_end_clean();
     $db = getDB();
     $queued = 0;
+    $user = getCurrentUser();
 
     foreach ($partIds as $id) {
         $id = (int)$id;
@@ -125,6 +152,11 @@ if ($action === 'estimate') {
         $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
         if ($part && $part['file_type'] === 'stl' && !isPartAlreadyQueued($id)) {
+            // Verify ownership (owner-or-admin) before queuing; skip unauthorized parts
+            $ownerId = partOwnerId($id);
+            if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
+                continue;
+            }
             Queue::push('ConvertStlTo3mf', ['model_id' => $id], 'conversions');
             $queued++;
         }

@@ -49,7 +49,7 @@ if ($part['parent_id']) {
 
 // Deny access if model has an owner and current user is not the owner or admin
 // Cast to int to handle PDO returning strings depending on configuration
-if ($ownerId !== null && (int)$ownerId !== (int)$user['id'] && !isAdmin()) {
+if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
     http_response_code(403);
     exit('Access denied');
 }

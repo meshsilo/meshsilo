@@ -93,6 +93,33 @@ class TwoFactor
     }
 
     /**
+     * Verify a TOTP code and return the matched time-step counter, or null if the
+     * code is invalid. Same window semantics as verify(); used for replay protection
+     * so an intercepted code can't be reused within its validity window.
+     */
+    public static function verifyGetCounter(string $secret, string $code, int $window = 1): ?int
+    {
+        $code = trim($code);
+
+        if (strlen($code) !== self::CODE_LENGTH || !ctype_digit($code)) {
+            return null;
+        }
+
+        $timestamp = time();
+
+        for ($i = -$window; $i <= $window; $i++) {
+            $checkTime = $timestamp + ($i * self::TIME_STEP);
+            $validCode = self::generateCode($secret, $checkTime);
+
+            if (hash_equals($validCode, $code)) {
+                return intdiv($checkTime, self::TIME_STEP);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get QR code URL for setting up authenticator app
      *
      * @param string $secret User's secret key
@@ -189,6 +216,58 @@ class TwoFactor
     }
 
     /**
+     * Encode a TOTP secret for storage, encrypting it at rest when
+     * encryption is configured. Encrypted values are prefixed with "enc:"
+     * so they can be unambiguously distinguished from legacy plaintext
+     * secrets on read. Falls back to plaintext storage when encryption is
+     * unavailable so existing installs keep working.
+     */
+    private static function encodeSecretForStorage(string $secret): string
+    {
+        if (class_exists('Encryption')) {
+            try {
+                if (Encryption::isEnabled()) {
+                    return 'enc:' . base64_encode(Encryption::encrypt($secret, 'totp'));
+                }
+            } catch (Throwable $e) {
+                // Encryption unavailable - fall back to plaintext storage
+            }
+        }
+
+        return $secret;
+    }
+
+    /**
+     * Decode a stored TOTP secret back to its raw base32 form. Values
+     * prefixed with "enc:" are decrypted; anything else is treated as a
+     * legacy plaintext secret so existing users' 2FA keeps working.
+     *
+     * @return string|null Raw secret, or null when an encrypted value
+     *                     cannot be decrypted (e.g. missing/rotated key).
+     */
+    private static function decodeStoredSecret(?string $stored): ?string
+    {
+        if ($stored === null || $stored === '') {
+            return $stored;
+        }
+
+        if (str_starts_with($stored, 'enc:')) {
+            try {
+                $raw = base64_decode(substr($stored, 4), true);
+                if ($raw !== false && class_exists('Encryption')) {
+                    return Encryption::decrypt($raw, 'totp');
+                }
+            } catch (Throwable $e) {
+                // Could not decrypt - treat as unavailable rather than raw
+            }
+            return null;
+        }
+
+        // Legacy plaintext secret stored before encryption-at-rest
+        return $stored;
+    }
+
+    /**
      * Enable 2FA for a user
      *
      * @param int $userId User ID
@@ -215,7 +294,7 @@ class TwoFactor
             WHERE id = :user_id
         ');
 
-        $stmt->bindValue(':secret', $secret, PDO::PARAM_STR);
+        $stmt->bindValue(':secret', self::encodeSecretForStorage($secret), PDO::PARAM_STR);
         $stmt->bindValue(':backup_codes', json_encode($hashedCodes), PDO::PARAM_STR);
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
 
@@ -291,7 +370,7 @@ class TwoFactor
         $result = $stmt->execute();
         $row = $result->fetchArray(PDO::FETCH_ASSOC);
 
-        return $row['two_factor_secret'] ?? null;
+        return self::decodeStoredSecret($row['two_factor_secret'] ?? null);
     }
 
     /**
@@ -320,9 +399,17 @@ class TwoFactor
             return false;
         }
 
-        // Try TOTP first
-        if (self::verify($user['two_factor_secret'], $code)) {
-            return true;
+        // Try TOTP first (decrypt the secret when stored encrypted at rest).
+        // Replay protection: reject reuse of a time-step that was already consumed.
+        $secret = self::decodeStoredSecret($user['two_factor_secret']);
+        if ($secret !== null && $secret !== '') {
+            $counter = self::verifyGetCounter($secret, $code);
+            if ($counter !== null) {
+                if (self::isTotpReplay($db, $userId, $counter)) {
+                    return false;
+                }
+                return true;
+            }
         }
 
         // Try backup codes
@@ -353,6 +440,52 @@ class TwoFactor
         }
 
         return false;
+    }
+
+    /**
+     * Replay guard for TOTP. Returns true if this time-step counter has already
+     * been consumed by the user (caller must then reject the code); otherwise
+     * records it as consumed and returns false. Degrades gracefully to "not a
+     * replay" if the two_factor_last_used column has not been migrated yet, so
+     * login never breaks on a pre-migration deploy.
+     */
+    private static function isTotpReplay($db, int $userId, int $counter): bool
+    {
+        if (!self::replayColumnAvailable($db)) {
+            return false;
+        }
+
+        $stmt = $db->prepare('SELECT two_factor_last_used FROM users WHERE id = :user_id');
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $result = $stmt->execute();
+        $row = $result->fetchArray(PDO::FETCH_ASSOC);
+        $lastUsed = (int)($row['two_factor_last_used'] ?? 0);
+
+        if ($counter <= $lastUsed) {
+            return true; // already used (or an older step) - reject as replay
+        }
+
+        $upd = $db->prepare('UPDATE users SET two_factor_last_used = :ts WHERE id = :user_id');
+        $upd->bindValue(':ts', $counter, PDO::PARAM_INT);
+        $upd->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $upd->execute();
+        return false;
+    }
+
+    /**
+     * Whether the two_factor_last_used column exists (cached per request).
+     */
+    private static function replayColumnAvailable($db): bool
+    {
+        static $available = null;
+        if ($available !== null) {
+            return $available;
+        }
+        if (!function_exists('columnExists')) {
+            require_once __DIR__ . '/Schema.php';
+        }
+        $available = function_exists('columnExists') && columnExists($db, 'users', 'two_factor_last_used');
+        return $available;
     }
 
     /**
@@ -451,38 +584,5 @@ class TwoFactor
 
         require_once __DIR__ . '/QRCode.php';
         return QRCode::toSVG($url);
-    }
-}
-
-/**
- * 2FA Middleware
- *
- * Requires 2FA verification for users with 2FA enabled
- */
-class TwoFactorMiddleware implements MiddlewareInterface
-{
-    public function handle(array $params): bool
-    {
-        // Check if user is logged in
-        if (!function_exists('isLoggedIn') || !isLoggedIn()) {
-            return true; // Let auth middleware handle this
-        }
-
-        $user = getCurrentUser();
-
-        // Check if 2FA is enabled for this user
-        if (!TwoFactor::isEnabled($user['id'])) {
-            return true; // No 2FA required
-        }
-
-        // Check if 2FA has been verified this session
-        if (!empty($_SESSION['2fa_verified']) && $_SESSION['2fa_verified'] === $user['id']) {
-            return true; // Already verified
-        }
-
-        // Redirect to 2FA verification page
-        $_SESSION['2fa_return_url'] = $_SERVER['REQUEST_URI'];
-        header('Location: ' . (function_exists('route') ? route('2fa.verify') : '/2fa-verify'));
-        exit;
     }
 }

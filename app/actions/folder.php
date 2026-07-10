@@ -344,6 +344,20 @@ function moveModelToFolder() {
         }
     }
 
+    // Verify the target model is owned by the caller (owner-or-admin) before moving it
+    $stmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
+    $stmt->execute([':id' => $modelId]);
+    $model = $stmt->fetch();
+
+    if (!$model) {
+        jsonError('Model not found');
+        return;
+    }
+    if (!userCanModifyModel($model, $user)) {
+        jsonError('Permission denied', 403);
+        return;
+    }
+
     $stmt = $db->prepare('UPDATE models SET folder_id = :folder_id WHERE id = :id');
     $stmt->execute([':folder_id' => $folderId, ':id' => $modelId]);
 

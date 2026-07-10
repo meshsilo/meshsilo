@@ -159,19 +159,22 @@ if (!empty($modelIds)) {
     }
 }
 
-// Get categories with model counts
-try {
-    $result = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
-} catch (Throwable $e) {
-    logException($e, ['action' => 'homepage_categories']);
-    $result = null;
-}
-$categories = [];
-if ($result) {
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $categories[] = $row;
+// Get categories with model counts (cached 5 minutes)
+$categories = Cache::getInstance()->remember('homepage_categories', 300, function () use ($db) {
+    try {
+        $result = $db->query('SELECT c.*, COUNT(mc.model_id) as model_count FROM categories c LEFT JOIN model_categories mc ON c.id = mc.category_id GROUP BY c.id ORDER BY c.name');
+        $cats = [];
+        if ($result) {
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                $cats[] = $row;
+            }
+        }
+        return $cats;
+    } catch (Throwable $e) {
+        logException($e, ['action' => 'homepage_categories']);
+        return [];
     }
-}
+});
 
 $message = '';
 $messageType = 'success';

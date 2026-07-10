@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 ]);
                 $mysqlPdo = $db->getPDO();
                 $tableName = $_POST['sync_table'] ?? '';
-                $allowedTables = ['model_attachments', 'model_links', 'model_annotations', 'share_links', 'model_versions', 'related_models', 'activity_log'];
+                $allowedTables = ['model_attachments', 'model_links', 'model_annotations', 'model_versions', 'related_models', 'activity_log'];
                 if (!in_array($tableName, $allowedTables)) {
                     $error = 'Invalid table for re-sync.';
                 } else {
@@ -427,7 +427,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <ul>
                     <?php foreach ($migrationsRun as $result): ?>
                         <li class="<?= $result['success'] ? 'success' : 'error' ?>">
-                            <?= $result['success'] ? '✓' : '✗' ?>
+                            <?= $result['success'] ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>' ?>
                             <?= htmlspecialchars($result['name']) ?>
                             <?php if (!$result['success'] && isset($result['error'])): ?>
                                 <br><small><?= htmlspecialchars($result['error']) ?></small>
@@ -462,7 +462,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="metrics-grid" style="margin-bottom: 2rem;">
             <div class="metric-card">
                 <div class="metric-header">
-                    <span class="metric-icon" aria-hidden="true">&#128451;</span>
+                    <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-database"></i></span>
                     <span class="metric-title">Database Type</span>
                 </div>
                 <div class="metric-value"><?= strtoupper($dbType) ?></div>
@@ -473,7 +473,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="metric-card">
                 <div class="metric-header">
-                    <span class="metric-icon" aria-hidden="true">&#128197;</span>
+                    <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-calendar-days"></i></span>
                     <span class="metric-title">Schema Version</span>
                 </div>
                 <div class="metric-value" style="font-size: 1.25rem;"><?= htmlspecialchars($schemaVersion) ?></div>
@@ -482,7 +482,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="metric-card">
                 <div class="metric-header">
-                    <span class="metric-icon" aria-hidden="true">&#128203;</span>
+                    <span class="metric-icon" aria-hidden="true"><i class="fa-solid fa-table"></i></span>
                     <span class="metric-title">Tables</span>
                 </div>
                 <div class="metric-value"><?= count($tableCounts) ?></div>
@@ -491,7 +491,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="metric-card">
                 <div class="metric-header">
-                    <span class="metric-icon" aria-hidden="true"><?= $pendingCount > 0 ? '&#9888;' : '&#10004;' ?></span>
+                    <span class="metric-icon" aria-hidden="true"><?= $pendingCount > 0 ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-check"></i>' ?></span>
                     <span class="metric-title">Migrations</span>
                 </div>
                 <div class="metric-value <?= $pendingCount > 0 ? 'text-warning' : 'text-success' ?>"><?= $pendingCount > 0 ? $pendingCount . ' Pending' : 'Up to Date' ?></div>
@@ -626,7 +626,6 @@ php cli/migrate.php --dry-run
                         <option value="model_attachments">Attachments</option>
                         <option value="model_links">External Links</option>
                         <option value="model_versions">Version History</option>
-                        <option value="share_links">Share Links</option>
                         <option value="related_models">Related Models</option>
                         <option value="model_annotations">Annotations</option>
                         <option value="activity_log">Activity Log</option>

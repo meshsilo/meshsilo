@@ -63,6 +63,67 @@ function cleanupModelFiles(array $filesToDelete, array $dedupFilesToCheck): void
     }
 }
 
+/**
+ * Safely delete a file identified by a path stored relative to the assets base
+ * (UPLOAD_PATH), such as a model version file or a thumbnail. Uses realpath
+ * containment so a corrupt or crafted path can never unlink anything outside
+ * storage/assets.
+ *
+ * @param string|null $relativePath Path relative to UPLOAD_PATH (no 'assets/' prefix)
+ * @return void
+ */
+function safeUnlinkAssetFile(?string $relativePath): void {
+    if (empty($relativePath)) {
+        return;
+    }
+    $base = realpath(UPLOAD_PATH);
+    if ($base === false) {
+        return;
+    }
+    $candidate = rtrim(UPLOAD_PATH, '/\\') . '/' . ltrim($relativePath, '/\\');
+    $real = realpath($candidate);
+    if ($real === false) {
+        return; // File does not exist
+    }
+    // Containment: the resolved path must live under the assets base
+    if ($real !== $base && strpos($real, $base . DIRECTORY_SEPARATOR) !== 0) {
+        return;
+    }
+    unlink($real);
+}
+
+/**
+ * Delete all physical version files for a model and remove the now-empty
+ * per-model versions directory. The model_versions rows themselves are removed
+ * by the ON DELETE CASCADE when the model row is deleted; this only removes the
+ * files left on disk. Must be called while the rows still exist.
+ *
+ * @param mixed $db      Database wrapper
+ * @param int   $modelId
+ * @return void
+ */
+function deleteModelVersionFiles($db, int $modelId): void {
+    try {
+        $stmt = $db->prepare('SELECT file_path FROM model_versions WHERE model_id = :model_id');
+        $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+        $result = $stmt->execute();
+        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+            if (!empty($row['file_path'])) {
+                safeUnlinkAssetFile($row['file_path']);
+            }
+        }
+    } catch (Throwable $e) {
+        // model_versions table may not exist yet - nothing to clean up
+        return;
+    }
+
+    // Remove the per-model versions directory if it is now empty
+    $versionDir = rtrim(UPLOAD_PATH, '/\\') . '/versions/' . $modelId;
+    if (is_dir($versionDir) && count(scandir($versionDir)) === 2) {
+        rmdir($versionDir);
+    }
+}
+
 // Require delete permission
 requirePermission(PERM_DELETE);
 
@@ -91,7 +152,7 @@ if (!$model) {
 
 // Ownership check: only the owner or an admin may delete
 $user = getCurrentUser();
-if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if (!userCanModifyModel($model, $user)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'You do not own this model']);
     exit;
@@ -143,6 +204,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         if ($part) {
             // Delete individual part
 
+            // Delete physical version files while the rows still exist (cascade
+            // removes the model_versions rows when the part row is deleted)
+            deleteModelVersionFiles($db, $partId);
+
             // Delete from database first
             $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
             $stmt->bindValue(':id', $partId, PDO::PARAM_INT);
@@ -160,6 +225,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
             // Delete file from disk using helper function
             deleteModelFile($part['file_path'], $part['dedup_path']);
+
+            // Delete the part's thumbnail file (thumbnails are never deduplicated)
+            safeUnlinkAssetFile($part['thumbnail_path'] ?? null);
 
             logInfo('Part deleted', [
                 'part_id' => $partId,
@@ -181,18 +249,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             // Delete entire model
             $filesToDelete = [];
             $dedupFilesToCheck = [];
+            $thumbnailsToDelete = [];
+
+            // The model's own thumbnail (parts add theirs below)
+            if (!empty($model['thumbnail_path'])) {
+                $thumbnailsToDelete[] = $model['thumbnail_path'];
+            }
 
             // Collect files from parts (if multi-part model)
             if ($model['part_count'] > 0) {
-                $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = :parent_id');
+                $stmt = $db->prepare('SELECT id, file_path, dedup_path, thumbnail_path FROM models WHERE parent_id = :parent_id');
                 $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
                 $result = $stmt->execute();
+                $partIds = [];
                 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                    $partIds[] = (int)$row['id'];
+                    if (!empty($row['thumbnail_path'])) {
+                        $thumbnailsToDelete[] = $row['thumbnail_path'];
+                    }
                     if (!empty($row['dedup_path'])) {
                         $dedupFilesToCheck[$row['dedup_path']] = true;
                     } elseif ($row['file_path']) {
                         $filesToDelete[] = getAbsoluteFilePath($row);
                     }
+                }
+
+                // Delete each part's physical version files before the cascade removes the rows
+                foreach ($partIds as $pid) {
+                    deleteModelVersionFiles($db, $pid);
                 }
 
                 // Delete child models from database
@@ -234,6 +318,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
             $stmt->execute();
 
+            // Delete the parent model's physical version files while its rows
+            // still exist (cascade removes model_versions when the row is deleted)
+            deleteModelVersionFiles($db, $modelId);
+
             // Delete parent/main model from database
             $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
             $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
@@ -241,6 +329,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
             // Clean up files using helper function
             cleanupModelFiles($filesToDelete, $dedupFilesToCheck);
+
+            // Delete thumbnail files (model + parts); these are never deduplicated
+            foreach ($thumbnailsToDelete as $thumbPath) {
+                safeUnlinkAssetFile($thumbPath);
+            }
 
             logInfo('Model deleted', [
                 'model_id' => $modelId,

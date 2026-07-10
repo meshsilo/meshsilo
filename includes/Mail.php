@@ -222,10 +222,24 @@ class Mail
      */
     public function template(string $name, array $data = []): self
     {
-        $__templatePath = dirname(__DIR__) . '/templates/email/' . $name . '.php';
+        // Prevent local file inclusion via path traversal
+        $name = basename($name);
+        if (!preg_match('/^[A-Za-z0-9_-]+$/', $name)) {
+            throw new \Exception("Invalid email template name: $name");
+        }
+
+        $__templateDir = dirname(__DIR__) . '/templates/email/';
+        $__templatePath = $__templateDir . $name . '.php';
 
         if (!file_exists($__templatePath)) {
             throw new \Exception("Email template not found: $name");
+        }
+
+        // Ensure the resolved path stays within the templates directory
+        $__realPath = realpath($__templatePath);
+        $__realDir = realpath($__templateDir);
+        if ($__realPath === false || $__realDir === false || strpos($__realPath, $__realDir . DIRECTORY_SEPARATOR) !== 0) {
+            throw new \Exception("Invalid email template path: $name");
         }
 
         // Filter out reserved variable names to prevent injection attacks
@@ -371,118 +385,58 @@ class Mail
     {
         $headers = $this->buildHeaders();
         $body = $this->buildBody();
+        $headerString = implode("\r\n", $headers);
 
         $to = $this->formatRecipients($this->to);
 
-        return mail($to, $this->subject, $body, implode("\r\n", $headers));
+        $result = mail($to, $this->subject, $body, $headerString);
+
+        // Deliver BCC recipients individually so their addresses are never
+        // exposed in a Bcc header seen by other recipients.
+        foreach ($this->bcc as $recipient) {
+            $result = mail($recipient['email'], $this->subject, $body, $headerString) && $result;
+        }
+
+        return $result;
     }
 
     /**
      * Send using SMTP
+     *
+     * Builds the raw RFC 5322 message and delegates the wire protocol to
+     * SmtpClient. Bcc addresses are passed into the envelope recipient list
+     * (RCPT TO) only; buildSmtpHeaders() never emits a Bcc header.
      */
     private function sendSmtp(): bool
     {
-        $host = $this->config['host'];
-        $port = $this->config['port'];
-        $username = $this->config['username'];
-        $password = $this->config['password'];
-        $encryption = $this->config['encryption'];
+        require_once __DIR__ . '/SmtpClient.php';
 
-        // Connect to SMTP server
-        $context = stream_context_create();
-
-        if ($encryption === 'ssl') {
-            $host = 'ssl://' . $host;
-        }
-
-        $socket = @stream_socket_client(
-            "$host:$port",
-            $errno,
-            $errstr,
-            30,
-            STREAM_CLIENT_CONNECT,
-            $context
+        $client = new SmtpClient(
+            $this->config['host'],
+            (int)$this->config['port'],
+            $this->config['username'],
+            $this->config['password'],
+            $this->config['encryption']
         );
 
-        if (!$socket) {
-            throw new \Exception("Failed to connect to SMTP server: $errstr ($errno)");
-        }
+        $message = implode("\r\n", $this->buildSmtpHeaders()) . "\r\n\r\n" . $this->buildBody();
 
-        // Read greeting
-        $this->smtpGetResponse($socket);
-
-        // EHLO
-        $this->smtpCommand($socket, "EHLO " . gethostname());
-
-        // STARTTLS if needed
-        if ($encryption === 'tls') {
-            $this->smtpCommand($socket, "STARTTLS");
-            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-            $this->smtpCommand($socket, "EHLO " . gethostname());
-        }
-
-        // Authenticate
-        if ($username && $password) {
-            $this->smtpCommand($socket, "AUTH LOGIN");
-            $this->smtpCommand($socket, base64_encode($username));
-            $this->smtpCommand($socket, base64_encode($password));
-        }
-
-        // Send email
-        $this->smtpCommand($socket, "MAIL FROM:<{$this->from}>");
-
+        // Envelope recipients: To, then Cc, then Bcc. Bcc is delivered here
+        // only, never as a header, so it stays hidden from other recipients.
+        $recipients = [];
         foreach ($this->to as $recipient) {
-            $this->smtpCommand($socket, "RCPT TO:<{$recipient['email']}>");
+            $recipients[] = $recipient['email'];
         }
         foreach ($this->cc as $recipient) {
-            $this->smtpCommand($socket, "RCPT TO:<{$recipient['email']}>");
+            $recipients[] = $recipient['email'];
         }
         foreach ($this->bcc as $recipient) {
-            $this->smtpCommand($socket, "RCPT TO:<{$recipient['email']}>");
+            $recipients[] = $recipient['email'];
         }
 
-        $this->smtpCommand($socket, "DATA");
-
-        // Send headers and body
-        $message = implode("\r\n", $this->buildHeaders()) . "\r\n\r\n" . $this->buildBody();
-        fwrite($socket, $message . "\r\n.\r\n");
-        $this->smtpGetResponse($socket);
-
-        // Quit
-        $this->smtpCommand($socket, "QUIT");
-        fclose($socket);
+        $client->send($message, $this->from, $recipients);
 
         return true;
-    }
-
-    /**
-     * Send SMTP command
-     */
-    private function smtpCommand($socket, string $command): string
-    {
-        fwrite($socket, $command . "\r\n");
-        return $this->smtpGetResponse($socket);
-    }
-
-    /**
-     * Get SMTP response
-     */
-    private function smtpGetResponse($socket): string
-    {
-        $response = '';
-        while ($line = fgets($socket, 515)) {
-            $response .= $line;
-            if (substr($line, 3, 1) === ' ') {
-                break;
-            }
-        }
-
-        $code = (int)substr($response, 0, 3);
-        if ($code >= 400) {
-            throw new \Exception("SMTP error: $response");
-        }
-
-        return $response;
     }
 
     /**
@@ -531,10 +485,8 @@ class Mail
             $headers[] = "Cc: " . $this->formatRecipients($this->cc);
         }
 
-        // BCC
-        if (!empty($this->bcc)) {
-            $headers[] = "Bcc: " . $this->formatRecipients($this->bcc);
-        }
+        // BCC recipients are delivered via the envelope (SMTP RCPT TO or
+        // individual mail() sends), never as a header, to avoid disclosure.
 
         // Content type
         $boundary = $this->boundary;
@@ -558,6 +510,36 @@ class Mail
     }
 
     /**
+     * Build headers for the SMTP path, adding Subject/To/Date which the
+     * mail() function otherwise supplies separately.
+     */
+    private function buildSmtpHeaders(): array
+    {
+        $headers = $this->buildHeaders();
+        $smtpHeaders = [
+            "Subject: " . $this->encodeHeader($this->subject),
+            "To: " . $this->formatRecipients($this->to),
+            "Date: " . date('r'),
+        ];
+        // Insert right after the From header produced by buildHeaders().
+        array_splice($headers, 1, 0, $smtpHeaders);
+        return $headers;
+    }
+
+    /**
+     * Encode a header value using RFC 2047 when it contains non-ASCII,
+     * with an ASCII-safe fallback when mbstring is unavailable.
+     */
+    private function encodeHeader(string $value): string
+    {
+        $value = $this->sanitizeHeaderValue($value);
+        if (function_exists('mb_encode_mimeheader') && preg_match('/[^\x20-\x7E]/', $value)) {
+            return mb_encode_mimeheader($value, 'UTF-8', 'B', '');
+        }
+        return $value;
+    }
+
+    /**
      * Build email body
      */
     private function buildBody(): string
@@ -572,10 +554,12 @@ class Mail
             $body .= chunk_split(base64_encode($this->body)) . "\r\n";
 
             foreach ($this->attachments as $attachment) {
+                $safeName = $this->sanitizeAttachmentName($attachment['name']);
+                $safeType = $this->sanitizeHeaderValue($attachment['type']);
                 $body .= "--{$boundary}\r\n";
-                $body .= "Content-Type: {$attachment['type']}; name=\"{$attachment['name']}\"\r\n";
+                $body .= "Content-Type: {$safeType}; name=\"{$safeName}\"\r\n";
                 $body .= "Content-Transfer-Encoding: base64\r\n";
-                $body .= "Content-Disposition: attachment; filename=\"{$attachment['name']}\"\r\n\r\n";
+                $body .= "Content-Disposition: attachment; filename=\"{$safeName}\"\r\n\r\n";
                 $body .= chunk_split(base64_encode(file_get_contents($attachment['path']))) . "\r\n";
             }
 
@@ -604,8 +588,41 @@ class Mail
     private function formatRecipients(array $recipients): string
     {
         return implode(', ', array_map(function ($r) {
-            return $r['name'] ? "{$r['name']} <{$r['email']}>" : $r['email'];
+            $name = $this->formatDisplayName($r['name']);
+            return $name !== '' ? "{$name} <{$r['email']}>" : $r['email'];
         }, $recipients));
+    }
+
+    /**
+     * Format a mailbox display name safely: strip control characters,
+     * RFC 2047 encode non-ASCII, and RFC 5322 quote names with specials.
+     */
+    private function formatDisplayName(string $name): string
+    {
+        $name = str_replace(["\r", "\n", "\0"], '', $name);
+        if ($name === '') {
+            return '';
+        }
+        if (function_exists('mb_encode_mimeheader') && preg_match('/[^\x20-\x7E]/', $name)) {
+            return mb_encode_mimeheader($name, 'UTF-8', 'B', '');
+        }
+        if (preg_match('/[<>,";:\\\\]/', $name)) {
+            return '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $name) . '"';
+        }
+        return $name;
+    }
+
+    /**
+     * Sanitize an attachment filename for MIME headers: strip control
+     * characters and double-quotes, RFC 2047 encode non-ASCII.
+     */
+    private function sanitizeAttachmentName(string $name): string
+    {
+        $name = str_replace(["\r", "\n", "\0", '"'], '', $name);
+        if (function_exists('mb_encode_mimeheader') && preg_match('/[^\x20-\x7E]/', $name)) {
+            return mb_encode_mimeheader($name, 'UTF-8', 'B', '');
+        }
+        return $name;
     }
 }
 

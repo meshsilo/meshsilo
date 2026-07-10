@@ -27,13 +27,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
     } else {
+        // Rate limit reset requests per IP and per email to prevent abuse and email bombing
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $ipRate = RateLimiter::check($ip, 'anonymous', 'password_reset_email');
+        $emailRate = RateLimiter::check(strtolower($email), 'anonymous', 'password_reset_email');
+        $rateLimited = !$ipRate['allowed'] || !$emailRate['allowed'];
+
         $db = getDB();
 
-        // Check if user exists with this email
-        $stmt = $db->prepare('SELECT id, username, email FROM users WHERE email = :email');
-        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
-        $result = $stmt->execute();
-        $user = $result->fetchArray(PDO::FETCH_ASSOC);
+        // Skip the lookup and email entirely when rate limited
+        $user = null;
+        if (!$rateLimited) {
+            // Check if user exists with this email
+            $stmt = $db->prepare('SELECT id, username, email FROM users WHERE email = :email');
+            $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+            $result = $stmt->execute();
+            $user = $result->fetchArray(PDO::FETCH_ASSOC);
+        } else {
+            logSecurityWarning('Password reset rate limit exceeded', [
+                'email' => $email,
+                'ip' => $ip
+            ]);
+        }
 
         // Always show success message to prevent email enumeration
         $emailSent = true;
@@ -102,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'error' => $e->getMessage()
                 ]);
             }
-        } else {
+        } elseif (!$rateLimited) {
             // Log attempt for non-existent email (potential enumeration attempt)
             logSecurityWarning('Password reset requested for non-existent email', [
                 'email' => $email,
@@ -156,7 +171,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php endif; ?>
 
                 <div class="auth-footer">
-                    <a href="<?= route('login') ?>" class="form-link">&larr; Back to Login</a>
+                    <a href="<?= route('login') ?>" class="form-link"><i class="fa-solid fa-arrow-left"></i> Back to Login</a>
                 </div>
             </div>
         </div>

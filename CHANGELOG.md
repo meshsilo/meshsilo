@@ -7,14 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-09
+
 ### Added
 - **Plugin System**: Extensible plugin architecture with plugin manager
 - **GraphQL API**: Flexible query language at `/api/graphql`
-- **Model Annotations**: Add notes and markers directly on 3D models
 - **Model Ratings**: Community-driven quality ratings
 - **Approval Workflow**: Model approval system for moderated environments
 - **CLI Optimize Tool**: Performance optimization utility (`cli/optimize.php`)
 - **404 Page**: Custom 404 error page
+- **Office Document Attachments**: Attach office files (DOC, DOCX, XLS, XLSX, PPT, PPTX, ODT, ODS, ODP, RTF, CSV) to models alongside images, PDFs, and text files
 
 ### Security
 - **CSRF Protection**: Double-submit cookie pattern with `X-CSRF-Token` header validation on all state-changing requests
@@ -35,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **QueryBuilder**: `whereRaw()` preserves named placeholder keys instead of renaming them to positional aliases
 - **QueryBuilder**: `increment()`/`decrement()` binds string column values with `PARAM_STR` instead of `PARAM_INT`
 - **Encryption**: `encryptAllFiles()` and `decryptAllFiles()` nullable parameter declarations compatible with PHP 8.5
+- **Scheduler**: cron range-with-step expressions (e.g. `0-30/5`) now honor the step instead of matching the whole range
+- **GraphQL**: selection-set parser handles multi-argument fields and space-separated field lists (previously split on argument commas or collapsed to the first field)
+- **Search**: autocomplete suggestions use the name index (removed a `LOWER()` wrapper) while remaining case-insensitive
+- **Header search**: fixed a `ReferenceError` that broke the suggestions dropdown's `aria-expanded` handling
+- **Accessibility**: status badges, dark-theme primary buttons, and muted text on elevated surfaces now meet WCAG AA contrast
 
 ### Removed
 - **Authentication Methods**: Removed OIDC/SSO, SAML 2.0, LDAP/Active Directory, OAuth2 Provider
@@ -48,12 +55,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **G-code Support**: Removed G-code viewer and slicer integrations
 - **Cost Calculator**: Removed print cost estimation
 - **Mesh Analysis**: Removed mesh repair and volume calculation tools
+- **Dead CSS**: Removed the orphaned model-annotations stylesheet and 38 unused CSS rules
 
 ### Changed
 - Simplified admin interface with focus on core features
 - Streamlined authentication to local accounts and 2FA only
 - Reduced CSS bundle size significantly
 - Updated documentation to reflect current feature set
+- Category and collection pages now paginate instead of rendering every model at once
+- Accessibility: accessible names for icon-only controls and form inputs; `aria-live` on dynamic queue and toast regions
 
 ### Technical Changes
 - **License**: Changed from MIT to AGPL-3.0
@@ -74,6 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All implicit nullable parameters updated for PHP 8.5 compatibility
 - PHPStan level-5 static analysis passes with zero errors
 - `storage/.encryption_key` added to `.gitignore` to prevent accidental key exposure
+- Added SQLite composite/foreign-key indexes previously defined only for MySQL: `model_categories(category_id, model_id)`, `models(parent_id, created_at)`, `models(parent_id, original_path)`, `models(user_id)`, `annotations(model_id)`
+- Eliminated N+1 preview queries on category/collection pages via a single batched first-part lookup
+- Background-tasks queue poll now pauses while the browser tab is hidden; the model-compare viewer pauses hidden WebGL render loops
 
 ## [1.0.5] - 2026-03-09
 

@@ -22,15 +22,15 @@ $result = $db->query('
 
 $categories = [];
 $icons = [
-    'Functional' => '&#9881;',
-    'Decorative' => '&#10022;',
-    'Tools' => '&#9874;',
-    'Gaming' => '&#9918;',
-    'Art' => '&#9733;',
-    'Mechanical' => '&#9211;',
+    'Functional' => 'fa-gear',
+    'Decorative' => 'fa-wand-magic-sparkles',
+    'Tools' => 'fa-hammer',
+    'Gaming' => 'fa-gamepad',
+    'Art' => 'fa-star',
+    'Mechanical' => 'fa-cogs',
 ];
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $row['icon'] = $icons[$row['name']] ?? '&#128193;';
+    $row['icon'] = $icons[$row['name']] ?? 'fa-folder';
     $categories[] = $row;
 }
 
@@ -46,7 +46,7 @@ require_once 'includes/header.php';
             <div class="categories-grid-large">
                 <?php foreach ($categories as $category): ?>
                 <a href="<?= route('category.show', ['id' => $category['id']]) ?>" class="category-card-large" tabindex="0">
-                    <div class="category-icon"><?= $category['icon'] ?></div>
+                    <div class="category-icon"><i class="fa-solid <?= htmlspecialchars($category['icon']) ?>"></i></div>
                     <h2 class="category-name"><?= htmlspecialchars($category['name']) ?></h2>
                     <p class="category-count"><?= $category['count'] ?> model<?= $category['count'] !== 1 ? 's' : '' ?></p>
                 </a>

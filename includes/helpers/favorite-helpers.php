@@ -21,6 +21,7 @@ function isModelFavorited($modelId, $userId = null)
         $stmt->execute([':model_id' => $modelId, ':user_id' => $userId]);
         return $stmt->fetch() !== false;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return false;
     }
 }
@@ -49,6 +50,7 @@ function toggleFavorite($modelId, $userId = null)
             return ['success' => true, 'favorited' => true];
         }
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
@@ -80,19 +82,35 @@ function getUserFavorites($userId = null, $limit = 50)
         }
         return $favorites;
     } catch (Exception $e) {
+        logException($e, ['fn' => __FUNCTION__]);
         return [];
     }
 }
 
-// Get favorite count for a model
-function getModelFavoriteCount($modelId)
+// Get both favorite status and count in a single query
+function getModelFavoriteInfo($modelId, $userId = null)
 {
+    if (!$userId) {
+        $user = getCurrentUser();
+        $userId = $user ? $user['id'] : null;
+    }
+
     try {
         $db = getDB();
-        $stmt = $db->prepare('SELECT COUNT(*) FROM favorites WHERE model_id = :model_id');
-        $stmt->execute([':model_id' => $modelId]);
-        return (int)$stmt->fetchColumn();
+        $stmt = $db->prepare('
+            SELECT
+                COUNT(*) as count,
+                SUM(CASE WHEN user_id = :user_id THEN 1 ELSE 0 END) as is_favorited
+            FROM favorites WHERE model_id = :model_id
+        ');
+        $stmt->execute([':model_id' => $modelId, ':user_id' => $userId ?? 0]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return [
+            'is_favorited' => (bool)($row['is_favorited'] ?? 0),
+            'count' => (int)($row['count'] ?? 0),
+        ];
     } catch (Exception $e) {
-        return 0;
+        logException($e, ['fn' => __FUNCTION__]);
+        return ['is_favorited' => false, 'count' => 0];
     }
 }

@@ -95,9 +95,9 @@ require_once __DIR__ . '/../../includes/header.php';
 <?php require_once __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
 <div class="admin-content">
-    <div class="admin-header">
+    <div class="page-header">
         <h1>Route Debugging</h1>
-        <p class="admin-subtitle">View registered routes, test URL matching, and manage route cache</p>
+        <p>View registered routes, test URL matching, and manage route cache</p>
     </div>
 
     <?php if ($message): ?>
@@ -448,7 +448,7 @@ document.getElementById('test-btn').addEventListener('click', function() {
     }
 
     if (matched) {
-        let html = '<p class="route-test-success">&#10003; Route matched!</p>';
+        let html = '<p class="route-test-success"><i class="fa-solid fa-check"></i> Route matched!</p>';
         html += '<table style="width: 100%; margin-top: 0.5rem;">';
         html += '<tr><td style="width: 100px; color: var(--color-text-muted);">Pattern:</td><td><code>' + matched.pattern + '</code></td></tr>';
         html += '<tr><td style="color: var(--color-text-muted);">Name:</td><td><code>' + (matched.name || '-') + '</code></td></tr>';
@@ -474,7 +474,7 @@ document.getElementById('test-btn').addEventListener('click', function() {
         errorP.className = 'route-test-error';
         var errorCode = document.createElement('code');
         errorCode.textContent = method + ' ' + url;
-        errorP.innerHTML = '&#10007; No matching route found for ';
+        errorP.innerHTML = '<i class="fa-solid fa-xmark"></i> No matching route found for ';
         errorP.appendChild(errorCode);
         resultDiv.innerHTML = '';
         resultDiv.appendChild(errorP);

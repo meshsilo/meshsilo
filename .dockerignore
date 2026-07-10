@@ -20,6 +20,19 @@ storage/db/*.db
 storage/db/config.local.php
 storage/logs/*
 !storage/logs/.gitkeep
+storage/cache/*
+storage/uploads/*
+storage/demo-seed/
+storage/db/*.db-wal
+storage/db/*.db-shm
+
+# Secrets - MUST NOT be baked into an image layer
+.env
+.env.*
+storage/.encryption_key
+
+# Composer dependencies (no production require deps; excluding is safe)
+vendor/
 
 # Documentation (not needed in container)
 *.md

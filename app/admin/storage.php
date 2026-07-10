@@ -19,49 +19,33 @@ $db = getDB();
 // Current storage type
 $storageType = getSetting('storage_type', 'local');
 
-// Calculate storage stats
-$assetsPath = realpath(defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../../storage/assets');
+// Calculate storage stats from DB (avoids slow filesystem scans)
 $dbPath = realpath(DB_PATH);
-
-function getDirectorySize($path) {
-    $size = 0;
-    if (is_dir($path)) {
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)) as $file) {
-            $size += $file->getSize();
-        }
-    }
-    return $size;
-}
-
-// formatBytes is defined in includes/helpers.php
-
-function countFiles($path, $extensions = []) {
-    $count = 0;
-    if (is_dir($path)) {
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)) as $file) {
-            if ($file->isFile()) {
-                if (empty($extensions) || in_array(strtolower($file->getExtension()), $extensions)) {
-                    $count++;
-                }
-            }
-        }
-    }
-    return $count;
-}
-
-$assetsSize = getDirectorySize($assetsPath);
 $dbSize = file_exists($dbPath) ? filesize($dbPath) : 0;
-$totalFiles = countFiles($assetsPath);
-$stlFiles = countFiles($assetsPath, ['stl']);
-$threemfFiles = countFiles($assetsPath, ['3mf']);
 
-// Get model count from database
-$modelCount = $db->querySingle('SELECT COUNT(*) FROM models');
+$storageStats = $db->query("
+    SELECT
+        COUNT(*) as total_files,
+        COALESCE(SUM(file_size), 0) as total_size,
+        SUM(CASE WHEN file_type = 'stl' THEN 1 ELSE 0 END) as stl_count,
+        SUM(CASE WHEN file_type = '3mf' THEN 1 ELSE 0 END) as threemf_count,
+        SUM(CASE WHEN parent_id IS NULL THEN 1 ELSE 0 END) as model_count
+    FROM models
+")->fetch(PDO::FETCH_ASSOC);
+
+$assetsSize = (int)($storageStats['total_size'] ?? 0);
+$totalFiles = (int)($storageStats['total_files'] ?? 0);
+$stlFiles = (int)($storageStats['stl_count'] ?? 0);
+$threemfFiles = (int)($storageStats['threemf_count'] ?? 0);
+$modelCount = (int)($storageStats['model_count'] ?? 0);
 
 // Get storage usage breakdown
 $usageByCategory = getStorageUsageByCategory();
 $totalUsage = getTotalStorageUsage();
 $dedupSavings = getDedupStorageSavings();
+
+// Count unconverted STL parts (parent_id IS NOT NULL = parts, not top-level models)
+$unconvertedStlCount = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE file_type = 'stl'");
 
 // Calculate 3MF conversion savings
 $conversionStats = $db->query('
@@ -127,6 +111,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         } else {
             $error = 'Failed to create backup.';
         }
+    } elseif (isset($_POST['mass_convert_stl'])) {
+        $stmt = $db->prepare("SELECT id FROM models WHERE file_type = 'stl'");
+        $stmt->execute();
+        $queued = 0;
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $partId = (int)$row['id'];
+            // Skip if already queued
+            $check = $db->prepare("SELECT COUNT(*) as cnt FROM jobs WHERE job_class = 'ConvertStlTo3mf' AND status IN ('pending', 'processing') AND payload = :payload");
+            $check->bindValue(':payload', json_encode(['model_id' => $partId]), PDO::PARAM_STR);
+            $checkResult = $check->execute();
+            $already = (int)($checkResult->fetchArray(PDO::FETCH_ASSOC)['cnt'] ?? 0);
+            if ($already === 0) {
+                Queue::push('ConvertStlTo3mf', ['model_id' => $partId], 'conversions');
+                $queued++;
+            }
+        }
+        $message = "Queued $queued STL file(s) for conversion to 3MF.";
     } elseif (isset($_POST['clear_orphans'])) {
         // Find files in assets that aren't in the database
         $orphanCount = 0;
@@ -465,6 +466,13 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <?= csrf_field() ?>
                                 <button type="submit" name="clear_orphans" class="btn btn-secondary">Clean Orphaned Files</button>
                             </form>
+                            <?php if ($unconvertedStlCount > 0): ?>
+                            <form method="post" style="display:inline;" data-confirm="This will queue <?= $unconvertedStlCount ?> STL file(s) for conversion to 3MF. This runs in the background via the job queue. Continue?">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="mass_convert_stl" value="1">
+                                <button type="submit" class="btn btn-secondary">Convert All STL → 3MF (<?= $unconvertedStlCount ?>)</button>
+                            </form>
+                            <?php endif; ?>
                         </div>
                     </details>
                 </div>

@@ -10,6 +10,10 @@ if (!isLoggedIn()) {
 
 requireCsrfJson();
 
+if (!canEdit()) {
+    jsonError('Permission denied', 403);
+}
+
 $user = getCurrentUser();
 $action = $_POST['action'] ?? '';
 $modelIds = isset($_POST['model_ids']) ? array_filter(array_map('intval', (array)$_POST['model_ids'])) : [];

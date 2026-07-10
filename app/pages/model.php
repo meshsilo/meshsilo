@@ -6,6 +6,7 @@ try {
 
 require_once 'includes/dedup.php';
 require_once 'includes/Markdown.php';
+require_once 'includes/ModelPageData.php';
 
 $db = getDB();
 
@@ -18,7 +19,7 @@ if (!$modelId) {
 }
 
 // Get model details
-$stmt = $db->prepare('SELECT id, name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path, part_count, print_type, original_size, file_hash, dedup_path, created_at, updated_at, is_archived, thumbnail_path, dim_x, dim_y, dim_z, dim_unit, user_id, notes, license, download_count, current_version, upload_status FROM models WHERE id = :id');
+$stmt = $db->prepare('SELECT id, name, filename, file_path, file_size, file_type, description, creator, collection, source_url, parent_id, original_path, part_count, print_type, original_size, file_hash, dedup_path, created_at, updated_at, is_archived, thumbnail_path, dim_x, dim_y, dim_z, dim_unit, user_id, notes, license, download_count, current_version, upload_status, nest_folders FROM models WHERE id = :id');
 $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
 $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
@@ -40,234 +41,28 @@ recordModelView($modelId);
 $pageTitle = $model['name'];
 $activePage = 'browse';
 
-// Get tags for this model
-$modelTags = getModelTags($modelId);
-
-// Check if favorited
-$isFavorited = isModelFavorited($modelId);
-$favoriteCount = getModelFavoriteCount($modelId);
-
-// Get categories for this model
-$categories = [];
-try {
-    $stmt = $db->prepare('
-        SELECT c.* FROM categories c
-        JOIN model_categories mc ON c.id = mc.category_id
-        WHERE mc.model_id = :model_id
-        ORDER BY c.name
-    ');
-    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $categories[] = $row;
-    }
-} catch (Exception $e) {
-    logError('Failed to load model categories', ['model_id' => $modelId, 'error' => $e->getMessage()]);
-}
-
-// Get related models
-$relatedModels = getRelatedModels($modelId);
-
-// Get parts if this is a multi-part model
-$parts = [];
-$previewPath = null;
-$previewType = null;
-
-if ($model['part_count'] > 0) {
-    $stmt = $db->prepare('
-        SELECT id, name, filename, file_path, file_size, file_type, print_type, original_size, file_hash, dedup_path, original_path, sort_order, notes, parent_id
-        FROM models
-        WHERE parent_id = :parent_id
-        ORDER BY sort_order ASC, original_path ASC
-    ');
-    $stmt->bindValue(':parent_id', $modelId, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $parts[] = $row;
-    }
-    // Use first part for preview via preview endpoint
-    if (!empty($parts)) {
-        $previewPath = '/preview?id=' . $parts[0]['id'];
-        $previewType = $parts[0]['file_type'];
-    }
-} else {
-    // Single model - use preview endpoint
-    $previewPath = '/preview?id=' . $model['id'];
-    $previewType = $model['file_type'];
-}
-
-// Calculate total model size, conversion savings, and potential savings
-$totalModelSize = 0;
-$stlTotalSize = 0;
-$actualSaved = 0;
-
-if (!empty($parts)) {
-    foreach ($parts as $part) {
-        $totalModelSize += ($part['file_size'] ?? 0);
-        if (($part['file_type'] ?? '') === 'stl') {
-            $stlTotalSize += ($part['file_size'] ?? 0);
-        }
-        // Track actual savings from already-converted parts
-        if (!empty($part['original_size']) && $part['file_type'] === '3mf') {
-            $actualSaved += ($part['original_size'] - $part['file_size']);
-        }
-    }
-} else {
-    $totalModelSize = $model['file_size'] ?? 0;
-    if (($model['file_type'] ?? '') === 'stl') {
-        $stlTotalSize = $model['file_size'] ?? 0;
-    }
-    if (!empty($model['original_size']) && $model['file_type'] === '3mf') {
-        $actualSaved = $model['original_size'] - $model['file_size'];
-    }
-}
-
-// Estimate 3MF conversion savings (~65% compression on STL data)
-$estimatedSavings = ($stlTotalSize > 0) ? (int)($stlTotalSize * 0.65) : 0;
-
-// formatBytes is defined in includes/helpers.php
-
-// Group parts by directory with relative display names
-function groupPartsByDirectory($partsArray) {
-    $grouped = [];
-    $dirs = [];
-
-    // First pass: collect all directories
-    foreach ($partsArray as $part) {
-        $path = $part['original_path'] ?? $part['name'];
-        // Normalize path separators
-        $path = str_replace('\\', '/', $path);
-        $dir = dirname($path);
-        if ($dir === '.') {
-            $dir = 'Root';
-        }
-        $dirs[$dir] = true;
-    }
-
-    // Find common base path (excluding 'Root')
-    $realDirs = [];
-    foreach (array_keys($dirs) as $d) {
-        if ($d !== 'Root') {
-            $realDirs[] = $d;
-        }
-    }
-
-    $basePath = '';
-    if (count($realDirs) > 0) {
-        $pathSegments = [];
-        foreach ($realDirs as $d) {
-            $pathSegments[] = explode('/', $d);
-        }
-        $baseParts = [];
-        if (count($pathSegments) > 0) {
-            $lengths = array_map('count', $pathSegments);
-            $minLen = min($lengths);
-            for ($i = 0; $i < $minLen; $i++) {
-                $segment = $pathSegments[0][$i];
-                $allMatch = true;
-                foreach ($pathSegments as $ps) {
-                    if ($ps[$i] !== $segment) {
-                        $allMatch = false;
-                        break;
-                    }
-                }
-                if ($allMatch) {
-                    $baseParts[] = $segment;
-                } else {
-                    break;
-                }
-            }
-        }
-        $basePath = implode('/', $baseParts);
-    }
-
-    // Second pass: group with relative names
-    foreach ($partsArray as $part) {
-        $path = $part['original_path'] ?? $part['name'];
-        $path = str_replace('\\', '/', $path);
-        $dir = dirname($path);
-        if ($dir === '.') {
-            $dir = 'Root';
-            $displayDir = 'Root';
-        } else {
-            // Strip common base path for display
-            $displayDir = $dir;
-            if ($basePath && strpos($dir, $basePath) === 0) {
-                $displayDir = substr($dir, strlen($basePath));
-                $displayDir = ltrim($displayDir, '/');
-                if ($displayDir === '') {
-                    $displayDir = basename($dir);
-                }
-            }
-        }
-
-        if (!isset($grouped[$dir])) {
-            $grouped[$dir] = ['display' => $displayDir, 'parts' => []];
-        }
-        $grouped[$dir]['parts'][] = $part;
-    }
-
-    return $grouped;
-}
-
-$groupedParts = groupPartsByDirectory($parts);
-
-// Get version history
-$versions = [];
-$versionCount = 0;
-try {
-    $stmt = $db->prepare('
-        SELECT mv.*, u.username as created_by_name
-        FROM model_versions mv
-        LEFT JOIN users u ON mv.created_by = u.id
-        WHERE mv.model_id = :model_id
-        ORDER BY mv.version_number DESC
-    ');
-    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $versions[] = $row;
-    }
-    $versionCount = count($versions);
-} catch (Throwable $e) {
-    // model_versions table may not exist yet
-}
-
-$canManageVersions = false;
-if (isLoggedIn()) {
-    $vUser = getCurrentUser();
-    $canManageVersions = (!empty($model['user_id']) && $model['user_id'] == $vUser['id']) || !empty($vUser['is_admin']) || canEdit();
-}
-
-// Get external links
-$modelLinks = [];
-try {
-    $stmt = $db->prepare('SELECT id, model_id, title, url, link_type, sort_order, created_at FROM model_links WHERE model_id = :model_id ORDER BY sort_order, created_at');
-    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        $modelLinks[] = $row;
-    }
-} catch (Throwable $e) {
-    // model_links table may not exist yet
-}
-
-// Get model attachments (images, PDFs, text files)
-$attachments = ['images' => [], 'documents' => []];
-try {
-    $stmt = $db->prepare('SELECT id, model_id, filename, original_filename, file_path, file_type, file_size, display_order, created_at FROM model_attachments WHERE model_id = :model_id ORDER BY display_order, created_at');
-    $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        if ($row['file_type'] === 'image') {
-            $attachments['images'][] = $row;
-        } else {
-            $attachments['documents'][] = $row;
-        }
-    }
-} catch (Throwable $e) {
-    logError('Failed to load attachments', ['model_id' => $modelId, 'error' => $e->getMessage()]);
-}
+// Assemble supplementary model page data (tags, favorites, categories, parts,
+// sizes, grouped parts, versions, links, attachments). See includes/ModelPageData.php.
+// Extracted from this page unchanged; SQL, helper calls and result shape are identical.
+$data = ModelPageData::gather($model);
+$modelTags = $data['modelTags'];
+$isFavorited = $data['isFavorited'];
+$favoriteCount = $data['favoriteCount'];
+$categories = $data['categories'];
+$relatedModels = $data['relatedModels'];
+$parts = $data['parts'];
+$previewPath = $data['previewPath'];
+$previewType = $data['previewType'];
+$totalModelSize = $data['totalModelSize'];
+$stlTotalSize = $data['stlTotalSize'];
+$actualSaved = $data['actualSaved'];
+$estimatedSavings = $data['estimatedSavings'];
+$groupedParts = $data['groupedParts'];
+$versions = $data['versions'];
+$versionCount = $data['versionCount'];
+$canManageVersions = $data['canManageVersions'];
+$modelLinks = $data['modelLinks'];
+$attachments = $data['attachments'];
 
 // Check for session messages
 $message = '';
@@ -298,6 +93,7 @@ $ogType = 'article';
 
 $needsViewer = true;
 $needsModelPageJs = true;
+$needsTusJs = canUpload();
 require_once 'includes/header.php';
 ?>
 
@@ -361,7 +157,7 @@ require_once 'includes/header.php';
                                 <?php endif; ?>
                                 <?php if (isFeatureEnabled('favorites')): ?>
                                 <button type="button" class="favorite-btn <?= $isFavorited ? 'favorited' : '' ?>" title="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>" aria-label="<?= $isFavorited ? 'Remove from favorites' : 'Add to favorites' ?>">
-                                    <span aria-hidden="true"><?= $isFavorited ? '&#9829;' : '&#9825;' ?></span>
+                                    <span aria-hidden="true"><?= $isFavorited ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>' ?></span>
                                 </button>
                                 <?php endif; ?>
                             </div>
@@ -421,7 +217,7 @@ require_once 'includes/header.php';
                             <a href="<?= route('browse', [], ['tag' => $tag['id']]) ?>" class="model-tag" style="--tag-color: <?= htmlspecialchars($tag['color']) ?>; text-decoration: none;">
                                 <?= htmlspecialchars($tag['name']) ?>
                                 <?php if (canEdit()): ?>
-                                <button type="button" class="model-tag-remove" aria-label="Remove tag" data-tag-id="<?= $tag['id'] ?>" title="Remove tag">&times;</button>
+                                <button type="button" class="model-tag-remove" aria-label="Remove tag" data-tag-id="<?= $tag['id'] ?>" title="Remove tag"><i class="fa-solid fa-xmark"></i></button>
                                 <?php endif; ?>
                             </a>
                             <?php endforeach; ?>
@@ -451,7 +247,7 @@ require_once 'includes/header.php';
                                     <span class="model-link-type type-<?= htmlspecialchars($link['link_type']) ?>"><?= htmlspecialchars($link['link_type']) ?></span>
                                     <a href="<?= htmlspecialchars($link['url']) ?>" target="_blank" rel="noopener noreferrer" class="model-link-title"><?= htmlspecialchars($link['title']) ?></a>
                                     <?php if (canEdit()): ?>
-                                    <button type="button" class="model-link-delete" aria-label="Remove link" title="Remove link">&times;</button>
+                                    <button type="button" class="model-link-delete" aria-label="Remove link" title="Remove link"><i class="fa-solid fa-xmark"></i></button>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -489,9 +285,6 @@ require_once 'includes/header.php';
                         <?php endif; ?>
 
                         <div class="model-actions mt-3">
-                            <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
-                            <button type="button" class="btn btn-secondary btn-small open-share-modal">Share</button>
-                            <?php endif; ?>
                             <?php if (isFeatureEnabled('version_history')): ?>
                             <a href="<?= route('model.versions', ['id' => $model['id']]) ?>" class="btn btn-secondary btn-small">Version History<?php if ($versionCount > 0): ?> (<?= $versionCount ?>)<?php endif; ?></a>
                             <?php if ($canManageVersions): ?>
@@ -590,7 +383,7 @@ require_once 'includes/header.php';
                 <div class="model-parts">
                     <div class="parts-header">
                         <?php if (count($groupedParts) > 1): ?>
-                        <button type="button" class="collapse-all-toggle" title="Collapse/expand all groups" aria-label="Collapse/expand all groups">&#9660;</button>
+                        <button type="button" class="collapse-all-toggle" title="Collapse/expand all groups" aria-label="Collapse/expand all groups"><i class="fa-solid fa-chevron-down"></i></button>
                         <?php endif; ?>
                         <?php if (canEdit() || canDelete()): ?>
                         <input type="checkbox" class="select-all-checkbox" id="select-all-parts" title="Select all parts" aria-label="Select all parts">
@@ -624,7 +417,7 @@ require_once 'includes/header.php';
                         <?php $multiFolder = count($groupedParts) > 1; ?>
                         <?php if ($multiFolder): ?>
                         <h3 class="parts-group-header" tabindex="0" role="button" aria-expanded="<?= $autoCollapse ? 'false' : 'true' ?>">
-                            <span class="folder-toggle" aria-hidden="true"><?= $autoCollapse ? '&#9654;' : '&#9660;' ?></span>
+                            <span class="folder-toggle" aria-hidden="true"><?= $autoCollapse ? '<i class="fa-solid fa-chevron-right"></i>' : '<i class="fa-solid fa-chevron-down"></i>' ?></span>
                             <?php if (canEdit() || canDelete()): ?>
                             <input type="checkbox" class="folder-checkbox" title="Select all parts in this folder" aria-label="Select all parts in this folder">
                             <?php endif; ?>
@@ -659,7 +452,7 @@ require_once 'includes/header.php';
                             <?php foreach ($dirParts as $part): $partIndex++; ?>
                             <div class="part-item<?= ($partIndex > $partLimit && count($dirParts) > $partLimit) ? ' part-hidden' : '' ?>" data-part-id="<?= $part['id'] ?>" data-part-path="/preview?id=<?= $part['id'] ?>" data-part-type="<?= htmlspecialchars($part['file_type']) ?>" data-part-name="<?= htmlspecialchars($part['name']) ?>">
                                 <?php if (canEdit()): ?>
-                                <span class="drag-handle" title="Drag to reorder" aria-hidden="true">&#8942;&#8942;</span>
+                                <span class="drag-handle" title="Drag to reorder" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>
                                 <?php endif; ?>
                                 <?php if (canEdit() || canDelete()): ?>
                                 <input type="checkbox" class="part-checkbox" value="<?= $part['id'] ?>" aria-label="Select <?= htmlspecialchars($part['name']) ?>">
@@ -691,7 +484,7 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                     <div class="dropdown part-actions-dropdown">
                                         <button type="button" class="btn btn-small btn-secondary dropdown-toggle" title="More actions" aria-haspopup="true" aria-expanded="false">
-                                            &#8943;
+                                            <i class="fa-solid fa-ellipsis"></i>
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right" role="menu">
                                             <button type="button" class="dropdown-item calc-dimensions-btn" role="menuitem" data-part-id="<?= $part['id'] ?>">Calculate Dimensions</button>
@@ -748,7 +541,7 @@ require_once 'includes/header.php';
                     <?php if (isFeatureEnabled('attachments') && (!empty($attachments['images']) || !empty($attachments['documents']) || canEdit())): ?>
                     <div class="model-attachments collapsible-section">
                         <h3 class="collapsible-header" tabindex="0" role="button" aria-expanded="true">
-                            <span class="folder-toggle" aria-hidden="true">&#9660;</span>
+                            <span class="folder-toggle" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
                             Attachments
                         </h3>
                         <div class="collapsible-body">
@@ -766,8 +559,8 @@ require_once 'includes/header.php';
                                          data-lightbox-src="<?= htmlspecialchars('/assets/' . $att['file_path']) ?>" data-lightbox-alt="<?= htmlspecialchars($att['original_filename']) ?>"
                                         >
                                     <?php if (canEdit()): ?>
-                                    <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" title="Set as model thumbnail">&#128247;</button>
-                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
+                                    <button type="button" class="attachment-set-thumb" aria-label="Set as model thumbnail" title="Set as model thumbnail"><i class="fa-solid fa-camera"></i></button>
+                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete"><i class="fa-solid fa-xmark"></i></button>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -788,7 +581,7 @@ require_once 'includes/header.php';
                                     </a>
                                     <span class="attachment-doc-size"><?= formatBytes($att['file_size']) ?></span>
                                     <?php if (canEdit()): ?>
-                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete">&times;</button>
+                                    <button type="button" class="attachment-delete" aria-label="Delete attachment" title="Delete"><i class="fa-solid fa-xmark"></i></button>
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
@@ -802,9 +595,9 @@ require_once 'includes/header.php';
 
                         <?php if (canEdit()): ?>
                         <div class="attachment-upload">
-                            <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md" multiple style="display:none" aria-label="Upload attachments">
+                            <input type="file" id="attachment-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.rtf,.csv" multiple style="display:none" aria-label="Upload attachments">
                             <button type="button" class="btn btn-secondary btn-small trigger-attachment-upload">Add Attachment</button>
-                            <span class="attachment-hint">Images, PDFs &amp; Text Files</span>
+                            <span class="attachment-hint">Images, PDFs, Office docs &amp; Text Files</span>
                         </div>
                         <?php endif; ?>
 
@@ -821,7 +614,7 @@ require_once 'includes/header.php';
             <div class="modal-content modal-large">
                 <div class="modal-header">
                     <h3 id="preview-part-name">Part Preview</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div id="part-preview-container" style="width: 100%; height: 400px;"></div>
@@ -829,65 +622,13 @@ require_once 'includes/header.php';
             </div>
         </div>
 
-        <?php if (isLoggedIn() && isFeatureEnabled('share_links')): ?>
-        <!-- Share Modal -->
-        <div id="share-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="share-modal-title" style="display: none;">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h3 id="share-modal-title">Share "<?= htmlspecialchars($model['name']) ?>"</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <!-- Create New Share Link -->
-                    <div class="share-create-section">
-                        <h4>Create Share Link</h4>
-                        <form id="share-link-form" method="post" class="share-form">
-                            <div class="share-form-row">
-                                <div class="form-group">
-                                    <label for="share-expires">Expires In</label>
-                                    <select id="share-expires" class="form-input">
-                                        <option value="">Never</option>
-                                        <option value="1 hour">1 Hour</option>
-                                        <option value="24 hours">24 Hours</option>
-                                        <option value="7 days">7 Days</option>
-                                        <option value="30 days">30 Days</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="share-max-downloads">Max Downloads</label>
-                                    <input type="number" id="share-max-downloads" class="form-input" min="0" placeholder="Unlimited">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="share-password">Password (optional)</label>
-                                <div class="password-wrapper">
-                                    <input type="password" id="share-password" class="form-input" placeholder="Leave empty for no password" autocomplete="off">
-                                    <button type="button" class="password-toggle" aria-label="Show password" title="Show password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Create Share Link</button>
-                        </form>
-                    </div>
-
-                    <!-- Existing Share Links -->
-                    <div class="share-links-section">
-                        <h4>Active Share Links</h4>
-                        <div id="share-links-list" class="share-links-list">
-                            <p class="text-muted">Loading...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
         <?php if (canEdit() && !empty($parts)): ?>
         <!-- Create Folder Modal -->
         <div id="create-folder-modal" class="modal modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-folder-title" style="display: none;">
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3 id="create-folder-title">Create Folder</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <form id="create-folder-form" method="post">
@@ -906,7 +647,7 @@ require_once 'includes/header.php';
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                     <h3 id="move-folder-title">Move to Folder</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div id="move-folder-list" class="folder-picker">
@@ -936,7 +677,7 @@ require_once 'includes/header.php';
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3 id="upload-version-title">Upload New Version</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <form id="upload-version-form" method="post">
@@ -959,7 +700,7 @@ require_once 'includes/header.php';
             <div class="modal-content" style="max-width: 480px;">
                 <div class="modal-header">
                     <h3 id="batch-rename-title">Batch Rename Parts</h3>
-                    <button type="button" class="modal-close" aria-label="Close">&times;</button>
+                    <button type="button" class="modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -997,7 +738,8 @@ require_once 'includes/header.php';
             csrfToken: <?= json_encode(Csrf::getToken()) ?>,
             modelName: <?= json_encode($model['name']) ?>,
             allTags: <?= json_encode(getAllTags()) ?>,
-            updatePartRoute: <?= json_encode(route('actions.update.part')) ?>
+            updatePartRoute: <?= json_encode(route('actions.update.part')) ?>,
+            nestFolders: <?= !empty($model['nest_folders']) ? 'true' : 'false' ?>
         };
         </script>
         <?php endif; ?>

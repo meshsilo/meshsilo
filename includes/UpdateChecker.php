@@ -102,10 +102,9 @@ class UpdateChecker
         $response = @file_get_contents($url, false, $context);
 
         if ($response === false) {
-            // Check if it's a 404 (no releases yet)
-            /** @phpstan-ignore isset.variable */
-            if (isset($http_response_header)) {
-                foreach ($http_response_header as $header) {
+            // Check if it's a 404 (no releases yet) - requires PHP 8.5+
+            if (function_exists('http_get_last_response_headers')) {
+                foreach (http_get_last_response_headers() ?? [] as $header) {
                     if (strpos($header, '404') !== false) {
                         return null; // No releases yet
                     }

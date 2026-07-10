@@ -8,6 +8,14 @@ class LazyModelLoader {
     constructor() {
         this.observer = null;
         this.loadedViewers = new WeakSet();
+        this.pendingElements = new Set();
+        // LRU cap on live WebGL contexts. Browsers allow only ~16 total, so keep a
+        // bounded working set and dispose the least-recently-visible viewer when a
+        // new thumbnail needs a context (it re-creates when scrolled back). Only
+        // models without a static thumbnail use a live viewer, so this is a safety net.
+        this.viewers = new Map();   // thumbnail -> { viewer, container }; insertion order = LRU
+        this.visible = new Set();   // thumbnails currently in the viewport (never evicted)
+        this.MAX_LIVE_VIEWERS = 12;
         this.init();
     }
 
@@ -21,15 +29,67 @@ class LazyModelLoader {
         document.querySelectorAll('.model-thumbnail[data-model-url], .model-list-thumbnail[data-model-url], .model-detail-thumbnail[data-model-url]').forEach(el => {
             this.observer.observe(el);
         });
+
+        // THREE.js loads async from CDN - retry elements that fired before it was ready
+        if (!window.THREE_READY) {
+            window.addEventListener('three-ready', () => this.retryFailed(), { once: true });
+        }
+    }
+
+    retryFailed() {
+        this.pendingElements.forEach(el => {
+            this.observer.unobserve(el);
+            this.observer.observe(el);
+        });
+        this.pendingElements.clear();
     }
 
     handleIntersection(entries) {
         entries.forEach(entry => {
-            if (entry.isIntersecting && !this.loadedViewers.has(entry.target)) {
-                this.loadedViewers.add(entry.target);
-                this.loadViewer(entry.target);
+            if (entry.isIntersecting) {
+                this.visible.add(entry.target);
+                if (this.viewers.has(entry.target)) {
+                    this.touch(entry.target); // already live: mark most-recently-used
+                } else if (!this.loadedViewers.has(entry.target)) {
+                    this.loadedViewers.add(entry.target);
+                    this.loadViewer(entry.target);
+                }
+            } else {
+                this.visible.delete(entry.target);
             }
         });
+    }
+
+    // Move a live viewer to the most-recently-used position (end of the Map).
+    touch(thumbnail) {
+        const entry = this.viewers.get(thumbnail);
+        if (entry) {
+            this.viewers.delete(thumbnail);
+            this.viewers.set(thumbnail, entry);
+        }
+    }
+
+    // At the cap, dispose the oldest off-screen viewer to free a WebGL context.
+    evictIfNeeded() {
+        if (this.viewers.size < this.MAX_LIVE_VIEWERS) return;
+        for (const [thumb, entry] of this.viewers) {
+            if (this.visible.has(thumb)) continue; // never tear down a visible viewer
+            this.disposeViewer(thumb, entry);
+            return;
+        }
+        // All live viewers are on-screen: allow going slightly over rather than
+        // dispose something the user is looking at.
+    }
+
+    // Tear down a live viewer; its card re-creates one when scrolled back into view.
+    disposeViewer(thumbnail, entry) {
+        try { entry.viewer.dispose(); } catch (e) { /* already gone */ }
+        if (entry.container && entry.container.parentNode) {
+            entry.container.remove();
+        }
+        this.viewers.delete(thumbnail);
+        this.loadedViewers.delete(thumbnail);
+        thumbnail.classList.remove('has-viewer', 'loaded');
     }
 
     loadViewer(thumbnail) {
@@ -40,6 +100,8 @@ class LazyModelLoader {
         // Check if required libraries are available
         if (typeof THREE === 'undefined' || typeof window.ModelViewer === 'undefined') {
             DEBUG && console.warn('3D viewer libraries not loaded');
+            this.loadedViewers.delete(thumbnail);
+            this.pendingElements.add(thumbnail);
             return;
         }
 
@@ -67,6 +129,9 @@ class LazyModelLoader {
             const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light';
             const bgColor = isLightTheme ? 0xf8fafc : 0x1e293b;
 
+            // Free a WebGL context slot (LRU) before creating a new one.
+            this.evictIfNeeded();
+
             // Initialize viewer - wrap in try-catch for WebGL errors
             let viewer;
             try {
@@ -75,6 +140,8 @@ class LazyModelLoader {
                     interactive: false,
                     backgroundColor: bgColor
                 });
+                // Track for LRU eviction (newest = most-recently-used, at the Map end).
+                this.viewers.set(thumbnail, { viewer: viewer, container: viewerContainer });
             } catch (e) {
                 DEBUG && console.warn('WebGL not available for thumbnail:', e.message);
                 thumbnail.classList.remove('loading', 'lazy-load-placeholder');
@@ -90,6 +157,7 @@ class LazyModelLoader {
                 thumbnail.classList.add('load-error');
                 viewer.dispose();
                 viewerContainer.remove();
+                this.viewers.delete(thumbnail);
             }, 15000); // 15 second timeout
 
             viewer.loadModel(url, fileType)
@@ -105,6 +173,7 @@ class LazyModelLoader {
                     thumbnail.classList.add('load-error');
                     viewer.dispose();
                     viewerContainer.remove();
+                    this.viewers.delete(thumbnail);
                 });
         }, 200); // 200ms delay
     }
@@ -138,117 +207,6 @@ class ScrollAnimations {
             el.classList.add('animate-target');
             this.observer.observe(el);
         });
-    }
-}
-
-// =====================
-// Search Functionality
-// =====================
-class SearchHandler {
-    constructor() {
-        this.searchBar = document.querySelector('.search-bar');
-        this.searchResults = null;
-        this.debounceTimer = null;
-        this.init();
-    }
-
-    init() {
-        if (!this.searchBar) return;
-
-        // Create search results dropdown
-        this.searchResults = document.createElement('div');
-        this.searchResults.className = 'search-results';
-        this.searchBar.parentNode.style.position = 'relative';
-        this.searchBar.parentNode.appendChild(this.searchResults);
-
-        // Bind events
-        this.searchBar.addEventListener('input', (e) => this.handleInput(e));
-        this.searchBar.addEventListener('focus', () => this.showResults());
-        this.searchBar.addEventListener('keydown', (e) => this.handleKeydown(e));
-        document.addEventListener('click', (e) => this.handleClickOutside(e));
-    }
-
-    handleInput(e) {
-        const query = e.target.value.trim();
-
-        clearTimeout(this.debounceTimer);
-
-        if (query.length < 2) {
-            this.hideResults();
-            return;
-        }
-
-        this.debounceTimer = setTimeout(() => this.search(query), 300);
-    }
-
-    async search(query) {
-        try {
-            const response = await fetch(`/actions/search-suggest?q=${encodeURIComponent(query)}&limit=5`);
-            if (!response.ok) throw new Error('Search failed');
-
-            const results = await response.json();
-            this.renderResults(results, query);
-        } catch (err) {
-            DEBUG && console.warn('Search error:', err);
-            this.searchResults.innerHTML = '<div class="search-no-results">Search unavailable</div>';
-            this.showResults();
-        }
-    }
-
-    renderResults(results, query) {
-        if (!results || results.length === 0) {
-            this.searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
-            this.showResults();
-            return;
-        }
-
-        const html = results.map(model => `
-            <a href="${SILO_MODEL_BASE}${model.id}" class="search-result-item">
-                <span class="search-result-name">${this.highlight(model.name, query)}</span>
-                ${model.creator ? `<span class="search-result-creator">by ${this.escapeHtml(model.creator)}</span>` : ''}
-            </a>
-        `).join('');
-
-        this.searchResults.innerHTML = html + `
-            <a href="/browse?q=${encodeURIComponent(query)}" class="search-view-all">
-                View all results
-            </a>
-        `;
-        this.showResults();
-    }
-
-    highlight(text, query) {
-        const escaped = escapeHtml(text);
-        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return escaped.replace(regex, '<mark>$1</mark>');
-    }
-
-    handleKeydown(e) {
-        if (e.key === 'Escape') {
-            this.hideResults();
-            this.searchBar.blur();
-        } else if (e.key === 'Enter') {
-            const query = this.searchBar.value.trim();
-            if (query) {
-                window.location.href = `/browse?q=${encodeURIComponent(query)}`;
-            }
-        }
-    }
-
-    handleClickOutside(e) {
-        if (!this.searchBar.contains(e.target) && !this.searchResults.contains(e.target)) {
-            this.hideResults();
-        }
-    }
-
-    showResults() {
-        if (this.searchResults.innerHTML) {
-            this.searchResults.classList.add('active');
-        }
-    }
-
-    hideResults() {
-        this.searchResults.classList.remove('active');
     }
 }
 
@@ -289,7 +247,7 @@ class ToastManager {
         closeBtn.type = 'button';
         closeBtn.className = 'toast-close';
         closeBtn.setAttribute('aria-label', 'Close');
-        closeBtn.innerHTML = '&times;';
+        closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
 
         toast.appendChild(messageSpan);
         toast.appendChild(closeBtn);
@@ -447,7 +405,7 @@ class KeyboardShortcuts {
             const link = card.querySelector('a[href*="/model/"]') || card;
             const modelId = card.dataset.modelId;
             if (modelId) {
-                window.location.href = SILO_MODEL_BASE + modelId;
+                window.location.href = window.SiloConfig.modelBase + modelId;
             } else if (link.href) {
                 window.location.href = link.href;
             }
@@ -541,7 +499,7 @@ class BackToTop {
     constructor() {
         this.btn = document.createElement('button');
         this.btn.className = 'back-to-top';
-        this.btn.innerHTML = '&#8679;';
+        this.btn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
         this.btn.title = 'Back to top';
         this.btn.setAttribute('aria-label', 'Scroll to top');
         this.btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
@@ -555,29 +513,8 @@ class BackToTop {
 // =====================
 // Modal Focus Trap
 // =====================
-window.trapFocus = function(modal) {
-    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    first.focus();
-    modal._focusTrapHandler = function(e) {
-        if (e.key !== 'Tab') return;
-        if (e.shiftKey) {
-            if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-        } else {
-            if (document.activeElement === last) { e.preventDefault(); first.focus(); }
-        }
-    };
-    modal.addEventListener('keydown', modal._focusTrapHandler);
-};
-
-window.releaseFocus = function(modal) {
-    if (modal._focusTrapHandler) {
-        modal.removeEventListener('keydown', modal._focusTrapHandler);
-        delete modal._focusTrapHandler;
-    }
-};
+// window.trapFocus / window.releaseFocus relocated to public/js/ui-common.js
+// (loaded before main.js in includes/header.php).
 
 // =====================
 // Initialize Everything
@@ -587,7 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.siloUI = {
         lazyLoader: new LazyModelLoader(),
         scrollAnimations: new ScrollAnimations(),
-        search: new SearchHandler(),
         toasts: new ToastManager(),
         cardEffects: new CardEffects(),
         keyboard: new KeyboardShortcuts(),
@@ -627,12 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Expose toast function globally for use in other scripts
-window.showToast = (message, type, duration) => {
-    if (window.siloUI?.toasts) {
-        window.siloUI.toasts.show(message, type, duration);
-    }
-};
+// window.showToast relocated to public/js/ui-common.js
+// (loaded before main.js in includes/header.php).
 
 // Global batch-apply helper for bulk operations
 window.batchApply = async function(action, extraFields, options = {}) {
@@ -669,16 +601,12 @@ window.batchApply = async function(action, extraFields, options = {}) {
     }
 };
 
-// Global HTML escaping utility
-window.escapeHtml = function(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-};
+// window.escapeHtml relocated to public/js/ui-common.js
+// (loaded before main.js in includes/header.php).
 
 // Password visibility toggle (delegated)
-const _eyeOpen = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-const _eyeClosed = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+const _eyeOpen = '<i class="fa-solid fa-eye"></i>';
+const _eyeClosed = '<i class="fa-solid fa-eye-slash"></i>';
 function togglePasswordVisibility(btn) {
     const input = btn.parentElement.querySelector('input');
     if (!input) return;

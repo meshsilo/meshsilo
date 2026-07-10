@@ -13,7 +13,7 @@ $pageTitle = 'Statistics';
 $activePage = 'admin';
 $adminPage = 'stats';
 
-$db = getDB();
+$statsService = new StatsService();
 
 $message = '';
 $messageType = 'success';
@@ -29,123 +29,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
     if ($action === 'delete_missing') {
         // Delete a single missing file entry from database
         $modelId = (int)($_POST['model_id'] ?? 0);
-        if ($modelId) {
-            $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
-            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
-            $stmt->execute();
+        if ($statsService->deleteMissing($modelId)) {
             $message = 'Removed missing file entry from database.';
-            logInfo('Removed missing file from database', ['model_id' => $modelId]);
         }
     } elseif ($action === 'delete_all_missing') {
         // Delete all missing file entries (parts with missing files)
-        // Process in batches to avoid memory exhaustion
-        $batchSize = 100;
-        $offset = 0;
-        $deletedCount = 0;
-
-        while (true) {
-            // Use prepared statement with parameter binding for LIMIT/OFFSET to prevent SQL injection
-            $stmt = $db->prepare("SELECT id, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT :limit OFFSET :offset");
-            $stmt->bindValue(':limit', $batchSize, PDO::PARAM_INT);
-            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-            $result = $stmt->execute();
-            $hasRows = false;
-            $idsToDelete = [];
-
-            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-                $hasRows = true;
-                // Skip parent models (ZIP containers) - they don't have actual files
-                if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
-                    continue;
-                }
-                $filePath = getAbsoluteFilePath($row);
-                if (!file_exists($filePath) || !is_file($filePath)) {
-                    $idsToDelete[] = $row['id'];
-                }
-            }
-
-            // Delete the missing entries in this batch
-            foreach ($idsToDelete as $id) {
-                // Get parent_id to update part count later
-                $stmt = $db->prepare('SELECT parent_id FROM models WHERE id = :id');
-                $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-                $parentResult = $stmt->execute();
-                $parentRow = $parentResult->fetchArray(PDO::FETCH_ASSOC);
-
-                $stmt = $db->prepare('DELETE FROM models WHERE id = :id');
-                $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-                $stmt->execute();
-
-                // Update parent's part count if this was a child
-                if ($parentRow && $parentRow['parent_id']) {
-                    $countStmt = $db->prepare('SELECT COUNT(*) FROM models WHERE parent_id = :pid');
-                    $countStmt->bindValue(':pid', $parentRow['parent_id'], PDO::PARAM_INT);
-                    $countStmt->execute();
-                    $partCount = (int)$countStmt->fetchColumn();
-                    $stmt = $db->prepare('UPDATE models SET part_count = :count WHERE id = :id');
-                    $stmt->bindValue(':count', $partCount, PDO::PARAM_INT);
-                    $stmt->bindValue(':id', $parentRow['parent_id'], PDO::PARAM_INT);
-                    $stmt->execute();
-                }
-
-                $deletedCount++;
-            }
-
-            if (!$hasRows) break;
-            // Only advance offset by rows NOT deleted — deleted rows shift subsequent rows
-            $offset += $batchSize - count($idsToDelete);
-        }
-
+        $deletedCount = $statsService->deleteAllMissing();
         $message = "Removed $deletedCount missing file entries from database.";
-        logInfo('Removed all missing files from database', ['count' => $deletedCount]);
     } elseif ($action === 'delete_orphan') {
         // Delete a single orphaned file from disk
         $filename = $_POST['filename'] ?? '';
-        if ($filename && !str_contains($filename, '..') && !str_contains($filename, '/')) {
-            $filePath = UPLOAD_PATH . $filename;
-            if (file_exists($filePath) && is_file($filePath)) {
-                unlink($filePath);
-                $message = 'Deleted orphaned file from disk.';
-                logInfo('Deleted orphaned file', ['filename' => $filename]);
-            }
+        if ($statsService->deleteOrphan($filename)) {
+            $message = 'Deleted orphaned file from disk.';
         }
     } elseif ($action === 'delete_all_orphans') {
         // Delete all orphaned files from disk
-        // Use database queries instead of loading all filenames into memory
-        $assetsPath = realpath(UPLOAD_PATH);
-        if ($assetsPath && is_dir($assetsPath)) {
-            $deletedCount = 0;
-            $iterator = new DirectoryIterator($assetsPath);
-            foreach ($iterator as $file) {
-                if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-                    // Check if file exists in database
-                    $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
-                    $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
-                    $result = $stmt->execute();
-                    $row = $result->fetchArray(PDO::FETCH_ASSOC);
-
-                    if ($row['count'] == 0) {
-                        unlink($file->getPathname());
-                        $deletedCount++;
-                    }
-                }
-            }
+        $deletedCount = $statsService->deleteAllOrphans();
+        if ($deletedCount !== null) {
             $message = "Deleted $deletedCount orphaned files from disk.";
-            logInfo('Deleted all orphaned files', ['count' => $deletedCount]);
         }
     } elseif ($action === 'calculate_hashes') {
         // Calculate missing file hashes
-        $result = calculateMissingHashes();
-        $calculated = is_array($result) ? ($result['calculated'] ?? 0) : (int)$result;
-        $errors = is_array($result) ? ($result['errors'] ?? 0) : 0;
-        $message = "Calculated hashes for {$calculated} files" . ($errors > 0 ? " ({$errors} errors)" : '') . '.';
+        $hashResult = $statsService->calculateHashes();
+        $message = "Calculated hashes for {$hashResult['calculated']} files" . ($hashResult['errors'] > 0 ? " ({$hashResult['errors']} errors)" : '') . '.';
     } elseif ($action === 'recalculate_3mf_hashes') {
         // Recalculate 3MF hashes using content-based hashing
-        $count = recalculate3mfHashes();
+        $count = $statsService->recalculate3mfHashes();
         $message = "Recalculated content-based hashes for $count 3MF files.";
     } elseif ($action === 'run_dedup_scan') {
         // Run deduplication scan
-        $result = runDeduplicationScan();
+        $result = $statsService->runDeduplicationScan();
         if ($result['success']) {
             $message = "Deduplication complete: {$result['hashes_processed']} duplicate sets processed, {$result['files_deleted']} files removed, " . formatBytes($result['space_saved']) . " saved.";
         } else {
@@ -154,22 +67,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         }
     } elseif ($action === 'run_dedup_cleanup') {
         // Run cleanup scan (migrate single-reference files back)
-        $result = runDedupCleanupScan();
+        $result = $statsService->runDedupCleanupScan();
         if ($result['success']) {
             $message = "Cleanup complete: {$result['migrated']} files migrated back to original locations.";
         }
     } elseif ($action === 'compress_all_pdfs') {
         // Retroactively dispatch OptimizePdf jobs for every PDF attachment
-        // that hasn't already been compressed. The job itself handles the
-        // "skip if already flagged" check, but we filter here too to keep
-        // the queue slim.
-        $queued = 0;
-        $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'pdf' AND (pdf_compressed IS NULL OR pdf_compressed = 0)");
-        $result = $stmt->execute();
-        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            Queue::push('OptimizePdf', ['id' => (int)$row['id']], 'pdfs');
-            $queued++;
-        }
+        // that hasn't already been compressed.
+        $queued = $statsService->queueAllPdfCompression();
         if ($queued > 0) {
             $message = "Queued $queued PDF(s) for compression. Processing runs in the background.";
         } else {
@@ -177,26 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         }
     } elseif ($action === 'convert_all_images_webp') {
         // Retroactively dispatch OptimizeImage jobs for all unconverted JPEG/PNG
-        // attachments and model thumbnails. Conversion happens in the background
-        // queue; the worker handles them gradually.
-        $queued = 0;
-
-        // Image attachments still in PNG/JPG/JPEG format
-        $stmt = $db->prepare("SELECT id FROM model_attachments WHERE file_type = 'image' AND (LOWER(file_path) LIKE '%.png' OR LOWER(file_path) LIKE '%.jpg' OR LOWER(file_path) LIKE '%.jpeg')");
-        $result = $stmt->execute();
-        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            Queue::push('OptimizeImage', ['type' => 'attachment', 'id' => (int)$row['id']], 'images');
-            $queued++;
-        }
-
-        // Model thumbnails still in PNG/JPG/JPEG format
-        $stmt = $db->prepare("SELECT id FROM models WHERE thumbnail_path IS NOT NULL AND (LOWER(thumbnail_path) LIKE '%.png' OR LOWER(thumbnail_path) LIKE '%.jpg' OR LOWER(thumbnail_path) LIKE '%.jpeg')");
-        $result = $stmt->execute();
-        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            Queue::push('OptimizeImage', ['type' => 'thumbnail', 'model_id' => (int)$row['id']], 'images');
-            $queued++;
-        }
-
+        // attachments and model thumbnails.
+        $queued = $statsService->queueAllImageWebpConversion();
         if ($queued > 0) {
             $message = "Queued $queued image(s) for WebP conversion. Conversions run in the background &mdash; check the queue status page for progress.";
         } else {
@@ -205,238 +92,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
     }
 }
 
-// Get model count
-$result = $db->query('SELECT COUNT(*) as count FROM models');
-$modelCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-
-// Get total storage from database
-$result = $db->query('SELECT SUM(file_size) as total, AVG(file_size) as avg FROM models');
-$row = $result->fetchArray(PDO::FETCH_ASSOC);
-$totalStorageDB = $row['total'] ?? 0;
-$avgModelSize = $row['avg'] ?? 0;
-
-// Get actual storage from filesystem
-$assetsPath = realpath(UPLOAD_PATH);
-$actualStorage = 0;
-$fileCount = 0;
-if ($assetsPath && is_dir($assetsPath)) {
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($assetsPath, RecursiveDirectoryIterator::SKIP_DOTS)
-    );
-    foreach ($iterator as $file) {
-        if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-            $actualStorage += $file->getSize();
-            $fileCount++;
-        }
-    }
-}
-
-// Get disk space info
-$diskFree = disk_free_space($assetsPath ?: '.');
-$diskTotal = disk_total_space($assetsPath ?: '.');
-$diskUsedPercent = $diskTotal > 0 ? (($diskTotal - $diskFree) / $diskTotal) * 100 : 0;
-
-// Get database file size
-if (method_exists($db, 'getType') && $db->getType() === 'mysql') {
-    try {
-        $result = $db->querySingle("SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = DATABASE()");
-        $dbSize = $result ? (int)$result : 0;
-    } catch (Exception $e) {
-        $dbSize = 0;
-    }
-} else {
-    $dbSize = file_exists(DB_PATH) ? filesize(DB_PATH) : 0;
-}
-
-// Get user stats
-$result = $db->query('SELECT COUNT(*) as total, SUM(is_admin) as admins FROM users');
-$userStats = $result->fetchArray(PDO::FETCH_ASSOC);
-$totalUsers = $userStats['total'] ?? 0;
-$adminUsers = $userStats['admins'] ?? 0;
-
-// Get models by file type (exclude parent models/ZIP containers which are just organizational entries)
-$result = $db->query('SELECT file_type, COUNT(*) as count, SUM(file_size) as size FROM models WHERE NOT (file_type = "zip" AND part_count > 0) GROUP BY file_type ORDER BY count DESC');
-$fileTypes = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $fileTypes[] = $row;
-}
-
-// Get models by category
-$result = $db->query('
-    SELECT c.name, COUNT(mc.model_id) as count
-    FROM categories c
-    LEFT JOIN model_categories mc ON c.id = mc.category_id
-    GROUP BY c.id
-    ORDER BY count DESC
-');
-$categoryStats = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $categoryStats[] = $row;
-}
-
-// Get uncategorized models count
-$result = $db->query('
-    SELECT COUNT(*) as count FROM models m
-    WHERE NOT EXISTS (SELECT 1 FROM model_categories mc WHERE mc.model_id = m.id)
-');
-$uncategorizedCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-
-// Get models without source URL
-$result = $db->query('SELECT COUNT(*) as count FROM models WHERE source_url IS NULL OR source_url = ""');
-$noSourceCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-
-// Get models by collection
-$result = $db->query('
-    SELECT collection, COUNT(*) as count, SUM(file_size) as size
-    FROM models
-    WHERE collection IS NOT NULL AND collection != ""
-    GROUP BY collection
-    ORDER BY count DESC
-    LIMIT 10
-');
-$collectionStats = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $collectionStats[] = $row;
-}
-
-// Get top creators
-$result = $db->query('
-    SELECT creator, COUNT(*) as count, SUM(file_size) as size
-    FROM models
-    WHERE creator IS NOT NULL AND creator != ""
-    GROUP BY creator
-    ORDER BY count DESC
-    LIMIT 10
-');
-$creatorStats = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $creatorStats[] = $row;
-}
-
-// Get recent uploads (last 7 days)
-$dbType = $db->getType();
-if ($dbType === 'mysql') {
-    $result = $db->query('
-        SELECT DATE(created_at) as date, COUNT(*) as count
-        FROM models
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY DATE(created_at)
-        ORDER BY date DESC
-    ');
-} else {
-    $result = $db->query('
-        SELECT DATE(created_at) as date, COUNT(*) as count
-        FROM models
-        WHERE created_at >= datetime("now", "-7 days")
-        GROUP BY DATE(created_at)
-        ORDER BY date DESC
-    ');
-}
-$recentUploads = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $recentUploads[] = $row;
-}
-
-// Get monthly upload trends (last 12 months)
-if ($dbType === 'mysql') {
-    $result = $db->query('
-        SELECT DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as count, SUM(file_size) as size
-        FROM models
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-        GROUP BY DATE_FORMAT(created_at, "%Y-%m")
-        ORDER BY month DESC
-    ');
-} else {
-    $result = $db->query('
-        SELECT strftime("%Y-%m", created_at) as month, COUNT(*) as count, SUM(file_size) as size
-        FROM models
-        WHERE created_at >= datetime("now", "-12 months")
-        GROUP BY strftime("%Y-%m", created_at)
-        ORDER BY month DESC
-    ');
-}
-$monthlyUploads = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $monthlyUploads[] = $row;
-}
-
-// Get conversion statistics
-$result = $db->query('
-    SELECT
-        COUNT(*) as converted_count,
-        SUM(original_size) as total_original_size,
-        SUM(file_size) as total_converted_size,
-        SUM(original_size - file_size) as total_savings
-    FROM models
-    WHERE original_size IS NOT NULL AND original_size > 0
-');
-$conversionStats = $result->fetchArray(PDO::FETCH_ASSOC);
-
-// Get count of STL files that could be converted
-$result = $db->query('SELECT COUNT(*) as count FROM models WHERE file_type = "stl"');
-$stlCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-
-// Get oldest and newest models
-$result = $db->query('SELECT name, created_at FROM models ORDER BY created_at ASC LIMIT 1');
-$oldestModel = $result->fetchArray(PDO::FETCH_ASSOC);
-
-$result = $db->query('SELECT name, created_at FROM models ORDER BY created_at DESC LIMIT 1');
-$newestModel = $result->fetchArray(PDO::FETCH_ASSOC);
-
-// Get largest models
-$result = $db->query('SELECT name, file_size, file_type FROM models ORDER BY file_size DESC LIMIT 5');
-$largestModels = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    $largestModels[] = $row;
-}
-
-// Check for missing files (files in DB but not on disk)
-// Limit to first 100 to avoid memory issues on large databases
-$result = $db->query('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT 100');
-$missingFiles = [];
-while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    // Skip parent models (ZIP containers) - they don't have actual files
-    if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
-        continue;
-    }
-    $filePath = getAbsoluteFilePath($row);
-    if (!file_exists($filePath) || !is_file($filePath)) {
-        $missingFiles[] = $row;
-    }
-}
-
-// Check for orphaned files (files on disk but not in DB)
-// Limit to first 100 to avoid memory issues
-$orphanedFiles = [];
-if ($assetsPath && is_dir($assetsPath)) {
-    $iterator = new DirectoryIterator($assetsPath);
-    $count = 0;
-    foreach ($iterator as $file) {
-        if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-            // Check if file exists in database
-            $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
-            $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
-            $result = $stmt->execute();
-            $row = $result->fetchArray(PDO::FETCH_ASSOC);
-
-            if ($row['count'] == 0) {
-                $orphanedFiles[] = [
-                    'filename' => $file->getFilename(),
-                    'size' => $file->getSize()
-                ];
-                $count++;
-                if ($count >= 100) break; // Limit to 100 orphaned files
-            }
-        }
-    }
-}
-
-// Get deduplication statistics
-$dedupStats = getDeduplicationStats();
-
-// Count files without hashes
-$result = $db->query('SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = "") AND file_path IS NOT NULL');
-$filesWithoutHash = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
+// Gather all display statistics via the service (read-only queries)
+$stats = $statsService->getDisplayStats();
+$modelCount = $stats['modelCount'];
+$totalParts = $stats['totalParts'];
+$actualStorage = $stats['actualStorage'];
+$fileCount = $stats['fileCount'];
+$uncategorizedCount = $stats['uncategorizedCount'];
+$noSourceCount = $stats['noSourceCount'];
+$avgModelSize = $stats['avgModelSize'];
+$diskFree = $stats['diskFree'];
+$diskTotal = $stats['diskTotal'];
+$diskUsedPercent = $stats['diskUsedPercent'];
+$dbSize = $stats['dbSize'];
+$totalUsers = $stats['totalUsers'];
+$adminUsers = $stats['adminUsers'];
+$fileTypes = $stats['fileTypes'];
+$categoryStats = $stats['categoryStats'];
+$collectionStats = $stats['collectionStats'];
+$creatorStats = $stats['creatorStats'];
+$recentUploads = $stats['recentUploads'];
+$monthlyUploads = $stats['monthlyUploads'];
+$conversionStats = $stats['conversionStats'];
+$stlCount = $stats['stlCount'];
+$oldestModel = $stats['oldestModel'];
+$newestModel = $stats['newestModel'];
+$largestModels = $stats['largestModels'];
+$missingFiles = $stats['missingFiles'];
+$orphanedFiles = $stats['orphanedFiles'];
+$dedupStats = $stats['dedupStats'];
+$filesWithoutHash = $stats['filesWithoutHash'];
+$unconvertedAttachments = $stats['unconvertedAttachments'];
+$unconvertedThumbnails = $stats['unconvertedThumbnails'];
+$totalUnconverted = $stats['totalUnconverted'];
+$uncompressedPdfs = $stats['uncompressedPdfs'];
+$compressedPdfs = $stats['compressedPdfs'];
 
 // formatBytes is defined in includes/helpers.php
 
@@ -458,20 +148,20 @@ require_once __DIR__ . '/../../includes/header.php';
 
             <div class="stats-grid">
                 <div class="stat-card stat-card-large">
-                    <div class="stat-icon">&#9653;</div>
+                    <div class="stat-icon"><i class="fa-solid fa-cube"></i></div>
                     <div class="stat-value"><?= number_format($modelCount) ?></div>
-                    <div class="stat-label">Total Models</div>
+                    <div class="stat-label">Models<?= $totalParts > 0 ? " ($totalParts parts)" : '' ?></div>
                 </div>
 
                 <div class="stat-card stat-card-large">
-                    <div class="stat-icon">&#128190;</div>
-                    <div class="stat-value"><?= formatBytes($totalStorageDB) ?></div>
-                    <div class="stat-label">Storage Used</div>
+                    <div class="stat-icon"><i class="fa-solid fa-hard-drive"></i></div>
+                    <div class="stat-value"><?= formatBytes($actualStorage) ?></div>
+                    <div class="stat-label">Storage Used (<?= number_format($fileCount) ?> files)</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-value"><?= formatBytes($avgModelSize) ?></div>
-                    <div class="stat-label">Avg Model Size</div>
+                    <div class="stat-label">Avg File Size</div>
                 </div>
 
                 <div class="stat-card">
@@ -584,11 +274,6 @@ require_once __DIR__ . '/../../includes/header.php';
             </section>
 
             <!-- Image Optimization -->
-            <?php
-            $unconvertedAttachments = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'image' AND (LOWER(file_path) LIKE '%.png' OR LOWER(file_path) LIKE '%.jpg' OR LOWER(file_path) LIKE '%.jpeg')");
-            $unconvertedThumbnails = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE thumbnail_path IS NOT NULL AND (LOWER(thumbnail_path) LIKE '%.png' OR LOWER(thumbnail_path) LIKE '%.jpg' OR LOWER(thumbnail_path) LIKE '%.jpeg')");
-            $totalUnconverted = $unconvertedAttachments + $unconvertedThumbnails;
-            ?>
             <section class="section-card section-card-full">
                 <h2>Image Optimization (WebP)</h2>
                 <p class="section-description">
@@ -620,10 +305,6 @@ require_once __DIR__ . '/../../includes/header.php';
             </section>
 
             <!-- PDF Compression -->
-            <?php
-            $uncompressedPdfs = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'pdf' AND (pdf_compressed IS NULL OR pdf_compressed = 0)");
-            $compressedPdfs = (int)$db->querySingle("SELECT COUNT(*) FROM model_attachments WHERE file_type = 'pdf' AND pdf_compressed = 1");
-            ?>
             <section class="section-card section-card-full">
                 <h2>PDF Compression</h2>
                 <p class="section-description">

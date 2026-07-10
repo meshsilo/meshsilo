@@ -29,7 +29,7 @@ $tools = [
             'list' => ['label' => 'List Unused', 'description' => 'List unused CSS selectors', 'type' => 'flag'],
             'purge' => ['label' => 'Purge', 'description' => 'Generate optimized CSS file', 'type' => 'flag', 'warning' => true],
         ],
-        'icon' => '&#128396;',
+        'icon' => '<i class="fa-solid fa-palette"></i>',
     ],
     'optimize' => [
         'name' => 'Optimizer',
@@ -41,12 +41,12 @@ $tools = [
             'clear' => ['label' => 'Clear Caches', 'description' => 'Clear all optimization caches', 'type' => 'command', 'warning' => true],
             'all' => ['label' => 'Run All', 'description' => 'Run all optimizations', 'type' => 'command'],
         ],
-        'icon' => '&#9889;',
+        'icon' => '<i class="fa-solid fa-bolt"></i>',
     ],
     'worker' => [
         'name' => 'Job Queue Worker',
         'description' => 'Manage background job queue',
-        'script' => 'cli/worker.php',
+        'script' => 'cli/queue-worker.php',
         'options' => [
             'stats' => ['label' => 'Show Stats', 'description' => 'Show queue statistics', 'type' => 'flag'],
             'once' => ['label' => 'Process One', 'description' => 'Process one job and exit', 'type' => 'flag'],
@@ -56,7 +56,7 @@ $tools = [
         'params' => [
             'queue' => ['label' => 'Queue Name', 'description' => 'Specific queue to process', 'type' => 'text', 'default' => 'default'],
         ],
-        'icon' => '&#128736;',
+        'icon' => '<i class="fa-solid fa-wrench"></i>',
     ],
     'dedup' => [
         'name' => 'Deduplication',
@@ -66,7 +66,7 @@ $tools = [
             'dry-run' => ['label' => 'Dry Run', 'description' => 'Show what would be deduplicated without changes', 'type' => 'flag', 'default' => true],
             'force' => ['label' => 'Force', 'description' => 'Run even if auto-deduplication is disabled', 'type' => 'flag'],
         ],
-        'icon' => '&#128451;',
+        'icon' => '<i class="fa-solid fa-clone"></i>',
     ],
     'generate-thumbnails' => [
         'name' => 'Thumbnail Generator',
@@ -81,7 +81,7 @@ $tools = [
             'limit' => ['label' => 'Limit', 'description' => 'Maximum models to process', 'type' => 'number', 'default' => 100],
             'model' => ['label' => 'Model ID', 'description' => 'Generate for specific model only', 'type' => 'number', 'placeholder' => 'Optional'],
         ],
-        'icon' => '&#128444;',
+        'icon' => '<i class="fa-solid fa-image"></i>',
     ],
     'migrate' => [
         'name' => 'Database Migrations',
@@ -91,7 +91,7 @@ $tools = [
             'status' => ['label' => 'Status', 'description' => 'Show migration status', 'type' => 'flag', 'default' => true],
             'backup' => ['label' => 'Backup First', 'description' => 'Create backup before migrating', 'type' => 'flag'],
         ],
-        'icon' => '&#128451;',
+        'icon' => '<i class="fa-solid fa-database"></i>',
     ],
     'scheduler' => [
         'name' => 'Task Scheduler',
@@ -103,7 +103,7 @@ $tools = [
         'params' => [
             'run' => ['label' => 'Run Task', 'description' => 'Run specific task by name', 'type' => 'text', 'placeholder' => 'e.g., cleanup:logs'],
         ],
-        'icon' => '&#128339;',
+        'icon' => '<i class="fa-solid fa-calendar-days"></i>',
     ],
 ];
 
@@ -237,7 +237,7 @@ include __DIR__ . '/../../includes/header.php';
     <?php include __DIR__ . '/../../includes/admin-sidebar.php'; ?>
 
     <div class="admin-content">
-        <div class="admin-header">
+        <div class="page-header">
             <h1>CLI Tools</h1>
             <p>Run optimization and maintenance commands from the web interface</p>
         </div>
@@ -245,7 +245,7 @@ include __DIR__ . '/../../includes/header.php';
         <?php if ($output): ?>
         <div class="cli-output-panel <?= $success ? 'success' : 'error' ?>">
             <div class="output-header">
-                <span class="output-icon" aria-hidden="true"><?= $success ? '&#10004;' : '&#10006;' ?></span>
+                <span class="output-icon" aria-hidden="true"><?= $success ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>' ?></span>
                 <span class="output-title"><?= $success ? 'Command Completed' : 'Command Output' ?></span>
                 <?php if ($executedCommand): ?>
                 <code class="executed-command"><?= htmlspecialchars($executedCommand) ?></code>
@@ -265,7 +265,7 @@ include __DIR__ . '/../../includes/header.php';
                         <p><?= htmlspecialchars($tool['description']) ?></p>
                     </div>
                     <button type="button" class="tool-expand" aria-expanded="false" data-action="toggle-tool" data-tool-key="<?= $toolKey ?>">
-                        <span class="expand-icon" aria-hidden="true">&#9662;</span>
+                        <span class="expand-icon" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
                     </button>
                 </div>
 
@@ -297,7 +297,7 @@ include __DIR__ . '/../../includes/header.php';
                                 <span class="option-label">
                                     <?= htmlspecialchars($opt['label']) ?>
                                     <?php if (!empty($opt['warning'])): ?>
-                                    <span class="warning-badge" title="This action makes changes">&#9888;</span>
+                                    <span class="warning-badge" title="This action makes changes"><i class="fa-solid fa-triangle-exclamation"></i></span>
                                     <?php endif; ?>
                                 </span>
                                 <span class="option-desc"><?= htmlspecialchars($opt['description']) ?></span>
@@ -331,7 +331,7 @@ include __DIR__ . '/../../includes/header.php';
 
                     <div class="tool-actions">
                         <button type="submit" class="btn btn-primary">
-                            <span class="btn-icon" aria-hidden="true">&#9654;</span>
+                            <span class="btn-icon" aria-hidden="true"><i class="fa-solid fa-play"></i></span>
                             Run <?= htmlspecialchars($tool['name']) ?>
                         </button>
                     </div>
@@ -346,7 +346,7 @@ include __DIR__ . '/../../includes/header.php';
             <pre>cd /path/to/meshsilo
 php cli/purge-css.php --analyze
 php cli/optimize.php status
-php cli/worker.php --stats</pre>
+php cli/queue-worker.php --stats</pre>
         </div>
     </div>
 </div>

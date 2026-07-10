@@ -29,6 +29,9 @@ function getRealFilePath($model)
 function getAbsoluteFilePath($model)
 {
     $relativePath = getRealFilePath($model);
+    if (empty($relativePath)) {
+        return null;
+    }
     // Paths in DB include 'assets/' prefix, files are stored in storage/assets/
     // Replace 'assets/' with 'storage/assets/' for correct path resolution
     if (strpos($relativePath, 'assets/') === 0) {
@@ -471,15 +474,9 @@ function calculate3mfContentHash($filePath)
     $hasContent = false;
 
     foreach ($files as $fileName) {
-        // Skip files that only contain metadata
-        $lowerName = strtolower($fileName);
-        if (strpos($lowerName, '_rels/') === 0) {
-            continue;
-        }
-        if ($lowerName === '[content_types].xml') {
-            continue;
-        }
-
+        // Hash every entry, including _rels/ and [content_types].xml. Skipping
+        // them made archives that differ only in those parts hash equal, so one
+        // physical file could be substituted for another during dedup.
         $stream = $zip->getStream($fileName);
         if ($stream !== false) {
             $stat = $zip->statName($fileName);

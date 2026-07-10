@@ -116,6 +116,32 @@ if (!empty($response['complete'])) {
 exit;
 
 /**
+ * Only allow http/https or relative source URLs to be stored - blocks
+ * javascript:, data:, and other dangerous schemes from being persisted and
+ * later rendered as a link. Anything with a non-http(s) scheme becomes ''.
+ */
+function tusSanitizeSourceUrl(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '';
+    }
+    // Reject control-character obfuscation (e.g. "java\tscript:"): browsers strip
+    // these before resolving the scheme, so they'd sneak past the check below as a
+    // "relative" URL. A legitimate URL contains no raw control characters.
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+        return '';
+    }
+    // Has an explicit scheme? Only http/https are permitted.
+    if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*:#', $url)) {
+        $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+        return in_array($scheme, ['http', 'https'], true) ? $url : '';
+    }
+    // No scheme -> relative URL, allowed as-is.
+    return $url;
+}
+
+/**
  * Dispatch background processing for a completed upload.
  *
  * Creates a parent model row (pending_upload) and queues the ProcessUpload job.
@@ -132,13 +158,50 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
 
     $db = getDB();
 
+    // Check if this is an "add part" upload (has parent_id metadata)
+    $parentId = isset($metadata['parent_id']) ? (int)base64_decode($metadata['parent_id']) : 0;
+    if ($parentId > 0) {
+        dispatchAddPart($server, $uploadId, $parentId, $info, $metadata);
+        return;
+    }
+
     // Decode metadata
     $modelName = isset($metadata['name']) ? base64_decode($metadata['name']) : pathinfo($filename, PATHINFO_FILENAME);
     $description = isset($metadata['description']) ? base64_decode($metadata['description']) : '';
     $creator = isset($metadata['creator']) ? base64_decode($metadata['creator']) : '';
     $collection = isset($metadata['collection']) ? base64_decode($metadata['collection']) : '';
-    $sourceUrl = isset($metadata['source_url']) ? base64_decode($metadata['source_url']) : '';
+    $sourceUrl = isset($metadata['source_url']) ? tusSanitizeSourceUrl(base64_decode($metadata['source_url'])) : '';
     $categories = isset($metadata['categories']) ? json_decode(base64_decode($metadata['categories']), true) : [];
+    $newCategoryNames = isset($metadata['new_categories'])
+        ? array_filter(array_map('trim', explode(',', base64_decode($metadata['new_categories']))))
+        : [];
+
+    // Normalize collection name: match case-insensitively to the canonical stored name,
+    // or insert it if it's genuinely new.
+    if (!empty($collection)) {
+        $colCheck = $db->prepare('SELECT name FROM collections WHERE LOWER(name) = LOWER(:name)');
+        $colCheck->bindValue(':name', $collection, PDO::PARAM_STR);
+        $colResult = $colCheck->execute();
+        $existingCol = $colResult ? $colResult->fetchArray(PDO::FETCH_ASSOC) : null;
+        if ($existingCol) {
+            $collection = $existingCol['name'];
+        } else {
+            try {
+                $colInsert = $db->prepare('INSERT INTO collections (name) VALUES (:name)');
+                $colInsert->bindValue(':name', $collection, PDO::PARAM_STR);
+                $colInsert->execute();
+            } catch (\Exception $e) {
+                // Race condition: another request inserted it first - fetch the canonical name
+                $colCheck2 = $db->prepare('SELECT name FROM collections WHERE LOWER(name) = LOWER(:name)');
+                $colCheck2->bindValue(':name', $collection, PDO::PARAM_STR);
+                $colResult2 = $colCheck2->execute();
+                $existing2 = $colResult2 ? $colResult2->fetchArray(PDO::FETCH_ASSOC) : null;
+                if ($existing2) {
+                    $collection = $existing2['name'];
+                }
+            }
+        }
+    }
 
     // Create parent model row with pending_upload status
     $folderId = uniqid();
@@ -161,24 +224,39 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
 
     $modelId = (int)$db->lastInsertRowID();
 
-    // Link categories
+    // Link existing categories
     if (!empty($categories)) {
         foreach ($categories as $catId) {
-            $catStmt = $db->prepare('INSERT INTO model_categories (model_id, category_id) VALUES (:mid, :cid)');
+            $catStmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:mid, :cid)');
             $catStmt->bindValue(':mid', $modelId, PDO::PARAM_INT);
             $catStmt->bindValue(':cid', (int)$catId, PDO::PARAM_INT);
             $catStmt->execute();
         }
     }
 
-    // Add collection if new
-    if (!empty($collection)) {
-        try {
-            $stmt = $db->prepare('INSERT OR IGNORE INTO collections (name) VALUES (:name)');
-            $stmt->bindValue(':name', $collection, PDO::PARAM_STR);
-            $stmt->execute();
-        } catch (\Exception $e) {
-            // Ignore
+    // Create and link new categories typed by the user
+    if (!empty($newCategoryNames)) {
+        foreach ($newCategoryNames as $catName) {
+            // Find existing category case-insensitively
+            $catCheck = $db->prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(:name)');
+            $catCheck->bindValue(':name', $catName, PDO::PARAM_STR);
+            $catResult = $catCheck->execute();
+            $existingCat = $catResult ? $catResult->fetchArray(PDO::FETCH_ASSOC) : null;
+            if ($existingCat) {
+                $catId = (int)$existingCat['id'];
+            } else {
+                $catInsert = $db->prepare('INSERT INTO categories (name) VALUES (:name)');
+                $catInsert->bindValue(':name', $catName, PDO::PARAM_STR);
+                $catInsert->execute();
+                $catId = (int)$db->lastInsertRowID();
+                if (function_exists('invalidateCategoriesCache')) {
+                    invalidateCategoriesCache();
+                }
+            }
+            $catLink = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:mid, :cid)');
+            $catLink->bindValue(':mid', $modelId, PDO::PARAM_INT);
+            $catLink->bindValue(':cid', $catId, PDO::PARAM_INT);
+            $catLink->execute();
         }
     }
 
@@ -200,4 +278,56 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
 
     // Store model_id in response for the frontend redirect
     $GLOBALS['_tus_model_id'] = $modelId;
+}
+
+/**
+ * Dispatch processing for adding a part to an existing model via TUS.
+ */
+function dispatchAddPart(TusServer $server, string $uploadId, int $parentId, array $info, array $metadata): void
+{
+    $filename = isset($metadata['filename']) ? base64_decode($metadata['filename']) : 'unknown';
+    $folder = isset($metadata['folder']) ? base64_decode($metadata['folder']) : '';
+
+    $db = getDB();
+
+    // Verify parent model exists
+    $stmt = $db->prepare('SELECT * FROM models WHERE id = :id AND parent_id IS NULL');
+    $stmt->bindValue(':id', $parentId, PDO::PARAM_INT);
+    $result = $stmt->execute();
+    $parent = $result->fetchArray(PDO::FETCH_ASSOC);
+
+    if (!$parent) {
+        logWarning('TUS add-part: parent model not found', ['parent_id' => $parentId]);
+        return;
+    }
+
+    // Verify ownership
+    $user = getCurrentUser();
+    if ($parent['user_id'] && (int)$parent['user_id'] !== (int)$user['id'] && !($user['is_admin'] ?? false)) {
+        logWarning('TUS add-part: permission denied', ['parent_id' => $parentId, 'user_id' => $user['id']]);
+        return;
+    }
+
+    // Queue the processing job with parent_id so ProcessUpload handles it as a part
+    require_once dirname(__DIR__, 2) . '/includes/Queue.php';
+    $folderId = uniqid();
+
+    Queue::push('ProcessUpload', [
+        'upload_id' => $uploadId,
+        'model_id' => $parentId,
+        'parent_id' => $parentId,
+        'filename' => $filename,
+        'folder_id' => $folderId,
+        'folder' => $folder,
+        'user_id' => $user['id'] ?? null,
+        'add_part' => true,
+    ], 'uploads', maxAttempts: 2);
+
+    logInfo('TUS add-part upload complete, processing queued', [
+        'upload_id' => $uploadId,
+        'parent_id' => $parentId,
+        'filename' => $filename,
+    ]);
+
+    $GLOBALS['_tus_model_id'] = $parentId;
 }

@@ -81,13 +81,23 @@ if [ -f "$CONFIG_FILE" ]; then
     fi
 fi
 
-# Restore persistent PHP config from storage (survives container restarts)
+# Restore persistent PHP config from storage (survives container restarts).
+# The persistent file is written by www-data via the admin UI, so filter it
+# through the same size/time-tuning allowlist as reload-services.sh and keep the
+# applied ini root-owned. This prevents a hand-placed staging file from injecting
+# arbitrary PHP directives (auto_prepend_file, disable_functions, extension, ...)
+# at container start, which a raw copy + chown www-data would have allowed.
 PERSISTENT_PHP_INI="/var/www/meshsilo/storage/cache/php-meshsilo.ini"
 FPM_INI="/etc/php/8.1/fpm/conf.d/99-meshsilo.ini"
+CLI_INI="/etc/php/8.1/cli/conf.d/99-meshsilo.ini"
+PHP_INI_ALLOWED='^[[:space:]]*(upload_max_filesize|post_max_size|memory_limit|max_execution_time|max_input_time|max_file_uploads|max_input_vars)[[:space:]]*='
 if [ -f "$PERSISTENT_PHP_INI" ]; then
-    echo "Restoring persistent PHP configuration..."
-    cp "$PERSISTENT_PHP_INI" "$FPM_INI"
-    chown www-data:www-data "$FPM_INI"
+    echo "Restoring persistent PHP configuration (allowlisted)..."
+    grep -iE "$PHP_INI_ALLOWED" "$PERSISTENT_PHP_INI" > "$FPM_INI"
+    if [ -d /etc/php/8.1/cli/conf.d ]; then
+        grep -iE "$PHP_INI_ALLOWED" "$PERSISTENT_PHP_INI" > "$CLI_INI"
+    fi
+    chown root:root "$FPM_INI" 2>/dev/null || true
 fi
 
 # Update PHP upload limits from environment if specified

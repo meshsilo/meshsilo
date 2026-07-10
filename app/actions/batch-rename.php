@@ -23,9 +23,7 @@ if (!$input) {
     $input = $_POST;
 }
 
-if (!Csrf::check()) {
-    jsonError('Security validation failed', 403);
-}
+requireCsrfJson();
 
 $parentId = (int)($input['parent_id'] ?? 0);
 $partIds = $input['part_ids'] ?? [];
@@ -56,7 +54,7 @@ if (!$model) {
 
 // NULL user_id = accessible to all authenticated users (backward compatibility)
 // Cast to int to handle PDO returning strings
-if ($model['user_id'] !== null && (int)$model['user_id'] !== (int)$user['id'] && !$user['is_admin']) {
+if (!userCanModifyModel($model, $user)) {
     jsonError('Permission denied', 403);
 }
 

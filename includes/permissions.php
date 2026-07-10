@@ -393,6 +393,26 @@ function isAdmin()
 }
 
 /**
+ * Whether the given user may modify the given model (owner-or-admin).
+ * Legacy NULL/empty-owner models are treated as modifiable to preserve existing
+ * behavior. Pure predicate: callers keep their own error handling.
+ */
+function userCanModifyModel(array $model, ?array $user = null): bool
+{
+    $user = $user ?? (function_exists('getCurrentUser') ? getCurrentUser() : null);
+    if (!$user) {
+        return false;
+    }
+    if (!empty($user['is_admin'])) {
+        return true;
+    }
+    if (empty($model['user_id'])) {
+        return true; // legacy shared / unowned model
+    }
+    return (int)$model['user_id'] === (int)$user['id'];
+}
+
+/**
  * Check if user can view stats
  */
 function canViewStats()

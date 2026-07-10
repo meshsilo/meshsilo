@@ -59,10 +59,10 @@
             lightbox.setAttribute('aria-modal', 'true');
             lightbox.innerHTML =
                 '<div class="lightbox-content">' +
-                    '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeLightbox()">&times;</button>' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image" onclick="lightboxNav(-1)">&#8249;</button>' : '') +
+                    '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></button>' +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image" onclick="lightboxNav(-1)"><i class="fa-solid fa-chevron-left"></i></button>' : '') +
                     '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(caption) + '" draggable="false">' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" aria-label="Next image" onclick="lightboxNav(1)">&#8250;</button>' : '') +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" aria-label="Next image" onclick="lightboxNav(1)"><i class="fa-solid fa-chevron-right"></i></button>' : '') +
                     '<div class="lightbox-caption">' + escapeHtml(caption) +
                     (hasMultiple ? ' <span class="lightbox-counter">' + (lightboxIndex + 1) + ' / ' + lightboxImages.length + '</span>' : '') +
                     '</div>' +
@@ -192,9 +192,14 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
 
+            const officeBinary = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf'];
+            const isOfficeBinary = officeBinary.indexOf((type || '').toLowerCase()) !== -1;
+
             let contentHtml = '';
             if (type === 'pdf') {
                 contentHtml = '<iframe src="' + escapeHtml(src) + '" class="doc-preview-iframe"></iframe>';
+            } else if (isOfficeBinary) {
+                contentHtml = '<div class="doc-preview-text"><p class="text-muted">No inline preview for this file type. Use Open or Download above.</p></div>';
             } else {
                 contentHtml = '<div class="doc-preview-text"><p class="text-muted">Loading...</p></div>';
             }
@@ -206,7 +211,7 @@
                         '<div class="doc-preview-actions">' +
                             '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-secondary" title="Open in new tab">Open</a>' +
                             '<a href="' + escapeHtml(src) + '" download class="btn btn-small btn-secondary" title="Download">Download</a>' +
-                            '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeDocumentPreview()">&times;</button>' +
+                            '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeDocumentPreview()"><i class="fa-solid fa-xmark"></i></button>' +
                         '</div>' +
                     '</div>' +
                     '<div class="doc-preview-body">' + contentHtml + '</div>' +
@@ -215,8 +220,8 @@
             document.body.appendChild(overlay);
             overlay.style.display = 'flex';
 
-            // For text files, fetch and render content
-            if (type !== 'pdf') {
+            // For text files, fetch and render content (skip binary office formats)
+            if (type !== 'pdf' && !isOfficeBinary) {
                 fetch(src)
                     .then(function(r) { return r.text(); })
                     .then(function(text) {
@@ -257,13 +262,19 @@
         async function uploadAttachments(files) {
             if (!files.length) return;
 
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'text/markdown'];
-            const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.txt', '.md'];
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'text/markdown',
+                'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/vnd.oasis.opendocument.text', 'application/vnd.oasis.opendocument.spreadsheet',
+                'application/vnd.oasis.opendocument.presentation', 'application/rtf', 'text/rtf', 'text/csv'];
+            const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.txt', '.md',
+                '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp', '.rtf', '.csv'];
 
             for (const file of files) {
                 const ext = '.' + file.name.split('.').pop().toLowerCase();
                 if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
-                    showToast(`Invalid file type: ${file.name}. Allowed: Images, PDFs, TXT, MD`, 'error');
+                    showToast(`Invalid file type: ${file.name}. Allowed: images, PDF, text, and office documents`, 'error');
                     continue;
                 }
 
@@ -332,7 +343,7 @@
             thumbBtn.type = 'button';
             thumbBtn.className = 'attachment-set-thumb';
             thumbBtn.title = 'Set as model thumbnail';
-            thumbBtn.innerHTML = '&#128247;';
+            thumbBtn.innerHTML = '<i class="fa-solid fa-camera"></i>';
             thumbBtn.onclick = function() { setAttachmentAsThumbnail(att.attachment_id); };
 
             const deleteBtn = document.createElement('button');
