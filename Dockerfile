@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y software-properties-common && apt updat
     unzip \
     ghostscript \
     qpdf \
+    admesh \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
