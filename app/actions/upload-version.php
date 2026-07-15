@@ -46,6 +46,20 @@ if (!in_array($ext, $allowedTypes)) {
     jsonError('Invalid file type. Only STL, 3MF, and GCODE allowed.');
 }
 
+// Plugin hook: before_upload gate (quota, malware-scan plugins). Fails closed.
+if (class_exists('PluginManager')) {
+    $allowed = PluginManager::applyGate('before_upload', true, [
+        'type' => 'version',
+        'filename' => $file['name'],
+        'path' => $file['tmp_name'],
+        'size' => (int)$file['size'],
+        'model_id' => $modelId,
+    ]);
+    if ($allowed !== true) {
+        jsonError(is_string($allowed) ? $allowed : 'Upload blocked by plugin');
+    }
+}
+
 // Calculate hash. The uploaded temp file has no extension, so calculateContentHash()
 // (which derives the type from the path) would hash a 3MF as a raw ZIP. Branch on the
 // real extension so 3MF versions are content-hashed like the other upload paths.

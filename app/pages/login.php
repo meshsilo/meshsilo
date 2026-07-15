@@ -112,6 +112,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'reason' => $user ? 'invalid_password' : 'user_not_found',
                 'method' => 'password'
             ]);
+            // Plugin hook: failed logins (fail2ban-style blocking, alerting)
+            if (class_exists('PluginManager')) {
+                PluginManager::doAction('login_failed', [
+                    'username' => $username,
+                    'ip' => $ip,
+                    'reason' => $user ? 'invalid_password' : 'user_not_found',
+                ]);
+            }
         }
     }
     } // end if (!$error) rate limit check

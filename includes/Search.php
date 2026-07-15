@@ -283,6 +283,11 @@ class Search
      */
     public function search(string $query, array $options = []): array
     {
+        // Plugin hook: search_query - rewrite/expand the query before matching
+        if (class_exists('PluginManager')) {
+            $query = (string)PluginManager::applyFilter('search_query', $query, $options);
+        }
+
         if (!$this->db || trim($query) === '') {
             return ['results' => [], 'total' => 0];
         }
@@ -291,11 +296,17 @@ class Search
         $offset = $options['offset'] ?? 0;
         $categoryId = $options['category_id'] ?? null;
 
-        if ($this->ftsAvailable) {
-            return $this->searchFts($query, $limit, $offset, $categoryId);
-        } else {
-            return $this->searchFallback($query, $limit, $offset, $categoryId);
+        $result = $this->ftsAvailable
+            ? $this->searchFts($query, $limit, $offset, $categoryId)
+            : $this->searchFallback($query, $limit, $offset, $categoryId);
+
+        // Plugin hook: search_results - re-rank or augment the result set
+        // (['results' => rows, 'total' => int])
+        if (class_exists('PluginManager')) {
+            $result = PluginManager::applyFilter('search_results', $result, $query, $options);
         }
+
+        return $result;
     }
 
     /**

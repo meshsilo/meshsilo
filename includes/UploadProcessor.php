@@ -31,6 +31,17 @@ class UploadProcessor
      */
     public static function processSingleFile(string $filePath, string $originalName, array $metadata, ?int $existingParentId = null, ?string $existingFolderId = null): array
     {
+        $gateError = self::checkBeforeUploadGate([
+            'type' => 'file',
+            'filename' => $originalName,
+            'path' => $filePath,
+            'size' => @filesize($filePath) ?: 0,
+            'metadata' => $metadata,
+        ]);
+        if ($gateError !== null) {
+            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => $gateError];
+        }
+
         $db = getDB();
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
@@ -82,6 +93,17 @@ class UploadProcessor
      */
     public static function processZip(string $zipPath, array $metadata, ?int $existingParentId = null, ?string $existingFolderId = null): array
     {
+        $gateError = self::checkBeforeUploadGate([
+            'type' => 'zip',
+            'filename' => basename($zipPath),
+            'path' => $zipPath,
+            'size' => @filesize($zipPath) ?: 0,
+            'metadata' => $metadata,
+        ]);
+        if ($gateError !== null) {
+            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => $gateError];
+        }
+
         $db = getDB();
 
         // Open once to validate + count entries for diagnostics
@@ -229,6 +251,17 @@ class UploadProcessor
      */
     public static function addPartsFromZip(string $zipPath, int $parentModelId): array
     {
+        $gateError = self::checkBeforeUploadGate([
+            'type' => 'add-parts',
+            'filename' => basename($zipPath),
+            'path' => $zipPath,
+            'size' => @filesize($zipPath) ?: 0,
+            'parent_id' => $parentModelId,
+        ]);
+        if ($gateError !== null) {
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => $gateError];
+        }
+
         $db = getDB();
 
         // Look up parent
@@ -815,6 +848,23 @@ class UploadProcessor
         if (function_exists('logInfo')) {
             logInfo('Saved attachments from ZIP', ['parent_id' => $parentId, 'count' => count($attachmentFiles)]);
         }
+    }
+
+    /**
+     * Run the before_upload gate (quota, malware-scan, content-policy
+     * plugins). Returns null when allowed, or a user-facing error string
+     * when a plugin blocked the upload. A crashing plugin denies.
+     */
+    private static function checkBeforeUploadGate(array $context): ?string
+    {
+        if (!class_exists('PluginManager')) {
+            return null;
+        }
+        $allowed = PluginManager::applyGate('before_upload', true, $context);
+        if ($allowed === true) {
+            return null;
+        }
+        return is_string($allowed) ? $allowed : 'Upload blocked by plugin';
     }
 
     private static function fireAfterUploadHook(int $parentId, string $name, string $fileType): void

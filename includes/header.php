@@ -22,6 +22,12 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="<?= htmlspecialchars($metaDescription ?? getSetting('site_description', 'Digital Asset Manager for 3D print files')) ?>">
+<?php
+// Plugin hook: page_title - modify the page title (also used for OG tags below)
+if (class_exists('PluginManager')) {
+    $pageTitle = PluginManager::applyFilter('page_title', $pageTitle ?? null);
+}
+?>
     <title><?= htmlspecialchars($pageTitle ?? SITE_NAME) ?> - <?= htmlspecialchars(SITE_NAME) ?></title>
 <?php
 // Build absolute base URL for OG tags

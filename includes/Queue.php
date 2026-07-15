@@ -507,6 +507,22 @@ class Queue
                 }
             }
 
+            // Plugin hook: queue_job_handlers - plugins register custom job
+            // types as ['JobClass' => callable($data)] (runs the job directly)
+            // or ['JobClass' => '/abs/path/JobClass.php'] (file defining the
+            // class). The identifier allowlist above still applies.
+            if (!class_exists($class) && class_exists('PluginManager')) {
+                $handlers = PluginManager::applyFilter('queue_job_handlers', []);
+                $handler = $handlers[$class] ?? null;
+                if (is_callable($handler)) {
+                    $handler($data);
+                    return true;
+                }
+                if (is_string($handler) && is_file($handler)) {
+                    require_once $handler;
+                }
+            }
+
             if (!class_exists($class)) {
                 throw new \Exception("Job class not found: $class");
             }

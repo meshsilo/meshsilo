@@ -29,6 +29,12 @@ if ($userId) {
     }
 }
 
+// Plugin hook: fired before the session is destroyed so listeners can
+// still inspect it (payload mirrors the user:login action)
+if (class_exists('PluginManager')) {
+    PluginManager::doAction('user:logout', ['user_id' => $userId, 'username' => $username]);
+}
+
 // Destroy the local session
 session_destroy();
 

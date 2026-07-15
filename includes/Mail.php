@@ -343,6 +343,26 @@ class Mail
             $this->body = $mailData['body'] ?? $this->body;
         }
 
+        // Plugin hook: mail_transport - a plugin may deliver the message
+        // itself (custom provider API). Returning exactly true marks it
+        // handled and skips the built-in driver.
+        if (class_exists('PluginManager')) {
+            $handled = PluginManager::applyFilter('mail_transport', false, [
+                'to' => $this->to,
+                'cc' => $this->cc,
+                'bcc' => $this->bcc,
+                'from' => $this->from,
+                'fromName' => $this->fromName,
+                'replyTo' => $this->replyTo,
+                'subject' => $this->subject,
+                'body' => $this->body,
+                'altBody' => $this->altBody,
+            ]);
+            if ($handled === true) {
+                return true;
+            }
+        }
+
         switch ($this->driver) {
             case 'smtp':
                 return $this->sendSmtp();
