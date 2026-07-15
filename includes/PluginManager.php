@@ -502,7 +502,7 @@ class PluginManager
         // If upgrading, backup existing plugin directory
         if ($isUpgrade && is_dir($targetDir)) {
             $backupDir = $this->pluginsDir . '/.backup-' . $pluginId . '-' . time();
-            if (!rename($targetDir, $backupDir)) {
+            if (!@rename($targetDir, $backupDir)) {
                 self::recursiveDelete($tempDir);
                 return ['success' => false, 'error' => 'Failed to backup existing plugin for upgrade'];
             }
@@ -511,7 +511,11 @@ class PluginManager
         // Move new files into place. rename() fails across filesystem
         // boundaries (common in Docker), so fall back to recursive copy + delete
         // (mirrors the registry-install path's swap-into-place logic below).
-        if (!rename($sourceDir, $targetDir)) {
+        // @-suppressed: an unsuppressed rename() warning is converted into a
+        // thrown ErrorException by ErrorHandler::handleError(), which would
+        // abort this statement before it ever returns false - the try/catch
+        // fallback below would never run.
+        if (!@rename($sourceDir, $targetDir)) {
             try {
                 self::recursiveCopy($sourceDir, $targetDir);
             } catch (\RuntimeException $e) {
@@ -520,7 +524,7 @@ class PluginManager
                     if (is_dir($targetDir)) {
                         self::recursiveDelete($targetDir);
                     }
-                    rename($backupDir, $targetDir);
+                    @rename($backupDir, $targetDir);
                 }
                 self::recursiveDelete($tempDir);
                 return ['success' => false, 'error' => 'Failed to move plugin to plugins directory: ' . $e->getMessage()];
