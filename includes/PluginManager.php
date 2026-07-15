@@ -508,14 +508,24 @@ class PluginManager
             }
         }
 
-        // Move new files into place
+        // Move new files into place. rename() fails across filesystem
+        // boundaries (common in Docker), so fall back to recursive copy + delete
+        // (mirrors the registry-install path's swap-into-place logic below).
         if (!rename($sourceDir, $targetDir)) {
-            // Restore backup on failure
-            if ($backupDir && is_dir($backupDir)) {
-                rename($backupDir, $targetDir);
+            try {
+                self::recursiveCopy($sourceDir, $targetDir);
+            } catch (\RuntimeException $e) {
+                // Restore the previous install over any partial copy
+                if ($backupDir && is_dir($backupDir)) {
+                    if (is_dir($targetDir)) {
+                        self::recursiveDelete($targetDir);
+                    }
+                    rename($backupDir, $targetDir);
+                }
+                self::recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Failed to move plugin to plugins directory: ' . $e->getMessage()];
             }
-            self::recursiveDelete($tempDir);
-            return ['success' => false, 'error' => 'Failed to move plugin to plugins directory'];
+            self::recursiveDelete($sourceDir);
         }
 
         // Clean up temp dir and backup
