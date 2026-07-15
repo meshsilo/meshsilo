@@ -316,11 +316,15 @@
         function addImageAttachment(att) {
             let grid = document.getElementById('attachment-images');
 
-            // Create images section if it doesn't exist
+            // Create images section if it doesn't exist. Same collapsible
+            // markup as the server-rendered sections; a section created for a
+            // just-uploaded file starts expanded so the upload stays visible.
             if (!grid) {
                 const section = document.createElement('div');
-                section.className = 'attachment-section';
-                section.innerHTML = '<h4>Images</h4><div class="attachment-grid" id="attachment-images"></div>';
+                section.className = 'attachment-section collapsible-section';
+                section.innerHTML = '<h4 class="collapsible-header" tabindex="0" role="button" aria-expanded="true">' +
+                    '<span class="folder-toggle" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>Images</h4>' +
+                    '<div class="collapsible-body"><div class="attachment-grid" id="attachment-images"></div></div>';
 
                 const uploadDiv = document.querySelector('.model-attachments .attachment-upload');
                 uploadDiv.parentNode.insertBefore(section, uploadDiv);
@@ -362,11 +366,14 @@
         function addDocumentAttachment(att) {
             let list = document.getElementById('attachment-documents');
 
-            // Create documents section if it doesn't exist
+            // Create documents section if it doesn't exist (collapsible
+            // markup matching the server-rendered sections, starts expanded)
             if (!list) {
                 const section = document.createElement('div');
-                section.className = 'attachment-section';
-                section.innerHTML = '<h4>Documents</h4><div class="attachment-documents" id="attachment-documents"></div>';
+                section.className = 'attachment-section collapsible-section';
+                section.innerHTML = '<h4 class="collapsible-header" tabindex="0" role="button" aria-expanded="true">' +
+                    '<span class="folder-toggle" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>Documents</h4>' +
+                    '<div class="collapsible-body"><div class="attachment-documents" id="attachment-documents"></div></div>';
 
                 const uploadDiv = document.querySelector('.model-attachments .attachment-upload');
                 uploadDiv.parentNode.insertBefore(section, uploadDiv);

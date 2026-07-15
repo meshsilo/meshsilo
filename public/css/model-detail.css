@@ -407,6 +407,20 @@
     letter-spacing: 0.05em;
 }
 
+/* Collapsible section headings (Images / Documents) share the section
+   heading look; the chevron/cursor come from .collapsible-header */
+.attachment-section .collapsible-header {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.attachment-section.collapsed .collapsible-header {
+    margin-bottom: 0;
+}
+
 /* Two-column layout: parts left, sidebar right */
 .model-content-layout {
     display: grid;
@@ -423,22 +437,26 @@
 .model-content-sidebar {
 }
 
-.model-content-sidebar .model-attachments .collapsible-body {
+/* Scroll cap applies ONLY to the outer attachments body (direct child).
+   The nested Images/Documents section bodies must not match, or they get
+   their own 500px scroll areas inside the outer one (nested scrollbars
+   that trap the image grid). */
+.model-content-sidebar .model-attachments > .collapsible-body {
     max-height: 500px;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
 }
 
-.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar {
+.model-content-sidebar .model-attachments > .collapsible-body::-webkit-scrollbar {
     width: 4px;
 }
 
-.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar-track {
+.model-content-sidebar .model-attachments > .collapsible-body::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.model-content-sidebar .model-attachments .collapsible-body::-webkit-scrollbar-thumb {
+.model-content-sidebar .model-attachments > .collapsible-body::-webkit-scrollbar-thumb {
     background: var(--color-border);
     border-radius: 2px;
 }

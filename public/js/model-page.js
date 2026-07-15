@@ -475,6 +475,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleFolder(e.target.parentElement);
                 return;
             }
+            // Collapsible section header keyboard activation (mirrors the
+            // click handler above)
+            if (e.target.matches('.collapsible-header')) {
+                e.preventDefault();
+                const section = e.target.closest('.collapsible-section');
+                section.classList.toggle('collapsed');
+                e.target.setAttribute('aria-expanded', !section.classList.contains('collapsed'));
+                return;
+            }
         }
     });
 

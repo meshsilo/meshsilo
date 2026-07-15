@@ -546,9 +546,21 @@ require_once 'includes/header.php';
                         </h3>
                         <div class="collapsible-body">
 
+                        <?php
+                        // With multiple sections (Images AND Documents), each
+                        // starts collapsed so the sidebar stays scannable.
+                        // Same collapse pattern as the rest of the page:
+                        // .collapsible-section > .collapsible-header + .collapsible-body
+                        $attachmentSectionCount = (int)!empty($attachments['images']) + (int)!empty($attachments['documents']);
+                        $attSectionCollapsed = $attachmentSectionCount > 1;
+                        ?>
                         <?php if (!empty($attachments['images'])): ?>
-                        <div class="attachment-section">
-                            <h4>Images</h4>
+                        <div class="attachment-section collapsible-section<?= $attSectionCollapsed ? ' collapsed' : '' ?>">
+                            <h4 class="collapsible-header" tabindex="0" role="button" aria-expanded="<?= $attSectionCollapsed ? 'false' : 'true' ?>">
+                                <span class="folder-toggle" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
+                                Images
+                            </h4>
+                            <div class="collapsible-body">
                             <div class="attachment-grid" id="attachment-images">
                                 <?php foreach ($attachments['images'] as $att): ?>
                                 <div class="attachment-image" data-attachment-id="<?= $att['id'] ?>">
@@ -565,12 +577,17 @@ require_once 'includes/header.php';
                                 </div>
                                 <?php endforeach; ?>
                             </div>
+                            </div>
                         </div>
                         <?php endif; ?>
 
                         <?php if (!empty($attachments['documents'])): ?>
-                        <div class="attachment-section">
-                            <h4>Documents</h4>
+                        <div class="attachment-section collapsible-section<?= $attSectionCollapsed ? ' collapsed' : '' ?>">
+                            <h4 class="collapsible-header" tabindex="0" role="button" aria-expanded="<?= $attSectionCollapsed ? 'false' : 'true' ?>">
+                                <span class="folder-toggle" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
+                                Documents
+                            </h4>
+                            <div class="collapsible-body">
                             <div class="attachment-documents" id="attachment-documents">
                                 <?php foreach ($attachments['documents'] as $att): ?>
                                 <?php $docExt = strtolower(pathinfo($att['original_filename'], PATHINFO_EXTENSION) ?: $att['file_type']); ?>
@@ -585,6 +602,7 @@ require_once 'includes/header.php';
                                     <?php endif; ?>
                                 </div>
                                 <?php endforeach; ?>
+                            </div>
                             </div>
                         </div>
                         <?php endif; ?>
