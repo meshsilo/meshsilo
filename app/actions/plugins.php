@@ -215,17 +215,9 @@ switch ($action) {
 
     case 'refresh-repos':
         $repos = $pluginManager->getRepositories();
-        $fetched = 0;
-        $failed = 0;
-
-        foreach ($repos as $repo) {
-            $registry = $pluginManager->fetchRegistry($repo['url']);
-            if ($registry !== null) {
-                $fetched++;
-            } else {
-                $failed++;
-            }
-        }
+        $results = $pluginManager->fetchRegistries(array_column($repos, 'url'));
+        $fetched = count(array_filter($results, fn($r) => $r !== null));
+        $failed = count($results) - $fetched;
 
         logInfo('Plugin repositories refreshed', [
             'fetched' => $fetched,

@@ -316,20 +316,28 @@ class PluginManager
             $db = getDB();
             $type = $db->getType();
 
+            // Insert the full manifest data: a plugin dropped (or symlinked)
+            // into plugins/ has no DB row yet, and the schema requires name.
             if ($type === 'mysql') {
                 $stmt = $db->prepare(
-                    'INSERT INTO plugins (id, is_active, installed_at, updated_at) '
-                    . 'VALUES (:id, 1, NOW(), NOW()) '
+                    'INSERT INTO plugins (id, name, version, description, author, is_active, installed_at, updated_at) '
+                    . 'VALUES (:id, :name, :version, :description, :author, 1, NOW(), NOW()) '
                     . 'ON DUPLICATE KEY UPDATE is_active = 1, updated_at = NOW()'
                 );
             } else {
                 $stmt = $db->prepare(
-                    'INSERT INTO plugins (id, is_active, installed_at, updated_at) '
-                    . 'VALUES (:id, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) '
+                    'INSERT INTO plugins (id, name, version, description, author, is_active, installed_at, updated_at) '
+                    . 'VALUES (:id, :name, :version, :description, :author, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) '
                     . 'ON CONFLICT(id) DO UPDATE SET is_active = 1, updated_at = CURRENT_TIMESTAMP'
                 );
             }
-            $stmt->execute([':id' => $id]);
+            $stmt->execute([
+                ':id' => $id,
+                ':name' => $manifest['name'] ?? $id,
+                ':version' => $manifest['version'] ?? '0.0.0',
+                ':description' => $manifest['description'] ?? '',
+                ':author' => $manifest['author'] ?? '',
+            ]);
 
             $this->activePlugins[$id] = true;
 
@@ -341,6 +349,7 @@ class PluginManager
             Router::clearCache();
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin enabled: $id");
+            $this->hooks->doAction('plugin_enabled', $id);
 
             return ['success' => true];
         } catch (\Exception $e) {
@@ -382,6 +391,7 @@ class PluginManager
             Router::clearCache();
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin disabled: $id");
+            $this->hooks->doAction('plugin_disabled', $id);
 
             return ['success' => true];
         } catch (\Exception $e) {
@@ -450,6 +460,23 @@ class PluginManager
         $isUpgrade = isset($this->plugins[$pluginId]);
         $targetDir = $this->pluginsDir . '/' . $pluginId;
         $backupDir = null;
+
+        // Advisory warnings: neither blocks the install, but the admin UI
+        // surfaces them. Enable-time enforcement of min_silo_version stays
+        // the hard gate.
+        $warnings = [];
+        if (defined('MESHSILO_VERSION') && !empty($manifest['min_silo_version'])
+            && version_compare(MESHSILO_VERSION, $manifest['min_silo_version'], '<')) {
+            $warnings[] = 'Requires MeshSilo ' . $manifest['min_silo_version']
+                . ' or newer (current: ' . MESHSILO_VERSION . '); it cannot be enabled until the app is upgraded';
+        }
+        if ($isUpgrade) {
+            $installedVersion = $this->plugins[$pluginId]['version'] ?? '0.0.0';
+            if (version_compare($manifest['version'], $installedVersion, '<')) {
+                $warnings[] = 'Downgrade: replacing version ' . $installedVersion
+                    . ' with older version ' . $manifest['version'];
+            }
+        }
 
         $tempDir = sys_get_temp_dir() . '/meshsilo_plugin_' . bin2hex(random_bytes(8));
         @mkdir($tempDir, 0755, true);
@@ -546,7 +573,12 @@ class PluginManager
 
         logInfo($isUpgrade ? "Plugin upgraded: $pluginId" : "Plugin installed: $pluginId");
 
-        return ['success' => true, 'plugin' => $manifest, 'upgraded' => $isUpgrade];
+        return [
+            'success' => true,
+            'plugin' => $manifest,
+            'upgraded' => $isUpgrade,
+            'warning' => $warnings !== [] ? implode('; ', $warnings) : null,
+        ];
     }
 
     public function uninstallPlugin(string $id): bool
@@ -554,6 +586,25 @@ class PluginManager
         if ($this->isPluginActive($id)) {
             if (!$this->disablePlugin($id)['success']) {
                 return false;
+            }
+        }
+
+        $pluginDir = $this->pluginsDir . '/' . ($this->plugins[$id]['_dir'] ?? $id);
+
+        // Give the plugin a chance to clean up after itself (drop its tables,
+        // remove created files). Runs BEFORE the DB row is deleted so the
+        // script can still read its settings, and errors are isolated so a
+        // broken script cannot leave the plugin half-removed.
+        $uninstallFile = $pluginDir . '/uninstall.php';
+        if (is_file($uninstallFile)) {
+            try {
+                (function (string $_file, string $_pluginDir, array $_pluginMeta): void {
+                    $pluginDir = $_pluginDir;
+                    $pluginMeta = $_pluginMeta;
+                    require $_file;
+                })($uninstallFile, $pluginDir, $this->plugins[$id] ?? ['id' => $id]);
+            } catch (\Throwable $e) {
+                logError("Plugin uninstall script failed: $id", ['error' => $e->getMessage()]);
             }
         }
 
@@ -565,7 +616,6 @@ class PluginManager
             logError("Failed to delete plugin DB row: $id", ['error' => $e->getMessage()]);
         }
 
-        $pluginDir = $this->pluginsDir . '/' . ($this->plugins[$id]['_dir'] ?? $id);
         if (is_dir($pluginDir)) {
             self::recursiveDelete($pluginDir);
         }
@@ -576,6 +626,7 @@ class PluginManager
         Router::clearCache();
         @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
         logInfo("Plugin uninstalled: $id");
+        $this->hooks->doAction('plugin_uninstalled', $id);
 
         return true;
     }
@@ -664,6 +715,27 @@ class PluginManager
     public function hasAction(string $event): bool
     {
         return $this->hooks->hasAction($event);
+    }
+
+    /**
+     * All registered filter listeners, keyed by hook name (introspection,
+     * e.g. the admin Hooks page).
+     *
+     * @return array<string, list<array{callback: callable, priority: int, plugin: string}>>
+     */
+    public function getRegisteredFilters(): array
+    {
+        return $this->hooks->getFilters();
+    }
+
+    /**
+     * All registered action listeners, keyed by event name (introspection).
+     *
+     * @return array<string, list<array{callback: callable, priority: int, plugin: string}>>
+     */
+    public function getRegisteredActions(): array
+    {
+        return $this->hooks->getActions();
     }
 
     /**
@@ -1005,6 +1077,17 @@ class PluginManager
         return $this->repository->fetchRegistry($repoUrl);
     }
 
+    /**
+     * Fetch several registries concurrently.
+     *
+     * @param  list<string> $urls
+     * @return array<string, array|null> url => registry (null on failure)
+     */
+    public function fetchRegistries(array $urls): array
+    {
+        return $this->repository->fetchRegistries($urls);
+    }
+
     public function getAvailablePlugins(): array
     {
         $repos = $this->getRepositories();
@@ -1100,6 +1183,26 @@ class PluginManager
             return ['success' => false, 'error' => 'Invalid plugin.json in downloaded plugin'];
         }
 
+        // Integrity: when the registry entry carries a per-file sha256
+        // checksum map, every listed file must match or the install aborts.
+        $registryEntry = $this->getAvailablePlugins()[$pluginId] ?? [];
+        $checksums = $registryEntry['checksums'] ?? null;
+        if (is_array($checksums) && $checksums !== []) {
+            $checksumError = self::verifyChecksums($tempDir, $checksums);
+            if ($checksumError !== null) {
+                $this->recursiveDelete($tempDir);
+                logWarning('Plugin checksum verification failed', ['plugin' => $pluginId, 'error' => $checksumError]);
+                return ['success' => false, 'error' => 'Checksum verification failed: ' . $checksumError];
+            }
+        }
+
+        $warnings = [];
+        if (defined('MESHSILO_VERSION') && !empty($manifest['min_silo_version'])
+            && version_compare(MESHSILO_VERSION, $manifest['min_silo_version'], '<')) {
+            $warnings[] = 'Requires MeshSilo ' . $manifest['min_silo_version']
+                . ' or newer (current: ' . MESHSILO_VERSION . '); it cannot be enabled until the app is upgraded';
+        }
+
         // All files downloaded and validated - swap into place. Move any
         // existing install aside first so a failed swap can be rolled back
         // instead of leaving the plugin destroyed (mirrors installPlugin's
@@ -1180,7 +1283,34 @@ class PluginManager
         return [
             'success' => true,
             'plugin' => $manifest,
+            'warning' => $warnings !== [] ? implode('; ', $warnings) : null,
         ];
+    }
+
+    /**
+     * Verify a directory's files against a per-file sha256 checksum map
+     * (relative path => hex digest) from a plugin registry entry.
+     * Returns a human-readable error, or null when everything matches.
+     */
+    private static function verifyChecksums(string $dir, array $checksums): ?string
+    {
+        foreach ($checksums as $relPath => $expected) {
+            if (!is_string($relPath) || !is_string($expected) || $expected === '') {
+                return 'malformed checksum entry';
+            }
+            if (str_contains($relPath, '..') || str_starts_with($relPath, '/')) {
+                return 'unsafe path in checksum manifest: ' . $relPath;
+            }
+            $file = $dir . '/' . $relPath;
+            if (!is_file($file)) {
+                return 'file listed in checksum manifest is missing: ' . $relPath;
+            }
+            $actual = hash_file('sha256', $file);
+            if ($actual === false || !hash_equals(strtolower($expected), $actual)) {
+                return 'hash mismatch for ' . $relPath;
+            }
+        }
+        return null;
     }
 
     /**

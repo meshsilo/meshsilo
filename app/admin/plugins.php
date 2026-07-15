@@ -63,14 +63,20 @@ $availablePlugins = [];
 $repositories = [];
 $updates = [];
 
-// Auto-refresh stale registries (older than 1 hour or never fetched)
+// Auto-refresh stale registries (older than 1 hour or never fetched).
+// Fetched concurrently: this runs during page load, so wall time is the
+// slowest single registry rather than the sum of all of them.
 $repos = $pluginManager->getRepositories();
+$staleUrls = [];
 foreach ($repos as $repo) {
     $lastFetched = $repo['last_fetched'] ?? null;
     $isStale = empty($lastFetched) || strtotime($lastFetched) < time() - 3600;
     if (empty($repo['registry_cache']) || $isStale) {
-        $pluginManager->fetchRegistry($repo['url']);
+        $staleUrls[] = $repo['url'];
     }
+}
+if ($staleUrls !== []) {
+    $pluginManager->fetchRegistries($staleUrls);
 }
 
 // Always load available plugins for source info (needed for update/reinstall buttons)

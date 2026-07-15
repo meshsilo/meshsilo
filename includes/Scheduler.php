@@ -482,6 +482,23 @@ class Scheduler
             return 'Skipped';
         }, ['description' => 'Clean up old activity log entries']);
 
+        // API request log cleanup - daily at 3:30am
+        self::register('cleanup:api-log', '30 3 * * *', function () {
+            if (function_exists('getDB') && function_exists('getSetting')) {
+                $retention = (int)getSetting('api_log_retention_days', 30);
+                if ($retention <= 0) {
+                    return 'API request log retention disabled (0 = keep forever)';
+                }
+                $db = getDB();
+                $cutoff = date('Y-m-d H:i:s', strtotime("-{$retention} days"));
+                $stmt = $db->prepare('DELETE FROM api_request_log WHERE created_at < :cutoff');
+                $stmt->bindValue(':cutoff', $cutoff, PDO::PARAM_STR);
+                $stmt->execute();
+                return "Cleaned API request logs older than {$retention} days";
+            }
+            return 'Skipped';
+        }, ['description' => 'Clean up old API request log entries']);
+
         // Database optimization - weekly on Sunday at 5am
         self::register('maintenance:optimize', '0 5 * * 0', function () {
             if (function_exists('getDB')) {

@@ -77,6 +77,7 @@ if (!function_exists('isFeatureEnabled')) {
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active" aria-current="page"' : '' ?>>Routes</a>
+                            <a href="<?= route('admin.hooks') ?>" <?= ($adminPage ?? '') === 'hooks' ? 'class="active" aria-current="page"' : '' ?>>Hooks</a>
                             <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active" aria-current="page"' : '' ?>>CLI Tools</a>
                             <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active" aria-current="page"' : '' ?>>Security Headers</a>
                             <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active" aria-current="page"' : '' ?>>Sessions</a>

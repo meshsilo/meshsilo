@@ -93,6 +93,9 @@ class PluginAdminActions
                     if ($result['success']) {
                         $pluginName = htmlspecialchars($result['plugin']['name'] ?? 'Unknown');
                         $message = "Plugin \"$pluginName\" installed successfully.";
+                        if (!empty($result['warning'])) {
+                            $message .= ' Warning: ' . htmlspecialchars($result['warning']);
+                        }
                         logInfo('Plugin installed from upload', ['plugin' => $result['plugin']['id'] ?? 'unknown', 'by' => getCurrentUser()['username']]);
                     } else {
                         $error = 'Installation failed: ' . ($result['error'] ?? 'Unknown error');
@@ -115,6 +118,9 @@ class PluginAdminActions
                     $result = $pluginManager->installFromRepo($pluginId, $source);
                     if ($result['success']) {
                         $message = 'Plugin installed from repository successfully.';
+                        if (!empty($result['warning'])) {
+                            $message .= ' Warning: ' . htmlspecialchars($result['warning']);
+                        }
                         logInfo('Plugin installed from repo', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                     } else {
                         $error = 'Installation failed: ' . ($result['error'] ?? 'Unknown error');
@@ -182,13 +188,8 @@ class PluginAdminActions
 
             case 'refresh-repos':
                 $repos = $pluginManager->getRepositories();
-                $refreshed = 0;
-                foreach ($repos as $repo) {
-                    $result = $pluginManager->fetchRegistry($repo['url']);
-                    if ($result !== null) {
-                        $refreshed++;
-                    }
-                }
+                $results = $pluginManager->fetchRegistries(array_column($repos, 'url'));
+                $refreshed = count(array_filter($results, fn($r) => $r !== null));
                 $message = "Refreshed $refreshed of " . count($repos) . " repositories.";
                 logInfo('Plugin repositories refreshed', ['refreshed' => $refreshed, 'total' => count($repos), 'by' => getCurrentUser()['username']]);
                 break;

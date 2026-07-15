@@ -17,6 +17,15 @@ declare(strict_types=1);
 class PluginRepository
 {
     /**
+     * Per-request cache of isPublicUrl verdicts keyed by host. The check
+     * does blocking DNS lookups (A + AAAA), which dominate refresh time
+     * when several repositories share a host (e.g. raw.githubusercontent.com).
+     *
+     * @var array<string, bool>
+     */
+    private array $publicHostCache = [];
+
+    /**
      * All configured plugin repositories (empty on failure).
      */
     public function getRepositories(): array
@@ -78,26 +87,112 @@ class PluginRepository
      */
     public function fetchRegistry(string $repoUrl): ?array
     {
-        // Validate URL scheme to prevent SSRF
-        $scheme = parse_url($repoUrl, PHP_URL_SCHEME);
-        if (!in_array(strtolower($scheme ?? ''), ['http', 'https'], true)) {
-            return null;
-        }
-
-        // Block SSRF: refuse to fetch from private/internal hosts
-        if (!$this->isPublicUrl($repoUrl)) {
-            logWarning('Blocked plugin registry fetch to non-public host', ['url' => $repoUrl]);
+        if (!$this->isFetchableUrl($repoUrl)) {
             return null;
         }
 
         $context = stream_context_create([
             'http' => [
                 'timeout' => 10,
-                'header' => 'User-Agent: MeshSilo/' . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0'),
+                'header' => 'User-Agent: ' . self::userAgent(),
             ],
         ]);
 
-        $response = @file_get_contents($repoUrl, false, $context);
+        return $this->storeRegistry($repoUrl, @file_get_contents($repoUrl, false, $context));
+    }
+
+    /**
+     * Fetch and cache several registries CONCURRENTLY (curl_multi), so total
+     * wall time is the slowest single fetch instead of the sum of all of
+     * them. Falls back to sequential fetching when curl is unavailable.
+     *
+     * @param  list<string> $urls
+     * @return array<string, array|null> url => registry (null on failure)
+     */
+    public function fetchRegistries(array $urls): array
+    {
+        $results = [];
+        $toFetch = [];
+        foreach ($urls as $url) {
+            $results[$url] = null;
+            if ($this->isFetchableUrl($url)) {
+                $toFetch[] = $url;
+            }
+        }
+
+        if ($toFetch === []) {
+            return $results;
+        }
+
+        if (!function_exists('curl_multi_init') || count($toFetch) === 1) {
+            foreach ($toFetch as $url) {
+                $results[$url] = $this->fetchRegistry($url);
+            }
+            return $results;
+        }
+
+        $multi = curl_multi_init();
+        $handles = [];
+        foreach ($toFetch as $url) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                // SSRF: no redirects - a 3xx could pivot to a private host
+                // after the pre-fetch DNS check passed.
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+                CURLOPT_USERAGENT => self::userAgent(),
+            ]);
+            curl_multi_add_handle($multi, $ch);
+            $handles[$url] = $ch;
+        }
+
+        do {
+            $status = curl_multi_exec($multi, $active);
+            if ($active) {
+                curl_multi_select($multi, 1.0);
+            }
+        } while ($active && $status === CURLM_OK);
+
+        foreach ($handles as $url => $ch) {
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $body = curl_multi_getcontent($ch);
+            $results[$url] = ($httpCode === 200 && is_string($body) && $body !== '')
+                ? $this->storeRegistry($url, $body)
+                : null;
+            curl_multi_remove_handle($multi, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($multi);
+
+        return $results;
+    }
+
+    /**
+     * Scheme + SSRF validation shared by the fetchers.
+     */
+    private function isFetchableUrl(string $url): bool
+    {
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        if (!in_array(strtolower($scheme ?? ''), ['http', 'https'], true)) {
+            return false;
+        }
+        if (!$this->isPublicUrl($url)) {
+            logWarning('Blocked plugin registry fetch to non-public host', ['url' => $url]);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Parse a registry response and cache it on the repository row.
+     * Returns the decoded registry, or null when the response is a fetch
+     * failure or malformed (missing the plugins key).
+     */
+    private function storeRegistry(string $repoUrl, string|false $response): ?array
+    {
         if ($response === false) {
             return null;
         }
@@ -128,6 +223,11 @@ class PluginRepository
         return $registry;
     }
 
+    private static function userAgent(): string
+    {
+        return 'MeshSilo/' . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0');
+    }
+
     /**
      * Validate that a URL's host resolves only to public IP addresses.
      * Prevents SSRF against loopback / private / link-local targets:
@@ -148,6 +248,10 @@ class PluginRepository
 
         // Strip IPv6 literal brackets, e.g. [::1]
         $host = trim($host, '[]');
+
+        if (isset($this->publicHostCache[$host])) {
+            return $this->publicHostCache[$host];
+        }
 
         // Collect candidate IPs: a literal host, or DNS-resolved A/AAAA records
         $ips = [];
@@ -170,16 +274,16 @@ class PluginRepository
 
         // Could not resolve to any address -- fail closed
         if (empty($ips)) {
-            return false;
+            return $this->publicHostCache[$host] = false;
         }
 
         // Reject if ANY resolved IP is private, reserved, loopback or link-local
         foreach ($ips as $ip) {
             if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return false;
+                return $this->publicHostCache[$host] = false;
             }
         }
 
-        return true;
+        return $this->publicHostCache[$host] = true;
     }
 }

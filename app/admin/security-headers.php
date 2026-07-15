@@ -89,6 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         ];
 
         SecurityHeaders::saveConfig($config);
+
+        // CORS settings for the REST API (read by CorsMiddleware)
+        setSetting('cors_allowed_origins', trim($_POST['cors_allowed_origins'] ?? ''));
+        setSetting('cors_allow_credentials', isset($_POST['cors_allow_credentials']) ? '1' : '0');
+
         AuditLogger::logSecurity('security_headers_updated', ['resource_type' => 'security_config']);
         $success = 'Security headers configuration saved.';
     }
@@ -385,6 +390,30 @@ include __DIR__ . '/../../includes/header.php';
                             <option value="same-origin" <?= $config['cross_origin_resource_policy']['value'] === 'same-origin' ? 'selected' : '' ?>>same-origin</option>
                             <option value="cross-origin" <?= $config['cross_origin_resource_policy']['value'] === 'cross-origin' ? 'selected' : '' ?>>cross-origin</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API CORS -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>API Cross-Origin Access (CORS)</h2>
+                    <p class="text-muted">Controls which web origins may call the REST API from a browser</p>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="cors_allowed_origins">Allowed Origins</label>
+                        <input type="text" name="cors_allowed_origins" id="cors_allowed_origins" class="form-control"
+                               value="<?= htmlspecialchars(getSetting('cors_allowed_origins', '')) ?>"
+                               placeholder="https://app.example.com, https://*.example.com">
+                        <p class="help-text">Comma-separated list. Leave empty to allow any origin (*) for the API. Wildcards match a single subdomain label (*.example.com).</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="cors_allow_credentials" <?= getSetting('cors_allow_credentials', '0') === '1' ? 'checked' : '' ?>>
+                            Allow Credentials
+                        </label>
+                        <p class="help-text">When enabled, the wildcard is ignored and origins must be listed explicitly.</p>
                     </div>
                 </div>
             </div>
