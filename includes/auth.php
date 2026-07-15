@@ -162,8 +162,14 @@ function enforceAuthentication(): void
     // So we also check the route path directly.
     $isApiRoute = str_starts_with($currentRoute, '/api/') || $currentRoute === '/api';
 
+    // Plugin UI assets (css/js) must load on public pages too - e.g. a login
+    // page styled by an SSO plugin. The plugin-assets route enforces its own
+    // safety (realpath containment, server-side script extensions blocked),
+    // and uploaded content under /assets/ stays auth-gated.
+    $isPluginAsset = str_starts_with($currentRoute, '/plugin-assets/');
+
     // Redirect to login if not authenticated (unless on public route or API)
-    if (!isLoggedIn() && !$isPublicRoute && !$isApiRoute) {
+    if (!isLoggedIn() && !$isPublicRoute && !$isApiRoute && !$isPluginAsset) {
         logWarning('Unauthorized access attempt', [
             'route' => $currentRoute,
             'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',

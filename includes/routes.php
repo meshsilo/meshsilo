@@ -299,14 +299,18 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($rou
     $router->get('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes');
     $router->post('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes.action');
 
+    // Hooks (plugin listener debugging)
+    $router->get('/hooks', ['file' => 'app/admin/hooks.php'], 'admin.hooks');
+
     // Plugins
     $router->get('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins');
     $router->post('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins.action');
 });
 
 // Uploaded assets (PHP fallback — nginx serves these directly in production)
-$router->get('/assets/{path:.+}', function ($params) {
-    $path = $params['path'] ?? '';
+// Note: closure handlers receive route params POSITIONALLY in pattern order.
+$router->get('/assets/{path:.+}', function ($path) {
+    $path = (string)$path;
     if ($path === '') {
         http_response_code(400);
         exit;
@@ -354,9 +358,9 @@ $router->get('/assets/{path:.+}', function ($params) {
 }, 'assets.serve');
 
 // Plugin assets (path:.+ allows subdirectories like css/style.css)
-$router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
-    $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($params['pluginId'] ?? ''));
-    $path = $params['path'] ?? '';
+$router->get('/plugin-assets/{pluginId}/{path:.+}', function ($pluginId, $path) {
+    $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower((string)$pluginId));
+    $path = (string)$path;
 
     if ($pluginId === '' || $path === '') {
         http_response_code(400);
@@ -419,6 +423,27 @@ $router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
 $router->group(['prefix' => '/api'], function ($router) {
     // GraphQL endpoint (registered before the catch-all: first match wins)
     $router->any('/graphql', ['file' => 'app/api/graphql.php'], 'api.graphql');
+
+    // Machine-readable API description. Public: it documents endpoint
+    // shapes only (same information as docs/API_QUICKSTART.md). Lives in
+    // public/ so it ships with deployments (docs/ is not tracked).
+    $router->get('/openapi.json', function (): void {
+        $spec = dirname(__DIR__) . '/public/openapi.json';
+        if (!is_file($spec)) {
+            http_response_code(404);
+            exit;
+        }
+        header('Content-Type: application/json');
+        header('Cache-Control: public, max-age=3600');
+        readfile($spec);
+        exit;
+    }, 'api.openapi');
+
+    // CORS preflights (any() does not cover OPTIONS). All preflights --
+    // including /api/graphql -- go to the API entry, whose CorsMiddleware
+    // answers them before authentication runs.
+    $router->match(['OPTIONS'], '/', ['file' => 'app/api/index.php'], 'api.preflight.root');
+    $router->match(['OPTIONS'], '/{path:.+}', ['file' => 'app/api/index.php'], 'api.preflight');
 
     // API root (info payload) and all other API URLs
     $router->any('/', ['file' => 'app/api/index.php'], 'api.index');

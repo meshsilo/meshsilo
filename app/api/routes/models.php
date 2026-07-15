@@ -259,8 +259,12 @@ function downloadModel($id, $apiUser) {
         apiError('Model not found', 404);
     }
 
-    $filePath = UPLOAD_PATH . $model['file_path'];
-    if (!file_exists($filePath)) {
+    // Resolve through the dedup layer: once the dedup job relocates a file,
+    // file_path alone no longer exists on disk (the web download already
+    // resolves via getAbsoluteFilePath; the API must match).
+    require_once __DIR__ . '/../../../includes/dedup.php';
+    $filePath = getAbsoluteFilePath($model);
+    if (!$filePath || !file_exists($filePath)) {
         apiError('File not found', 404);
     }
 
@@ -363,7 +367,9 @@ function createModel($apiUser) {
     $stmt->execute([
         ':name' => $name,
         ':filename' => $filename,
-        ':file_path' => $folderId . '/' . $filename,
+        // Canonical convention: file_path carries the 'assets/' prefix
+        // (matches UploadProcessor and getAbsoluteFilePath resolution)
+        ':file_path' => 'assets/' . $folderId . '/' . $filename,
         ':file_size' => $file['size'],
         ':file_type' => $extension,
         ':description' => $description,

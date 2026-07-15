@@ -1,0 +1,362 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MeshSilo API",
+    "description": "REST API for MeshSilo, a digital asset manager for 3D model files. All endpoints require an API key (create one under Admin > API Keys). Keys carry granular permissions: read, write, delete, admin. Versioned paths (/api/v1/...) are accepted and equivalent to the unversioned paths. A GraphQL endpoint is available at /api/graphql.",
+    "version": "1"
+  },
+  "servers": [
+    { "url": "/api" },
+    { "url": "/api/v1" }
+  ],
+  "security": [
+    { "ApiKeyAuth": [] },
+    { "BearerAuth": [] }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "API status and version info",
+        "operationId": "getApiInfo",
+        "responses": {
+          "200": { "description": "API is reachable", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "example": "ok" }, "api": { "type": "object" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "API health check (alias of /)",
+        "operationId": "getApiHealth",
+        "responses": {
+          "200": { "description": "API is reachable" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "API version information",
+        "operationId": "getApiVersion",
+        "responses": {
+          "200": { "description": "Version info" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/models": {
+      "get": {
+        "summary": "List models",
+        "operationId": "listModels",
+        "description": "Requires the read permission. Returns parent/standalone models (not parts).",
+        "parameters": [
+          { "name": "q", "in": "query", "description": "Search name, description, and creator (full-text when available)", "schema": { "type": "string" } },
+          { "name": "category_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "tag_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "collection", "in": "query", "schema": { "type": "string" } },
+          { "name": "file_type", "in": "query", "schema": { "type": "string", "example": "stl" } },
+          { "name": "print_type", "in": "query", "schema": { "type": "string" } },
+          { "name": "is_archived", "in": "query", "description": "\"true\" or \"false\"; omitted = non-archived only", "schema": { "type": "string", "enum": ["true", "false"] } },
+          { "name": "is_printed", "in": "query", "schema": { "type": "string", "enum": ["true", "false"] } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["newest", "oldest", "name", "name_desc", "size", "downloads", "updated"], "default": "newest" } },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated model list",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Model" } }, "pagination": { "$ref": "#/components/schemas/Pagination" } } } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "summary": "Upload a new model",
+        "operationId": "createModel",
+        "description": "Requires the write permission. multipart/form-data with a \"file\" field.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "creator": { "type": "string" },
+                  "collection": { "type": "string" },
+                  "source_url": { "type": "string" },
+                  "license": { "type": "string" },
+                  "print_type": { "type": "string" },
+                  "category_ids": { "type": "string", "description": "Comma-separated category IDs" },
+                  "tags": { "type": "string", "description": "Comma-separated tag names" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ModelEnvelope" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/models/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "summary": "Get a single model",
+        "operationId": "getModel",
+        "responses": {
+          "200": { "description": "The model", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ModelEnvelope" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "summary": "Update a model",
+        "operationId": "updateModel",
+        "description": "Requires the write permission and ownership (or an admin key).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "creator": { "type": "string" },
+                  "collection": { "type": "string" },
+                  "source_url": { "type": "string" },
+                  "license": { "type": "string" },
+                  "print_type": { "type": "string" },
+                  "notes": { "type": "string" },
+                  "is_archived": { "type": "boolean" },
+                  "is_printed": { "type": "boolean" },
+                  "category_ids": { "type": "array", "items": { "type": "integer" } },
+                  "tags": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated model", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ModelEnvelope" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a model (and its parts)",
+        "operationId": "deleteModel",
+        "description": "Requires the delete permission and ownership (or an admin key).",
+        "responses": {
+          "200": { "description": "Deleted" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/models/{id}/parts": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "summary": "List a model's parts",
+        "operationId": "getModelParts",
+        "responses": {
+          "200": { "description": "Parts list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Part" } } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/models/{id}/download": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": {
+        "summary": "Download the model's primary file",
+        "operationId": "downloadModel",
+        "description": "Requires ownership (or an admin key). Increments the download counter.",
+        "responses": {
+          "200": { "description": "File contents", "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List categories",
+        "operationId": "listCategories",
+        "responses": { "200": { "description": "Categories" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      },
+      "post": {
+        "summary": "Create a category",
+        "operationId": "createCategory",
+        "description": "Requires the admin permission.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" } } } } } },
+        "responses": { "201": { "description": "Created" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
+    "/categories/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "summary": "Get a category", "operationId": "getCategory", "responses": { "200": { "description": "Category" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": {
+        "summary": "Update a category",
+        "operationId": "updateCategory",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Updated" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      },
+      "delete": { "summary": "Delete a category", "operationId": "deleteCategory", "responses": { "200": { "description": "Deleted" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/tags": {
+      "get": { "summary": "List tags", "operationId": "listTags", "responses": { "200": { "description": "Tags" } } },
+      "post": {
+        "summary": "Create a tag",
+        "operationId": "createTag",
+        "description": "Requires the admin permission.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "color": { "type": "string", "example": "#6366f1" } } } } } },
+        "responses": { "201": { "description": "Created" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
+    "/tags/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "summary": "Get a tag", "operationId": "getTag", "responses": { "200": { "description": "Tag" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": {
+        "summary": "Update a tag",
+        "operationId": "updateTag",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "color": { "type": "string", "description": "Hex color like #6366f1" } } } } } },
+        "responses": { "200": { "description": "Updated" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      },
+      "delete": { "summary": "Delete a tag", "operationId": "deleteTag", "description": "Requires the delete permission.", "responses": { "200": { "description": "Deleted" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/collections": {
+      "get": { "summary": "List collections", "operationId": "listCollections", "responses": { "200": { "description": "Collections" } } },
+      "post": {
+        "summary": "Create a collection",
+        "operationId": "createCollection",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "description": { "type": "string" } } } } } },
+        "responses": { "201": { "description": "Created" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
+    "/collections/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "summary": "Get a collection", "operationId": "getCollection", "responses": { "200": { "description": "Collection" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": {
+        "summary": "Update a collection",
+        "operationId": "updateCollection",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "description": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Updated" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      },
+      "delete": { "summary": "Delete a collection", "operationId": "deleteCollection", "description": "Requires the delete permission.", "responses": { "200": { "description": "Deleted" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/stats": {
+      "get": {
+        "summary": "System statistics",
+        "operationId": "getStats",
+        "description": "Requires the admin permission.",
+        "responses": { "200": { "description": "Statistics" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
+    "/graphql": {
+      "post": {
+        "summary": "GraphQL endpoint",
+        "operationId": "graphql",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["query"], "properties": { "query": { "type": "string" }, "variables": { "type": "object" } } } } } },
+        "responses": { "200": { "description": "GraphQL response" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": { "type": "apiKey", "in": "header", "name": "X-API-Key" },
+      "BearerAuth": { "type": "http", "scheme": "bearer", "description": "API key sent as a bearer token" }
+    },
+    "parameters": {
+      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } },
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+      "Limit": { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+    },
+    "responses": {
+      "BadRequest": { "description": "Invalid request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unauthorized": { "description": "Missing or invalid API key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Forbidden": { "description": "API key lacks the required permission", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "Resource not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "boolean", "example": true },
+          "message": { "type": "string" },
+          "details": { "type": "object", "nullable": true }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" },
+          "total_pages": { "type": "integer" },
+          "has_more": { "type": "boolean" }
+        }
+      },
+      "Dimensions": {
+        "type": "object",
+        "properties": {
+          "x": { "type": "number", "nullable": true },
+          "y": { "type": "number", "nullable": true },
+          "z": { "type": "number", "nullable": true },
+          "unit": { "type": "string", "example": "mm" }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "filename": { "type": "string" },
+          "file_type": { "type": "string" },
+          "file_size": { "type": "integer" },
+          "description": { "type": "string", "nullable": true },
+          "creator": { "type": "string", "nullable": true },
+          "collection": { "type": "string", "nullable": true },
+          "source_url": { "type": "string", "nullable": true },
+          "license": { "type": "string", "nullable": true },
+          "print_type": { "type": "string", "nullable": true },
+          "dimensions": { "$ref": "#/components/schemas/Dimensions" },
+          "download_count": { "type": "integer" },
+          "part_count": { "type": "integer" },
+          "is_archived": { "type": "boolean" },
+          "is_printed": { "type": "boolean" },
+          "printed_at": { "type": "string", "nullable": true },
+          "current_version": { "type": "integer" },
+          "categories": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } } },
+          "tags": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" }, "color": { "type": "string" } } } },
+          "created_at": { "type": "string" },
+          "updated_at": { "type": "string" }
+        }
+      },
+      "ModelEnvelope": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/Model" } }
+      },
+      "Part": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "filename": { "type": "string" },
+          "file_type": { "type": "string" },
+          "file_size": { "type": "integer" },
+          "sort_order": { "type": "integer" },
+          "notes": { "type": "string", "nullable": true },
+          "is_printed": { "type": "boolean" },
+          "dimensions": { "$ref": "#/components/schemas/Dimensions" }
+        }
+      }
+    }
+  }
+}

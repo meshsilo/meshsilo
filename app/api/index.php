@@ -51,9 +51,11 @@ $apiVersion->addDeprecationHeaders();
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];
 
-// Remove query string and base path
+// Remove query string and base path. The (?:/|$) alternative handles a bare
+// "/api" (no trailing slash), which otherwise left the literal string "api"
+// as the resource and returned 404 instead of the API status payload.
 $uri = parse_url($uri, PHP_URL_PATH);
-$uri = preg_replace('#^.*/api/#', '', $uri);
+$uri = preg_replace('#^.*/api(?:/|$)#', '', $uri, 1);
 // Strip version prefix if present (e.g., v1/)
 $uri = ApiVersion::stripVersionFromUri('/' . $uri);
 $uri = trim($uri, '/');
