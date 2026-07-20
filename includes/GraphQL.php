@@ -10,7 +10,15 @@ class GraphQL
     private static array $types = [];
     private static array $queries = [];
     private static array $mutations = [];
-    private static ?PDO $db = null;
+    /**
+     * Database handle. Deliberately untyped: production getDB() returns the
+     * Database wrapper, not a raw PDO (a ?PDO type here made init() throw
+     * TypeError on every request). Both expose the prepare/query/fetch API
+     * the resolvers use.
+     *
+     * @var PDO|Database|null
+     */
+    private static $db = null;
     private const MAX_QUERY_DEPTH = 5;
     private const MAX_SELECTIONS = 50;
 
