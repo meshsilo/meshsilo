@@ -47,6 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = getUserByLogin($username);
 
         if ($user && verifyPassword($password, $user['password'])) {
+            // Transparently upgrade legacy (pre-Argon2id) hashes while the
+            // plaintext is available; runs before the 2FA branch since the
+            // password itself has been verified either way
+            upgradePasswordHashIfNeeded((int)$user['id'], $password, $user['password']);
+
             // Regenerate session ID to prevent session fixation attacks
             session_regenerate_id(true);
 
