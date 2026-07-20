@@ -1076,9 +1076,9 @@ class PluginManager
         return $this->repository->getRepositories();
     }
 
-    public function addRepository(string $name, string $url): bool
+    public function addRepository(string $name, string $url, string $token = ''): bool
     {
-        return $this->repository->addRepository($name, $url);
+        return $this->repository->addRepository($name, $url, $token);
     }
 
     public function removeRepository(int $id): bool
@@ -1126,6 +1126,9 @@ class PluginManager
                 }
                 $plugin['_installed'] = isset($this->plugins[$plugin['id']]);
                 $plugin['_repo'] = $repo['name'] ?? $repo['url'];
+                // Which repository advertises this plugin - used server-side
+                // to look up that repository's access token at install time
+                $plugin['_repo_url'] = $repo['url'];
 
                 // Version comparison
                 if ($plugin['_installed']) {
@@ -1153,18 +1156,13 @@ class PluginManager
     public function installFromRepo(string $pluginId, array $source): array
     {
         $type = $source['type'] ?? 'github';
-        $repo = $source['repo'] ?? '';
-        $branch = $source['branch'] ?? 'main';
-        $path = $source['path'] ?? '';
 
-        if ($type !== 'github' || empty($repo) || empty($path)) {
-            return ['success' => false, 'error' => 'Invalid source configuration'];
-        }
-
-        // Validate repo format (owner/name)
-        if (!preg_match('/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/', $repo)) {
-            return ['success' => false, 'error' => 'Invalid repository format'];
-        }
+        // Resolve the advertising repository's access token server-side (the
+        // token never round-trips through the browser). Also reused below for
+        // checksum verification.
+        $registryEntry = $this->getAvailablePlugins()[$pluginId] ?? [];
+        $repoUrl = $registryEntry['_repo_url'] ?? '';
+        $token = $repoUrl !== '' ? $this->repository->getTokenForUrl($repoUrl) : null;
 
         $pluginsDir = dirname(__DIR__) . '/plugins';
         if (!is_dir($pluginsDir)) {
@@ -1177,11 +1175,37 @@ class PluginManager
         $tempDir = sys_get_temp_dir() . '/meshsilo-plugin-' . $pluginId . '-' . uniqid();
         mkdir($tempDir, 0755, true);
 
-        try {
-            $this->downloadGitHubDirectory($repo, $branch, $path, $tempDir);
-        } catch (\Exception $e) {
+        if ($type === 'github') {
+            $repo = $source['repo'] ?? '';
+            $branch = $source['branch'] ?? 'main';
+            $path = $source['path'] ?? '';
+
+            if (empty($repo) || empty($path)) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Invalid source configuration'];
+            }
+
+            // Validate repo format (owner/name)
+            if (!preg_match('/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/', $repo)) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Invalid repository format'];
+            }
+
+            try {
+                $this->downloadGitHubDirectory($repo, $branch, $path, $tempDir, $token);
+            } catch (\Exception $e) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Failed to download plugin: ' . $e->getMessage()];
+            }
+        } elseif ($type === 'zip' || $type === 'archive') {
+            $archiveError = $this->acquireArchiveToDir($source, $tempDir, $token);
+            if ($archiveError !== null) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => $archiveError];
+            }
+        } else {
             $this->recursiveDelete($tempDir);
-            return ['success' => false, 'error' => 'Failed to download plugin: ' . $e->getMessage()];
+            return ['success' => false, 'error' => 'Unsupported source type: ' . $type];
         }
 
         // Validate the downloaded plugin has a manifest
@@ -1199,7 +1223,7 @@ class PluginManager
 
         // Integrity: when the registry entry carries a per-file sha256
         // checksum map, every listed file must match or the install aborts.
-        $registryEntry = $this->getAvailablePlugins()[$pluginId] ?? [];
+        // ($registryEntry resolved above, before acquisition.)
         $checksums = $registryEntry['checksums'] ?? null;
         if (is_array($checksums) && $checksums !== []) {
             $checksumError = self::verifyChecksums($tempDir, $checksums);
@@ -1328,17 +1352,110 @@ class PluginManager
     }
 
     /**
-     * Recursively download a directory from a GitHub repository using the Contents API.
+     * Stage a plugin from a zip archive URL (source type "zip"/"archive") into
+     * $tempDir. Works with any forge's HTTP archive endpoint (GitLab
+     * /-/archive/, Gitea /archive/, GitHub /archive/), authenticated via the
+     * repository's token when configured. The optional source "path" selects
+     * a subdirectory inside the archive (multi-plugin repos); a single
+     * archive root folder (repo-branch/) is looked through automatically.
+     * Returns a user-facing error string, or null on success.
      */
-    private function downloadGitHubDirectory(string $repo, string $branch, string $path, string $destDir): void
+    private function acquireArchiveToDir(array $source, string $tempDir, ?string $token): ?string
+    {
+        $url = $source['url'] ?? '';
+        if (!is_string($url) || $url === '') {
+            return 'Archive source requires a url';
+        }
+        $path = trim((string)($source['path'] ?? ''), '/');
+        if (str_contains($path, '..')) {
+            return 'Unsafe path in archive source';
+        }
+        if (!class_exists('ZipArchive')) {
+            return 'ZipArchive extension not available';
+        }
+
+        $zipPath = $tempDir . '.zip';
+        if (!$this->repository->fetchToFile($url, $zipPath, $token)) {
+            return 'Failed to download archive (check the URL, access token, and private-host setting)';
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            @unlink($zipPath);
+            return 'Downloaded archive is not a readable zip';
+        }
+
+        // Validate entries for path traversal before extraction
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if ($entryName === false) {
+                continue;
+            }
+            if (str_contains($entryName, '..') || str_starts_with($entryName, '/') || str_starts_with($entryName, '\\')) {
+                $zip->close();
+                @unlink($zipPath);
+                return 'Archive contains unsafe paths';
+            }
+        }
+
+        $extractDir = $tempDir . '-extract';
+        @mkdir($extractDir, 0755, true);
+        $zip->extractTo($extractDir);
+        $zip->close();
+        @unlink($zipPath);
+
+        // Locate the plugin directory: as given, or under the single root
+        // folder forges prepend (e.g. myrepo-main/)
+        $roots = [$extractDir];
+        $entries = array_values(array_diff(scandir($extractDir) ?: [], ['.', '..']));
+        if (count($entries) === 1 && is_dir($extractDir . '/' . $entries[0])) {
+            $roots[] = $extractDir . '/' . $entries[0];
+        }
+
+        $sourceDir = null;
+        foreach ($roots as $root) {
+            $candidate = $path !== '' ? $root . '/' . $path : $root;
+            if (is_file($candidate . '/plugin.json')) {
+                $sourceDir = $candidate;
+                break;
+            }
+        }
+
+        if ($sourceDir === null) {
+            self::recursiveDelete($extractDir);
+            return 'plugin.json not found in archive' . ($path !== '' ? " under '$path'" : '');
+        }
+
+        try {
+            self::recursiveCopy($sourceDir, $tempDir);
+        } catch (\RuntimeException $e) {
+            self::recursiveDelete($extractDir);
+            return 'Failed to stage archive contents: ' . $e->getMessage();
+        }
+        self::recursiveDelete($extractDir);
+
+        return null;
+    }
+
+    /**
+     * Recursively download a directory from a GitHub repository using the
+     * Contents API. A repository access token enables private repos and
+     * raises the API rate limit.
+     */
+    private function downloadGitHubDirectory(string $repo, string $branch, string $path, string $destDir, ?string $token = null): void
     {
         $apiUrl = 'https://api.github.com/repos/' . $repo . '/contents/' . ltrim($path, '/') . '?ref=' . urlencode($branch);
+
+        $header = "User-Agent: MeshSilo/" . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0') . "\r\n"
+                . "Accept: application/vnd.github.v3+json\r\n";
+        if ($token !== null && $token !== '') {
+            $header .= 'Authorization: Bearer ' . $token . "\r\n";
+        }
 
         $context = stream_context_create([
             'http' => [
                 'timeout' => 30,
-                'header' => "User-Agent: MeshSilo/" . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0') . "\r\n"
-                           . "Accept: application/vnd.github.v3+json\r\n",
+                'header' => $header,
             ],
         ]);
 
@@ -1399,7 +1516,7 @@ class PluginManager
                 if (!is_dir($subDir)) {
                     mkdir($subDir, 0755, true);
                 }
-                $this->downloadGitHubDirectory($repo, $branch, $path . '/' . $name, $subDir);
+                $this->downloadGitHubDirectory($repo, $branch, $path . '/' . $name, $subDir, $token);
             }
         }
     }

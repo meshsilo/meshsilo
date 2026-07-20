@@ -405,8 +405,32 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="url" id="repo-url" name="repo_url" class="form-input" placeholder="https://example.com/plugins/registry.json" required>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label for="repo-token">Access Token <span class="text-muted">(optional, for private repositories)</span></label>
+                        <input type="password" id="repo-token" name="repo_token" class="form-input" autocomplete="off"
+                               placeholder="GitHub PAT, GitLab/Gitea token...">
+                        <p class="form-help">Sent as an Authorization: Bearer header when fetching this registry and downloading its plugins. Encrypted at rest when encryption is configured. To change a token, remove and re-add the repository.</p>
+                    </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">Add Repository</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="add-repo-section">
+                <h3>Private Network Hosts</h3>
+                <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="repos-private-hosts">
+                    <div class="form-group">
+                        <label class="toggle-label">
+                            <input type="checkbox" name="allow_private_hosts" value="1" <?= getSetting('plugin_repos_allow_private_hosts', '0') === '1' ? 'checked' : '' ?>>
+                            <span>Allow repositories on private/LAN hosts (self-hosted Gitea, GitLab, etc.)</span>
+                        </label>
+                        <p class="form-help">By default, repository URLs must resolve to public addresses (SSRF protection). Enable this only if your plugin repositories live on your local network.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-secondary">Save</button>
                     </div>
                 </form>
             </div>

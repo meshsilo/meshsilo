@@ -168,6 +168,7 @@ switch ($action) {
     case 'add-repo':
         $name = trim($_POST['name'] ?? '');
         $url = trim($_POST['url'] ?? '');
+        $token = trim($_POST['token'] ?? '');
 
         if (empty($name)) {
             jsonError('Repository name is required', 400);
@@ -177,7 +178,7 @@ switch ($action) {
             jsonError('A valid repository URL is required', 400);
         }
 
-        $result = $pluginManager->addRepository($name, $url);
+        $result = $pluginManager->addRepository($name, $url, $token);
 
         if ($result) {
             logInfo('Plugin repository added', [

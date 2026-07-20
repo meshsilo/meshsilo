@@ -16,6 +16,9 @@ declare(strict_types=1);
  */
 class PluginRepository
 {
+    /** Marker prefix for encrypted access tokens stored in auth_token. */
+    private const ENC_PREFIX = 'enc:v1:';
+
     /**
      * Per-request cache of isPublicUrl verdicts keyed by host. The check
      * does blocking DNS lookups (A + AAAA), which dominate refresh time
@@ -40,28 +43,86 @@ class PluginRepository
     }
 
     /**
-     * Add a plugin repository. Rejects invalid URLs and non-public hosts (SSRF).
+     * Add a plugin repository, optionally with an access token for private
+     * registries/forges. Rejects invalid URLs; non-public hosts are refused
+     * unless the plugin_repos_allow_private_hosts setting is enabled.
+     * Tokens are encrypted at rest when encryption is configured.
      */
-    public function addRepository(string $name, string $url): bool
+    public function addRepository(string $name, string $url, string $token = ''): bool
     {
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
             return false;
         }
 
-        // Block SSRF: refuse repositories that point at private/internal hosts
-        if (!$this->isPublicUrl($url)) {
-            logWarning('Blocked plugin repository with non-public host', ['url' => $url]);
+        if (!$this->isFetchableUrl($url)) {
             return false;
         }
 
         try {
             $db = getDB();
-            $stmt = $db->prepare('INSERT INTO plugin_repositories (name, url, is_official) VALUES (:name, :url, 0)');
-            $stmt->execute([':name' => $name, ':url' => $url]);
+            $stmt = $db->prepare('INSERT INTO plugin_repositories (name, url, is_official, auth_token) VALUES (:name, :url, 0, :token)');
+            $stmt->execute([
+                ':name' => $name,
+                ':url' => $url,
+                ':token' => $token !== '' ? $this->encryptToken($token) : null,
+            ]);
             return true;
         } catch (\Exception $e) {
             logError('Failed to add plugin repository', ['error' => $e->getMessage()]);
             return false;
+        }
+    }
+
+    /**
+     * Access token for a repository URL (decrypted), or null when none is
+     * configured. Only the fetch layer calls this - getRepositories()
+     * deliberately never selects auth_token so tokens cannot leak into
+     * listings or the admin UI.
+     */
+    public function getTokenForUrl(string $url): ?string
+    {
+        try {
+            $db = getDB();
+            $stmt = $db->prepare('SELECT auth_token FROM plugin_repositories WHERE url = :url');
+            $stmt->execute([':url' => $url]);
+            $row = $stmt->fetch();
+            $stored = $row['auth_token'] ?? null;
+            if ($stored === null || $stored === '') {
+                return null;
+            }
+            return $this->decryptToken($stored);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function encryptToken(string $token): string
+    {
+        if (class_exists('Encryption') && Encryption::isEnabled()) {
+            try {
+                return self::ENC_PREFIX . base64_encode(Encryption::encrypt($token, 'repo-token'));
+            } catch (\Throwable $e) {
+                logWarning('Failed to encrypt repository token; storing as plaintext', ['error' => $e->getMessage()]);
+            }
+        }
+        return $token;
+    }
+
+    private function decryptToken(string $stored): ?string
+    {
+        if (!str_starts_with($stored, self::ENC_PREFIX)) {
+            return $stored;
+        }
+        if (!class_exists('Encryption') || !Encryption::isEnabled()) {
+            logWarning('Cannot decrypt repository token: encryption not configured');
+            return null;
+        }
+        try {
+            $raw = base64_decode(substr($stored, strlen(self::ENC_PREFIX)), true);
+            return $raw === false ? null : Encryption::decrypt($raw, 'repo-token');
+        } catch (\Throwable $e) {
+            logWarning('Failed to decrypt repository token', ['error' => $e->getMessage()]);
+            return null;
         }
     }
 
@@ -91,10 +152,16 @@ class PluginRepository
             return null;
         }
 
+        $header = 'User-Agent: ' . self::userAgent() . "\r\n";
+        $token = $this->getTokenForUrl($repoUrl);
+        if ($token !== null) {
+            $header .= 'Authorization: Bearer ' . $token . "\r\n";
+        }
+
         $context = stream_context_create([
             'http' => [
                 'timeout' => 10,
-                'header' => 'User-Agent: ' . self::userAgent(),
+                'header' => $header,
             ],
         ]);
 
@@ -135,6 +202,11 @@ class PluginRepository
         $handles = [];
         foreach ($toFetch as $url) {
             $ch = curl_init($url);
+            $headers = [];
+            $token = $this->getTokenForUrl($url);
+            if ($token !== null) {
+                $headers[] = 'Authorization: Bearer ' . $token;
+            }
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 10,
@@ -144,6 +216,7 @@ class PluginRepository
                 CURLOPT_FOLLOWLOCATION => false,
                 CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
                 CURLOPT_USERAGENT => self::userAgent(),
+                CURLOPT_HTTPHEADER => $headers,
             ]);
             curl_multi_add_handle($multi, $ch);
             $handles[$url] = $ch;
@@ -171,7 +244,10 @@ class PluginRepository
     }
 
     /**
-     * Scheme + SSRF validation shared by the fetchers.
+     * Scheme + SSRF validation shared by the fetchers. Admins running
+     * self-hosted forges on a LAN can opt in to private hosts via the
+     * plugin_repos_allow_private_hosts setting; repository URLs are
+     * admin-entered, so the residual SSRF risk of the opt-in is accepted.
      */
     private function isFetchableUrl(string $url): bool
     {
@@ -179,7 +255,11 @@ class PluginRepository
         if (!in_array(strtolower($scheme ?? ''), ['http', 'https'], true)) {
             return false;
         }
-        if (!$this->isPublicUrl($url)) {
+
+        $allowPrivate = function_exists('getSetting')
+            && getSetting('plugin_repos_allow_private_hosts', '0') === '1';
+
+        if (!$allowPrivate && !$this->isPublicUrl($url)) {
             logWarning('Blocked plugin registry fetch to non-public host', ['url' => $url]);
             return false;
         }
@@ -226,6 +306,64 @@ class PluginRepository
     private static function userAgent(): string
     {
         return 'MeshSilo/' . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0');
+    }
+
+    /**
+     * Download a URL to a local file (plugin archive downloads), sending the
+     * given bearer token when provided. Unlike registry fetches, limited
+     * redirects are followed: forge archive endpoints commonly 302 to a CDN
+     * (e.g. github.com -> codeload.github.com). Archive URLs come from
+     * admin-added registries, so that relaxation is accepted.
+     */
+    public function fetchToFile(string $url, string $destPath, ?string $token = null): bool
+    {
+        if (!$this->isFetchableUrl($url)) {
+            return false;
+        }
+
+        $headers = [];
+        if ($token !== null && $token !== '') {
+            $headers[] = 'Authorization: Bearer ' . $token;
+        }
+
+        if (function_exists('curl_init')) {
+            $fh = @fopen($destPath, 'wb');
+            if ($fh === false) {
+                return false;
+            }
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_FILE => $fh,
+                CURLOPT_TIMEOUT => 60,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS => 3,
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+                CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+                CURLOPT_USERAGENT => self::userAgent(),
+                CURLOPT_HTTPHEADER => $headers,
+            ]);
+            $ok = curl_exec($ch);
+            $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            curl_close($ch);
+            fclose($fh);
+            if ($ok === false || $code !== 200) {
+                @unlink($destPath);
+                return false;
+            }
+            return true;
+        }
+
+        $header = 'User-Agent: ' . self::userAgent() . "\r\n";
+        if ($headers !== []) {
+            $header .= $headers[0] . "\r\n";
+        }
+        $context = stream_context_create(['http' => ['timeout' => 60, 'header' => $header]]);
+        $data = @file_get_contents($url, false, $context);
+        if ($data === false) {
+            return false;
+        }
+        return file_put_contents($destPath, $data) !== false;
     }
 
     /**

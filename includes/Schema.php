@@ -397,6 +397,7 @@ CREATE TABLE IF NOT EXISTS plugin_repositories (
     name {$varchar(200)} NOT NULL,
     url {$varchar(500)} NOT NULL,
     is_official $tinyint NOT NULL DEFAULT 0,
+    auth_token TEXT,
     last_fetched $ts NULL,
     registry_cache TEXT,
     created_at $ts DEFAULT CURRENT_TIMESTAMP

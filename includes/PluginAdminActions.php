@@ -166,14 +166,24 @@ class PluginAdminActions
             case 'add-repo':
                 $repoName = trim($post['repo_name'] ?? '');
                 $repoUrl = trim($post['repo_url'] ?? '');
+                $repoToken = trim($post['repo_token'] ?? '');
                 if ($repoName === '' || $repoUrl === '') {
                     $error = 'Repository name and URL are required.';
-                } elseif ($pluginManager->addRepository($repoName, $repoUrl)) {
+                } elseif ($pluginManager->addRepository($repoName, $repoUrl, $repoToken)) {
                     $message = 'Repository added successfully.';
-                    logInfo('Plugin repository added', ['name' => $repoName, 'url' => $repoUrl, 'by' => getCurrentUser()['username']]);
+                    logInfo('Plugin repository added', ['name' => $repoName, 'url' => $repoUrl, 'has_token' => $repoToken !== '', 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Failed to add repository. Please check the URL is valid.';
+                    $error = 'Failed to add repository. Check the URL is valid and, for private/LAN hosts, that private hosts are allowed below.';
                 }
+                break;
+
+            case 'repos-private-hosts':
+                $allow = isset($post['allow_private_hosts']) ? '1' : '0';
+                setSetting('plugin_repos_allow_private_hosts', $allow);
+                $message = $allow === '1'
+                    ? 'Private/LAN repository hosts are now allowed.'
+                    : 'Private/LAN repository hosts are now blocked.';
+                logInfo('Plugin repository private-host setting changed', ['allowed' => $allow, 'by' => getCurrentUser()['username']]);
                 break;
 
             case 'remove-repo':
