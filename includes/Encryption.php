@@ -5,6 +5,11 @@
  * Provides AES-256-GCM encryption for files and data
  */
 
+// EncryptedStorage (below) implements StorageInterface, so autoloading this
+// file outside the web bootstrap (CLI, plugin flows) fatals unless the
+// interface is loaded first. Definitions only - no side effects.
+require_once __DIR__ . '/storage.php';
+
 class Encryption
 {
     private const CIPHER = 'aes-256-gcm';
