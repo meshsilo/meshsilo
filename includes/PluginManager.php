@@ -585,6 +585,7 @@ class PluginManager
         $this->plugins[$pluginId] = $manifest;
         $this->plugins[$pluginId]['_dir'] = $pluginId;
 
+        self::resetOpcodeCache();
         logInfo($isUpgrade ? "Plugin upgraded: $pluginId" : "Plugin installed: $pluginId");
 
         return [
@@ -639,10 +640,26 @@ class PluginManager
 
         Router::clearCache();
         @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
+        self::resetOpcodeCache();
         logInfo("Plugin uninstalled: $id");
         $this->hooks->doAction('plugin_uninstalled', $id);
 
         return true;
+    }
+
+    /**
+     * Reset the opcode cache after plugin FILES change on disk. Production
+     * runs opcache.validate_timestamps=0, so without this an updated
+     * plugin's PHP keeps executing from the previously compiled code until
+     * php-fpm restarts - installs/updates appear to "not take effect".
+     * Preload covers only core includes, so a reset fully refreshes plugin
+     * code. No-op when opcache is absent or disabled.
+     */
+    private static function resetOpcodeCache(): void
+    {
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
     }
 
     // ========================================================================
@@ -1317,6 +1334,7 @@ class PluginManager
 
         // Re-discover plugins
         $this->discoverPlugins();
+        self::resetOpcodeCache();
 
         return [
             'success' => true,
