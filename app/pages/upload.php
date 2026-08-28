@@ -64,10 +64,6 @@ require_once 'includes/header.php';
                                 Browse Files
                                 <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.zip,.lys,.ctb,.pwmo,.sl1" hidden aria-label="Browse model files">
                             </label>
-                            <label class="btn btn-secondary file-select-btn mobile-only">
-                                Take Photo
-                                <input type="file" name="photo_file" id="photo_file" accept="image/*" capture="environment" hidden aria-label="Take photo">
-                            </label>
                         </div>
                         <p class="dropzone-hint">Supported: 3D models, slicer files (.lys, .ctb, .sl1), and ZIP archives (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
                         <p class="dropzone-hint">ZIP files will be unpacked — models imported as parts, images &amp; text files added as attachments</p>
@@ -158,9 +154,8 @@ require_once 'includes/header.php';
 
         </div>
 
-        <script>
+        <script<?= csp_nonce_attr() ?>>
         const fileInput = document.getElementById('model_file');
-        const photoInput = document.getElementById('photo_file');
         const dropzone = document.getElementById('dropzone');
         const display = document.getElementById('file-name-display');
         const uploadForm = document.getElementById('upload-form');
@@ -169,11 +164,9 @@ require_once 'includes/header.php';
         const progressFill = document.getElementById('progress-fill');
         const progressText = document.getElementById('progress-text');
 
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1048576).toFixed(1) + ' MB';
-        }
+        // formatFileSize comes from public/js/ui-common.js (loaded on every page).
+        // Every call below runs from an event handler, well after that deferred
+        // script has executed.
 
         function getFileIcon(ext) {
             var icons = {
@@ -215,16 +208,6 @@ require_once 'includes/header.php';
                 display.textContent = '';
             }
         });
-
-        // Photo capture (mobile)
-        if (photoInput) {
-            photoInput.addEventListener('change', function(e) {
-                if (this.files.length > 0) {
-                    display.textContent = 'Photo captured: ' + this.files[0].name;
-                    display.style.color = 'var(--color-success)';
-                }
-            });
-        }
 
         // Drag and drop support
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {

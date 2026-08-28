@@ -69,17 +69,8 @@ if ($routePath !== '/' && !empty($_GET['route'])) {
         $seo->handle([]);
     }
 
-    // Load routes (use cache in production if available)
-    $useCache = function_exists('getSetting') && getSetting('route_caching', '0') === '1';
-    if ($useCache && Router::isCacheValid()) {
-        Router::getInstance()->loadFromCache();
-    } else {
-        require_once __DIR__ . '/includes/routes.php';
-        // Save cache if caching is enabled
-        if ($useCache) {
-            Router::getInstance()->saveToCache();
-        }
-    }
+    // Load routes
+    require_once __DIR__ . '/includes/routes.php';
 
     $router = Router::getInstance();
 
@@ -119,45 +110,17 @@ $db = getDB();
 try {
     $result = $db->query('SELECT id, name, description, file_path, file_size, file_type, dedup_path, part_count, creator, created_at, is_archived, thumbnail_path FROM models WHERE parent_id IS NULL AND is_archived = 0 ORDER BY created_at DESC LIMIT 8');
     $models = [];
-    $modelIds = [];
     while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-        if ($row['part_count'] > 0) {
-            $modelIds[] = $row['id'];
-        } else {
-            // Use preview endpoint for single models
-            $row['preview_path'] = '/preview?id=' . $row['id'];
-            $row['preview_type'] = $row['file_type'];
-        }
         $models[] = $row;
     }
 } catch (Throwable $e) {
     logException($e, ['action' => 'homepage_recent_models']);
     $models = [];
-    $modelIds = [];
 }
 
-// Bulk load first parts for multi-part models (eliminates N+1 queries)
-if (!empty($modelIds)) {
-    try {
-        $firstParts = getFirstPartsForModels($modelIds);
-
-        // Assign to models
-        foreach ($models as &$model) {
-            if ($model['part_count'] > 0) {
-                $firstPart = $firstParts[$model['id']] ?? null;
-                if ($firstPart) {
-                    // Use preview endpoint for multi-part models
-                    $model['preview_path'] = '/preview?id=' . $firstPart['id'];
-                    $model['preview_type'] = $firstPart['file_type'];
-                    $model['preview_file_size'] = $firstPart['file_size'] ?? 0;
-                }
-            }
-        }
-        unset($model);
-    } catch (Throwable $e) {
-        logException($e, ['action' => 'homepage_multipart_models']);
-    }
-}
+// Resolve viewer previews (a multi-part model previews its first part); the
+// helper batches every multi-part lookup into one query.
+attachPreviewData($models);
 
 // Get categories with model counts (cached 5 minutes)
 $categories = Cache::getInstance()->remember('homepage_categories', 300, function () use ($db) {
@@ -205,25 +168,8 @@ if (isFeatureEnabled('recently_viewed')) {
     $recentlyViewed = getRecentlyViewed(6);
 }
 
-// Bulk load first parts for recently viewed multi-part models
-$rvMultiPartIds = array_column(array_filter($recentlyViewed, fn($m) => $m['part_count'] > 0), 'id');
-$rvParts = !empty($rvMultiPartIds) ? getFirstPartsForModels($rvMultiPartIds) : [];
-
-// Enhance with preview data using preview endpoint
-foreach ($recentlyViewed as &$rv) {
-    if ($rv['part_count'] > 0) {
-        $firstPart = $rvParts[$rv['id']] ?? null;
-        if ($firstPart) {
-            $rv['preview_path'] = '/preview?id=' . $firstPart['id'];
-            $rv['preview_type'] = $firstPart['file_type'];
-            $rv['preview_file_size'] = $firstPart['file_size'] ?? 0;
-        }
-    } else {
-        $rv['preview_path'] = '/preview?id=' . $rv['id'];
-        $rv['preview_type'] = $rv['file_type'];
-    }
-}
-unset($rv);
+// Resolve viewer previews for the recently viewed list (one batched query)
+attachPreviewData($recentlyViewed);
 
 // Get popular tags (cached for 5 minutes to reduce load)
 $popularTags = [];

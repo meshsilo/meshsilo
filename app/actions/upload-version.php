@@ -105,7 +105,10 @@ try {
         $currentPath = getAbsoluteFilePath($model);
         if ($currentPath && is_file($currentPath)) {
             $currentHash = calculateContentHash($currentPath, $model['file_type']);
-            $archivePath = 'versions/' . $modelId . '/v0_' . basename($model['file_path']);
+            // Store the canonical 'assets/'-prefixed path so getAbsoluteFilePath()
+            // resolves it to storage/assets/versions/<id>/... The physical write
+            // dir ($versionDir) is unchanged.
+            $archivePath = 'assets/versions/' . $modelId . '/v0_' . basename($model['file_path']);
 
             // Copy current file to versions
             copy($currentPath, $versionDir . '/v0_' . basename($model['file_path']));
@@ -127,7 +130,10 @@ try {
     // same version number cannot overwrite each other's vN_<name> file.
     $uniqueToken = bin2hex(random_bytes(4));
     $versionFilename = 'v' . $nextVersion . '_' . $uniqueToken . '_' . $safeFileName;
-    $versionPath = 'versions/' . $modelId . '/' . $versionFilename;
+    // Canonical 'assets/'-prefixed path (stored in both model_versions.file_path
+    // via addModelVersion and models.file_path via the UPDATE below) so
+    // getAbsoluteFilePath() resolves it. Physical write path ($fullPath) unchanged.
+    $versionPath = 'assets/versions/' . $modelId . '/' . $versionFilename;
     $fullPath = $versionDir . '/' . $versionFilename;
 
     if (!move_uploaded_file($file['tmp_name'], $fullPath)) {

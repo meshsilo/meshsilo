@@ -137,12 +137,33 @@ class RateLimiter
             $stmt->execute();
         }
 
-        // Count requests in windows
         $key = hash('sha256', $identifier . ':' . $endpoint);
 
-        $minuteCount = self::getCount($key, $minuteWindow);
-        $hourCount = self::getCount($key, $hourWindow);
-        $dayCount = self::getCount($key, $dayWindow);
+        // Record this attempt BEFORE counting.
+        //
+        // Counting first and recording afterwards is a check-then-act race: N
+        // concurrent requests can each read the same sub-limit count and all be
+        // allowed, multiplying the effective brute-force ceiling on /login, 2FA
+        // and password-reset by the concurrency factor.
+        //
+        // Recording first closes it without needing a transaction or a
+        // dialect-specific locking read: whichever racer's INSERT commits last
+        // necessarily sees every other hit in its own COUNT, so no more than
+        // `limit` requests in a window can ever be allowed. Each statement is
+        // its own autocommit transaction on both SQLite and MySQL, so a
+        // committed INSERT is visible to the COUNT that follows it.
+        //
+        // Denied attempts are recorded too (same as before), so brute-force
+        // attempts still count toward the window and can't be retried for free.
+        self::record($key);
+
+        // The counts now include the hit just recorded. Subtract it to get the
+        // count that PRECEDED this request, which is what the limits below are
+        // measured against, keeping the allow/deny threshold and the returned
+        // 'remaining'/'limits' values identical to the pre-fix behaviour.
+        $minuteCount = max(0, self::getCount($key, $minuteWindow) - 1);
+        $hourCount = max(0, self::getCount($key, $hourWindow) - 1);
+        $dayCount = max(0, self::getCount($key, $dayWindow) - 1);
 
         // Check against limits
         $allowed = true;
@@ -179,11 +200,6 @@ class RateLimiter
             }
             $remaining = min($remaining, max(0, $dayRemaining));
         }
-
-        // Record every attempt (including denied ones) so brute-force
-        // attempts still count toward the window and can't be retried for free.
-        // The allow/deny decision above was computed from the prior counts.
-        self::record($key);
 
         return [
             'allowed' => $allowed,

@@ -31,7 +31,6 @@ $preloadFiles = [
     $basePath . '/includes/helpers.php',
     $basePath . '/includes/db.php',
     $basePath . '/includes/Cache.php',
-    $basePath . '/includes/Asset.php',
 
     // Authentication & permissions
     $basePath . '/includes/permissions.php',
@@ -44,7 +43,6 @@ $preloadFiles = [
     // Core features
     $basePath . '/includes/features.php',
     $basePath . '/includes/Events.php',
-    $basePath . '/includes/Search.php',
     $basePath . '/includes/ThumbnailGenerator.php',
 
     // Middleware (interface must load before implementations)

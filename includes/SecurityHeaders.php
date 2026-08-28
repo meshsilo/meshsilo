@@ -9,6 +9,24 @@ class SecurityHeaders
 {
     private static array $headers = [];
     private static bool $initialized = false;
+    private static ?string $nonce = null;
+
+    /**
+     * Per-request CSP nonce.
+     *
+     * Every inline <script> the app emits must carry this value (use the
+     * csp_nonce_attr() helper) or the browser will refuse to run it: script-src
+     * no longer allows 'unsafe-inline'. The value is generated once per request
+     * and is stable for the lifetime of that request, so the header emitted by
+     * applyCSP() and the attributes rendered later in the templates always match.
+     */
+    public static function nonce(): string
+    {
+        if (self::$nonce === null) {
+            self::$nonce = base64_encode(random_bytes(16));
+        }
+        return self::$nonce;
+    }
 
     /**
      * Initialize headers from settings
@@ -62,7 +80,12 @@ class SecurityHeaders
                 'report_only' => false,
                 'directives' => [
                     'default-src' => ["'self'"],
-                    'script-src' => ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+                    // No 'unsafe-inline' here: applyCSP() appends a per-request
+                    // nonce and every inline <script> carries it via csp_nonce_attr().
+                    'script-src' => ["'self'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+                    // style-src keeps 'unsafe-inline': a nonce only authorises
+                    // <style> elements, never the inline style="" attributes used
+                    // throughout the markup, so dropping it would break layout.
                     'style-src' => ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
                     'img-src' => ["'self'", "data:", "blob:", "https:"],
                     'font-src' => ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
@@ -208,8 +231,23 @@ class SecurityHeaders
     private static function applyCSP(): void
     {
         $directives = [];
+        $configured = self::$headers['csp']['directives'];
 
-        foreach (self::$headers['csp']['directives'] as $directive => $sources) {
+        // script-src is nonce-based: inline scripts are allowed only when they
+        // carry this request's nonce. 'unsafe-inline' is stripped rather than
+        // left in place because a browser ignores it entirely once a nonce is
+        // present - keeping it would only mislead whoever reads the policy.
+        // This also disarms a stale 'unsafe-inline' in an admin-saved config.
+        if (!empty($configured['script-src'])) {
+            $sources = array_values(array_filter(
+                $configured['script-src'],
+                static fn($source) => $source !== "'unsafe-inline'"
+            ));
+            $sources[] = "'nonce-" . self::nonce() . "'";
+            $configured['script-src'] = $sources;
+        }
+
+        foreach ($configured as $directive => $sources) {
             if (!empty($sources)) {
                 $directives[] = $directive . ' ' . implode(' ', $sources);
             }
@@ -447,9 +485,11 @@ class SecurityHeaders
             $cspDirs = self::$headers['csp']['directives'];
             if (in_array("'unsafe-inline'", $cspDirs['script-src'] ?? [])) {
                 $findings[] = [
-                    'severity' => 'medium',
+                    'severity' => 'low',
                     'header' => 'Content-Security-Policy',
-                    'message' => "script-src contains 'unsafe-inline'. Consider using nonces or hashes.",
+                    'message' => "script-src lists 'unsafe-inline'. It is stripped before the header is sent "
+                        . "(the per-request nonce would make browsers ignore it anyway), so it has no effect - "
+                        . "but remove it from the saved configuration to avoid confusion.",
                 ];
             }
             if (in_array("'unsafe-eval'", $cspDirs['script-src'] ?? [])) {

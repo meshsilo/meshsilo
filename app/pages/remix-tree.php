@@ -131,7 +131,7 @@ $needsViewer = true;
 require_once 'includes/header.php';
 ?>
 
-<div class="container">
+<div class="container page-remix-tree">
     <div class="breadcrumb">
         <a href="<?= route('browse') ?>">Models</a> &raquo;
         <a href="<?= route('model.show', ['id' => $modelId]) ?>"><?= htmlspecialchars($model['name']) ?></a> &raquo;
@@ -276,8 +276,8 @@ require_once 'includes/header.php';
                 <?php foreach ($relatedRemixes as $related): ?>
                 <div class="related-item">
                     <a href="<?= route('model.show', ['id' => $related['related_model_id']]) ?>">
-                        <?php if ($related['thumbnail']): ?>
-                        <img src="<?= basePath('assets/' . $related['thumbnail']) ?>" alt="<?= htmlspecialchars($related['name']) ?>" class="related-thumbnail" loading="lazy" decoding="async">
+                        <?php if ($related['thumbnail_path']): ?>
+                        <img src="<?= basePath('assets/' . $related['thumbnail_path']) ?>" alt="<?= htmlspecialchars($related['name']) ?>" class="related-thumbnail" loading="lazy" decoding="async">
                         <?php else: ?>
                         <div class="related-thumbnail placeholder"><i class="fa-solid fa-cube"></i></div>
                         <?php endif; ?>
@@ -300,7 +300,7 @@ require_once 'includes/header.php';
 </div>
 
 <!-- Mark as Remix Modal -->
-<div id="remix-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="remix-modal-title" style="display: none;">
+<div id="remix-modal" class="modal page-remix-tree" role="dialog" aria-modal="true" aria-labelledby="remix-modal-title" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="remix-modal-title">Mark as Remix</h3>
@@ -343,316 +343,7 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<style>
-.tree-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.remix-info {
-    color: var(--color-text-muted);
-}
-
-.tree-container {
-    margin-top: 1rem;
-}
-
-.tree-section {
-    background: var(--card-bg);
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.tree-section h3 {
-    margin: 0 0 1.5rem 0;
-    font-size: 1.1rem;
-}
-
-.remix-tree {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.tree-level {
-    display: flex;
-    flex-direction: column;
-}
-
-.tree-node {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: var(--color-bg);
-    border: 2px solid var(--color-border);
-    border-radius: 8px;
-    margin: 0.25rem 0;
-    position: relative;
-}
-
-.tree-node.current {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-
-.tree-node.remix {
-    border-color: var(--color-success);
-}
-
-.node-link {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    text-decoration: none;
-    color: inherit;
-}
-
-.node-thumbnail {
-    width: 48px;
-    height: 48px;
-    border-radius: 4px;
-    object-fit: cover;
-}
-
-.node-thumbnail.placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-border);
-    font-size: 1.5rem;
-    color: var(--color-text-muted);
-}
-
-.node-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.node-name {
-    font-weight: 500;
-}
-
-.node-author {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-}
-
-.node-external {
-    font-size: 0.75rem;
-    color: var(--color-warning);
-}
-
-.current-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: var(--color-primary);
-    color: white;
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-}
-
-.tree-connector {
-    width: 2px;
-    height: 20px;
-    background: var(--color-border);
-    margin-left: 24px;
-}
-
-.tree-children {
-    margin-left: 2rem;
-    padding-left: 1rem;
-    border-left: 2px solid var(--color-border);
-}
-
-.tree-branch {
-    position: relative;
-    padding-left: 1rem;
-}
-
-.branch-connector {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: 1rem;
-    height: 2px;
-    background: var(--color-border);
-}
-
-.empty-tree {
-    text-align: center;
-    padding: 3rem;
-    color: var(--color-text-muted);
-}
-
-.related-remixes {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.related-item {
-    background: var(--color-bg);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.related-item a {
-    display: block;
-    text-decoration: none;
-    color: inherit;
-}
-
-.related-thumbnail {
-    width: 100%;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-}
-
-.related-thumbnail.placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-border);
-    font-size: 2rem;
-    color: var(--color-text-muted);
-}
-
-.related-info {
-    padding: 0.75rem;
-}
-
-.related-name {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-}
-
-.related-author {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-}
-
-.related-notes {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    font-style: italic;
-    margin-top: 0.25rem;
-}
-
-/* Modal */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: var(--card-bg);
-    border-radius: 8px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.modal-header h3 {
-    margin: 0;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--color-text-muted);
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid var(--color-border);
-}
-
-.search-results {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    margin-top: 0.5rem;
-    display: none;
-}
-
-.search-results.active {
-    display: block;
-}
-
-.search-result-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem;
-    cursor: pointer;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.search-result-item:last-child {
-    border-bottom: none;
-}
-
-.search-result-item:hover {
-    background: var(--color-bg);
-}
-
-.search-result-item.selected {
-    background: var(--color-primary);
-    color: white;
-}
-
-.search-result-item img {
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    object-fit: cover;
-}
-
-@media (max-width: 768px) {
-    .tree-actions {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-</style>
-
-<script>
+<script<?= csp_nonce_attr() ?>>
 window.RemixTreeConfig = {
     apiModelsUrl: '<?= basePath('api/models') ?>',
     assetsPath: '<?= basePath('assets/') ?>',
@@ -667,11 +358,5 @@ document.getElementById('mark-remix-btn')?.addEventListener('click', function() 
 
 </script>
 <script src="<?= basePath('js/remix-tree.js') ?>?v=<?= filemtime(__DIR__ . '/../../public/js/remix-tree.js') ?>" defer></script>
-<script>
-document.getElementById('mark-remix-btn')?.addEventListener('click', function() {
-    document.getElementById('remix-modal').style.display = 'flex';
-});
-
-</script>
 
 <?php require_once 'includes/footer.php'; ?>

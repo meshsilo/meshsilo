@@ -290,51 +290,9 @@
             }
         }
 
-        async function renameFolder(oldName) {
-            const newName = await showPrompt('Rename folder:', oldName);
-            if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
-
-            const formData = new FormData();
-            formData.append('action', 'rename');
-            formData.append('model_id', ModelPageConfig.modelId);
-            formData.append('old_folder', oldName);
-            formData.append('new_folder', newName.trim());
-
-            try {
-                const response = await fetch('/actions/part-folders', { method: 'POST', body: formData });
-                const result = await response.json();
-                if (result.success) {
-                    location.reload();
-                } else {
-                    showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
-                }
-            } catch (err) {
-                console.error('Rename folder error:', err);
-                showToast('Failed to rename folder', 'error');
-            }
-        }
-
-        async function deleteFolder(folderName) {
-            if (!await showConfirm('Delete folder "' + folderName + '"? Parts will be moved to root.')) return;
-
-            const formData = new FormData();
-            formData.append('action', 'delete');
-            formData.append('model_id', ModelPageConfig.modelId);
-            formData.append('folder_name', folderName);
-
-            try {
-                const response = await fetch('/actions/part-folders', { method: 'POST', body: formData });
-                const result = await response.json();
-                if (result.success) {
-                    location.reload();
-                } else {
-                    showToast('Failed: ' + (result.error || 'Unknown error'), 'error');
-                }
-            } catch (err) {
-                console.error('Delete folder error:', err);
-                showToast('Failed to delete folder', 'error');
-            }
-        }
+        // Note: renameFolder/deleteFolder were removed - no template renders a
+        // .rename-folder-btn / .delete-folder-btn trigger, and the only callers
+        // were the now-removed dead delegated handlers in model-page.js.
 
         let movingPartIds = [];
 

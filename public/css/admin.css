@@ -473,3 +473,2148 @@
 }
 
 
+
+
+/* ============================================================
+   Per-admin-page styles, moved out of the inline <style> blocks
+   the pages used to carry. Each block is scoped to the body class
+   includes/header.php emits from $adminPage (admin-page-<slug>).
+   Keep these last: inline blocks used to render after every
+   stylesheet, so they won the cascade on ties.
+   ============================================================ */
+
+/* ---- API Keys (app/admin/api-keys.php) ---- */
+/* New key display */
+:where(.admin-page-api-keys) .api-key-created {
+    background: var(--color-surface);
+    border: 2px solid var(--color-success);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+:where(.admin-page-api-keys) .api-key-created h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+:where(.admin-page-api-keys) .api-key-value-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0.75rem 0;
+}
+
+:where(.admin-page-api-keys) .api-key-full {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 1.15rem;
+    line-height: 1.5;
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+    border: 2px solid var(--color-border);
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+    cursor: text;
+}
+
+:where(.admin-page-api-keys) .api-key-full:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+:where(.admin-page-api-keys) .api-key-warning {
+    color: var(--color-warning);
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0;
+}
+
+/* Key list */
+:where(.admin-page-api-keys) .api-keys-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+:where(.admin-page-api-keys) .api-key-item {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+}
+
+:where(.admin-page-api-keys) .api-key-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+:where(.admin-page-api-keys) .api-key-info {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+:where(.admin-page-api-keys) .api-key-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-api-keys) .api-key-user {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-api-keys) .api-key-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+:where(.admin-page-api-keys) .api-key-prefix-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+:where(.admin-page-api-keys) .api-key-prefix {
+    font-family: monospace;
+    font-size: 0.9rem;
+    background: var(--color-surface-hover);
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: all;
+    letter-spacing: 0.03em;
+    transition: background 0.15s;
+}
+
+:where(.admin-page-api-keys) .api-key-prefix:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+:where(.admin-page-api-keys) .api-key-prefix.copied {
+    background: var(--color-success);
+    color: white;
+}
+
+:where(.admin-page-api-keys) .api-key-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    min-width: 80px;
+}
+
+:where(.admin-page-api-keys) .api-key-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+}
+
+:where(.admin-page-api-keys) .api-key-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+:where(.admin-page-api-keys) .api-key-perms {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+}
+
+:where(.admin-page-api-keys) .api-key-actions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Permission badges */
+:where(.admin-page-api-keys) .perm-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+:where(.admin-page-api-keys) .perm-read { background: var(--color-primary); color: white; }
+:where(.admin-page-api-keys) .perm-write { background: var(--color-success); color: white; }
+:where(.admin-page-api-keys) .perm-delete { background: var(--color-warning); color: black; }
+:where(.admin-page-api-keys) .perm-admin { background: var(--color-danger); color: white; }
+
+/* Status badges */
+:where(.admin-page-api-keys) .badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+:where(.admin-page-api-keys) .badge-active { background: var(--color-success); color: white; }
+:where(.admin-page-api-keys) .badge-expired { background: var(--color-danger); color: white; }
+
+/* Form */
+:where(.admin-page-api-keys) .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+:where(.admin-page-api-keys) .checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Code block */
+:where(.admin-page-api-keys) .api-code-block {
+    background: var(--color-surface-hover);
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+}
+
+:where(.admin-page-api-keys) .mb-4 { margin-bottom: 1.5rem; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    :where(.admin-page-api-keys) .api-key-value-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    :where(.admin-page-api-keys) .api-key-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    :where(.admin-page-api-keys) .api-key-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    :where(.admin-page-api-keys) .checkbox-group {
+        flex-direction: column;
+    }
+}
+
+/* ---- Audit Log (app/admin/audit-log.php) ---- */
+.admin-page-audit-log .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.admin-page-audit-log .stat-card {
+    background: var(--color-surface);
+    padding: 1rem;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.admin-page-audit-log .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.admin-page-audit-log .stat-label {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+:where(.admin-page-audit-log) .filters-card {
+    background: var(--color-surface);
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+}
+
+:where(.admin-page-audit-log) .filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+:where(.admin-page-audit-log) .filter-group label {
+    display: block;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+:where(.admin-page-audit-log) .filter-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+:where(.admin-page-audit-log) .badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+:where(.admin-page-audit-log) .badge-info { background: var(--color-primary); color: white; }
+:where(.admin-page-audit-log) .badge-warning { background: var(--color-warning); color: black; }
+:where(.admin-page-audit-log) .badge-error { background: var(--color-danger); color: white; }
+:where(.admin-page-audit-log) .badge-critical { background: #8e44ad; color: white; }
+
+:where(.admin-page-audit-log) .badge-type-auth { background: #9b59b6; color: white; }
+:where(.admin-page-audit-log) .badge-type-data { background: #3498db; color: white; }
+:where(.admin-page-audit-log) .badge-type-admin { background: #e67e22; color: white; }
+:where(.admin-page-audit-log) .badge-type-security { background: #e74c3c; color: white; }
+:where(.admin-page-audit-log) .badge-type-api { background: #1abc9c; color: white; }
+:where(.admin-page-audit-log) .badge-type-system { background: #95a5a6; color: white; }
+
+:where(.admin-page-audit-log) tr.severity-warning { background: color-mix(in srgb, var(--color-warning) 10%, transparent); }
+:where(.admin-page-audit-log) tr.severity-error { background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
+:where(.admin-page-audit-log) tr.severity-critical { background: color-mix(in srgb, #8e44ad 15%, transparent); }
+
+:where(.admin-page-audit-log) .timestamp { white-space: nowrap; font-family: monospace; font-size: 0.85rem; }
+:where(.admin-page-audit-log) .ip-address { font-family: monospace; font-size: 0.85rem; }
+:where(.admin-page-audit-log) .resource { font-size: 0.85rem; }
+
+:where(.admin-page-audit-log) .empty-row {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-audit-log) .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+:where(.admin-page-audit-log) .page-info {
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-audit-log) .modal-lg {
+    max-width: 800px;
+}
+
+:where(.admin-page-audit-log) .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+:where(.admin-page-audit-log) .detail-item {
+    padding: 0.5rem;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+}
+
+:where(.admin-page-audit-log) .json-display {
+    background: var(--color-surface-hover);
+    padding: 1rem;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-size: 0.85rem;
+    max-height: 200px;
+}
+
+:where(.admin-page-audit-log) .dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+:where(.admin-page-audit-log) .dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    min-width: 150px;
+    z-index: 100;
+}
+
+:where(.admin-page-audit-log) .dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+:where(.admin-page-audit-log) .dropdown-item {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+:where(.admin-page-audit-log) .dropdown-item:hover {
+    background: var(--color-surface-hover);
+}
+
+/* ---- CLI Tools (app/admin/cli-tools.php) ---- */
+/* Admin Header */
+:where(.admin-page-cli-tools) .admin-header {
+    margin-bottom: 2rem;
+}
+
+:where(.admin-page-cli-tools) .admin-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-cli-tools) .admin-header p {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+/* CLI Tools Page Styles */
+:where(.admin-page-cli-tools) .tools-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+:where(.admin-page-cli-tools) .tool-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+:where(.admin-page-cli-tools) .tool-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+:where(.admin-page-cli-tools) .tool-header:hover {
+    background: var(--color-surface-hover);
+}
+
+:where(.admin-page-cli-tools) .tool-icon {
+    font-size: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background);
+    border-radius: var(--radius);
+    flex-shrink: 0;
+}
+
+:where(.admin-page-cli-tools) .tool-title {
+    flex: 1;
+    min-width: 0;
+}
+
+:where(.admin-page-cli-tools) .tool-title h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-cli-tools) .tool-title p {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-cli-tools) .tool-expand {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+:where(.admin-page-cli-tools) .tool-card.expanded .tool-expand {
+    transform: rotate(180deg);
+}
+
+:where(.admin-page-cli-tools) .tool-form {
+    display: none;
+    padding: 0 1.5rem 1.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+:where(.admin-page-cli-tools) .tool-card.expanded .tool-form {
+    display: block;
+}
+
+:where(.admin-page-cli-tools) .tool-section {
+    margin-top: 1.25rem;
+}
+
+:where(.admin-page-cli-tools) .tool-section h4 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin: 0 0 0.75rem 0;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+:where(.admin-page-cli-tools) .options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.5rem;
+}
+
+:where(.admin-page-cli-tools) .option-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 0 0.75rem;
+    padding: 0.75rem;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+:where(.admin-page-cli-tools) .option-item:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-text-muted);
+}
+
+:where(.admin-page-cli-tools) .option-item.warning {
+    border-left: 3px solid var(--color-warning);
+}
+
+:where(.admin-page-cli-tools) .option-item input {
+    grid-row: span 2;
+    margin-top: 0.25rem;
+    accent-color: var(--color-primary);
+}
+
+:where(.admin-page-cli-tools) .option-label {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-cli-tools) .warning-badge {
+    color: var(--color-warning);
+    font-size: 0.875rem;
+}
+
+:where(.admin-page-cli-tools) .option-desc {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-cli-tools) .params-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+:where(.admin-page-cli-tools) .param-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+:where(.admin-page-cli-tools) .param-item label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-cli-tools) .param-item input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-background);
+    color: var(--color-text);
+    font-size: 0.875rem;
+}
+
+:where(.admin-page-cli-tools) .param-item input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+:where(.admin-page-cli-tools) .param-desc {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-cli-tools) .tool-actions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
+:where(.admin-page-cli-tools) .btn-icon {
+    margin-right: 0.25rem;
+}
+
+/* CLI Output Panel */
+:where(.admin-page-cli-tools) .cli-output-panel {
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+:where(.admin-page-cli-tools) .cli-output-panel.success {
+    border-color: var(--color-success);
+}
+
+:where(.admin-page-cli-tools) .cli-output-panel.error {
+    border-color: var(--color-danger);
+}
+
+:where(.admin-page-cli-tools) .output-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface-elevated);
+    border-bottom: 1px solid var(--color-border);
+}
+
+:where(.admin-page-cli-tools) .output-icon {
+    font-size: 1.25rem;
+}
+
+:where(.admin-page-cli-tools) .cli-output-panel.success .output-icon {
+    color: var(--color-success);
+}
+
+:where(.admin-page-cli-tools) .cli-output-panel.error .output-icon {
+    color: var(--color-danger);
+}
+
+:where(.admin-page-cli-tools) .output-title {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+:where(.admin-page-cli-tools) .executed-command {
+    margin-left: auto;
+    padding: 0.25rem 0.5rem;
+    background: var(--color-background);
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+:where(.admin-page-cli-tools) .output-content {
+    padding: 1rem;
+    margin: 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+    color: var(--color-text);
+    background: var(--color-background);
+}
+
+/* CLI Info Box */
+:where(.admin-page-cli-tools) .cli-info {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+:where(.admin-page-cli-tools) .cli-info h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-cli-tools) .cli-info p {
+    margin: 0 0 1rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-cli-tools) .cli-info pre {
+    margin: 0;
+    padding: 1rem;
+    background: var(--color-background);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    overflow-x: auto;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    :where(.admin-page-cli-tools) .tool-header {
+        padding: 1rem;
+    }
+
+    :where(.admin-page-cli-tools) .tool-form {
+        padding: 0 1rem 1rem;
+    }
+
+    :where(.admin-page-cli-tools) .options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    :where(.admin-page-cli-tools) .params-grid {
+        grid-template-columns: 1fr;
+    }
+
+    :where(.admin-page-cli-tools) .output-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    :where(.admin-page-cli-tools) .executed-command {
+        margin-left: 0;
+    }
+}
+
+/* ---- Database (app/admin/database.php) ---- */
+:where(.admin-page-database) .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+:where(.admin-page-database) .metric-card {
+    background: var(--color-surface);
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+}
+
+:where(.admin-page-database) .metric-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+:where(.admin-page-database) .metric-icon { font-size: 1.25rem; }
+
+:where(.admin-page-database) .metric-title {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-database) .metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+:where(.admin-page-database) .metric-detail {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-database) .text-success { color: var(--color-success); }
+:where(.admin-page-database) .text-warning { color: var(--color-warning); }
+
+:where(.admin-page-database) .stat-card-warning {
+    border-color: var(--color-warning, #f59e0b);
+}
+
+:where(.admin-page-database) .stat-card-warning .stat-value {
+    color: var(--color-warning, #f59e0b);
+}
+
+:where(.admin-page-database) .stat-card-success .stat-value {
+    color: var(--color-success, #22c55e);
+}
+
+:where(.admin-page-database) .data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+:where(.admin-page-database) .data-table th,
+:where(.admin-page-database) .data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+:where(.admin-page-database) .data-table th {
+    font-weight: 500;
+    color: var(--color-text-muted);
+    width: 200px;
+}
+
+:where(.admin-page-database) .alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+/* Scoped with :where() so specificity stays (0,1,0), exactly as when these
+   were inline. base.css has [data-theme="light"] .alert-* at (0,2,0), which
+   must keep winning the background in light theme; a plain .admin-page-database
+   prefix would tie it and win on source order instead. */
+:where(.admin-page-database) .alert-success {
+    background: color-mix(in srgb, var(--color-success) 10%, transparent);
+    color: var(--color-success, #22c55e);
+    border: 1px solid var(--color-success, #22c55e);
+}
+
+:where(.admin-page-database) .alert-warning {
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    color: var(--color-warning, #f59e0b);
+    border: 1px solid var(--color-warning, #f59e0b);
+}
+
+:where(.admin-page-database) .alert-error {
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    color: var(--color-danger, #ef4444);
+    border: 1px solid var(--color-danger, #ef4444);
+}
+
+/* ---- Features (app/admin/features.php) ---- */
+:where(.admin-page-features) .features-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+:where(.admin-page-features) .feature-list {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+:where(.admin-page-features) .feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+:where(.admin-page-features) .feature-item:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+:where(.admin-page-features) .feature-item.enabled {
+    border-color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+:where(.admin-page-features) .feature-toggle {
+    position: relative;
+    flex-shrink: 0;
+}
+
+:where(.admin-page-features) .feature-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+:where(.admin-page-features) .toggle-slider {
+    display: block;
+    width: 44px;
+    height: 24px;
+    background: var(--color-text-muted);
+    border-radius: 12px;
+    transition: background 0.2s ease;
+    position: relative;
+}
+
+:where(.admin-page-features) .toggle-slider::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+:where(.admin-page-features) .feature-toggle input:checked + .toggle-slider {
+    background: var(--color-success);
+}
+
+:where(.admin-page-features) .feature-toggle input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+:where(.admin-page-features) .feature-info {
+    flex: 1;
+    min-width: 0;
+}
+
+:where(.admin-page-features) .feature-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+    flex-wrap: wrap;
+}
+
+:where(.admin-page-features) .feature-icon {
+    font-size: 1.1rem;
+    width: 24px;
+    text-align: center;
+}
+
+:where(.admin-page-features) .feature-name {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+:where(.admin-page-features) .feature-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+:where(.admin-page-features) .feature-badge.default {
+    background: var(--color-primary);
+    color: white;
+}
+
+:where(.admin-page-features) .feature-badge.usage {
+    background: #6366f1;
+    color: white;
+}
+
+:where(.admin-page-features) .feature-description {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+:where(.admin-page-features) .feature-warning {
+    font-size: 0.75rem;
+    color: var(--color-warning);
+    margin: 0.25rem 0 0;
+    padding: 0.25rem 0.5rem;
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    border-radius: 4px;
+}
+
+:where(.admin-page-features) .feature-dependents {
+    font-size: 0.75rem;
+    color: var(--color-primary);
+    margin: 0.25rem 0 0;
+    padding: 0.25rem 0.5rem;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-radius: 4px;
+}
+
+:where(.admin-page-features) .feature-item.has-warning {
+    border-color: var(--color-warning);
+}
+
+:where(.admin-page-features) .sticky-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--color-bg);
+    padding: 1rem;
+    margin: 2rem -1.5rem -1.5rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+    :where(.admin-page-features) .feature-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Saving indicator */
+:where(.admin-page-features) .feature-toggle.saving .toggle-slider {
+    opacity: 0.6;
+}
+
+:where(.admin-page-features) .feature-toggle.saving .toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border: 2px solid transparent;
+    border-top-color: white;
+    border-radius: 50%;
+    animation: features-spin 0.6s linear infinite;
+}
+
+/* Renamed from `spin`: keyframes cannot be scoped, and viewer.css already
+   defines a different `spin`. Inline it shadowed viewer.css on this page only;
+   as a global rule it would have shadowed it on every admin page. */
+@keyframes features-spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Success feedback */
+:where(.admin-page-features) .feature-item.just-saved {
+    animation: save-flash 0.5s ease;
+}
+
+@keyframes save-flash {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 0%, transparent); }
+    50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 40%, transparent); }
+}
+
+/* ---- Health (app/admin/health.php) ---- */
+:where(.admin-page-health) .health-status-banner {
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+:where(.admin-page-health) .health-status-banner.status-healthy {
+    background: color-mix(in srgb, var(--color-success) 15%, transparent);
+    color: var(--color-success);
+}
+
+:where(.admin-page-health) .health-status-banner.status-warning {
+    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+    color: var(--color-warning);
+}
+
+:where(.admin-page-health) .health-status-banner.status-critical {
+    background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+    color: var(--color-danger);
+}
+
+:where(.admin-page-health) .health-status-banner.status-down {
+    background: color-mix(in srgb, var(--color-danger) 20%, transparent);
+    color: var(--color-danger);
+}
+
+:where(.admin-page-health) .status-icon::before {
+    font-family: "Font Awesome 7 Free";
+    font-weight: 900;
+    font-size: 1.25rem;
+}
+
+:where(.admin-page-health) .status-healthy .status-icon::before { content: "\f00c"; }
+:where(.admin-page-health) .status-warning .status-icon::before { content: "\f071"; }
+:where(.admin-page-health) .status-critical .status-icon::before,
+:where(.admin-page-health) .status-down .status-icon::before { content: "\f00d"; }
+
+:where(.admin-page-health) .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+:where(.admin-page-health) .last-updated {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+:where(.admin-page-health) .auto-refresh {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+:where(.admin-page-health) .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+:where(.admin-page-health) .metric-card {
+    background: var(--color-surface);
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+}
+
+:where(.admin-page-health) .metric-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+:where(.admin-page-health) .metric-icon {
+    font-size: 1.25rem;
+}
+
+:where(.admin-page-health) .metric-title {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-health) .metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+:where(.admin-page-health) .metric-bar {
+    height: 6px;
+    background: var(--color-bg);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+:where(.admin-page-health) .metric-bar-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+:where(.admin-page-health) .metric-bar-fill.warning {
+    background: var(--color-warning);
+}
+
+:where(.admin-page-health) .metric-bar-fill.critical {
+    background: var(--color-danger);
+}
+
+:where(.admin-page-health) .metric-detail {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-health) .section {
+    margin-bottom: 2rem;
+}
+
+:where(.admin-page-health) .section h2 {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+:where(.admin-page-health) .service-status-value {
+    font-size: 1.5rem;
+}
+
+:where(.admin-page-health) .status-color-healthy { color: var(--color-success); }
+:where(.admin-page-health) .status-color-warning,
+:where(.admin-page-health) .status-color-degraded { color: var(--color-warning); }
+:where(.admin-page-health) .status-color-critical,
+:where(.admin-page-health) .status-color-down { color: var(--color-danger); }
+:where(.admin-page-health) .status-color-configured { color: var(--color-primary); }
+:where(.admin-page-health) .status-color-unknown { color: var(--color-text-muted); }
+
+:where(.admin-page-health) .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+:where(.admin-page-health) .info-card {
+    background: var(--color-surface);
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+}
+
+:where(.admin-page-health) .info-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+:where(.admin-page-health) .info-card-icon {
+    font-size: 1.25rem;
+}
+
+:where(.admin-page-health) .info-card h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+:where(.admin-page-health) .info-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+:where(.admin-page-health) .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+:where(.admin-page-health) .info-item:last-child {
+    border-bottom: none;
+}
+
+:where(.admin-page-health) .info-label {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+:where(.admin-page-health) .info-value {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+:where(.admin-page-health) .info-table tr:last-child td {
+    border-bottom: none;
+}
+
+:where(.admin-page-health) .errors-table-container {
+    overflow-x: auto;
+}
+
+:where(.admin-page-health) .timestamp {
+    white-space: nowrap;
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+:where(.admin-page-health) .error-details {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+}
+
+:where(.admin-page-health) .severity-error { background: color-mix(in srgb, var(--color-danger) 5%, transparent); }
+:where(.admin-page-health) .severity-critical { background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
+:where(.admin-page-health) .severity-warning { background: color-mix(in srgb, var(--color-warning) 5%, transparent); }
+
+:where(.admin-page-health) .section-footer {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+:where(.admin-page-health) .text-danger { color: var(--color-danger); }
+:where(.admin-page-health) .text-success { color: var(--color-success); }
+
+@media (max-width: 768px) {
+    :where(.admin-page-health) .header-actions {
+        flex-wrap: wrap;
+    }
+
+    :where(.admin-page-health) .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ---- Plugins (app/admin/plugins.php) ---- */
+/* Tab navigation */
+:where(.admin-page-plugins) .plugin-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--color-border);
+    margin-bottom: 1.5rem;
+}
+
+:where(.admin-page-plugins) .plugin-tab {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+:where(.admin-page-plugins) .plugin-tab:hover {
+    color: var(--color-text);
+}
+
+:where(.admin-page-plugins) .plugin-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Tab content */
+:where(.admin-page-plugins) .plugin-tab-content {
+    min-height: 200px;
+}
+
+:where(.admin-page-plugins) .plugin-tab-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-plugins) .installed-plugins-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+:where(.admin-page-plugins) .installed-plugins-header h3 {
+    margin: 0;
+}
+
+:where(.admin-page-plugins) .installed-plugins-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Upload section */
+:where(.admin-page-plugins) .plugin-upload-section {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+:where(.admin-page-plugins) .plugin-upload-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-plugins) .upload-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+:where(.admin-page-plugins) .upload-input {
+    max-width: 400px;
+}
+
+/* Plugin card list */
+:where(.admin-page-plugins) .plugin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+:where(.admin-page-plugins) .plugin-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    transition: border-color 0.2s ease;
+}
+
+:where(.admin-page-plugins) .plugin-card.active {
+    border-left: 3px solid var(--color-success);
+}
+
+:where(.admin-page-plugins) .plugin-card.inactive {
+    border-left: 3px solid var(--color-text-muted);
+    opacity: 0.85;
+}
+
+:where(.admin-page-plugins) .plugin-card:hover {
+    border-color: var(--color-primary);
+}
+
+:where(.admin-page-plugins) .plugin-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+:where(.admin-page-plugins) .plugin-info {
+    flex: 1;
+    min-width: 0;
+}
+
+:where(.admin-page-plugins) .plugin-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
+}
+
+:where(.admin-page-plugins) .plugin-name {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+:where(.admin-page-plugins) .plugin-version {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    background: var(--color-surface-hover);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+}
+
+:where(.admin-page-plugins) .plugin-author {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-plugins) .plugin-description {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin: 0.5rem 0;
+    line-height: 1.4;
+}
+
+:where(.admin-page-plugins) .plugin-dependencies {
+    font-size: 0.75rem;
+    color: var(--color-warning);
+    margin: 0.25rem 0 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    border-radius: 4px;
+    display: inline-block;
+}
+
+:where(.admin-page-plugins) .plugin-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Status badges */
+:where(.admin-page-plugins) .plugin-status-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+:where(.admin-page-plugins) .badge-active {
+    background: var(--color-success);
+    color: white;
+}
+
+:where(.admin-page-plugins) .badge-inactive {
+    background: var(--color-surface-hover);
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-plugins) .badge-update {
+    background: var(--color-warning);
+    color: white;
+}
+
+:where(.admin-page-plugins) .badge-installed {
+    background: var(--color-success);
+    color: white;
+}
+
+/* Inline forms */
+:where(.admin-page-plugins) .inline-form {
+    display: inline-block;
+}
+
+/* :where() keeps this at (0,1,0), as when it was inline: base.css has
+   `.btn, button.btn` at (0,1,1), which must keep winning on a <button>. */
+:where(.admin-page-plugins) .btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+/* Browse tab */
+:where(.admin-page-plugins) .browse-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+:where(.admin-page-plugins) .plugin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+:where(.admin-page-plugins) .plugin-browse-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s ease;
+}
+
+:where(.admin-page-plugins) .plugin-browse-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+:where(.admin-page-plugins) .plugin-browse-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+:where(.admin-page-plugins) .plugin-browse-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+}
+
+:where(.admin-page-plugins) .plugin-meta-item {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    background: var(--color-surface-hover);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+}
+
+:where(.admin-page-plugins) .plugin-browse-actions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Repositories tab */
+:where(.admin-page-plugins) .repo-url {
+    font-size: 0.8rem;
+    word-break: break-all;
+}
+
+:where(.admin-page-plugins) .text-muted {
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-plugins) .add-repo-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+:where(.admin-page-plugins) .add-repo-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--color-text);
+}
+
+:where(.admin-page-plugins) .add-repo-form .form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+:where(.admin-page-plugins) .add-repo-form .form-row .form-group {
+    flex: 1;
+}
+
+/* Empty state */
+:where(.admin-page-plugins) .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-muted);
+}
+
+:where(.admin-page-plugins) .empty-state a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+/* Form help text */
+:where(.admin-page-plugins) .form-help {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.35rem;
+}
+
+/* Data table (repos) */
+:where(.admin-page-plugins) .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+:where(.admin-page-plugins) .data-table th,
+:where(.admin-page-plugins) .data-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+:where(.admin-page-plugins) .data-table th {
+    font-weight: 600;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: var(--color-surface-hover);
+}
+
+:where(.admin-page-plugins) .data-table tbody tr:hover {
+    background: var(--color-surface-hover);
+}
+
+:where(.admin-page-plugins) .data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    :where(.admin-page-plugins) .plugin-tabs {
+        overflow-x: auto;
+    }
+
+    :where(.admin-page-plugins) .plugin-tab {
+        white-space: nowrap;
+        padding: 0.6rem 1rem;
+    }
+
+    :where(.admin-page-plugins) .plugin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    :where(.admin-page-plugins) .upload-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    :where(.admin-page-plugins) .upload-input {
+        max-width: none;
+    }
+
+    :where(.admin-page-plugins) .plugin-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    :where(.admin-page-plugins) .plugin-actions {
+        flex-direction: column;
+    }
+
+    :where(.admin-page-plugins) .plugin-actions .inline-form {
+        display: block;
+    }
+
+    :where(.admin-page-plugins) .plugin-actions .btn-sm {
+        width: 100%;
+    }
+
+    :where(.admin-page-plugins) .add-repo-form .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+/* ---- Routes (app/admin/routes.php) ---- */
+:where(.admin-page-routes) .admin-content .settings-section h2 {
+    font-size: 0.95rem;
+}
+:where(.admin-page-routes) .admin-content .settings-section p {
+    font-size: 0.8rem;
+}
+:where(.admin-page-routes) .admin-content .stat-item .stat-value {
+    font-size: 1.1rem;
+}
+:where(.admin-page-routes) .admin-content .stat-item .stat-label {
+    font-size: 0.7rem;
+}
+:where(.admin-page-routes) .route-table th,
+:where(.admin-page-routes) .route-table td {
+    padding: 0.3rem 0.4rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+:where(.admin-page-routes) .route-table td:nth-child(2),
+:where(.admin-page-routes) .route-table td:nth-child(4) {
+    white-space: normal;
+    word-break: break-all;
+    max-width: 180px;
+}
+:where(.admin-page-routes) .method-badge {
+    display: inline-block;
+    padding: 0.15rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+:where(.admin-page-routes) .method-get { background: var(--color-success); color: white; }
+:where(.admin-page-routes) .method-post { background: var(--color-primary); color: white; }
+:where(.admin-page-routes) .method-put { background: var(--color-warning); color: white; }
+:where(.admin-page-routes) .method-delete { background: var(--color-danger); color: white; }
+:where(.admin-page-routes) .method-patch { background: #8b5cf6; color: white; }
+
+:where(.admin-page-routes) .middleware-badge {
+    display: inline-block;
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    background: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    margin-right: 0.15rem;
+}
+
+:where(.admin-page-routes) .route-group {
+    margin-bottom: 0.35rem;
+}
+:where(.admin-page-routes) .route-group .table-responsive {
+    margin-bottom: 0.5rem;
+}
+
+:where(.admin-page-routes) .route-row.hidden {
+    display: none;
+}
+
+:where(.admin-page-routes) #test-result.success {
+    border-left: 4px solid var(--color-success, #10b981);
+}
+:where(.admin-page-routes) #test-result.error {
+    border-left: 4px solid var(--color-danger, #ef4444);
+}
+
+:where(.admin-page-routes) .route-test-warning {
+    color: var(--color-warning, #f59e0b);
+}
+:where(.admin-page-routes) .route-test-success {
+    color: var(--color-success, #10b981);
+    font-weight: 500;
+}
+:where(.admin-page-routes) .route-test-error {
+    color: var(--color-danger, #ef4444);
+}
+
+/* Named routes table compact */
+:where(.admin-page-routes) .admin-content .settings-section:last-child .data-table th,
+:where(.admin-page-routes) .admin-content .settings-section:last-child .data-table td {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+/* ---- Scheduler (app/admin/scheduler.php) ---- */
+:where(.admin-page-scheduler) .code-block {
+    background: var(--color-surface-hover);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    font-family: monospace;
+    font-size: 0.85rem;
+    overflow-x: auto;
+}
+
+:where(.admin-page-scheduler) .task-output {
+    cursor: help;
+    border-bottom: 1px dotted var(--color-text-muted);
+}
+
+:where(.admin-page-scheduler) .badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 4px;
+}
+
+:where(.admin-page-scheduler) .badge-success { background: var(--color-success); color: white; }
+:where(.admin-page-scheduler) .badge-danger { background: var(--color-danger); color: white; }
+:where(.admin-page-scheduler) .badge-warning { background: var(--color-warning); color: white; }
+:where(.admin-page-scheduler) .badge-secondary { background: var(--color-text-muted); color: white; }
+
+:where(.admin-page-scheduler) .ml-2 { margin-left: 0.5rem; }
+:where(.admin-page-scheduler) .mt-2 { margin-top: 0.5rem; }
+:where(.admin-page-scheduler) .mt-3 { margin-top: 1rem; }
+:where(.admin-page-scheduler) .cursor-pointer { cursor: pointer; }
+
+/* :where() keeps these at (0,0,2), as when they were inline: pages.css has
+   `details.settings-section > summary` at (0,1,2), which must keep winning. */
+:where(.admin-page-scheduler) details summary {
+    padding: 0.5rem;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius);
+}
+:where(.admin-page-scheduler) details[open] summary {
+    margin-bottom: 0.5rem;
+}
+
+.admin-page-scheduler .dedup-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+:where(.admin-page-scheduler) .stat-box {
+    background: var(--color-surface-hover);
+    padding: 1rem;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+:where(.admin-page-scheduler) .stat-box.stat-warning {
+    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+}
+
+:where(.admin-page-scheduler) .stat-box.stat-info {
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.admin-page-scheduler .stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.admin-page-scheduler .stat-label {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+}
+
+:where(.admin-page-scheduler) .d-flex { display: flex; }
+:where(.admin-page-scheduler) .justify-between { justify-content: space-between; }
+:where(.admin-page-scheduler) .align-center { align-items: center; }
+
+.admin-page-scheduler .dedup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* ---- Security Headers (app/admin/security-headers.php) ---- */
+:where(.admin-page-security-headers) .security-score-display {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+:where(.admin-page-security-headers) .score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+:where(.admin-page-security-headers) .score-circle.grade-a { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+:where(.admin-page-security-headers) .score-circle.grade-b { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+:where(.admin-page-security-headers) .score-circle.grade-c { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+:where(.admin-page-security-headers) .score-circle.grade-d { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
+:where(.admin-page-security-headers) .score-circle.grade-f { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+
+:where(.admin-page-security-headers) .score-circle .grade {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+:where(.admin-page-security-headers) .score-circle .score {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+:where(.admin-page-security-headers) .score-details {
+    flex: 1;
+}
+
+:where(.admin-page-security-headers) .findings-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+:where(.admin-page-security-headers) .finding {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+:where(.admin-page-security-headers) .finding-high {
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    border-color: var(--color-danger);
+}
+
+:where(.admin-page-security-headers) .finding-medium {
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    border-color: var(--color-warning);
+}
+
+:where(.admin-page-security-headers) .finding-low {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-color: var(--color-primary);
+}
+
+:where(.admin-page-security-headers) .tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+:where(.admin-page-security-headers) .tab-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+:where(.admin-page-security-headers) .tab-btn.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+:where(.admin-page-security-headers) .code-block {
+    background: var(--color-surface-hover);
+    padding: 1rem;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-family: monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+:where(.admin-page-security-headers) .form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+:where(.admin-page-security-headers) .form-row .form-group {
+    flex: 1;
+}
+
+/* ---- Sessions (app/admin/sessions.php) ---- */
+:where(.admin-page-sessions) .admin-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+:where(.admin-page-sessions) .admin-section {
+    background: var(--color-surface);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+:where(.admin-page-sessions) .admin-section h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.admin-page-sessions .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.admin-page-sessions .stat-card {
+    background: var(--color-surface);
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.admin-page-sessions .stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-primary);
+}
+
+.admin-page-sessions .stat-label {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+:where(.admin-page-sessions) .ip-address,
+:where(.admin-page-sessions) .timestamp {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+:where(.admin-page-sessions) .user-agent {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:where(.admin-page-sessions) .badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-left: 0.25rem;
+}
+
+:where(.admin-page-sessions) .badge-admin {
+    background: color-mix(in srgb, var(--color-danger) 20%, transparent);
+    color: var(--color-danger);
+}
+
+:where(.admin-page-sessions) .badge-current {
+    background: color-mix(in srgb, var(--color-success) 20%, transparent);
+    color: var(--color-success);
+}
+
+:where(.admin-page-sessions) .current-session {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+:where(.admin-page-sessions) .settings-form {
+    max-width: 500px;
+}
+
+:where(.admin-page-sessions) .form-group {
+    margin-bottom: 1rem;
+}
+
+:where(.admin-page-sessions) .form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+/* Scoped with :where() so specificity stays (0,1,0), exactly as when this was
+   inline. base.css has .form-control:focus at (0,2,0) and it must keep winning
+   the focus border-color; a plain .admin-page-sessions prefix would tie it and
+   win on source order, dropping the focus indicator. */
+:where(.admin-page-sessions) .form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+:where(.admin-page-sessions) .form-help {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+:where(.admin-page-sessions) .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+:where(.admin-page-sessions) .empty-row {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: 2rem;
+}
+
+/* ---- User edit (app/admin/user.php) ---- */
+/* Scope note: user.php sets $adminPage = 'users', the same slug as users.php,
+   so these rules also load on the user list page. None of these class names
+   appear in users.php markup, so nothing there is affected. */
+:where(.admin-page-users) .back-link {
+    color: var(--color-text-muted);
+    text-decoration: none;
+    margin-right: 0.5rem;
+}
+:where(.admin-page-users) .back-link:hover {
+    color: var(--color-text);
+}
+:where(.admin-page-users) .permission-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+:where(.admin-page-users) .permission-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius);
+}
+:where(.admin-page-users) .permission-item.has-permission {
+    color: var(--color-success);
+}
+:where(.admin-page-users) .permission-item.no-permission {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+}
+:where(.admin-page-users) .permission-status {
+    font-weight: bold;
+}
+:where(.admin-page-users) .danger-zone {
+    border: 1px solid var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 5%, transparent);
+}
+:where(.admin-page-users) .danger-zone h2 {
+    color: var(--color-danger);
+}
+

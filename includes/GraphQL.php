@@ -68,20 +68,29 @@ class GraphQL
         $query = preg_replace('/\#[^\n]*/', '', $query);
         $query = trim($query);
 
-        // Detect operation type
+        // Detect operation type. Match the keyword by word boundary so a
+        // variable-declaration block or operation name between the keyword and
+        // the selection set does not hide it -- e.g. `mutation ($id: Int!) {...}`
+        // and `mutation Fav($id: Int!) {...}` are mutations, not queries. The
+        // old `^mutation\s*\{` required the brace immediately after `mutation`,
+        // so any variable-declaring mutation was misclassified as a query.
         $operationType = 'query';
-        if (preg_match('/^mutation\s*\{/', $query)) {
+        if (preg_match('/^mutation\b/', $query)) {
             $operationType = 'mutation';
             $query = preg_replace('/^mutation\s*/', '', $query);
-        } elseif (preg_match('/^query\s*\{/', $query)) {
+        } elseif (preg_match('/^query\b/', $query)) {
             $query = preg_replace('/^query\s*/', '', $query);
         }
 
-        // Extract operation name and variables from named queries
+        // Strip an optional operation name and/or variable-declaration block
+        // that precedes the selection set (both parts are optional, e.g.
+        // `Fav($id: Int!) {`, `($id: Int!) {`, `GetModel {`, or just `{`).
         $operationName = null;
-        if (preg_match('/^(\w+)\s*(\([^)]*\))?\s*\{/', $query, $matches)) {
-            $operationName = $matches[1];
-            $query = preg_replace('/^(\w+)\s*(\([^)]*\))?\s*/', '', $query);
+        if (preg_match('/^(\w+)?\s*(\([^)]*\))?\s*\{/', $query, $matches)) {
+            if (!empty($matches[1])) {
+                $operationName = $matches[1];
+            }
+            $query = preg_replace('/^(\w+)?\s*(\([^)]*\))?\s*/', '', $query, 1);
         }
 
         // Parse the selection set
@@ -352,8 +361,10 @@ class GraphQL
                 'name' => 'String',
                 'description' => 'String',
                 'file_path' => 'String',
-                'thumbnail' => 'String',
-                'category_id' => 'Int',
+                // Real column is thumbnail_path; category is not a column on
+                // models (it is exposed via the `category` relation below), so
+                // there is no scalar category_id to declare.
+                'thumbnail_path' => 'String',
                 'user_id' => 'Int',
                 'download_count' => 'Int',
                 'license' => 'String',
@@ -383,11 +394,12 @@ class GraphQL
                 'is_admin' => 'Boolean',
             ],
             'Collection' => [
+                // Real schema is collections(id, name, description, created_at);
+                // there is no is_public or user_id column, so they are not fields.
                 'id' => 'Int',
                 'name' => 'String',
                 'description' => 'String',
-                'is_public' => 'Boolean',
-                'user_id' => 'Int',
+                'created_at' => 'String',
                 'model_count' => 'Int',
             ],
         ];
@@ -515,40 +527,21 @@ class GraphQL
         // Collections query
         self::$queries['collections'] = function ($args, $selections, $userId) {
             $db = self::$db;
-            $public = $args['public'] ?? true;
-            $owner = $args['owner'] ?? null;
-            $isAdmin = self::requestingUserIsAdmin($userId);
 
-            $where = [];
-            $params = [];
-
-            if ($public) {
-                $where[] = 'is_public = 1';
-            }
-
-            if ($owner) {
-                $where[] = 'user_id = :owner';
-                $params[':owner'] = $owner;
-            } elseif (!$public && $userId) {
-                $where[] = 'user_id = :user_id';
-                $params[':user_id'] = $userId;
-            }
-
-            // SECURITY: non-admin callers may only see public collections or their own.
-            // Prevents leaking other users' private collections (e.g. public:false + owner:<other>).
-            if (!$isAdmin) {
-                $where[] = '(is_public = 1 OR user_id = :req_user)';
-                $params[':req_user'] = $userId;
-            }
-
-            if (empty($where)) {
-                $where[] = '1=1';
-            }
-
-            $sql = "SELECT c.*, (SELECT COUNT(*) FROM collection_models WHERE collection_id = c.id) as model_count FROM collections c WHERE " . implode(' AND ', $where) . " ORDER BY name";
-
-            $stmt = $db->prepare($sql);
-            $stmt->execute($params);
+            // The real collections schema is (id, name, description, created_at):
+            // there is no is_public/user_id column and no collection_models
+            // junction table, so the previous public/owner/admin visibility
+            // filtering and junction count referenced columns/tables that do not
+            // exist and errored at runtime. Collections have no per-user
+            // visibility; models link to a collection by NAME via models.collection.
+            // Count models the same way the REST endpoint (app/api/routes/collections.php) does.
+            $stmt = $db->prepare(
+                "SELECT c.id, c.name, c.description, c.created_at,
+                        (SELECT COUNT(*) FROM models m WHERE m.collection = c.name AND m.parent_id IS NULL) as model_count
+                 FROM collections c
+                 ORDER BY c.name"
+            );
+            $stmt->execute();
 
             $collections = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {

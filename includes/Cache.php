@@ -252,6 +252,24 @@ class Cache
         $fullPattern = $this->prefix . $pattern;
 
         switch ($this->driver) {
+            case 'redis':
+                if ($this->redis) {
+                    // SCAN + del by glob pattern. Redis MATCH uses the same
+                    // glob syntax (* ?) as the fnmatch pattern used elsewhere,
+                    // so $fullPattern can be passed through directly. SCAN is
+                    // cursor-based and non-blocking (unlike KEYS on a large
+                    // keyspace).
+                    $iterator = null;
+                    while (($keys = $this->redis->scan($iterator, $fullPattern, 100)) !== false) {
+                        foreach ($keys as $key) {
+                            if ($this->redis->del($key)) {
+                                $count++;
+                            }
+                        }
+                    }
+                }
+                break;
+
             case 'apcu':
                 $iterator = new APCUIterator('/^' . preg_quote($fullPattern, '/') . '/');
                 foreach ($iterator as $item) {
@@ -369,6 +387,31 @@ class Cache
     {
         $prefixedKey = $this->prefix . $key;
 
+        // Use the driver's native atomic counter where available so concurrent
+        // increments don't lose updates. Native counters store a raw integer
+        // (not the serialized value set() writes), so keep the request-memory
+        // copy in sync and treat such keys as counters.
+        switch ($this->driver) {
+            case 'redis':
+                if ($this->redis) {
+                    $new = (int)$this->redis->incrBy($prefixedKey, $amount);
+                    $this->memory[$prefixedKey] = ['value' => $new, 'expires' => 0];
+                    return $new;
+                }
+                break;
+
+            case 'apcu':
+                $new = apcu_inc($prefixedKey, $amount);
+                if ($new !== false) {
+                    $new = (int)$new;
+                    $this->memory[$prefixedKey] = ['value' => $new, 'expires' => 0];
+                    return $new;
+                }
+                break;
+        }
+
+        // File/memory drivers have no atomic primitive: fall back to
+        // read-modify-write (non-atomic; acceptable for single-process use).
         $value = (int)$this->get($key, 0) + $amount;
         $this->set($key, $value);
         return $value;

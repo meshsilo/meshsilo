@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
     if (!Csrf::validate()) {
-        $error = 'Security validation failed. Please try again.';
+        $error = Csrf::ERROR_MESSAGE;
     } elseif (empty($email)) {
         $error = 'Please enter your email address.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {

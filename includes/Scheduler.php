@@ -131,6 +131,10 @@ class Scheduler
             }
         }
 
+        // Remember the output-buffer nesting level so a callback that throws
+        // (or leaves buffers open) can't leak them into later CLI output.
+        $obLevel = ob_get_level();
+
         try {
             // Set timeout
             set_time_limit($task['timeout']);
@@ -161,7 +165,15 @@ class Scheduler
                 'output' => $output,
                 'result' => $result
             ];
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
+            // Close any output buffer the callback opened before throwing so
+            // it doesn't leak and swallow later CLI output. Catch \Throwable
+            // (not just Exception) so a TypeError/Error in a task is handled
+            // the same way instead of propagating past the lock release.
+            while (ob_get_level() > $obLevel) {
+                ob_end_clean();
+            }
+
             $duration = (int) round((microtime(true) - $startTime) * 1000);
 
             self::logTaskRun($name, 'failed', $duration, $e->getMessage());
@@ -239,7 +251,12 @@ class Scheduler
             }
 
             if ($range === '*') {
-                return $value % $step === 0;
+                // "*/N" spans the field's full range starting at its minimum,
+                // so anchor the step to $min. A bare "value % step" is only
+                // correct for 0-based fields (minute/hour); for 1-based fields
+                // (day-of-month, month) it shifts every match by one - e.g.
+                // "*/2" for day matched 2,4,6 instead of the correct 1,3,5.
+                return ($value - $min) % $step === 0;
             }
 
             if (strpos($range, '-') !== false) {
@@ -328,19 +345,28 @@ class Scheduler
      */
     private static function acquireLock(string $lockFile, int $timeout): bool
     {
-        // Check if lock exists and is stale
-        if (file_exists($lockFile)) {
-            $lockTime = filemtime($lockFile);
-            if (time() - $lockTime > $timeout) {
-                // Stale lock, remove it
-                unlink($lockFile);
-            } else {
+        // Atomic create: 'x' mode fails if the file already exists, so only one
+        // racing process can win. This replaces the previous check-then-create
+        // sequence where two schedulers could both pass the existence check and
+        // both write the lock.
+        $handle = @fopen($lockFile, 'x');
+
+        if ($handle === false) {
+            // Lock already held. Reclaim it only if it is stale (older than the
+            // task timeout), then retry the atomic create exactly once.
+            $lockTime = @filemtime($lockFile);
+            if ($lockTime !== false && time() - $lockTime > $timeout) {
+                @unlink($lockFile);
+                $handle = @fopen($lockFile, 'x');
+            }
+            if ($handle === false) {
                 return false;
             }
         }
 
-        // Create lock file
-        return file_put_contents($lockFile, getmypid()) !== false;
+        fwrite($handle, (string) getmypid());
+        fclose($handle);
+        return true;
     }
 
     /**
@@ -516,24 +542,43 @@ class Scheduler
                 require_once __DIR__ . '/Queue.php';
             }
 
-            $maxJobs = 10;
+            // Drain every queue producers actually push to, not just the
+            // default queue. Real work lives on named queues (uploads,
+            // conversions, thumbnails, images, pdfs); on non-Docker/cron
+            // installs (no long-running queue worker) those would otherwise
+            // never be processed.
+            $queues = ['default', 'uploads', 'conversions', 'thumbnails', 'images', 'pdfs'];
+
+            // Bounded per-run budget shared across all queues so a single cron
+            // tick can't run forever.
+            $maxJobs = 25;
             $processed = 0;
             $failed = 0;
 
-            for ($i = 0; $i < $maxJobs; $i++) {
-                $job = Queue::pop();
-                if (!$job) {
-                    break;
-                }
+            foreach ($queues as $queue) {
+                while ($processed + $failed < $maxJobs) {
+                    $job = Queue::pop($queue);
+                    if (!$job) {
+                        break;
+                    }
 
-                try {
-                    if (Queue::process($job)) {
+                    // Mark completion/failure like cli/queue-worker.php:
+                    // Queue::process() runs the job and throws on error, so
+                    // complete() on success and fail() with the message on any
+                    // Throwable. Without this, jobs stayed 'processing' forever
+                    // (and in Docker got reclaimed and re-run).
+                    try {
+                        Queue::process($job);
+                        Queue::complete((int)$job['id']);
                         $processed++;
-                    } else {
+                    } catch (\Throwable $e) {
+                        Queue::fail((int)$job['id'], $e->getMessage());
                         $failed++;
                     }
-                } catch (Exception $e) {
-                    $failed++;
+                }
+
+                if ($processed + $failed >= $maxJobs) {
+                    break;
                 }
             }
 
@@ -684,25 +729,15 @@ class Scheduler
     {
         $now = time();
 
-        // Check next 60 minutes
-        for ($i = 1; $i <= 60; $i++) {
+        // Scan minute-by-minute over a one-week horizon. Cron granularity is
+        // one minute, so stepping by the minute is both correct and bounded
+        // (10080 iterations worst case). The previous version stepped by whole
+        // hours and then whole days, which preserved "now"'s minute-of-hour
+        // offset: a schedule pinned to a specific minute (e.g. "30 3 * * *"
+        // evaluated at 10:05) never matched and the next run showed as "N/A".
+        $maxMinutes = 7 * 24 * 60;
+        for ($i = 1; $i <= $maxMinutes; $i++) {
             $checkTime = $now + ($i * 60);
-            if (self::isDue($schedule, $checkTime)) {
-                return $checkTime;
-            }
-        }
-
-        // Check next 24 hours
-        for ($i = 1; $i <= 24; $i++) {
-            $checkTime = $now + ($i * 3600);
-            if (self::isDue($schedule, $checkTime)) {
-                return $checkTime;
-            }
-        }
-
-        // Check next 7 days
-        for ($i = 1; $i <= 7; $i++) {
-            $checkTime = $now + ($i * 86400);
             if (self::isDue($schedule, $checkTime)) {
                 return $checkTime;
             }

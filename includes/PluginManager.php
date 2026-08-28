@@ -346,7 +346,6 @@ class PluginManager
                 $this->runPluginMigrations($id);
             }
 
-            Router::clearCache();
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin enabled: $id");
             $this->hooks->doAction('plugin_enabled', $id);
@@ -388,7 +387,6 @@ class PluginManager
 
             unset($this->activePlugins[$id]);
 
-            Router::clearCache();
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin disabled: $id");
             $this->hooks->doAction('plugin_disabled', $id);
@@ -638,7 +636,6 @@ class PluginManager
         unset($this->plugins[$id]);
         unset($this->activePlugins[$id]);
 
-        Router::clearCache();
         @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
         self::resetOpcodeCache();
         logInfo("Plugin uninstalled: $id");
@@ -1028,6 +1025,11 @@ class PluginManager
         return $html;
     }
 
+    /**
+     * Plugin scripts are external files under /plugin-assets/, which script-src
+     * already covers via 'self' - no CSP nonce needed here. Inline scripts a
+     * plugin injects through a hook DO need one; see docs/PLUGINS.md.
+     */
     public function renderScripts(): string
     {
         $html = '';

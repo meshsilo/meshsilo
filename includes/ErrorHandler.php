@@ -228,14 +228,6 @@ class ErrorHandler
         $message = self::$debug ? $e->getMessage() : self::getFriendlyMessage($code);
         $showDetails = self::$debug;
 
-        // Check for custom error page
-        $customPage = dirname(__DIR__) . "/pages/errors/{$code}.php";
-        if (file_exists($customPage)) {
-            include $customPage;
-            return;
-        }
-
-        // Default error page
         self::renderDefaultErrorPage($e, $code, $title, $message, $showDetails);
     }
 
@@ -347,8 +339,15 @@ class ErrorHandler
 
         <div class="error-actions">
             <a href="/" class="btn btn-primary">Go Home</a>
-            <button type="button" onclick="history.back()" class="btn btn-secondary">Go Back</button>
+            <button type="button" id="error-go-back" class="btn btn-secondary">Go Back</button>
         </div>
+        <?php // Standalone page: no shared JS is loaded here, so the handler for
+              // the button lives inline. It must carry the CSP nonce. ?>
+        <script<?= function_exists('csp_nonce_attr') ? csp_nonce_attr() : '' ?>>
+            document.getElementById('error-go-back').addEventListener('click', function () {
+                history.back();
+            });
+        </script>
 
         <?php if ($showDetails) : ?>
         <div class="error-details">

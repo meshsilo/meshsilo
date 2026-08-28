@@ -15,24 +15,22 @@ header('Content-Type: application/json');
 try {
 
 if (!isFeatureEnabled('attachments')) {
-    jsonError('Attachments feature is disabled');
+    jsonError('Attachments feature is disabled', 403);
 }
 
 if (!isLoggedIn()) {
-    jsonError('Not logged in');
+    jsonError('Not logged in', 401);
 }
 
 if (!canEdit()) {
-    jsonError('Edit permission required');
+    jsonError('Edit permission required', 403);
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
 if (in_array($action, ['upload', 'delete'])) {
-    if (!Csrf::check()) {
-        jsonError('Invalid request token', 403);
-    }
+    requireCsrfJson();
 }
 
 switch ($action) {
@@ -129,14 +127,14 @@ function uploadAttachment() {
     $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$model) {
-        jsonError('Model not found');
+        jsonError('Model not found', 404);
         return;
     }
 
     // Verify ownership - user must own the model or be an admin
     $user = getCurrentUser();
     if (!userCanModifyModel($model, $user)) {
-        jsonError('Not authorized to modify this model');
+        jsonError('Not authorized to modify this model', 403);
         return;
     }
 
@@ -164,8 +162,11 @@ function uploadAttachment() {
         $ext = $isImage ? 'png' : ($isText ? 'txt' : 'pdf'); // Fallback to safe extension
     }
 
-    // Generate unique filename
-    $baseFilename = $fileType . '_' . $modelId . '_' . time();
+    // Generate unique filename. time() alone collides when two attachments are
+    // uploaded in the same second (multi-file select or a double-click), which
+    // would overwrite one file while leaving two DB rows pointing at it. Append
+    // a random token so every attachment gets a distinct physical path.
+    $baseFilename = $fileType . '_' . $modelId . '_' . time() . '_' . bin2hex(random_bytes(4));
     $filename = $baseFilename . '.' . $ext;
     $filePath = $attachDir . '/' . $filename;
 
@@ -258,7 +259,7 @@ function deleteAttachment() {
     $attachment = $result->fetchArray(PDO::FETCH_ASSOC);
 
     if (!$attachment) {
-        jsonError('Attachment not found');
+        jsonError('Attachment not found', 404);
         return;
     }
 
@@ -270,7 +271,7 @@ function deleteAttachment() {
 
     $user = getCurrentUser();
     if ($model && !userCanModifyModel($model, $user)) {
-        jsonError('Not authorized to modify this model');
+        jsonError('Not authorized to modify this model', 403);
         return;
     }
 

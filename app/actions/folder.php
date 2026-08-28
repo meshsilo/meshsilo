@@ -17,8 +17,8 @@ if (!isLoggedIn()) {
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
-if (in_array($action, ['create', 'update', 'delete', 'move_model']) && !Csrf::check()) {
-    jsonError('Invalid CSRF token');
+if (in_array($action, ['create', 'update', 'delete', 'move_model'])) {
+    requireCsrfJson();
 }
 
 switch ($action) {
@@ -78,9 +78,16 @@ function createFolder() {
         }
     }
 
-    // Get max sort order at this level
-    $stmt = $db->prepare('SELECT MAX(sort_order) FROM folders WHERE user_id = :user_id AND parent_id IS :parent_id');
-    $stmt->execute([':user_id' => $user['id'], ':parent_id' => $parentId]);
+    // Get max sort order at this level.
+    // NOTE: MySQL rejects a bound placeholder after IS (only IS NULL / IS NOT NULL
+    // are valid there), so branch instead of using the SQLite-only `IS :parent_id`.
+    if ($parentId === null) {
+        $stmt = $db->prepare('SELECT MAX(sort_order) FROM folders WHERE user_id = :user_id AND parent_id IS NULL');
+        $stmt->execute([':user_id' => $user['id']]);
+    } else {
+        $stmt = $db->prepare('SELECT MAX(sort_order) FROM folders WHERE user_id = :user_id AND parent_id = :parent_id');
+        $stmt->execute([':user_id' => $user['id'], ':parent_id' => $parentId]);
+    }
     $maxSort = (int)$stmt->fetchColumn();
 
     $stmt = $db->prepare('
@@ -102,6 +109,32 @@ function createFolder() {
         'success' => true,
         'folder_id' => $folderId
     ]);
+}
+
+/**
+ * Return true if setting $folderId's parent to $newParentId would create a
+ * cycle - i.e. $newParentId is $folderId itself or one of its descendants.
+ * Walks up the proposed parent's ancestor chain; the depth cap also protects
+ * against pre-existing corrupt/cyclic data so this never loops forever.
+ */
+function folderWouldCreateCycle($db, $folderId, $newParentId) {
+    $folderId = (int)$folderId;
+    $currentId = (int)$newParentId;
+    $depth = 0;
+    while ($currentId && $depth < 1000) {
+        if ($currentId === $folderId) {
+            return true;
+        }
+        $stmt = $db->prepare('SELECT parent_id FROM folders WHERE id = :id');
+        $stmt->execute([':id' => $currentId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            break;
+        }
+        $currentId = $row['parent_id'] !== null ? (int)$row['parent_id'] : 0;
+        $depth++;
+    }
+    return false;
 }
 
 function updateFolder() {
@@ -148,11 +181,19 @@ function updateFolder() {
     }
     if (isset($_POST['parent_id'])) {
         $newParentId = (int)$_POST['parent_id'] ?: null;
-        // Prevent circular reference
-        if ($newParentId !== $folderId) {
-            $updates[] = 'parent_id = :parent_id';
-            $params[':parent_id'] = $newParentId;
+        // Prevent circular reference: a folder can't be its own parent, and it
+        // can't be moved under one of its own descendants (which would create a
+        // cycle and make the breadcrumb walk loop forever).
+        if ($newParentId === $folderId) {
+            jsonError('A folder cannot be its own parent');
+            return;
         }
+        if ($newParentId !== null && folderWouldCreateCycle($db, $folderId, $newParentId)) {
+            jsonError('Cannot move a folder into one of its own subfolders');
+            return;
+        }
+        $updates[] = 'parent_id = :parent_id';
+        $params[':parent_id'] = $newParentId;
     }
 
     if (empty($updates)) {
@@ -293,10 +334,12 @@ function getFolder() {
         return;
     }
 
-    // Get breadcrumb path
+    // Get breadcrumb path. The depth cap bounds the walk so a cyclic
+    // parent chain (from corrupt data) can never loop forever.
     $breadcrumb = [];
     $currentId = $folder['parent_id'];
-    while ($currentId) {
+    $depth = 0;
+    while ($currentId && $depth < 1000) {
         $stmt = $db->prepare('SELECT id, name, parent_id FROM folders WHERE id = :id');
         $stmt->execute([':id' => $currentId]);
         $parent = $stmt->fetch();
@@ -306,6 +349,7 @@ function getFolder() {
         } else {
             break;
         }
+        $depth++;
     }
 
     $folder['breadcrumb'] = $breadcrumb;

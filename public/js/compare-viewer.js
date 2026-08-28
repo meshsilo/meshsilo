@@ -125,7 +125,7 @@ function centerAndFitCamera(object, camera, controls) {
 
 function createScene(container) {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim() || '#1a1a1a');
+    scene.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#1a1a1a');
 
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
     camera.position.set(100, 100, 100);
@@ -148,7 +148,15 @@ function createScene(container) {
     dl2.position.set(-1, -1, -1);
     scene.add(dl2);
 
-    const api = { scene, camera, renderer, controls, paused: false };
+    // pause/resume are real methods on the returned object. Defined in the
+    // literal (not assigned afterward) so callers like viewer1.pause() resolve.
+    // pause sets the flag; the rAF loop self-cancels on its next tick via the
+    // `if (api.paused) return` guard, so no stray frame renders after pause.
+    const api = {
+        scene, camera, renderer, controls, paused: false,
+        pause: function() { api.paused = true; },
+        resume: function() { if (api.paused) { api.paused = false; animate(); } }
+    };
 
     function animate() {
         if (api.paused) return;                  // explicitly paused (e.g. hidden behind overlay)
@@ -163,8 +171,6 @@ function createScene(container) {
         controls.update();
         renderer.render(scene, camera);
     }
-    api.pause = function() { api.paused = true; };
-    api.resume = function() { if (api.paused) { api.paused = false; animate(); } };
     animate();
 
     // Debounce resize so a drag-resize does one buffer realloc on settle, not dozens mid-drag.

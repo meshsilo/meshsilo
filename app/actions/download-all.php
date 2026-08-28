@@ -30,14 +30,9 @@ if (!$model) {
     exit;
 }
 
-// Check ownership - user must own the model or be admin
-$user = getCurrentUser();
-$ownerId = $model['user_id'] ?? null;
-if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
-    http_response_code(403);
-    echo 'Access denied';
-    exit;
-}
+// Models are shared: any authenticated user may download any model, consistent
+// with /browse and the /assets file route. Authentication is enforced upstream
+// by the router; downloads are not owner-gated.
 
 // Get all parts
 $stmt = $db->prepare('SELECT * FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC');

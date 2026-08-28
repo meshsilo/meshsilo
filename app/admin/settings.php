@@ -3,11 +3,7 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/UpdateChecker.php';
 
 // Require settings management permission
-if (!isLoggedIn() || !canManageSettings()) {
-    $_SESSION['error'] = 'You do not have permission to manage settings.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageSettings', 'You do not have permission to manage settings.');
 
 $pageTitle = 'Admin Settings';
 $activePage = '';
@@ -16,15 +12,17 @@ $adminPage = 'settings';
 $message = '';
 $error = '';
 
-// CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+// CSRF protection for all POST requests. $csrfOk gates every save block below so
+// a failed token check shows the error banner WITHOUT also running the save.
+$csrfOk = $_SERVER['REQUEST_METHOD'] !== 'POST' || Csrf::check();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$csrfOk) {
     if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
         header('Content-Type: application/json');
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
         exit;
     }
-    $error = 'Invalid request. Please refresh the page and try again.';
+    $error = Csrf::ERROR_MESSAGE;
 }
 
 // Handle force update check
@@ -76,7 +74,7 @@ if (empty($error) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test
 }
 
 // Handle php.ini save request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
     $isDocker = getenv('MESHSILO_DOCKER') === 'true';
     $content = $_POST['phpini_content'] ?? '';
 
@@ -169,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_plugin_settings'
 }
 
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email']) && !isset($_POST['save_plugin_settings'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email']) && !isset($_POST['save_plugin_settings'])) {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
     $autoDedup = isset($_POST['auto_deduplication']) ? '1' : '0';
     $convertImagesWebp = isset($_POST['convert_images_webp']) ? '1' : '0';
@@ -213,7 +211,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     setSetting('require_approval', $requireApproval);
     setSetting('allowed_extensions', $allowedExtensions);
     setSetting('show_advanced_admin', $showAdvancedAdmin);
-    setSetting('models_per_page', (int)($_POST['models_per_page'] ?? 20));
+    // Clamp to >= 1: an empty input saves 0, which fatals /browse via ceil($total / 0).
+    setSetting('models_per_page', max(1, (int)($_POST['models_per_page'] ?? 20)));
 
     // Max file size (convert MB to bytes)
     $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
@@ -508,7 +507,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span class="toggle-switch"></span>
                                 <span>Show advanced admin pages</span>
                             </label>
-                            <p class="form-help">Show Routes, CLI Tools, Security Headers, and Sessions in the admin sidebar.</p>
+                            <p class="form-help">Show Security Headers and Sessions in the admin sidebar. Routes, Hooks, and CLI Tools moved to the Developer Tools plugin.</p>
                         </div>
                     </details>
 
@@ -699,7 +698,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
         </div>
 
-<script>
+<script<?= csp_nonce_attr() ?>>
 // Email driver toggle - show/hide SMTP settings
 const mailDriverSelect = document.getElementById('mail_driver');
 if (mailDriverSelect) {

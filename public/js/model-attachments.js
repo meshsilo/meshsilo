@@ -59,16 +59,23 @@
             lightbox.setAttribute('aria-modal', 'true');
             lightbox.innerHTML =
                 '<div class="lightbox-content">' +
-                    '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></button>' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image" onclick="lightboxNav(-1)"><i class="fa-solid fa-chevron-left"></i></button>' : '') +
+                    '<button type="button" class="lightbox-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous image"><i class="fa-solid fa-chevron-left"></i></button>' : '') +
                     '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(caption) + '" draggable="false">' +
-                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" aria-label="Next image" onclick="lightboxNav(1)"><i class="fa-solid fa-chevron-right"></i></button>' : '') +
+                    (hasMultiple ? '<button type="button" class="lightbox-nav lightbox-next" aria-label="Next image"><i class="fa-solid fa-chevron-right"></i></button>' : '') +
                     '<div class="lightbox-caption">' + escapeHtml(caption) +
                     (hasMultiple ? ' <span class="lightbox-counter">' + (lightboxIndex + 1) + ' / ' + lightboxImages.length + '</span>' : '') +
                     '</div>' +
                 '</div>';
             document.body.appendChild(lightbox);
             lightbox.style.display = 'flex';
+
+            // Control buttons (CSP forbids inline onclick attributes)
+            lightbox.querySelector('.lightbox-close').addEventListener('click', function() { closeLightbox(); });
+            const lbPrev = lightbox.querySelector('.lightbox-prev');
+            if (lbPrev) lbPrev.addEventListener('click', function() { lightboxNav(-1); });
+            const lbNext = lightbox.querySelector('.lightbox-next');
+            if (lbNext) lbNext.addEventListener('click', function() { lightboxNav(1); });
 
             const lbImg = lightbox.querySelector('.lightbox-content img');
 
@@ -211,7 +218,7 @@
                         '<div class="doc-preview-actions">' +
                             '<a href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-secondary" title="Open in new tab">Open</a>' +
                             '<a href="' + escapeHtml(src) + '" download class="btn btn-small btn-secondary" title="Download">Download</a>' +
-                            '<button type="button" class="lightbox-close" aria-label="Close" onclick="closeDocumentPreview()"><i class="fa-solid fa-xmark"></i></button>' +
+                            '<button type="button" class="lightbox-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
                         '</div>' +
                     '</div>' +
                     '<div class="doc-preview-body">' + contentHtml + '</div>' +
@@ -219,6 +226,9 @@
 
             document.body.appendChild(overlay);
             overlay.style.display = 'flex';
+
+            // Close button (CSP forbids inline onclick attributes)
+            overlay.querySelector('.lightbox-close').addEventListener('click', function() { closeDocumentPreview(); });
 
             // For text files, fetch and render content (skip binary office formats)
             if (type !== 'pdf' && !isOfficeBinary) {
@@ -335,27 +345,32 @@
             item.className = 'attachment-image';
             item.dataset.attachmentId = att.attachment_id;
 
+            // Mirror the server-rendered markup (model.php) so the delegated
+            // click/keydown handlers in model-page.js drive these. No inline
+            // onclick, which would otherwise fire a second time alongside the
+            // delegated handler (double lightbox / double delete).
             const img = document.createElement('img');
             img.src = '/assets/' + att.file_path;
             img.alt = att.original_filename;
             img.loading = 'lazy';
-            img.onclick = function() {
-                openImageLightbox('/assets/' + att.file_path, att.original_filename);
-            };
+            img.decoding = 'async';
+            img.tabIndex = 0;
+            img.setAttribute('role', 'button');
+            img.className = 'attachment-image-trigger';
+            img.dataset.lightboxSrc = '/assets/' + att.file_path;
+            img.dataset.lightboxAlt = att.original_filename;
 
             const thumbBtn = document.createElement('button');
             thumbBtn.type = 'button';
             thumbBtn.className = 'attachment-set-thumb';
             thumbBtn.title = 'Set as model thumbnail';
             thumbBtn.innerHTML = '<i class="fa-solid fa-camera"></i>';
-            thumbBtn.onclick = function() { setAttachmentAsThumbnail(att.attachment_id); };
 
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
             deleteBtn.className = 'attachment-delete';
             deleteBtn.title = 'Delete';
             deleteBtn.textContent = '×';
-            deleteBtn.onclick = function() { deleteAttachment(att.attachment_id); };
 
             item.appendChild(img);
             item.appendChild(thumbBtn);
@@ -406,7 +421,7 @@
             deleteBtn.className = 'attachment-delete';
             deleteBtn.title = 'Delete';
             deleteBtn.textContent = '×';
-            deleteBtn.onclick = function() { deleteAttachment(att.attachment_id); };
+            // Delete handled by the delegated handler in model-page.js (no inline onclick)
 
             item.appendChild(badge);
             item.appendChild(link);
@@ -415,11 +430,7 @@
             list.appendChild(item);
         }
 
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        }
+        // formatFileSize is the shared global from ui-common.js.
 
         async function setAttachmentAsThumbnail(attachmentId) {
             const formData = new FormData();

@@ -79,13 +79,14 @@ if (!$apiUser) {
     );
     RateLimiter::setHeaders($authThrottle);
     if (!$authThrottle['allowed']) {
-        http_response_code(429);
-        echo json_encode([
-            'error' => 'Rate limit exceeded',
+        // Same envelope as apiError() so a client can branch on `error === true`
+        // for every API failure, 429 included.
+        apiResponse([
+            'error' => true,
+            'message' => 'Rate limit exceeded',
             'retry_after' => $authThrottle['reset'] - time(),
             'tier' => $authThrottle['tier']
-        ]);
-        exit;
+        ], 429);
     }
     apiError('Unauthorized. Provide a valid API key via X-API-Key header or api_key parameter.', 401);
 }
@@ -101,13 +102,14 @@ $rateLimitResult = RateLimiter::check(
 RateLimiter::setHeaders($rateLimitResult);
 
 if (!$rateLimitResult['allowed']) {
-    http_response_code(429);
-    echo json_encode([
-        'error' => 'Rate limit exceeded',
+    // Same envelope as apiError() so a client can branch on `error === true`
+    // for every API failure, 429 included.
+    apiResponse([
+        'error' => true,
+        'message' => 'Rate limit exceeded',
         'retry_after' => $rateLimitResult['reset'] - time(),
         'tier' => $rateLimitResult['tier']
-    ]);
-    exit;
+    ], 429);
 }
 
 // Log API request

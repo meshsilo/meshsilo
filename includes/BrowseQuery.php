@@ -25,7 +25,9 @@ class BrowseQuery
         $collection = $filters['collection'] ?? '';
         $sort = $filters['sort'] ?? 'newest';
         $page = $filters['page'] ?? 1;
-        $perPage = $filters['perPage'] ?? 20;
+        // Defensive clamp to >= 1: a stored models_per_page of 0 would otherwise
+        // fatal here via ceil($total / $perPage) (DivisionByZeroError).
+        $perPage = max(1, (int)($filters['perPage'] ?? 20));
         $showArchived = $filters['showArchived'] ?? false;
         $explicitSort = $filters['explicitSort'] ?? false;
 

@@ -27,6 +27,9 @@ trait DebugPanels
         $errorColor = $errors > 0 ? '#ef4444' : ($warnings > 0 ? '#f59e0b' : '#22c55e');
         $issueCount = $errors + $warnings;
 
+        // Interpolated into the heredoc below, where a short-echo tag would not execute.
+        $nonceAttr = function_exists('csp_nonce_attr') ? csp_nonce_attr() : '';
+
         // Build panels HTML
         $logsHtml = self::renderLogsPanel();
         $queriesHtml = self::renderQueriesPanel();
@@ -60,13 +63,13 @@ trait DebugPanels
         <span title="Log entries" style="cursor: help;">📝 {$metrics['log_count']} logs</span>
 
         <div style="margin-left: auto; display: flex; gap: 5px;">
-            <button type="button" onclick="debugTogglePanel('logs')" class="debug-tab-btn" data-panel="logs">Logs</button>
-            <button type="button" onclick="debugTogglePanel('queries')" class="debug-tab-btn" data-panel="queries">Queries</button>
-            <button type="button" onclick="debugTogglePanel('session')" class="debug-tab-btn" data-panel="session">Session</button>
-            <button type="button" onclick="debugTogglePanel('request')" class="debug-tab-btn" data-panel="request">Request</button>
-            <button type="button" onclick="debugTogglePanel('config')" class="debug-tab-btn" data-panel="config">Config</button>
-            <button type="button" onclick="debugTogglePanel('timeline')" class="debug-tab-btn" data-panel="timeline">Timeline</button>
-            <button type="button" onclick="document.getElementById('debug-bar').style.display='none'"
+            <button type="button" class="debug-tab-btn" data-panel="logs">Logs</button>
+            <button type="button" class="debug-tab-btn" data-panel="queries">Queries</button>
+            <button type="button" class="debug-tab-btn" data-panel="session">Session</button>
+            <button type="button" class="debug-tab-btn" data-panel="request">Request</button>
+            <button type="button" class="debug-tab-btn" data-panel="config">Config</button>
+            <button type="button" class="debug-tab-btn" data-panel="timeline">Timeline</button>
+            <button type="button" id="debug-bar-close"
                     style="background: transparent; border: none; color: #888; cursor: pointer; font-size: 16px; margin-left: 10px;">✕</button>
         </div>
     </div>
@@ -169,7 +172,7 @@ trait DebugPanels
 }
 </style>
 
-<script>
+<script{$nonceAttr}>
 function debugTogglePanel(name) {
     document.querySelectorAll('.debug-panel').forEach(p => p.style.display = 'none');
     document.querySelectorAll('.debug-tab-btn').forEach(b => b.classList.remove('active'));
@@ -182,6 +185,17 @@ function debugTogglePanel(name) {
         btn.classList.add('active');
     }
 }
+
+// Delegated: the tab buttons and close control used inline onclick attributes,
+// which CSP no longer allows.
+document.querySelectorAll('.debug-tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        debugTogglePanel(btn.dataset.panel);
+    });
+});
+document.getElementById('debug-bar-close').addEventListener('click', function () {
+    document.getElementById('debug-bar').style.display = 'none';
+});
 </script>
 HTML;
     }

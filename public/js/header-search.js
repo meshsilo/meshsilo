@@ -33,9 +33,8 @@
 
     var activeIndex = -1;
 
-    function escapeHtml(str) {
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-    }
+    // escapeHtml is the shared global from ui-common.js (loaded before this file
+    // in includes/header.php). It escapes the same set: & < > " '.
 
     function highlightMatch(text, query) {
         if (!query) return escapeHtml(text);
@@ -71,7 +70,7 @@
                           : s.type === 'category' ? ' <span class="search-match-badge">category</span>' : '';
                 var icon = s.type === 'tag' ? '<i class="fa-solid fa-tag"></i>' : s.type === 'category' ? '<i class="fa-solid fa-folder"></i>' : '<i class="fa-solid fa-file-lines"></i>';
                 var href = s.url ? s.url : window.SiloConfig.modelBase + s.id;
-                return '<li role="option"><a href="' + href + '" class="search-dropdown-item">' +
+                return '<li role="option"><a href="' + escapeHtml(href) + '" class="search-dropdown-item">' +
                        '<span class="search-dropdown-icon">' + icon + '</span>' + highlightMatch(s.name, query) + badge + '</a></li>';
             }).join('');
             resultsSection.hidden = false;

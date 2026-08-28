@@ -4,40 +4,26 @@
  */
 
 // Derive cache version from registration URL query param (?v=X) for deploy-time busting
-const SW_PARAMS = new URL(self.registration?.scope || self.location.href, self.location.href);
 const APP_VER = new URL(self.location.href).searchParams.get('v') || '0';
 const CACHE_VERSION = 'silo-v4-' + APP_VER;
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const DYNAMIC_CACHE = CACHE_VERSION + '-dynamic';
-const MODEL_CACHE = CACHE_VERSION + '-models';
 const IMAGE_CACHE = CACHE_VERSION + '-images';
 
 // Cache size limits (number of entries)
 const CACHE_LIMITS = {
     [DYNAMIC_CACHE]: 50,
-    [MODEL_CACHE]: 100,
     [IMAGE_CACHE]: 200
 };
 
-// Cache expiration times (in seconds)
-const CACHE_TTL = {
-    static: 30 * 24 * 60 * 60,  // 30 days
-    dynamic: 24 * 60 * 60,       // 1 day
-    models: 7 * 24 * 60 * 60,    // 7 days
-    images: 7 * 24 * 60 * 60     // 7 days
-};
-
-// Static assets to precache
+// Static assets to precache. Versioned assets (CSS/JS) are intentionally NOT
+// listed: they are requested with a per-file ?v=<mtime> cache-buster, so a
+// query-less precache entry can never satisfy caches.match() (which keys on the
+// full URL incl. query). They are cached on demand instead via the cacheFirst
+// STATIC_CACHE branch below, correctly keyed by version. Only assets requested
+// without a ?v= remain here.
 const PRECACHE_ASSETS = [
-    '/',
-    '/public/css/base.css',
-    '/public/css/layout.css',
-    '/public/css/components.css',
-    '/public/css/pages.css',
-    '/public/css/admin.css',
-    '/public/js/main.js',
-    '/public/js/viewer.js',
-    '/public/js/browse-page.js',
+    '/',                       // used by the offline navigation fallback (caches.match('/'))
     '/public/manifest.json',
     '/public/images/icon.svg'
 ];
@@ -81,7 +67,7 @@ self.addEventListener('install', event => {
 
 // Activate event - cleanup old caches
 self.addEventListener('activate', event => {
-    const currentCaches = [STATIC_CACHE, DYNAMIC_CACHE, MODEL_CACHE, IMAGE_CACHE];
+    const currentCaches = [STATIC_CACHE, DYNAMIC_CACHE, IMAGE_CACHE];
 
     event.waitUntil(
         caches.keys()
@@ -134,11 +120,10 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Strategy selection based on resource type
-    if (isModelFile(url.pathname)) {
-        // 3D models: Cache-first with background refresh
-        event.respondWith(staleWhileRevalidate(event.request, MODEL_CACHE));
-    } else if (isImageFile(url.pathname)) {
+    // Strategy selection based on resource type.
+    // (There is no model-file branch: real models are served via /preview?id=
+    // and /assets/, both skipped above, so an extension-based match never fired.)
+    if (isImageFile(url.pathname)) {
         // Static images (e.g. /public/images): Cache-first
         // Note: per-user /assets/ images are skipped above and never reach here
         event.respondWith(cacheFirstWithLimit(event.request, IMAGE_CACHE));
@@ -203,34 +188,6 @@ async function cacheFirstWithLimit(request, cacheName) {
     } catch (error) {
         return offlineResponse(request);
     }
-}
-
-/**
- * Stale-while-revalidate: Return cached immediately, update in background
- */
-async function staleWhileRevalidate(request, cacheName) {
-    const cache = await caches.open(cacheName);
-    const cached = await cache.match(request);
-
-    // Fetch fresh version in background
-    const fetchPromise = fetch(request)
-        .then(response => {
-            if (response.ok) {
-                cache.put(request, response.clone());
-                limitCacheSize(cacheName);
-            }
-            return response;
-        })
-        .catch(() => null);
-
-    // Return cached immediately if available
-    if (cached) {
-        return cached;
-    }
-
-    // Wait for network if no cache
-    const response = await fetchPromise;
-    return response || offlineResponse(request);
 }
 
 /**
@@ -390,10 +347,6 @@ function isImageFile(pathname) {
     return /\.(svg|png|jpg|jpeg|gif|ico|webp)$/i.test(pathname);
 }
 
-function isModelFile(pathname) {
-    return /\.(stl|3mf|obj|ply|gltf|glb|fbx|step|stp|iges|igs|amf|dae|3ds)$/i.test(pathname);
-}
-
 function isSameOrigin(url) {
     return url.origin === self.location.origin;
 }
@@ -425,8 +378,10 @@ self.addEventListener('push', event => {
         const data = event.data.json();
         const options = {
             body: data.body || '',
-            icon: '/public/images/icon-192.png',
-            badge: '/public/images/icon-192.png',
+            // icon-192.png is not shipped; use the SVG that does exist so the
+            // notification never references a missing file.
+            icon: '/public/images/icon.svg',
+            badge: '/public/images/icon.svg',
             vibrate: [100, 50, 100],
             data: { url: data.url || '/' },
             actions: data.actions || []
@@ -474,19 +429,5 @@ self.addEventListener('message', event => {
                 Promise.all(keys.map(key => caches.delete(key)))
             )
         );
-    } else if (event.data?.action === 'cacheModel') {
-        // Prefetch a model file
-        const url = event.data.url;
-        if (url && isModelFile(url)) {
-            event.waitUntil(
-                caches.open(MODEL_CACHE).then(cache =>
-                    fetch(url).then(response => {
-                        if (response.ok) {
-                            cache.put(url, response);
-                        }
-                    })
-                )
-            );
-        }
     }
 });

@@ -53,7 +53,7 @@
         <?= PluginManager::getInstance()->renderScripts() ?>
     <?php endif; ?>
 
-    <script>
+    <script<?= csp_nonce_attr() ?>>
     // Collapsible sections
     document.addEventListener('DOMContentLoaded', function() {
         // Wrap non-h2 children in a .settings-section-content div so CSS can collapse them

@@ -43,7 +43,6 @@ class SeoRedirectMiddleware implements MiddlewareInterface
         'admin/storage.php' => ['admin.storage', []],
         'admin/database.php' => ['admin.database', []],
         'admin/api-keys.php' => ['admin.api-keys', []],
-        'admin/webhooks.php' => ['admin.webhooks', []],
 
         // Actions with clean URL shortcuts
         'actions/download.php' => ['download', ['id' => 'id']],

@@ -36,7 +36,7 @@ $error = '';
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate()) {
-        $error = 'Security validation failed. Please try again.';
+        $error = Csrf::ERROR_MESSAGE;
     } elseif (isset($_POST['update_profile'])) {
         $email = trim($_POST['email'] ?? '');
 
@@ -136,7 +136,7 @@ $activePage = 'settings';
 require_once __DIR__ . '/../../includes/header.php';
 ?>
 
-        <div class="settings-page">
+        <div class="settings-page page-settings">
             <div class="page-header">
                 <h1>Account Settings</h1>
                 <p>Manage your profile and security settings</p>
@@ -277,89 +277,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
         </div>
 
-<style>
-.settings-page {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
-}
-.settings-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-.settings-section h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
-}
-.settings-section h3 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.75rem;
-    font-size: 1rem;
-}
-.form-row-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-.form-hint {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    margin-top: 0.25rem;
-}
-.group-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-.group-item {
-    padding: 0.5rem 0.75rem;
-    background: var(--color-surface-hover);
-    border-radius: 4px;
-}
-.group-name {
-    font-weight: 500;
-}
-.group-desc {
-    color: var(--color-text-muted);
-    font-size: 0.9rem;
-}
-.permission-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 0.5rem;
-}
-.permission-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background: var(--color-surface-hover);
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-.permission-item.has-permission {
-    color: var(--color-success);
-}
-.permission-item.no-permission {
-    color: var(--color-text-muted);
-    opacity: 0.6;
-}
-.permission-status {
-    font-weight: bold;
-}
-.text-muted {
-    color: var(--color-text-muted);
-}
-</style>
-
-<script>
+<script<?= csp_nonce_attr() ?>>
 (function() {
     var pw = document.getElementById('new_password');
     var bar = document.getElementById('pw-strength-bar');

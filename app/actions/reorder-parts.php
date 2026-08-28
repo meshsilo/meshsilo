@@ -28,7 +28,7 @@ $result = $stmt->execute();
 $model = $result->fetchArray(PDO::FETCH_ASSOC);
 
 $user = getCurrentUser();
-if (!$model || ($model['user_id'] != $user['id'] && !$user['is_admin'])) {
+if (!$model || !userCanModifyModel($model, $user)) {
     jsonError('Permission denied', 403);
 }
 

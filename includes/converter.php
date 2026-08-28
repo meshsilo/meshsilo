@@ -690,12 +690,24 @@ function convertPartCheckMemory(): void
  */
 function convertPartCheckDiskSpace(string $stlPath): ?string
 {
-    // Check available disk space — conversion needs temp files
+    // Check available disk space - conversion needs temp files
     // Estimate: triangle file (12 bytes/tri) + SQLite DB (~180 bytes/vertex)
-    // Use binary header to get triangle count for the estimate
-    $diskEstimateTriangles = 0;
-    if (filesize($stlPath) >= 84) {
+    $fileSize = filesize($stlPath);
+    if ($fileSize === false) {
+        return null;
+    }
+
+    $converter = new STLConverter();
+    $neededBytes = 0;
+
+    if ($fileSize >= 84 && $converter->isBinarySTL($stlPath)) {
+        // Binary STL: the triangle count lives in bytes 80-84. Only trust it
+        // AFTER isBinarySTL() confirms the file really is binary -- for an ASCII
+        // STL those bytes are text, and unpack('V') reads them as a bogus
+        // multi-billion triangle count, producing a fake 10-100GB "needed"
+        // figure and rejecting valid ASCII STLs for "insufficient disk space".
         $fh = fopen($stlPath, 'rb');
+        $diskEstimateTriangles = 0;
         if ($fh) {
             fseek($fh, 80);
             $data = fread($fh, 4);
@@ -704,11 +716,21 @@ function convertPartCheckDiskSpace(string $stlPath): ?string
             }
             fclose($fh);
         }
+        if ($diskEstimateTriangles > 0) {
+            $neededBytes = ($diskEstimateTriangles * 12) + ($diskEstimateTriangles * 3 * 60);
+        }
+    } else {
+        // ASCII STL (or too small to carry a binary header): there is no
+        // reliable header triangle count, so size the temp footprint from the
+        // source instead. ASCII STL encodes each triangle in far more bytes
+        // (~150+) than the ~192 bytes of temp files a triangle produces, so the
+        // source size is a safe upper bound for the temp-file footprint.
+        $neededBytes = $fileSize;
     }
-    if ($diskEstimateTriangles > 0) {
+
+    if ($neededBytes > 0) {
         $cacheDir = __DIR__ . '/../storage/cache';
         $checkDir = is_writable($cacheDir) ? $cacheDir : sys_get_temp_dir();
-        $neededBytes = ($diskEstimateTriangles * 12) + ($diskEstimateTriangles * 3 * 60);
         $freeBytes = disk_free_space($checkDir);
         if ($freeBytes !== false && $freeBytes < $neededBytes) {
             return sprintf(

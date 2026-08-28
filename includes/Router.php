@@ -242,7 +242,7 @@ class Router
 
         // File-based handler
         if (is_array($handler) && isset($handler['file'])) {
-            return $this->handleFileRoute($handler, $params);
+            return $this->handleFileRoute($handler, $params, $route['name'] ?? null);
         }
 
         // Callable handler
@@ -273,7 +273,7 @@ class Router
     /**
      * Handle a file-based route
      */
-    private function handleFileRoute(array $handler, array $params): bool
+    private function handleFileRoute(array $handler, array $params, ?string $routeName = null): bool
     {
         $file = $handler['file'];
 
@@ -301,8 +301,11 @@ class Router
             }
         }
 
-        // Store matched route info
-        $_SERVER['ROUTE_NAME'] = $handler['name'] ?? null;
+        // Store matched route info. The route name lives on the route array
+        // ($route['name']), NOT on the handler array. Reading $handler['name']
+        // left ROUTE_NAME null for every file route, so Router::is()/routeIs()/
+        // activeNav() never matched and nav highlighting never worked.
+        $_SERVER['ROUTE_NAME'] = $routeName ?? ($handler['name'] ?? null);
         $_SERVER['ROUTE_PARAMS'] = $params;
 
         // Include the file
@@ -573,172 +576,5 @@ class Router
     public static function param(string $name, mixed $default = null): mixed
     {
         return $_SERVER['ROUTE_PARAMS'][$name] ?? $default;
-    }
-
-    // ========================================================================
-    // ROUTE CACHING
-    // ========================================================================
-
-    private const CACHE_DIR = __DIR__ . '/../storage/cache';
-    private const CACHE_FILE = 'routes.cache.php';
-
-    /**
-     * Load routes from cache if available and valid
-     *
-     * @return bool True if cache was loaded successfully
-     */
-    public function loadFromCache(): bool
-    {
-        $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
-
-        if (!file_exists($cacheFile)) {
-            return false;
-        }
-
-        // Check if routes.php was modified after cache
-        $routesFile = __DIR__ . '/routes.php';
-        if (file_exists($routesFile) && filemtime($routesFile) > filemtime($cacheFile)) {
-            return false; // Cache is stale
-        }
-
-        try {
-            $cached = require $cacheFile;
-
-            if (!is_array($cached) || !isset($cached['routes']) || !isset($cached['named'])) {
-                return false;
-            }
-
-            $this->routes = $cached['routes'];
-            $this->namedRoutes = $cached['named'];
-
-            return true;
-        } catch (Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Save current routes to cache
-     *
-     * @return bool True if cache was saved successfully
-     */
-    public function saveToCache(): bool
-    {
-        $cacheDir = self::CACHE_DIR;
-
-        if (!is_dir($cacheDir)) {
-            if (!mkdir($cacheDir, 0755, true)) {
-                return false;
-            }
-        }
-
-        $cacheFile = $cacheDir . '/' . self::CACHE_FILE;
-
-        // Filter out non-serializable handlers (closures)
-        $cacheableRoutes = array_filter($this->routes, function ($route) {
-            return !is_callable($route['handler']) || is_array($route['handler']);
-        });
-
-        $content = "<?php\n// Auto-generated route cache - " . date('Y-m-d H:i:s') . "\n";
-        $content .= "// Delete this file to regenerate the cache\n";
-        $content .= "return " . var_export([
-            'routes' => $cacheableRoutes,
-            'named' => $this->namedRoutes,
-            'generated' => time()
-        ], true) . ";\n";
-
-        return file_put_contents($cacheFile, $content, LOCK_EX) !== false;
-    }
-
-    /**
-     * Clear the route cache
-     *
-     * @return bool True if cache was cleared
-     */
-    public static function clearCache(): bool
-    {
-        $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
-
-        if (file_exists($cacheFile)) {
-            return unlink($cacheFile);
-        }
-
-        return true;
-    }
-
-    /**
-     * Check if route cache exists and is valid
-     *
-     * @return bool True if cache is valid
-     */
-    public static function isCacheValid(): bool
-    {
-        $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
-
-        if (!file_exists($cacheFile)) {
-            return false;
-        }
-
-        $routesFile = __DIR__ . '/routes.php';
-        if (file_exists($routesFile) && filemtime($routesFile) > filemtime($cacheFile)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Get cache statistics
-     *
-     * @return array Cache information
-     */
-    public static function getCacheStats(): array
-    {
-        $cacheFile = self::CACHE_DIR . '/' . self::CACHE_FILE;
-
-        if (!file_exists($cacheFile)) {
-            return [
-                'exists' => false,
-                'valid' => false,
-                'size' => 0,
-                'age' => null,
-                'routes' => 0
-            ];
-        }
-
-        $cached = @include $cacheFile;
-
-        return [
-            'exists' => true,
-            'valid' => self::isCacheValid(),
-            'size' => filesize($cacheFile),
-            'age' => time() - filemtime($cacheFile),
-            'routes' => is_array($cached['routes'] ?? null) ? count($cached['routes']) : 0,
-            'generated' => $cached['generated'] ?? filemtime($cacheFile)
-        ];
-    }
-
-    /**
-     * Load routes with caching (recommended for production)
-     *
-     * @param bool $forceRefresh Force cache regeneration
-     * @return Router The router instance
-     */
-    public static function cached(bool $forceRefresh = false): Router
-    {
-        $router = self::getInstance();
-
-        // Try to load from cache first (unless forced refresh)
-        if (!$forceRefresh && $router->loadFromCache()) {
-            return $router;
-        }
-
-        // Load routes normally
-        require_once __DIR__ . '/routes.php';
-
-        // Save to cache for next request
-        $router->saveToCache();
-
-        return $router;
     }
 }

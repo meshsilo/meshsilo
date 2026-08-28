@@ -76,10 +76,6 @@ $router->post('/reset-password', ['file' => 'app/pages/reset-password.php'], 'pa
 $router->get('/install', ['file' => 'install.php'], 'install');
 $router->post('/install', ['file' => 'install.php'], 'install.post');
 
-// Database update page (standalone, permission check in page)
-$router->get('/update', ['file' => 'app/pages/update.php'], 'update');
-$router->post('/update', ['file' => 'app/pages/update.php'], 'update.run');
-
 // ============================================================================
 // AUTHENTICATED USER PAGES
 // ============================================================================
@@ -155,9 +151,6 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->get('/convert-part', ['file' => 'app/actions/convert-part.php'], 'actions.convert.get');
     $router->post('/convert-part', ['file' => 'app/actions/convert-part.php'], 'actions.convert');
 
-    // Duplicate checking
-    $router->post('/check-duplicates', ['file' => 'app/actions/check-duplicates.php'], 'actions.check.duplicates');
-
     // Dimensions calculation
     $router->post('/calculate-dimensions', ['file' => 'app/actions/calculate-dimensions.php'], 'actions.dimensions');
 
@@ -198,9 +191,6 @@ $router->group(['prefix' => '/actions'], function ($router) {
     // Folders
     $router->post('/folder', ['file' => 'app/actions/folder.php'], 'actions.folder');
     $router->post('/part-folders', ['file' => 'app/actions/part-folders.php'], 'actions.part.folders');
-
-    // File types
-    $router->post('/file-types', ['file' => 'app/actions/file-types.php'], 'actions.file.types');
 
     // Upload versions
     $router->post('/upload-version', ['file' => 'app/actions/upload-version.php'], 'actions.upload.version');
@@ -265,10 +255,6 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($rou
     // Statistics
     $router->get('/stats', ['file' => 'app/admin/stats.php'], 'admin.stats');
 
-    // CLI Tools
-    $router->get('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools');
-    $router->post('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools.run');
-
     // Activity log
     $router->get('/activity', ['file' => 'app/admin/activity.php'], 'admin.activity');
 
@@ -294,13 +280,6 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($rou
     // Scheduled Tasks
     $router->get('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler');
     $router->post('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler.action');
-
-    // Routes (debugging)
-    $router->get('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes');
-    $router->post('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes.action');
-
-    // Hooks (plugin listener debugging)
-    $router->get('/hooks', ['file' => 'app/admin/hooks.php'], 'admin.hooks');
 
     // Plugins
     $router->get('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins');

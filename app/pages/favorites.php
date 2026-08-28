@@ -16,31 +16,15 @@ if (!isLoggedIn()) {
     exit;
 }
 
-$db = getDB();
 $user = getCurrentUser();
 
 // Get user's favorites
 $favorites = getUserFavorites($user['id'], 100);
 
-// Enhance models with preview data using preview endpoint
-foreach ($favorites as &$model) {
-    if ($model['part_count'] > 0) {
-        $partStmt = $db->prepare('SELECT id, file_type, file_size FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
-        $partStmt->bindValue(':parent_id', $model['id'], PDO::PARAM_INT);
-        $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
-        if ($firstPart) {
-            $model['preview_path'] = '/preview?id=' . $firstPart['id'];
-            $model['preview_type'] = $firstPart['file_type'];
-            $model['preview_file_size'] = $firstPart['file_size'] ?? 0;
-        }
-    } else {
-        $model['preview_path'] = '/preview?id=' . $model['id'];
-        $model['preview_type'] = $model['file_type'];
-        $model['preview_file_size'] = $model['file_size'] ?? 0;
-    }
-}
-unset($model);
+// Resolve viewer previews (a multi-part model previews its first part); the
+// helper batches every multi-part lookup into one query instead of running one
+// per favorited model.
+attachPreviewData($favorites);
 
 $needsViewer = true;
 require_once 'includes/header.php';
@@ -66,30 +50,23 @@ require_once 'includes/header.php';
             <?php endif; ?>
         </div>
 
-        <script>
-        async function toggleFavorite(modelId, btn) {
-            try {
-                const response = await fetch('/actions/favorite', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'model_id=' + modelId
-                });
-                const data = await response.json();
-                if (data.success) {
-                    // Remove the card from the page
-                    btn.closest('.model-card').remove();
-                    // Update count in header
-                    const countEl = document.querySelector('.page-header p');
-                    const remaining = document.querySelectorAll('.model-card').length;
-                    countEl.textContent = remaining + ' favorited model' + (remaining !== 1 ? 's' : '');
-                    if (remaining === 0) {
-                        location.reload();
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to toggle favorite:', err);
+        <script<?= csp_nonce_attr() ?>>
+        // The request itself is window.toggleFavorite in public/js/ui-common.js,
+        // reached through that file's delegated .model-card-favorite handler.
+        // Only the list-specific reaction lives here: an unfavorited model no
+        // longer belongs on this page, so drop its card and restate the count.
+        document.addEventListener('favorite:toggled', function(e) {
+            const card = e.detail.button.closest('.model-card');
+            if (card) card.remove();
+            const remaining = document.querySelectorAll('.model-card').length;
+            const countEl = document.querySelector('.page-header p');
+            if (countEl) {
+                countEl.textContent = remaining + ' favorited model' + (remaining !== 1 ? 's' : '');
             }
-        }
+            if (remaining === 0) {
+                location.reload();
+            }
+        });
         </script>
 
 <?php require_once 'includes/footer.php'; ?>

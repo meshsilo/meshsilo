@@ -6,7 +6,7 @@
  * Table creation migrations are auto-generated from getSchema() — the single source of truth.
  * Special migrations (data fixes, schema corrections) are defined manually below.
  *
- * Used by: cli/migrate.php, cli/upgrade.php, app/admin/database.php, app/pages/update.php
+ * Used by: cli/migrate.php, cli/upgrade.php, app/admin/database.php
  */
 
 /**
@@ -309,6 +309,37 @@ function getSpecialMigrations(): array
 
                 if (function_exists('logInfo')) {
                     logInfo("Ownership backfill: assigned $fromLog model(s) from activity_log, $toFallback to fallback admin #$fallback");
+                }
+            },
+        ],
+        [
+            'name' => 'Prefix legacy version file_paths with assets/',
+            'description' => 'Repair version rows whose file_path was stored as "versions/<id>/..." (missing the canonical "assets/" prefix) so getAbsoluteFilePath() resolves them. Heals both models.file_path and model_versions.file_path. Idempotent.',
+            'check' => function ($db) {
+                // Applied once no file_path still uses the un-prefixed "versions/" form.
+                $count = (int)$db->querySingle("SELECT COUNT(*) FROM models WHERE file_path LIKE 'versions/%'");
+                if ($count > 0) {
+                    return false;
+                }
+                if (tableExists($db, 'model_versions')) {
+                    $count = (int)$db->querySingle("SELECT COUNT(*) FROM model_versions WHERE file_path LIKE 'versions/%'");
+                    if ($count > 0) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            'apply' => function ($db) {
+                // SQLite concatenates with ||, MySQL needs CONCAT().
+                $isMysql = $db->getType() === 'mysql';
+                $prefixed = $isMysql ? "CONCAT('assets/', file_path)" : "'assets/' || file_path";
+
+                // The LIKE guard makes this a no-op on already-healed rows, so it
+                // is safe to run more than once (an already-prefixed path such as
+                // "assets/versions/..." never matches "versions/%").
+                $db->exec("UPDATE models SET file_path = $prefixed WHERE file_path LIKE 'versions/%'");
+                if (tableExists($db, 'model_versions')) {
+                    $db->exec("UPDATE model_versions SET file_path = $prefixed WHERE file_path LIKE 'versions/%'");
                 }
             },
         ],

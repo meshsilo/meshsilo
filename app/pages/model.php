@@ -750,7 +750,7 @@ require_once 'includes/header.php';
         <?php endif; ?>
 
         <?php if (isset($model)): ?>
-        <script>
+        <script<?= csp_nonce_attr() ?>>
         window.ModelPageConfig = {
             modelId: <?= (int)$model['id'] ?>,
             csrfToken: <?= json_encode(Csrf::getToken()) ?>,

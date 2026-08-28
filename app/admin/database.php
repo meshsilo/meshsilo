@@ -3,11 +3,7 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/migrations.php';
 
 // Require admin permission (database management is admin-only)
-if (!isLoggedIn() || !isAdmin()) {
-    $_SESSION['error'] = 'You do not have permission to manage the database.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('isAdmin', 'You do not have permission to manage the database.');
 
 $pageTitle = 'Database Management';
 $activePage = '';
@@ -16,27 +12,11 @@ $adminPage = 'database';
 $db = getDB();
 $dbType = $db->getType();
 
-// Get migration list (same as CLI tool)
-$migrations = getMigrationList();
-
-// Check migration status
-$appliedCount = 0;
-$pendingCount = 0;
-$migrationStatus = [];
-
-foreach ($migrations as $m) {
-    $isApplied = $m['check']($db);
-    $migrationStatus[] = [
-        'name' => $m['name'],
-        'description' => $m['description'] ?? '',
-        'applied' => $isApplied
-    ];
-    if ($isApplied) {
-        $appliedCount++;
-    } else {
-        $pendingCount++;
-    }
-}
+// Check migration status (same migration list as the CLI tool)
+$status = getMigrationStatus($db);
+$migrationStatus = $status['migrations'];
+$appliedCount = $status['appliedCount'];
+$pendingCount = $status['pendingCount'];
 
 // Handle actions
 $message = '';
@@ -44,25 +24,15 @@ $error = '';
 $migrationsRun = [];
 
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['run_migrations'])) {
-        $applied = 0;
-        $errors = 0;
-
-        foreach ($migrations as $migration) {
-            if (!$migration['check']($db)) {
-                try {
-                    $migration['apply']($db);
-                    $migrationsRun[] = ['name' => $migration['name'], 'success' => true];
-                    $applied++;
-                } catch (Exception $e) {
-                    $migrationsRun[] = ['name' => $migration['name'], 'success' => false, 'error' => $e->getMessage()];
-                    $errors++;
-                }
-            }
-        }
+        // Keep going after a failure so the remaining migrations still get a try.
+        $run = runPendingMigrations($db, false);
+        $migrationsRun = $run['results'];
+        $applied = $run['applied'];
+        $errors = $run['errors'];
 
         if ($errors === 0 && $applied > 0) {
             $message = "Successfully applied $applied migration(s).";
@@ -75,22 +45,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         }
 
         // Refresh migration status
-        $appliedCount = 0;
-        $pendingCount = 0;
-        $migrationStatus = [];
-        foreach ($migrations as $m) {
-            $isApplied = $m['check']($db);
-            $migrationStatus[] = [
-                'name' => $m['name'],
-                'description' => $m['description'] ?? '',
-                'applied' => $isApplied
-            ];
-            if ($isApplied) {
-                $appliedCount++;
-            } else {
-                $pendingCount++;
-            }
-        }
+        $status = getMigrationStatus($db);
+        $migrationStatus = $status['migrations'];
+        $appliedCount = $status['appliedCount'];
+        $pendingCount = $status['pendingCount'];
     } elseif (isset($_POST['backup_db'])) {
         if ($dbType === 'sqlite') {
             $dbPath = DB_PATH;
@@ -163,22 +121,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                         $ph = implode(', ', array_fill(0, count($columns), '?'));
 
                         $mysqlPdo->exec("SET FOREIGN_KEY_CHECKS = 0");
-                        $mysqlPdo->exec("DELETE FROM {$quotedTable}");
-                        $stmt = $mysqlPdo->prepare("INSERT INTO {$quotedTable} ({$colList}) VALUES ({$ph})");
-                        $copied = 0;
-                        foreach ($sqliteRows as $row) {
-                            $values = [];
-                            foreach ($columns as $col) {
-                                $val = $row[$col] ?? null;
-                                if ($val !== null && isset($mysqlTypes[$col]) && preg_match('/^(int|tinyint|bigint|smallint)/i', $mysqlTypes[$col]) && !is_numeric($val)) {
-                                    $val = null;
+                        // Wrap the destructive DELETE and the re-inserts in a single
+                        // transaction. If any insert fails (e.g. a schema mismatch) we
+                        // roll back so the table is left unchanged, rather than wiping
+                        // it and reporting a false success.
+                        try {
+                            $mysqlPdo->beginTransaction();
+                            $mysqlPdo->exec("DELETE FROM {$quotedTable}");
+                            $stmt = $mysqlPdo->prepare("INSERT INTO {$quotedTable} ({$colList}) VALUES ({$ph})");
+                            $copied = 0;
+                            foreach ($sqliteRows as $row) {
+                                $values = [];
+                                foreach ($columns as $col) {
+                                    $val = $row[$col] ?? null;
+                                    if ($val !== null && isset($mysqlTypes[$col]) && preg_match('/^(int|tinyint|bigint|smallint)/i', $mysqlTypes[$col]) && !is_numeric($val)) {
+                                        $val = null;
+                                    }
+                                    $values[] = $val;
                                 }
-                                $values[] = $val;
+                                // Do NOT swallow insert errors - let them abort the sync.
+                                $stmt->execute($values);
+                                $copied++;
                             }
-                            try { $stmt->execute($values); $copied++; } catch (PDOException $e) {}
+                            $mysqlPdo->commit();
+                            $message = "Re-synced {$copied} rows from SQLite '{$tableName}' to MySQL.";
+                        } catch (\Throwable $inner) {
+                            if ($mysqlPdo->inTransaction()) {
+                                $mysqlPdo->rollBack();
+                            }
+                            $error = "Re-sync failed: " . $inner->getMessage() . " (table left unchanged).";
+                        } finally {
+                            $mysqlPdo->exec("SET FOREIGN_KEY_CHECKS = 1");
                         }
-                        $mysqlPdo->exec("SET FOREIGN_KEY_CHECKS = 1");
-                        $message = "Re-synced {$copied} rows from SQLite '{$tableName}' to MySQL.";
                     }
                 }
             } catch (Exception $e) {
@@ -287,7 +261,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                                 }
                                 $values[] = $val;
                             }
-                            try { $stmt->execute($values); $totalRows++; } catch (PDOException $e) {}
+                            // Do NOT swallow insert errors: a schema mismatch here
+                            // must surface as a failed migration, not be silently
+                            // dropped while reporting success.
+                            $stmt->execute($values);
+                            $totalRows++;
                         }
                     }
 
@@ -367,6 +345,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             }
         } catch (Exception $e) {
             $error = 'Optimization failed: ' . $e->getMessage();
+        }
+    } elseif (isset($_POST['repair_rate_limits'])) {
+        // Rebuild rate_limits when its schema has drifted (a missing
+        // expires_at column breaks every rate-limited request). Mirrors the
+        // canonical definition in includes/Schema.php.
+        try {
+            $db->exec('DROP TABLE IF EXISTS rate_limits');
+
+            if ($dbType === 'mysql') {
+                $db->exec('CREATE TABLE rate_limits (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    key_name VARCHAR(255) NOT NULL UNIQUE,
+                    data TEXT,
+                    expires_at INT NOT NULL,
+                    INDEX idx_rate_limits_expires (expires_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+            } else {
+                $db->exec('CREATE TABLE rate_limits (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key_name TEXT NOT NULL UNIQUE,
+                    data TEXT,
+                    expires_at INTEGER NOT NULL
+                )');
+                $db->exec('CREATE INDEX idx_rate_limits_expires ON rate_limits(expires_at)');
+            }
+
+            $message = 'Rate limits table has been recreated with correct schema.';
+        } catch (Exception $e) {
+            $error = 'Failed to repair rate limits table: ' . $e->getMessage();
         }
     }
 }
@@ -499,6 +506,50 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
         </div>
 
+        <details class="settings-section"<?= $pendingCount > 0 ? ' open' : '' ?>>
+            <summary><h2>Migrations</h2></summary>
+            <div class="button-group">
+                <?php if ($pendingCount > 0): ?>
+                <form method="post" style="display: inline;">
+                    <?= csrf_field() ?>
+                    <button type="submit" name="run_migrations" class="btn btn-primary"
+                            data-confirm="Run all pending migrations? This will modify your database schema.">
+                        Run <?= $pendingCount ?> Migration(s)
+                    </button>
+                </form>
+                <?php else: ?>
+                <button type="button" class="btn btn-primary" disabled>
+                    No Migrations Needed
+                </button>
+                <?php endif; ?>
+            </div>
+            <p class="form-hint" style="margin-top: 0.5rem;">
+                <?= $pendingCount > 0
+                    ? $pendingCount . ' migration(s) pending. Running them modifies your database schema.'
+                    : 'Your database is up to date. No migrations needed.' ?>
+            </p>
+            <table class="data-table" aria-label="Migration status">
+                <thead>
+                    <tr>
+                        <th scope="col">Status</th>
+                        <th scope="col">Migration</th>
+                        <th scope="col">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($migrationStatus as $m): ?>
+                    <tr>
+                        <td class="<?= $m['applied'] ? 'text-success' : 'text-warning' ?>">
+                            <?= $m['applied'] ? '<i class="fa-solid fa-check"></i> Applied' : '<i class="fa-solid fa-clock"></i> Pending' ?>
+                        </td>
+                        <td><?= htmlspecialchars($m['name']) ?></td>
+                        <td><?= htmlspecialchars($m['description']) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </details>
+
         <details class="settings-section">
             <summary><h2>Table Statistics</h2></summary>
             <table class="data-table" aria-label="Table statistics">
@@ -544,6 +595,22 @@ require_once __DIR__ . '/../../includes/header.php';
                     Optimize runs OPTIMIZE TABLE on all tables to reclaim space and update statistics.
                 <?php endif; ?>
             </p>
+        </details>
+
+        <details class="settings-section">
+            <summary><h2>Schema Repairs</h2></summary>
+            <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+                If you encounter "Unknown column 'expires_at'" or similar rate limiting errors,
+                rebuild the <code>rate_limits</code> table with the correct schema.
+                Existing rate limit counters are discarded.
+            </p>
+            <form method="post" style="display: inline;">
+                <?= csrf_field() ?>
+                <button type="submit" name="repair_rate_limits" class="btn btn-warning"
+                        data-confirm="This will drop and recreate the rate_limits table. Continue?">
+                    Repair Rate Limits Table
+                </button>
+            </form>
         </details>
 
         <details class="settings-section">
@@ -641,103 +708,6 @@ php cli/migrate.php --dry-run
 
             </div>
         </div>
-
-<style>
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.metric-card {
-    background: var(--color-surface);
-    padding: 1.25rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--color-border);
-}
-
-.metric-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.metric-icon { font-size: 1.25rem; }
-
-.metric-title {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-}
-
-.metric-value {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-}
-
-.metric-detail {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-}
-
-.text-success { color: var(--color-success); }
-.text-warning { color: var(--color-warning); }
-
-.stat-card-warning {
-    border-color: var(--color-warning, #f59e0b);
-}
-
-.stat-card-warning .stat-value {
-    color: var(--color-warning, #f59e0b);
-}
-
-.stat-card-success .stat-value {
-    color: var(--color-success, #22c55e);
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.data-table th {
-    font-weight: 500;
-    color: var(--color-text-muted);
-    width: 200px;
-}
-
-.alert {
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
-
-.alert-success {
-    background: color-mix(in srgb, var(--color-success) 10%, transparent);
-    color: var(--color-success, #22c55e);
-    border: 1px solid var(--color-success, #22c55e);
-}
-
-.alert-warning {
-    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
-    color: var(--color-warning, #f59e0b);
-    border: 1px solid var(--color-warning, #f59e0b);
-}
-
-.alert-error {
-    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
-    color: var(--color-danger, #ef4444);
-    border: 1px solid var(--color-danger, #ef4444);
-}
-</style>
 
 <?php
 require_once __DIR__ . '/../../includes/footer.php';

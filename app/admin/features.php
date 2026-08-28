@@ -3,11 +3,7 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/features.php';
 
 // Require admin permission
-if (!isLoggedIn() || !isAdmin()) {
-    $_SESSION['error'] = 'You do not have permission to manage features.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('isAdmin', 'You do not have permission to manage features.');
 
 $pageTitle = 'Feature Management';
 $activePage = '';
@@ -18,8 +14,8 @@ $error = '';
 
 // Handle form submission
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Check if applying a preset
     if (isset($_POST['apply_preset'])) {
@@ -147,208 +143,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
         </div>
 
-        <style>
-        .features-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        .feature-list {
-            display: grid;
-            gap: 1rem;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1rem;
-            background: var(--color-surface);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .feature-item:hover {
-            border-color: var(--color-primary);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .feature-item.enabled {
-            border-color: var(--color-success);
-            background: color-mix(in srgb, var(--color-success) 10%, transparent);
-        }
-
-        .feature-toggle {
-            position: relative;
-            flex-shrink: 0;
-        }
-
-        .feature-toggle input {
-            position: absolute;
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            display: block;
-            width: 44px;
-            height: 24px;
-            background: var(--color-text-muted);
-            border-radius: 12px;
-            transition: background 0.2s ease;
-            position: relative;
-        }
-
-        .toggle-slider::before {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .feature-toggle input:checked + .toggle-slider {
-            background: var(--color-success);
-        }
-
-        .feature-toggle input:checked + .toggle-slider::before {
-            transform: translateX(20px);
-        }
-
-        .feature-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .feature-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.25rem;
-            flex-wrap: wrap;
-        }
-
-        .feature-icon {
-            font-size: 1.1rem;
-            width: 24px;
-            text-align: center;
-        }
-
-        .feature-name {
-            font-weight: 600;
-            color: var(--color-text);
-        }
-
-        .feature-badge {
-            font-size: 0.7rem;
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
-            text-transform: uppercase;
-            font-weight: 500;
-        }
-
-        .feature-badge.default {
-            background: var(--color-primary);
-            color: white;
-        }
-
-        .feature-badge.usage {
-            background: #6366f1;
-            color: white;
-        }
-
-        .feature-description {
-            font-size: 0.85rem;
-            color: var(--color-text-muted);
-            margin: 0;
-            line-height: 1.4;
-        }
-
-        .feature-warning {
-            font-size: 0.75rem;
-            color: var(--color-warning);
-            margin: 0.25rem 0 0;
-            padding: 0.25rem 0.5rem;
-            background: color-mix(in srgb, var(--color-warning) 10%, transparent);
-            border-radius: 4px;
-        }
-
-        .feature-dependents {
-            font-size: 0.75rem;
-            color: var(--color-primary);
-            margin: 0.25rem 0 0;
-            padding: 0.25rem 0.5rem;
-            background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-            border-radius: 4px;
-        }
-
-        .feature-item.has-warning {
-            border-color: var(--color-warning);
-        }
-
-        .sticky-actions {
-            position: sticky;
-            bottom: 0;
-            background: var(--color-bg);
-            padding: 1rem;
-            margin: 2rem -1.5rem -1.5rem;
-            border-top: 1px solid var(--color-border);
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-start;
-        }
-
-        @media (max-width: 768px) {
-            .feature-list {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Saving indicator */
-        .feature-toggle.saving .toggle-slider {
-            opacity: 0.6;
-        }
-
-        .feature-toggle.saving .toggle-slider::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 12px;
-            height: 12px;
-            border: 2px solid transparent;
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-        /* Success feedback */
-        .feature-item.just-saved {
-            animation: save-flash 0.5s ease;
-        }
-
-        @keyframes save-flash {
-            0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 0%, transparent); }
-            50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 40%, transparent); }
-        }
-        </style>
-
-        <script>
+        <script<?= csp_nonce_attr() ?>>
         async function resetToDefaults() {
             if (!await showConfirm('Reset all features to their default settings?')) {
                 return;

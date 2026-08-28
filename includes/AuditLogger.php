@@ -59,7 +59,15 @@ class AuditLogger
         }
 
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $sessionId = session_id();
+            // Store a non-reversible digest, never the live session id. Audit
+            // rows are readable by every admin, exportable to CSV/JSON, and
+            // present in any DB dump; a raw session id there is a ready-to-use
+            // hijacking token. The digest is deterministic, so rows from the
+            // same session still correlate with each other.
+            $rawSessionId = session_id();
+            $sessionId = ($rawSessionId !== '' && $rawSessionId !== false)
+                ? hash('sha256', $rawSessionId)
+                : null;
         }
 
         $stmt = $db->prepare('

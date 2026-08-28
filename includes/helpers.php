@@ -359,6 +359,33 @@ if (!function_exists('csrf_field')) {
     }
 }
 
+if (!function_exists('csp_nonce')) {
+    /**
+     * This request's CSP nonce (empty string when security headers are absent,
+     * e.g. CLI), so callers can build their own script tags.
+     */
+    function csp_nonce(): string
+    {
+        return class_exists('SecurityHeaders') ? SecurityHeaders::nonce() : '';
+    }
+}
+
+if (!function_exists('csp_nonce_attr')) {
+    /**
+     * Renders the nonce attribute for an inline <script>.
+     *
+     * REQUIRED on every inline script the app emits: script-src does not allow
+     * 'unsafe-inline', so an unnonced inline script is blocked by the browser.
+     *
+     *     <script<?= csp_nonce_attr() ?>>...</script>
+     */
+    function csp_nonce_attr(): string
+    {
+        $nonce = csp_nonce();
+        return $nonce === '' ? '' : ' nonce="' . e($nonce) . '"';
+    }
+}
+
 // ========================================
 // Misc Helpers
 // ========================================

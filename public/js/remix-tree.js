@@ -123,12 +123,10 @@ document.getElementById('save-remix-btn').addEventListener('click', async functi
     }
 });
 
-// Close modal on escape
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeRemixModal();
-    }
-});
+// Close modal on escape (shared handler from ui-common.js; #remix-modal is a
+// plain .modal, so it registers its own scope). It clicks the modal's
+// .modal-close, which is wired to closeRemixModal above.
+wireEscapeToClose('#remix-modal');
 
 // Close modal on backdrop click
 document.getElementById('remix-modal')?.addEventListener('click', function(e) {

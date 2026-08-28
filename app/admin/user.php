@@ -5,11 +5,7 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/AuditLogger.php';
 
 // Require user management permission
-if (!isLoggedIn() || !canManageUsers()) {
-    $_SESSION['error'] = 'You do not have permission to manage users.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageUsers', 'You do not have permission to manage users.');
 
 $pageTitle = 'Edit User';
 $activePage = '';
@@ -63,8 +59,8 @@ $error = '';
 
 // Handle form submissions
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_profile'])) {
         $username = trim($_POST['username'] ?? '');
@@ -311,46 +307,5 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
             </div>
         </div>
-
-<style>
-.back-link {
-    color: var(--color-text-muted);
-    text-decoration: none;
-    margin-right: 0.5rem;
-}
-.back-link:hover {
-    color: var(--color-text);
-}
-.permission-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 0.5rem;
-}
-.permission-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background: var(--color-surface-hover);
-    border-radius: var(--radius);
-}
-.permission-item.has-permission {
-    color: var(--color-success);
-}
-.permission-item.no-permission {
-    color: var(--color-text-muted);
-    opacity: 0.6;
-}
-.permission-status {
-    font-weight: bold;
-}
-.danger-zone {
-    border: 1px solid var(--color-danger);
-    background: color-mix(in srgb, var(--color-danger) 5%, transparent);
-}
-.danger-zone h2 {
-    color: var(--color-danger);
-}
-</style>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

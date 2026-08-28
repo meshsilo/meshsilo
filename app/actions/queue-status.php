@@ -11,7 +11,7 @@ header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
     http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
     exit;
 }
 
@@ -96,9 +96,13 @@ try {
                 }
             }
 
-            // Auto-cleanup: if no remaining conversions, delete all completed conversion jobs.
-            // Only mutate on POST - GET requests must stay read-only.
-            if ($remaining === 0 && $completed > 0 && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            // Auto-cleanup: once no conversions remain, prune the finished
+            // conversion jobs. This route is polled with GET (both callers use
+            // GET), and a prior POST-only guard made this branch unreachable so
+            // completed jobs were never cleared. The guard below (nothing left
+            // to convert, something completed) keeps it a safe, idempotent
+            // housekeeping delete.
+            if ($remaining === 0 && $completed > 0) {
                 $db->exec("DELETE FROM jobs WHERE job_class = 'ConvertStlTo3mf' AND status IN ('completed', 'failed')");
                 $conversions = null;
             }

@@ -7,7 +7,8 @@
  * Global functions here are invoked by delegated handlers in model-page.js.
  * Load order (set in includes/header.php): after window.ModelPageConfig and the
  * model-parts.js core, before model-page.js. Relies on global helpers
- * (showToast, showConfirm, trapFocus, releaseFocus, escapeHtml) from ui-common.js.
+ * (showToast, showConfirm, trapFocus, releaseFocus, escapeHtml, syncSelectAllCheckbox)
+ * from ui-common.js.
  */
 
         // Mass action handling
@@ -91,14 +92,14 @@
         }
 
         function updateAllCheckboxStates(scope) {
-            const selectAllCheckbox = document.getElementById('select-all-parts');
             const allPartCheckboxes = document.querySelectorAll('.part-checkbox');
             const checkedCount = document.querySelectorAll('.part-checkbox:checked').length;
 
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = checkedCount === allPartCheckboxes.length && allPartCheckboxes.length > 0;
-                selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < allPartCheckboxes.length;
-            }
+            syncSelectAllCheckbox(
+                document.getElementById('select-all-parts'),
+                allPartCheckboxes.length,
+                checkedCount
+            );
             updateFolderCheckboxes(scope);
         }
 
@@ -109,10 +110,11 @@
             folders.forEach(folder => {
                 const folderCheckbox = folder.querySelector('.folder-checkbox');
                 if (!folderCheckbox) return;
-                const partCheckboxes = folder.querySelectorAll('.part-checkbox');
-                const checkedCount = folder.querySelectorAll('.part-checkbox:checked').length;
-                folderCheckbox.checked = checkedCount === partCheckboxes.length && partCheckboxes.length > 0;
-                folderCheckbox.indeterminate = checkedCount > 0 && checkedCount < partCheckboxes.length;
+                syncSelectAllCheckbox(
+                    folderCheckbox,
+                    folder.querySelectorAll('.part-checkbox').length,
+                    folder.querySelectorAll('.part-checkbox:checked').length
+                );
             });
         }
 

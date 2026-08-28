@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken && $tokenData) {
     $confirmPassword = $_POST['confirm_password'] ?? '';
 
     if (!Csrf::validate()) {
-        $error = 'Security validation failed. Please try again.';
+        $error = Csrf::ERROR_MESSAGE;
     } elseif (empty($newPassword)) {
         $error = 'Please enter a new password.';
     } elseif (strlen($newPassword) < 8) {
@@ -205,7 +205,7 @@ require_once __DIR__ . '/../../includes/header.php';
 }
 </style>
 
-<script>
+<script<?= csp_nonce_attr() ?>>
 (function() {
     var pw = document.getElementById('password');
     var bar = document.getElementById('pw-strength-bar');

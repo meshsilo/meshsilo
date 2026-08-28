@@ -14,10 +14,8 @@ if (!isLoggedIn() || !isAdmin()) {
     jsonError('Permission denied', 403);
 }
 
-// CSRF check for POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    jsonError('Invalid CSRF token', 403);
-}
+// CSRF check for state-changing requests
+requireCsrfJson();
 
 $action = $_POST['action'] ?? '';
 $pluginManager = PluginManager::getInstance();

@@ -434,42 +434,64 @@ class StatsService
             $largestModels[] = $row;
         }
 
-        // Check for missing files (files in DB but not on disk)
-        // Limit to first 100 to avoid memory issues on large databases
-        $result = $db->query('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT 100');
+        // Check for missing files (files in DB but not on disk).
+        // Paginate through ALL models: a flat `LIMIT 100` limited the SCAN, not
+        // the results, so on a large library any file missing past the first 100
+        // rows was never detected and the page reported "clean". Scan every row
+        // in batches, and stop only once we have collected enough missing
+        // entries to display (bounding memory without hiding rows).
         $missingFiles = [];
-        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            // Skip parent models (ZIP containers) - they don't have actual files
-            if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
-                continue;
+        $missingDisplayCap = 500;
+        $missingBatch = 500;
+        $missingOffset = 0;
+        while (true) {
+            $stmt = $db->prepare('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT :limit OFFSET :offset');
+            $stmt->bindValue(':limit', $missingBatch, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $missingOffset, PDO::PARAM_INT);
+            $result = $stmt->execute();
+            $rowsInBatch = 0;
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                $rowsInBatch++;
+                // Skip parent models (ZIP containers) - they don't have actual files
+                if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
+                    continue;
+                }
+                $filePath = getAbsoluteFilePath($row);
+                if (!file_exists($filePath) || !is_file($filePath)) {
+                    $missingFiles[] = $row;
+                    if (count($missingFiles) >= $missingDisplayCap) {
+                        break 2;
+                    }
+                }
             }
-            $filePath = getAbsoluteFilePath($row);
-            if (!file_exists($filePath) || !is_file($filePath)) {
-                $missingFiles[] = $row;
+            if ($rowsInBatch < $missingBatch) {
+                break; // Reached the last page
             }
+            $missingOffset += $missingBatch;
         }
 
-        // Check for orphaned files (files on disk but not in DB)
-        // Limit to first 100 to avoid memory issues
+        // Check for orphaned files (files on disk but not in DB).
+        // Load the set of known filenames ONCE and diff against disk, instead of
+        // issuing one COUNT query per file (an N+1 that scaled with the folder).
         $orphanedFiles = [];
         if ($assetsPath && is_dir($assetsPath)) {
+            $knownFiles = [];
+            $knownStmt = $db->query('SELECT DISTINCT filename FROM models WHERE filename IS NOT NULL');
+            while ($knownRow = $knownStmt->fetchArray(PDO::FETCH_ASSOC)) {
+                $knownFiles[$knownRow['filename']] = true;
+            }
+
             $iterator = new DirectoryIterator($assetsPath);
             $count = 0;
             foreach ($iterator as $file) {
                 if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-                    // Check if file exists in database
-                    $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
-                    $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
-                    $result = $stmt->execute();
-                    $row = $result->fetchArray(PDO::FETCH_ASSOC);
-
-                    if ($row['count'] == 0) {
+                    if (!isset($knownFiles[$file->getFilename()])) {
                         $orphanedFiles[] = [
                             'filename' => $file->getFilename(),
                             'size' => $file->getSize()
                         ];
                         $count++;
-                        if ($count >= 100) break; // Limit to 100 orphaned files
+                        if ($count >= 100) break; // Limit to 100 orphaned files for display
                     }
                 }
             }

@@ -163,6 +163,10 @@ class LazyModelLoader {
             viewer.loadModel(url, fileType)
                 .then(() => {
                     clearTimeout(loadTimeout);
+                    // The viewer may have been disposed (LRU eviction / timeout)
+                    // while its load was still in flight - don't touch a dead
+                    // viewer's thumbnail classes.
+                    if (viewer.disposed) return;
                     thumbnail.classList.remove('loading', 'lazy-load-placeholder');
                     thumbnail.classList.add('has-viewer', 'loaded');
                 })
@@ -405,7 +409,7 @@ class KeyboardShortcuts {
             const link = card.querySelector('a[href*="/model/"]') || card;
             const modelId = card.dataset.modelId;
             if (modelId) {
-                window.location.href = window.SiloConfig.modelBase + modelId;
+                window.location.href = modelUrl(modelId);
             } else if (link.href) {
                 window.location.href = link.href;
             }

@@ -44,6 +44,55 @@ function getFirstPartsForModels(array $modelIds)
     }
 }
 
+/**
+ * Attach viewer preview fields (preview_path, preview_type, preview_file_size)
+ * to a list of models, in place.
+ *
+ * A multi-part model previews its first part; a single-file model previews
+ * itself. Every multi-part model in the list is resolved with ONE batched query
+ * via getFirstPartsForModels(), so this never degrades into a per-model query.
+ *
+ * Shared by the homepage, category, collection and favorites listings, which
+ * each previously carried their own copy of this loop.
+ *
+ * @param array $models Rows with at least id, file_type, part_count. Modified in place.
+ */
+function attachPreviewData(array &$models)
+{
+    if (empty($models)) {
+        return;
+    }
+
+    $multiPartIds = [];
+    foreach ($models as $model) {
+        if (!empty($model['part_count']) && isset($model['id'])) {
+            $multiPartIds[] = $model['id'];
+        }
+    }
+
+    $firstParts = $multiPartIds ? getFirstPartsForModels($multiPartIds) : [];
+
+    foreach ($models as &$model) {
+        $part = (!empty($model['part_count']) && isset($firstParts[$model['id']]))
+            ? $firstParts[$model['id']]
+            : null;
+
+        if ($part) {
+            $model['preview_path'] = '/preview?id=' . $part['id'];
+            $model['preview_type'] = $part['file_type'];
+            $model['preview_file_size'] = $part['file_size'] ?? 0;
+        } elseif (empty($model['part_count'])) {
+            // Single-file model previews itself. A multi-part model whose parts
+            // could not be resolved is left without preview fields so the card
+            // falls back to its thumbnail rather than pointing at a bad id.
+            $model['preview_path'] = '/preview?id=' . $model['id'];
+            $model['preview_type'] = $model['file_type'] ?? null;
+            $model['preview_file_size'] = $model['file_size'] ?? 0;
+        }
+    }
+    unset($model);
+}
+
 // Get absolute file path for a model/part
 // Delegates to getAbsoluteFilePath (dedup.php) when available for consistent path resolution
 function getModelFilePath($model)

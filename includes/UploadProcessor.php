@@ -406,6 +406,25 @@ class UploadProcessor
             mkdir($folderPath, 0755, true);
         }
 
+        // Collision guard: two distinct original names can sanitize to the same
+        // target (e.g. "part one.stl" and "part_one.stl" both -> "part_one.stl").
+        // Without this, the second rename() overwrites the first file while both
+        // DB rows point at one physical path. If the destination already exists,
+        // insert a short unique token before the extension so each stored file is
+        // distinct. $filename is reused for both the DB filename and file_path
+        // binds below, so the canonical "assets/..." path stays consistent.
+        if (file_exists($filePath)) {
+            $collisionExt = pathinfo($filename, PATHINFO_EXTENSION);
+            $collisionBase = pathinfo($filename, PATHINFO_FILENAME);
+            do {
+                $token = bin2hex(random_bytes(4));
+                $filename = $collisionExt !== ''
+                    ? $collisionBase . '_' . $token . '.' . $collisionExt
+                    : $collisionBase . '_' . $token;
+                $filePath = $folderPath . $filename;
+            } while (file_exists($filePath));
+        }
+
         // Containment assertion: the resolved destination directory must stay
         // under UPLOAD_PATH before we write anything (defense-in-depth).
         $destDirReal = realpath(dirname($filePath));
@@ -441,7 +460,7 @@ class UploadProcessor
             $stmt->bindValue(':file_size', $fileSize, PDO::PARAM_INT);
             $stmt->bindValue(':file_type', $extension, PDO::PARAM_STR);
             $stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
-            $stmt->bindValue(':description', $parentId ? '' : '', PDO::PARAM_STR);
+            $stmt->bindValue(':description', '', PDO::PARAM_STR);
             $stmt->bindValue(':creator', '', PDO::PARAM_STR);
             $stmt->bindValue(':collection', '', PDO::PARAM_STR);
             $stmt->bindValue(':source_url', '', PDO::PARAM_STR);

@@ -256,7 +256,10 @@ class Queue
         // If we haven't exceeded max attempts, put back in queue
         if ($job['attempts'] < $job['max_attempts']) {
             // Exponential backoff: 1 min, 5 min, 25 min...
-            $delay = pow(5, $job['attempts']) * 60;
+            // attempts is already >= 1 here (pop() increments it on reserve),
+            // so anchor the exponent to attempts-1 to make the first retry
+            // wait 1 min (5^0) rather than 5 min (5^1).
+            $delay = pow(5, $job['attempts'] - 1) * 60;
             $availableAt = date('Y-m-d H:i:s', time() + $delay);
 
             $stmt = $db->prepare("
@@ -496,48 +499,44 @@ class Queue
             throw new \Exception("Invalid job class name");
         }
 
-        try {
-            // Check if job class exists
-            if (!class_exists($class)) {
-                // Try to load ONLY from the fixed jobs/ directory. The regex
-                // guard above guarantees $class cannot escape this directory.
-                $file = dirname(__DIR__) . '/jobs/' . $class . '.php';
-                if (is_file($file)) {
-                    require_once $file;
-                }
+        // Check if job class exists
+        if (!class_exists($class)) {
+            // Try to load ONLY from the fixed jobs/ directory. The regex
+            // guard above guarantees $class cannot escape this directory.
+            $file = dirname(__DIR__) . '/jobs/' . $class . '.php';
+            if (is_file($file)) {
+                require_once $file;
             }
-
-            // Plugin hook: queue_job_handlers - plugins register custom job
-            // types as ['JobClass' => callable($data)] (runs the job directly)
-            // or ['JobClass' => '/abs/path/JobClass.php'] (file defining the
-            // class). The identifier allowlist above still applies.
-            if (!class_exists($class) && class_exists('PluginManager')) {
-                $handlers = PluginManager::applyFilter('queue_job_handlers', []);
-                $handler = $handlers[$class] ?? null;
-                if (is_callable($handler)) {
-                    $handler($data);
-                    return true;
-                }
-                if (is_string($handler) && is_file($handler)) {
-                    require_once $handler;
-                }
-            }
-
-            if (!class_exists($class)) {
-                throw new \Exception("Job class not found: $class");
-            }
-
-            $instance = new $class();
-
-            if (!method_exists($instance, 'handle')) {
-                throw new \Exception("Job class must have a handle() method");
-            }
-
-            $instance->handle($data);
-            return true;
-        } catch (\Throwable $e) {
-            throw $e;
         }
+
+        // Plugin hook: queue_job_handlers - plugins register custom job
+        // types as ['JobClass' => callable($data)] (runs the job directly)
+        // or ['JobClass' => '/abs/path/JobClass.php'] (file defining the
+        // class). The identifier allowlist above still applies.
+        if (!class_exists($class) && class_exists('PluginManager')) {
+            $handlers = PluginManager::applyFilter('queue_job_handlers', []);
+            $handler = $handlers[$class] ?? null;
+            if (is_callable($handler)) {
+                $handler($data);
+                return true;
+            }
+            if (is_string($handler) && is_file($handler)) {
+                require_once $handler;
+            }
+        }
+
+        if (!class_exists($class)) {
+            throw new \Exception("Job class not found: $class");
+        }
+
+        $instance = new $class();
+
+        if (!method_exists($instance, 'handle')) {
+            throw new \Exception("Job class must have a handle() method");
+        }
+
+        $instance->handle($data);
+        return true;
     }
 }
 

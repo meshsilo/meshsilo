@@ -12,11 +12,7 @@ require_once __DIR__ . '/../../includes/features.php';
 requireFeature('activity_log');
 
 // Require audit log permission
-if (!isLoggedIn() || !canViewAuditLog()) {
-    $_SESSION['error'] = 'You do not have permission to view the audit log.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canViewAuditLog', 'You do not have permission to view the audit log.');
 
 $pageTitle = 'Audit Log';
 $adminPage = 'audit-log';
@@ -318,163 +314,9 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <!-- Log details data -->
-<script>
+<script<?= csp_nonce_attr() ?>>
 window.AuditLogConfig = { logsData: <?= json_encode(array_combine(array_column($logs, 'id'), $logs)) ?> };
 </script>
-
-<style>
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.stat-card {
-    background: var(--color-surface);
-    padding: 1rem;
-    border-radius: var(--radius);
-    text-align: center;
-}
-
-.stat-value {
-    display: block;
-    font-size: 1.5rem;
-    font-weight: 600;
-}
-
-.stat-label {
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
-}
-
-.filters-card {
-    background: var(--color-surface);
-    padding: 1rem;
-    border-radius: var(--radius);
-    margin-bottom: 1.5rem;
-}
-
-.filter-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.filter-group label {
-    display: block;
-    font-size: 0.875rem;
-    margin-bottom: 0.25rem;
-}
-
-.filter-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.badge {
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.badge-info { background: var(--color-primary); color: white; }
-.badge-warning { background: var(--color-warning); color: black; }
-.badge-error { background: var(--color-danger); color: white; }
-.badge-critical { background: #8e44ad; color: white; }
-
-.badge-type-auth { background: #9b59b6; color: white; }
-.badge-type-data { background: #3498db; color: white; }
-.badge-type-admin { background: #e67e22; color: white; }
-.badge-type-security { background: #e74c3c; color: white; }
-.badge-type-api { background: #1abc9c; color: white; }
-.badge-type-system { background: #95a5a6; color: white; }
-
-tr.severity-warning { background: color-mix(in srgb, var(--color-warning) 10%, transparent); }
-tr.severity-error { background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
-tr.severity-critical { background: color-mix(in srgb, #8e44ad 15%, transparent); }
-
-.timestamp { white-space: nowrap; font-family: monospace; font-size: 0.85rem; }
-.ip-address { font-family: monospace; font-size: 0.85rem; }
-.resource { font-size: 0.85rem; }
-
-.empty-row {
-    text-align: center;
-    padding: 2rem;
-    color: var(--color-text-muted);
-}
-
-.pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.page-info {
-    color: var(--color-text-muted);
-}
-
-.modal-lg {
-    max-width: 800px;
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-}
-
-.detail-item {
-    padding: 0.5rem;
-    background: var(--color-surface-hover);
-    border-radius: var(--radius);
-    font-size: 0.9rem;
-}
-
-.json-display {
-    background: var(--color-surface-hover);
-    padding: 1rem;
-    border-radius: var(--radius);
-    overflow-x: auto;
-    font-size: 0.85rem;
-    max-height: 200px;
-}
-
-.dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.dropdown-menu {
-    display: none;
-    position: absolute;
-    right: 0;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    min-width: 150px;
-    z-index: 100;
-}
-
-.dropdown:hover .dropdown-menu {
-    display: block;
-}
-
-.dropdown-item {
-    display: block;
-    padding: 0.5rem 1rem;
-    color: inherit;
-    text-decoration: none;
-}
-
-.dropdown-item:hover {
-    background: var(--color-surface-hover);
-}
-</style>
 
 </div><!-- /.admin-layout -->
 

@@ -27,20 +27,9 @@ function updateSelection() {
     if (countEl) countEl.textContent = checked.length;
     if (bar) bar.style.display = checked.length > 0 ? 'flex' : 'none';
 
-    const allCheckboxes = document.querySelectorAll('.model-checkbox');
-    const headerCheckbox = document.getElementById('header-select-all');
-    const selectAllCheckbox = document.getElementById('select-all');
-
-    if (checked.length === allCheckboxes.length && allCheckboxes.length > 0) {
-        if (headerCheckbox) { headerCheckbox.checked = true; headerCheckbox.indeterminate = false; }
-        if (selectAllCheckbox) { selectAllCheckbox.checked = true; selectAllCheckbox.indeterminate = false; }
-    } else if (checked.length > 0) {
-        if (headerCheckbox) headerCheckbox.indeterminate = true;
-        if (selectAllCheckbox) selectAllCheckbox.indeterminate = true;
-    } else {
-        if (headerCheckbox) { headerCheckbox.checked = false; headerCheckbox.indeterminate = false; }
-        if (selectAllCheckbox) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
-    }
+    const total = document.querySelectorAll('.model-checkbox').length;
+    syncSelectAllCheckbox(document.getElementById('header-select-all'), total, checked.length);
+    syncSelectAllCheckbox(document.getElementById('select-all'), total, checked.length);
 }
 
 function getSelectedIds() {
@@ -266,14 +255,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Escape key closes modals (audit log page)
+    // Escape key closes modals (audit log page). Shared handler from ui-common.js;
+    // these are plain .modal elements, so they register their own scope. It clicks
+    // each modal's .modal-close, wired to closeDetailsModal/closeComplianceModal.
     if (document.getElementById('details-modal') || document.getElementById('compliance-modal')) {
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeDetailsModal();
-                closeComplianceModal();
-            }
-        });
+        wireEscapeToClose('#details-modal, #compliance-modal');
     }
 
     // --- Admin Activity page ---
@@ -340,10 +326,4 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- Admin CLI Tools page ---
-    document.querySelectorAll('[data-action="toggle-tool"]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            if (typeof toggleTool === 'function') toggleTool(this.dataset.toolKey);
-        });
-    });
 });

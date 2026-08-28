@@ -353,42 +353,13 @@ require_once 'includes/header.php';
                 </div>
             <?php endif; ?>
 
-            <?php if ($totalPages > 1): ?>
-            <nav class="pagination" aria-label="Pagination">
-                <?php if ($page > 1): ?>
-                <a href="<?= BrowseQuery::buildUrl(['page' => $page - 1]) ?>" class="pagination-btn" aria-label="Previous page">&laquo; Prev</a>
-                <?php endif; ?>
-
-                <?php
-                $startPage = max(1, $page - 2);
-                $endPage = min($totalPages, $page + 2);
-
-                if ($startPage > 1): ?>
-                <a href="<?= BrowseQuery::buildUrl(['page' => 1]) ?>" class="pagination-btn" aria-label="Page 1">1</a>
-                <?php if ($startPage > 2): ?>
-                <span class="pagination-ellipsis">...</span>
-                <?php endif; ?>
-                <?php endif; ?>
-
-                <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-                <a href="<?= BrowseQuery::buildUrl(['page' => $i]) ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>" aria-label="Page <?= $i ?>"<?= $i === $page ? ' aria-current="page"' : '' ?>><?= $i ?></a>
-                <?php endfor; ?>
-
-                <?php if ($endPage < $totalPages): ?>
-                <?php if ($endPage < $totalPages - 1): ?>
-                <span class="pagination-ellipsis">...</span>
-                <?php endif; ?>
-                <a href="<?= BrowseQuery::buildUrl(['page' => $totalPages]) ?>" class="pagination-btn" aria-label="Page <?= $totalPages ?>"><?= $totalPages ?></a>
-                <?php endif; ?>
-
-                <?php if ($page < $totalPages): ?>
-                <a href="<?= BrowseQuery::buildUrl(['page' => $page + 1]) ?>" class="pagination-btn" aria-label="Next page">Next &raquo;</a>
-                <?php endif; ?>
-            </nav>
-            <?php endif; ?>
+            <?php
+            $paginationUrl = fn (int $p): string => BrowseQuery::buildUrl(['page' => $p]);
+            include __DIR__ . '/../../includes/partials/pagination.php';
+            ?>
         </div>
 
-        <script>
+        <script<?= csp_nonce_attr() ?>>
         window.BrowsePageConfig = { csrfToken: '<?= Csrf::getToken() ?>' };
         </script>
 
