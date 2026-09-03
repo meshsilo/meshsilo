@@ -270,7 +270,7 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                         <div class="form-group">
                             <label for="ip-address">IP Address</label>
-                            <input type="text" id="ip-address" class="form-input" value="<?= htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'Unknown') ?>" disabled>
+                            <input type="text" id="ip-address" class="form-input" value="<?= htmlspecialchars(client_ip() ?: 'Unknown') ?>" disabled>
                         </div>
                     </div>
                 </section>

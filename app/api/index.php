@@ -29,6 +29,10 @@ if (!$cors->handle([])) {
 
 // Load configuration without triggering auth redirect
 require_once __DIR__ . '/../../includes/logger.php';
+// helpers.php is pure function definitions; needed here for client_ip(),
+// because this entry point deliberately skips config.php (which normally
+// loads it) to avoid the auth redirect.
+require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/api-auth.php';
 require_once __DIR__ . '/../../includes/api-helpers.php';
@@ -73,7 +77,7 @@ if (!$apiUser) {
     // for free. Only failed attempts are counted here, so valid requests are never
     // double-charged against this bucket.
     $authThrottle = RateLimiter::check(
-        'api-auth:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
+        'api-auth:' . (client_ip() ?: 'unknown'),
         'anonymous',
         'api:auth'
     );
@@ -95,7 +99,7 @@ if (!$apiUser) {
 $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
 $tier = RateLimiter::getTierForUser($apiUser['user_id'] ?? null, $apiKey);
 $rateLimitResult = RateLimiter::check(
-    $apiKey ?: ($apiUser['id'] ?? $_SERVER['REMOTE_ADDR']),
+    $apiKey ?: ($apiUser['id'] ?? client_ip()),
     $tier,
     'api:' . $resource
 );

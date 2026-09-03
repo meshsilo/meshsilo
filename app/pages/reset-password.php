@@ -58,7 +58,7 @@ if (empty($token)) {
 
         logSecurityWarning('Invalid password reset token used', [
             'token_prefix' => substr($token, 0, 8) . '...',
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+            'ip' => client_ip() ?: 'unknown'
         ]);
     } else {
         $validToken = true;

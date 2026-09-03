@@ -235,7 +235,7 @@ function logApiRequest($apiKeyId, $method, $endpoint)
         ':api_key_id' => $apiKeyId,
         ':method' => $method,
         ':endpoint' => $endpoint,
-        ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+        ':ip_address' => client_ip() ?: null,
         ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null
     ]);
 }

@@ -96,18 +96,11 @@ class RateLimitMiddleware implements MiddlewareInterface
             return 'user:' . ($user['id'] ?? 'unknown');
         }
 
-        // Fall back to IP address - only trust proxy headers if TRUSTED_PROXIES is configured
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        $trustedProxies = defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : (getenv('TRUSTED_PROXIES') ?: '');
-        if ($trustedProxies && in_array($ip, array_map('trim', explode(',', $trustedProxies)))) {
-            $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $ip;
-            if (strpos($forwarded, ',') !== false) {
-                $forwarded = trim(explode(',', $forwarded)[0]);
-            }
-            $ip = $forwarded;
-        }
-
-        return 'ip:' . $ip;
+        // client_ip() only consults forwarded headers when the peer is a
+        // configured trusted proxy, and walks the chain right-to-left. The
+        // previous version took the LEFTMOST hop, which any client can set --
+        // so a single attacker could rotate X-Forwarded-For and never be limited.
+        return 'ip:' . (client_ip() ?: 'unknown');
     }
 
     /**

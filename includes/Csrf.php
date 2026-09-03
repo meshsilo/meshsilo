@@ -118,7 +118,7 @@ class Csrf
         if (!self::validate($token)) {
             if (function_exists('logWarning')) {
                 logWarning('CSRF validation failed', [
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                    'ip' => client_ip() ?: 'unknown',
                     'uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
                     'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown'
                 ]);

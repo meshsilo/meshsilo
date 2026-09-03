@@ -75,7 +75,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
         try {
             $expiresAt = time() + $this->lifetime;
             $userId = $_SESSION['user_id'] ?? null;
-            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+            $ipAddress = client_ip() ?: null;
             $userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null;
 
             // Use REPLACE INTO for SQLite/MySQL compatibility

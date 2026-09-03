@@ -13,9 +13,11 @@ if (session_status() === PHP_SESSION_NONE) {
     $secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
     // Only trust X-Forwarded-Proto from configured trusted proxies
     if (!$secure && isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-        $trustedProxies = defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : [];
-        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
-        if (!empty($trustedProxies) && (in_array($remoteAddr, $trustedProxies, true) || in_array('*', $trustedProxies, true))) {
+        // is_trusted_proxy() accepts TRUSTED_PROXIES as an array OR a comma
+        // separated string and supports CIDR. The previous inline in_array()
+        // here required an array while RateLimitMiddleware required a string,
+        // so whichever form was configured, one of them raised a TypeError.
+        if (is_trusted_proxy($_SERVER['REMOTE_ADDR'] ?? '')) {
             $secure = true;
         }
     }
@@ -172,7 +174,7 @@ function enforceAuthentication(): void
     if (!isLoggedIn() && !$isPublicRoute && !$isApiRoute && !$isPluginAsset) {
         logWarning('Unauthorized access attempt', [
             'route' => $currentRoute,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'ip' => client_ip() ?: 'unknown',
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
         ]);
         $loginUrl = function_exists('route') ? route('login') : '/login';

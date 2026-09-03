@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Rate limit login attempts using RateLimiter
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip = client_ip() ?: 'unknown';
     $rateResult = RateLimiter::check($ip, 'anonymous', 'login');
     if (!$rateResult['allowed']) {
         $error = 'Too many login attempts. Please try again in a few minutes.';

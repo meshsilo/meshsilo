@@ -86,7 +86,7 @@ class AuditLogger
         $stmt->bindValue(':event_name', $eventName, PDO::PARAM_STR);
         $stmt->bindValue(':severity', $severity, PDO::PARAM_STR);
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? null, PDO::PARAM_STR);
+        $stmt->bindValue(':ip', client_ip() ?: null, PDO::PARAM_STR);
         $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500), PDO::PARAM_STR);
         $stmt->bindValue(':resource_type', $data['resource_type'] ?? null, PDO::PARAM_STR);
         $stmt->bindValue(':resource_id', $data['resource_id'] ?? null, PDO::PARAM_INT);

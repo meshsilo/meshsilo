@@ -19,6 +19,12 @@ services:
       # Set this to your external URL if using reverse proxy
       # - MESHSILO_SITE_URL=https://meshsilo.example.com
 
+      # Reverse proxy: without this, every visitor is logged and rate-limited as
+      # the proxy's address. List the proxies MeshSilo sits behind (IPs or CIDR,
+      # comma separated) so X-Forwarded-For is honoured from them and only them.
+      # The default Docker bridge range covers a proxy container on this network.
+      # - TRUSTED_PROXIES=172.16.0.0/12
+
       # Database — MySQL (default)
       # The install wizard will auto-detect these and skip the database step
       - MESHSILO_DB_TYPE=mysql

@@ -74,7 +74,7 @@ if ($userId === null) {
 }
 
 // Apply rate limiting (mirrors the REST API entry point)
-$rateLimitKey = $apiToken ?: ($userId ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+$rateLimitKey = $apiToken ?: ($userId ?? (client_ip() ?: 'unknown'));
 $tier = RateLimiter::getTierForUser($userId, $apiToken);
 $rateLimitResult = RateLimiter::check($rateLimitKey, $tier, 'api:graphql');
 RateLimiter::setHeaders($rateLimitResult);
