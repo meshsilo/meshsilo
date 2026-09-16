@@ -23,7 +23,7 @@ services:
       # the proxy's address. List the proxies MeshSilo sits behind (IPs or CIDR,
       # comma separated) so X-Forwarded-For is honoured from them and only them.
       # The default Docker bridge range covers a proxy container on this network.
-      # - TRUSTED_PROXIES=172.16.0.0/12
+      - TRUSTED_PROXIES=172.16.0.0/12
 
       # Database — MySQL (default)
       # The install wizard will auto-detect these and skip the database step
