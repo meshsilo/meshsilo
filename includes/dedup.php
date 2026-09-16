@@ -138,6 +138,7 @@ function deduplicateByHash($hash)
             return ['success' => false, 'error' => 'Failed to copy file to dedup folder'];
         }
     }
+    $dedupFileSize = filesize($dedupFullPath) ?: 0;
 
     // Update all parts to point to the deduplicated file
     $deletedCount = 0;
@@ -166,18 +167,25 @@ function deduplicateByHash($hash)
         }
     }
 
+    // $spaceSaved sums every unlinked original, including the master's own -
+    // one copy of that data still exists in the dedup folder, so it was
+    // relocated, not reclaimed. Subtract that surviving copy's size to report
+    // the actual net bytes freed (matches the (count-1)*avgSize estimate in
+    // getDeduplicationStats()'s potential_savings).
+    $netSpaceSaved = max(0, $spaceSaved - $dedupFileSize);
+
     logInfo('Deduplicated files by hash', [
         'hash' => $hash,
         'parts_count' => count($parts),
         'files_deleted' => $deletedCount,
-        'space_saved' => $spaceSaved
+        'space_saved' => $netSpaceSaved
     ]);
 
     return [
         'success' => true,
         'parts_count' => count($parts),
         'files_deleted' => $deletedCount,
-        'space_saved' => $spaceSaved,
+        'space_saved' => $netSpaceSaved,
         'dedup_path' => $dedupPath
     ];
 }
@@ -300,6 +308,7 @@ function getDedupReferenceCount($dedupPath)
 function migrateDedupBack($modelId)
 {
     $db = getDB();
+    $pdo = $db->getPDO();
 
     // Get the model
     $stmt = $db->prepare('SELECT * FROM models WHERE id = :id');
@@ -313,11 +322,7 @@ function migrateDedupBack($modelId)
 
     $dedupPath = getAbsoluteFilePath($model);
     $originalPath = getAbsoluteFilePath(['file_path' => $model['file_path'], 'dedup_path' => null]);
-
-    // Check if this is the only reference
-    if (getDedupReferenceCount($model['dedup_path']) > 1) {
-        return ['success' => false, 'error' => 'File still has multiple references'];
-    }
+    $dedupPathValue = $model['dedup_path'];
 
     // Ensure original folder exists
     $originalFolder = dirname($originalPath);
@@ -325,20 +330,41 @@ function migrateDedupBack($modelId)
         mkdir($originalFolder, 0755, true);
     }
 
-    // Move file back
-    if (file_exists($dedupPath)) {
-        if (rename($dedupPath, $originalPath)) {
-            // Clear dedup_path in database
-            $stmt = $db->prepare('UPDATE models SET dedup_path = NULL WHERE id = :id');
-            $stmt->bindValue(':id', $modelId, PDO::PARAM_INT);
-            $stmt->execute();
+    // Re-check the reference count and clear dedup_path inside one
+    // transaction, the same TOCTOU fix deleteIfOrphaned() uses for the
+    // delete path: without it, a concurrent dedup run could attach a new
+    // reference to this dedup_path between the count check and the move,
+    // and that reference would be left pointing at a file that no longer
+    // exists there.
+    $pdo->beginTransaction();
+    try {
+        $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE dedup_path = :path');
+        $stmt->bindValue(':path', $dedupPathValue, PDO::PARAM_STR);
+        $countResult = $stmt->execute();
+        $countRow = $countResult->fetchArray(PDO::FETCH_ASSOC);
 
-            logInfo('Migrated dedup file back', ['model_id' => $modelId]);
-            return ['success' => true];
+        if ($countRow['count'] > 1) {
+            $pdo->rollBack();
+            return ['success' => false, 'error' => 'File still has multiple references'];
         }
+
+        if (!file_exists($dedupPath) || !rename($dedupPath, $originalPath)) {
+            $pdo->rollBack();
+            return ['success' => false, 'error' => 'Failed to migrate file'];
+        }
+
+        $updateStmt = $db->prepare('UPDATE models SET dedup_path = NULL WHERE id = :id');
+        $updateStmt->bindValue(':id', $modelId, PDO::PARAM_INT);
+        $updateStmt->execute();
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
     }
 
-    return ['success' => false, 'error' => 'Failed to migrate file'];
+    logInfo('Migrated dedup file back', ['model_id' => $modelId]);
+    return ['success' => true];
 }
 
 /**
@@ -506,12 +532,18 @@ function calculateMissingHashes()
 {
     $db = getDB();
 
-    $result = $db->query('
+    // Parent/container rows (file_type='parent') have a file_path that points
+    // at their folder, not a file, so is_file() below always skips them - they
+    // can never gain a hash. Excluding them here keeps this query in sync with
+    // the "Files Without Hash" count in StatsService::getDisplayStats(), which
+    // would otherwise never reach zero after running this.
+    $result = $db->query("
         SELECT id, file_path, dedup_path
         FROM models
-        WHERE (file_hash IS NULL OR file_hash = "")
+        WHERE (file_hash IS NULL OR file_hash = '')
           AND file_path IS NOT NULL
-    ');
+          AND file_type != 'parent'
+    ");
 
     $updated = 0;
     $errors = 0;

@@ -61,8 +61,13 @@ class StatsService
 
             while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $hasRows = true;
-                // Skip parent models (ZIP containers) - they don't have actual files
-                if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
+                // Skip parent models (container rows) - they don't have actual
+                // files. UploadProcessor always persists these as file_type =
+                // 'parent' (never 'zip'), matching the check elsewhere in this
+                // class (see the coreStats query and the missing-files scan
+                // below); the stale 'zip' comparison here never matched, so
+                // every parent row with real children was flagged as missing.
+                if ($row['file_type'] === 'parent' && $row['part_count'] > 0) {
                     continue;
                 }
                 $filePath = getAbsoluteFilePath($row);
@@ -452,8 +457,9 @@ class StatsService
             $rowsInBatch = 0;
             while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $rowsInBatch++;
-                // Skip parent models (ZIP containers) - they don't have actual files
-                if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
+                // Skip parent models (container rows) - see the matching comment
+                // in deleteAllMissing() above for why this checks 'parent', not 'zip'.
+                if ($row['file_type'] === 'parent' && $row['part_count'] > 0) {
                     continue;
                 }
                 $filePath = getAbsoluteFilePath($row);
@@ -500,8 +506,11 @@ class StatsService
         // Get deduplication statistics
         $dedupStats = getDeduplicationStats();
 
-        // Count files without hashes
-        $result = $db->query('SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = "") AND file_path IS NOT NULL');
+        // Count files without hashes. Must stay in sync with the WHERE clause in
+        // calculateMissingHashes() (includes/dedup.php) - parent/container rows
+        // (file_type='parent') point at a folder, not a file, and can never be
+        // hashed, so counting them here would keep this stat above zero forever.
+        $result = $db->query("SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = '') AND file_path IS NOT NULL AND file_type != 'parent'");
         $filesWithoutHash = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
         // Image Optimization (WebP) counts

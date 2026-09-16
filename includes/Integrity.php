@@ -216,8 +216,10 @@ class Integrity
 
         $db = getDB();
 
-        // Build query
-        $sql = 'SELECT id FROM models WHERE file_path IS NOT NULL';
+        // Build query. Parent/container rows (file_type='parent') point at a
+        // folder, not a file - see the matching exclusion in dedup.php's
+        // calculateMissingHashes() and StatsService's filesWithoutHash count.
+        $sql = "SELECT id FROM models WHERE file_path IS NOT NULL AND file_type != 'parent'";
 
         if ($prioritizeUnchecked) {
             $sql .= ' ORDER BY integrity_hash IS NULL DESC, integrity_checked_at ASC';
@@ -288,8 +290,8 @@ class Integrity
         $sevenDaysAgo = date('Y-m-d H:i:s', strtotime('-7 days'));
         $thirtyDaysAgo = date('Y-m-d H:i:s', strtotime('-30 days'));
 
-        $total = $db->querySingle('SELECT COUNT(*) FROM models WHERE file_path IS NOT NULL');
-        $withHash = $db->querySingle('SELECT COUNT(*) FROM models WHERE integrity_hash IS NOT NULL');
+        $total = $db->querySingle("SELECT COUNT(*) FROM models WHERE file_path IS NOT NULL AND file_type != 'parent'");
+        $withHash = $db->querySingle("SELECT COUNT(*) FROM models WHERE integrity_hash IS NOT NULL AND file_type != 'parent'");
         $stmt = $db->prepare("
             SELECT COUNT(*) FROM models
             WHERE integrity_checked_at > :cutoff
@@ -355,29 +357,23 @@ class Integrity
     }
 
     /**
-     * Resolve file path, handling deduplication
+     * Resolve file path, handling deduplication.
+     *
+     * Delegates to getAbsoluteFilePath() (includes/dedup.php), the single
+     * correct resolver for a model's storage location. This used to
+     * concatenate UPLOAD_PATH (already ".../storage/assets/") with the DB's
+     * file_path (already "assets/...") directly, producing a nonexistent
+     * ".../storage/assets/assets/..." path - every real file was reported
+     * missing, regardless of file_type.
      */
     private static function resolveFilePath(array $model): ?string
     {
-        $uploadPath = defined('UPLOAD_PATH') ? UPLOAD_PATH : __DIR__ . '/../assets/';
-
-        // Prefer dedup path if available
-        if (!empty($model['dedup_path'])) {
-            $path = $uploadPath . $model['dedup_path'];
-            if (file_exists($path)) {
-                return $path;
-            }
+        if (!function_exists('getAbsoluteFilePath')) {
+            require_once __DIR__ . '/dedup.php';
         }
 
-        // Fall back to regular file path
-        if (!empty($model['file_path'])) {
-            $path = $uploadPath . $model['file_path'];
-            if (file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return null;
+        $path = getAbsoluteFilePath($model);
+        return ($path && is_file($path)) ? $path : null;
     }
 
     /**
@@ -482,11 +478,11 @@ class Integrity
 
         $db = getDB();
 
-        $stmt = $db->prepare('
+        $stmt = $db->prepare("
             SELECT id FROM models
-            WHERE file_path IS NOT NULL AND integrity_hash IS NULL
+            WHERE file_path IS NOT NULL AND integrity_hash IS NULL AND file_type != 'parent'
             LIMIT :limit
-        ');
+        ");
         $stmt->bindValue(':limit', $batchSize, PDO::PARAM_INT);
         $result = $stmt->execute();
 
