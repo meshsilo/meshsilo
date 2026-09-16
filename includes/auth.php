@@ -150,13 +150,41 @@ function enforceAuthentication(): void
 
     // Routes that don't require authentication
     $publicRoutes = ['/login', '/logout', '/install', '/forgot-password', '/reset-password', '/2fa-verify'];
+    $publicRoutePrefixes = [];
+
+    // Anonymous browsing/downloads (Issue #2): when disabled (the secure-by-
+    // default state), every route below still requires login, same as before
+    // this setting existed. When enabled, viewing and downloading models
+    // needs no account - upload, edit, settings, favorites and admin stay
+    // gated by their own 'auth'/'admin'/'permission' middleware in
+    // routes.php and by requirePermission() calls regardless of this
+    // setting, since those checks are independent of this early gate.
+    if (function_exists('getSetting') && getSetting('require_login', '1') !== '1') {
+        $publicRoutes = array_merge($publicRoutes, [
+            '/', '/browse', '/search', '/categories', '/collections', '/tags', '/preview',
+            '/actions/download', '/actions/download-all', '/actions/preview', '/actions/search-suggest',
+        ]);
+        $publicRoutePrefixes = [
+            '/model/', '/models/', '/category/', '/collection/',
+            '/download/', '/download-all/', '/assets/',
+        ];
+    }
+
     if (class_exists('PluginManager')) {
         $publicRoutes = PluginManager::applyFilter('public_routes', $publicRoutes);
     }
 
     // Get current route
     $currentRoute = '/' . trim($_GET['route'] ?? '', '/');
-    $isPublicRoute = in_array($currentRoute, $publicRoutes);
+    $isPublicRoute = in_array($currentRoute, $publicRoutes, true);
+    if (!$isPublicRoute) {
+        foreach ($publicRoutePrefixes as $prefix) {
+            if (str_starts_with($currentRoute, $prefix)) {
+                $isPublicRoute = true;
+                break;
+            }
+        }
+    }
 
     // Skip for API routes - they handle their own key-based auth in api/index.php
     // Note: API_REQUEST constant isn't defined yet at this point because the API
@@ -167,7 +195,8 @@ function enforceAuthentication(): void
     // Plugin UI assets (css/js) must load on public pages too - e.g. a login
     // page styled by an SSO plugin. The plugin-assets route enforces its own
     // safety (realpath containment, server-side script extensions blocked),
-    // and uploaded content under /assets/ stays auth-gated.
+    // and uploaded content under /assets/ stays auth-gated unless anonymous
+    // browsing is enabled above.
     $isPluginAsset = str_starts_with($currentRoute, '/plugin-assets/');
 
     // Redirect to login if not authenticated (unless on public route or API)

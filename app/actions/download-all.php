@@ -2,8 +2,10 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
-// Require authentication
-if (!isLoggedIn()) {
+// Require authentication, unless anonymous browsing/downloads are enabled
+// (Issue #2). Router-level enforceAuthentication() already gates this route
+// the same way; this is defense in depth for a direct request.
+if (!isLoggedIn() && getSetting('require_login', '1') === '1') {
     http_response_code(401);
     echo 'Not authenticated';
     exit;

@@ -180,6 +180,7 @@ if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpi
     }
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
+    $requireLogin = isset($_POST['require_login']) ? '1' : '0';
 
     // Handle file formats - ensure at least one is selected and always include zip
     $formats = isset($_POST['formats']) ? array_map('strtolower', $_POST['formats']) : ['stl', '3mf'];
@@ -209,6 +210,7 @@ if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpi
     setSetting('compress_pdfs_mode', $compressPdfsMode);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
+    setSetting('require_login', $requireLogin);
     setSetting('allowed_extensions', $allowedExtensions);
     setSetting('show_advanced_admin', $showAdvancedAdmin);
     // Clamp to >= 1: an empty input saves 0, which fatals /browse via ceil($total / 0).
@@ -252,6 +254,7 @@ if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpi
         'compress_pdfs_mode' => $compressPdfsMode,
         'allow_registration' => $allowRegistration,
         'require_approval' => $requireApproval,
+        'require_login' => $requireLogin,
         'allowed_extensions' => $allowedExtensions
     ]);
 
@@ -475,6 +478,19 @@ require_once __DIR__ . '/../../includes/header.php';
                             <?php else: ?>
                                 <p class="form-help">Available binaries determine which modes you can select. Settings are only applied to new uploads (plus the retroactive batch on the Statistics page).</p>
                             <?php endif; ?>
+                        </div>
+                    </details>
+
+                    <details class="settings-section">
+                        <summary><h2>Access</h2></summary>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" name="require_login" <?= ($settings['require_login'] ?? '1') === '1' ? 'checked' : '' ?>>
+                                <span class="toggle-switch"></span>
+                                <span>Require login to browse and download models</span>
+                            </label>
+                            <p class="form-help">When off, anyone can browse, search, and download models without an account. Uploading, editing, favorites, and admin pages still require login regardless of this setting.</p>
                         </div>
                     </details>
 
