@@ -151,9 +151,12 @@ class ThumbnailGenerator
         );
         file_put_contents($tempScad, $scadContent);
 
-        // Render with OpenSCAD
+        // Render with OpenSCAD. --backend=manifold selects the Manifold
+        // geometry engine (non-experimental since nightly 2024.09.28) instead
+        // of the legacy CGAL backend - a large rendering speedup, and the
+        // reason this image installs the nightly build rather than stable.
         $command = sprintf(
-            'openscad -o %s --imgsize=%d,%d --camera=0,0,0,55,0,25,500 --colorscheme=Tomorrow %s 2>&1',
+            'openscad -o %s --backend=manifold --imgsize=%d,%d --camera=0,0,0,55,0,25,500 --colorscheme=Tomorrow %s 2>&1',
             escapeshellarg($outputPath),
             $size,
             $size,
