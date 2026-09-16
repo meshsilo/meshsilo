@@ -12,6 +12,12 @@ $activePage = 'upload';
 
 $db = getDB();
 
+// Model file input accepts every model extension plus zip (containers get
+// unpacked into parts). Built from getModelExtensions() instead of a
+// hardcoded list so it can't drift from the server-side allowed set again -
+// this list previously omitted .scad even though uploads of it were allowed.
+$modelFileAccept = '.' . implode(',.', array_merge(getModelExtensions(), ['zip']));
+
 // Load categories from database
 $result = $db->query('SELECT * FROM categories ORDER BY name');
 $categories = [];
@@ -62,7 +68,7 @@ require_once 'includes/header.php';
                         <div class="upload-buttons">
                             <label class="btn btn-primary file-select-btn">
                                 Browse Files
-                                <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.zip,.lys,.ctb,.pwmo,.sl1" hidden aria-label="Browse model files">
+                                <input type="file" name="model_file" id="model_file" accept="<?= htmlspecialchars($modelFileAccept) ?>" hidden aria-label="Browse model files">
                             </label>
                         </div>
                         <p class="dropzone-hint">Supported: 3D models, slicer files (.lys, .ctb, .sl1), and ZIP archives (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
