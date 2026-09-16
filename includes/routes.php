@@ -76,10 +76,6 @@ $router->post('/reset-password', ['file' => 'app/pages/reset-password.php'], 'pa
 $router->get('/install', ['file' => 'install.php'], 'install');
 $router->post('/install', ['file' => 'install.php'], 'install.post');
 
-// Database update page (standalone, permission check in page)
-$router->get('/update', ['file' => 'app/pages/update.php'], 'update');
-$router->post('/update', ['file' => 'app/pages/update.php'], 'update.run');
-
 // ============================================================================
 // AUTHENTICATED USER PAGES
 // ============================================================================
@@ -155,9 +151,6 @@ $router->group(['prefix' => '/actions'], function ($router) {
     $router->get('/convert-part', ['file' => 'app/actions/convert-part.php'], 'actions.convert.get');
     $router->post('/convert-part', ['file' => 'app/actions/convert-part.php'], 'actions.convert');
 
-    // Duplicate checking
-    $router->post('/check-duplicates', ['file' => 'app/actions/check-duplicates.php'], 'actions.check.duplicates');
-
     // Dimensions calculation
     $router->post('/calculate-dimensions', ['file' => 'app/actions/calculate-dimensions.php'], 'actions.dimensions');
 
@@ -198,9 +191,6 @@ $router->group(['prefix' => '/actions'], function ($router) {
     // Folders
     $router->post('/folder', ['file' => 'app/actions/folder.php'], 'actions.folder');
     $router->post('/part-folders', ['file' => 'app/actions/part-folders.php'], 'actions.part.folders');
-
-    // File types
-    $router->post('/file-types', ['file' => 'app/actions/file-types.php'], 'actions.file.types');
 
     // Upload versions
     $router->post('/upload-version', ['file' => 'app/actions/upload-version.php'], 'actions.upload.version');
@@ -265,10 +255,6 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($rou
     // Statistics
     $router->get('/stats', ['file' => 'app/admin/stats.php'], 'admin.stats');
 
-    // CLI Tools
-    $router->get('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools');
-    $router->post('/cli-tools', ['file' => 'app/admin/cli-tools.php'], 'admin.cli-tools.run');
-
     // Activity log
     $router->get('/activity', ['file' => 'app/admin/activity.php'], 'admin.activity');
 
@@ -295,18 +281,15 @@ $router->group(['prefix' => '/admin', 'middleware' => ['admin']], function ($rou
     $router->get('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler');
     $router->post('/scheduler', ['file' => 'app/admin/scheduler.php'], 'admin.scheduler.action');
 
-    // Routes (debugging)
-    $router->get('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes');
-    $router->post('/routes', ['file' => 'app/admin/routes.php'], 'admin.routes.action');
-
     // Plugins
     $router->get('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins');
     $router->post('/plugins', ['file' => 'app/admin/plugins.php'], 'admin.plugins.action');
 });
 
 // Uploaded assets (PHP fallback — nginx serves these directly in production)
-$router->get('/assets/{path:.+}', function ($params) {
-    $path = $params['path'] ?? '';
+// Note: closure handlers receive route params POSITIONALLY in pattern order.
+$router->get('/assets/{path:.+}', function ($path) {
+    $path = (string)$path;
     if ($path === '') {
         http_response_code(400);
         exit;
@@ -354,9 +337,9 @@ $router->get('/assets/{path:.+}', function ($params) {
 }, 'assets.serve');
 
 // Plugin assets (path:.+ allows subdirectories like css/style.css)
-$router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
-    $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($params['pluginId'] ?? ''));
-    $path = $params['path'] ?? '';
+$router->get('/plugin-assets/{pluginId}/{path:.+}', function ($pluginId, $path) {
+    $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower((string)$pluginId));
+    $path = (string)$path;
 
     if ($pluginId === '' || $path === '') {
         http_response_code(400);
@@ -408,22 +391,42 @@ $router->get('/plugin-assets/{pluginId}/{path:.+}', function ($params) {
 
 // ============================================================================
 // API ROUTES
-// Note: The API has its own routing in api/index.php
-// These routes redirect to the API for clean URL access
+// Note: The API has its own routing in api/index.php, which parses
+// resource/id/sub-resource segments, optional version prefixes (/api/v1/...),
+// and plugin-registered resources (api_routes filter). Everything under /api
+// is therefore dispatched to it via a catch-all instead of per-resource
+// routes, which silently 404'd sub-resource and versioned URLs the API
+// implements (e.g. /api/models/{id}/parts, /api/v1/models, /api/health).
 // ============================================================================
 
 $router->group(['prefix' => '/api'], function ($router) {
-    // GraphQL endpoint
+    // GraphQL endpoint (registered before the catch-all: first match wins)
     $router->any('/graphql', ['file' => 'app/api/graphql.php'], 'api.graphql');
 
-    // Redirect to API handler
-    $router->any('/models', ['file' => 'app/api/index.php'], 'api.models');
-    $router->any('/models/{id:\d+}', ['file' => 'app/api/index.php', 'map' => ['id' => 'id']], 'api.model');
-    $router->any('/categories', ['file' => 'app/api/index.php'], 'api.categories');
-    $router->any('/categories/{id:\d+}', ['file' => 'app/api/index.php', 'map' => ['id' => 'id']], 'api.category');
-    $router->any('/tags', ['file' => 'app/api/index.php'], 'api.tags');
-    $router->any('/collections', ['file' => 'app/api/index.php'], 'api.collections');
-    $router->any('/stats', ['file' => 'app/api/index.php'], 'api.stats');
+    // Machine-readable API description. Public: it documents endpoint
+    // shapes only (same information as docs/API_QUICKSTART.md). Lives in
+    // public/ so it ships with deployments (docs/ is not tracked).
+    $router->get('/openapi.json', function (): void {
+        $spec = dirname(__DIR__) . '/public/openapi.json';
+        if (!is_file($spec)) {
+            http_response_code(404);
+            exit;
+        }
+        header('Content-Type: application/json');
+        header('Cache-Control: public, max-age=3600');
+        readfile($spec);
+        exit;
+    }, 'api.openapi');
+
+    // CORS preflights (any() does not cover OPTIONS). All preflights --
+    // including /api/graphql -- go to the API entry, whose CorsMiddleware
+    // answers them before authentication runs.
+    $router->match(['OPTIONS'], '/', ['file' => 'app/api/index.php'], 'api.preflight.root');
+    $router->match(['OPTIONS'], '/{path:.+}', ['file' => 'app/api/index.php'], 'api.preflight');
+
+    // API root (info payload) and all other API URLs
+    $router->any('/', ['file' => 'app/api/index.php'], 'api.index');
+    $router->any('/{path:.+}', ['file' => 'app/api/index.php'], 'api.dispatch');
 });
 
 // ============================================================================

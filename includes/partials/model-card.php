@@ -32,9 +32,13 @@ $opts = array_merge([
     'wrapperClass'    => '',
 ], $cardOptions ?? []);
 
-$cardUrl      = route('model.show', ['id' => $model['id']]);
-$onClickAttr  = $opts['customOnClick']   ?? "window.location='" . $cardUrl . "'";
-$onKeydownAttr = $opts['customOnKeydown'] ?? "if(event.key==='Enter')this.click()";
+$cardUrl = route('model.show', ['id' => $model['id']]);
+// Card navigation is delegated from JS (see ui-common.js) rather than an inline
+// onclick, which CSP blocks. Passing customOnClick/customOnKeydown as false opts
+// the card out of navigation entirely - browse.php does this because it drives
+// its own selection behaviour.
+$cardNavigates = ($opts['customOnClick'] ?? null) !== false
+    && ($opts['customOnKeydown'] ?? null) !== false;
 $archivedClass = ($opts['archivedClass'] && !empty($model['is_archived'])) ? ' archived' : '';
 $wrapperClass = !empty($opts['wrapperClass']) ? ' ' . $opts['wrapperClass'] : '';
 
@@ -50,7 +54,7 @@ if (!empty($model['thumbnail_path']) && function_exists('image_srcset')) {
     $thumbSrcset = image_srcset('storage/assets/' . $model['thumbnail_path'], [280, 560]);
 }
 ?>
-<article class="model-card<?= $archivedClass ?><?= $wrapperClass ?>" data-model-id="<?= $model['id'] ?>" onclick="<?= htmlspecialchars($onClickAttr) ?>" tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>" onkeydown="<?= htmlspecialchars($onKeydownAttr) ?>">
+<article class="model-card<?= $archivedClass ?><?= $wrapperClass ?>" data-model-id="<?= $model['id'] ?>"<?= $cardNavigates ? ' data-card-url="' . htmlspecialchars($cardUrl, ENT_QUOTES) . '"' : '' ?> tabindex="0" role="link" aria-label="<?= htmlspecialchars($model['name']) ?>">
     <div class="model-thumbnail"
         <?php if ($showLazy3d): ?>
         data-model-url="<?= htmlspecialchars($model['preview_path']) ?>"
@@ -60,8 +64,8 @@ if (!empty($model['thumbnail_path']) && function_exists('image_srcset')) {
         <img src="/assets/<?= htmlspecialchars($model['thumbnail_path']) ?>" alt="<?= htmlspecialchars($model['name']) ?>" class="model-thumbnail-image" loading="lazy" decoding="async"<?= $thumbSrcset ? ' srcset="' . htmlspecialchars($thumbSrcset) . '" sizes="(min-width: 280px) 280px, 100vw"' : '' ?>>
         <?php endif; ?>
         <?php if ($opts['batchCheckbox'] && isLoggedIn()): ?>
-        <label class="model-select-checkbox" onclick="event.stopPropagation()">
-            <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" onchange="updateBatchSelection()" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
+        <label class="model-select-checkbox">
+            <input type="checkbox" class="model-checkbox" value="<?= $model['id'] ?>" aria-label="Select <?= htmlspecialchars($model['name']) ?>">
         </label>
         <?php endif; ?>
         <?php if ($model['part_count'] > 0): ?>
@@ -71,7 +75,7 @@ if (!empty($model['thumbnail_path']) && function_exists('image_srcset')) {
         <span class="archived-badge" style="position: absolute; bottom: 0.5rem; left: 0.5rem;">Archived</span>
         <?php endif; ?>
         <?php if ($opts['favoriteButton']): ?>
-        <button type="button" class="model-card-favorite favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(<?= $model['id'] ?>, this)" title="Remove from favorites" aria-label="Remove from favorites"><span aria-hidden="true"><i class="fa-solid fa-heart"></i></span></button>
+        <button type="button" class="model-card-favorite favorite-btn favorited" data-favorite-id="<?= $model['id'] ?>" title="Remove from favorites" aria-label="Remove from favorites"><span aria-hidden="true"><i class="fa-solid fa-heart"></i></span></button>
         <?php endif; ?>
     </div>
     <div class="model-info">

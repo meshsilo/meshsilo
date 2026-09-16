@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-16
+
+### Added
+- **Anonymous Access**: Admin-toggleable setting (Site Settings > Access) to allow browsing, searching, and downloading models without an account. Uploading, editing, favorites, and admin pages still require login regardless of this setting.
+- **OpenSCAD Nightly**: Bundled in the Docker image for STL/3MF thumbnail rendering, using the Manifold geometry backend for faster renders.
+- **Admesh**: Bundled in the primary Docker image for mesh repair.
+- **Private Plugin Repositories**: Optional access tokens (encrypted at rest when encryption is configured), archive sources, and LAN host support for private plugin repos, including private GitHub repos.
+- **Plugin Hooks**: `before_upload`/`before_download`/`before_delete` gates (fail closed - a throwing listener denies rather than silently allowing), `after_upload` now also fires for version uploads and add-part ZIPs, `search_query`/`search_results` filters, login/logout events, a `page_title` filter, and a `SYSTEM_ERROR` event so plugins can observe application errors.
+- **Plugin Lifecycle**: optional `uninstall.php` hook run before a plugin's DB row is removed, lifecycle events (enabled/disabled/uninstalled), per-file checksum verification on repo installs, parallel registry refresh, and a Hooks admin page.
+- Collapsible Images/Documents sections in model page attachments.
+
+### Fixed
+- **File Deduplication**: parent/container model rows were incorrectly flagged as missing files (a stale check compared `file_type` against `'zip'` instead of `'parent'`), risking real data loss via "Remove All from Database"; "Calculate Missing Hashes" no longer stalls forever on those same unhashable container rows; deduplication now reports correct (not overcounted) space-saved figures; the file-integrity checker's path resolution is fixed (it was double-prefixing every path, reporting all files as missing); a migrate-back race condition is closed.
+- **GraphQL**: fixed a 500 error on every query caused by a type mismatch between GraphQL's `$db` property and the `Database` wrapper.
+- **Asset Serving**: fixed 400 errors on `/assets` and `/plugin-assets` (the Router passes route params positionally; the handlers expected an array) - this broke all model images in Docker deployments.
+- **API Routing**: `/api/health`, `/api/version`, sub-resources like `/api/models/{id}/parts`, and versioned `/api/v1/...` URLs no longer 404 - routed through the API dispatcher's catch-all instead of a narrower per-resource allowlist.
+- **Reverse Proxy IP**: `TRUSTED_PROXIES` was unusable (`auth.php` and `RateLimitMiddleware` expected different types for the same setting, so either form raised a `TypeError`); fixed and enabled by default in the Docker Compose example.
+- **Plugin Installs**: fall back to a recursive copy when `rename()` fails during install; opcache now resets on install/update/uninstall so file changes take effect without a manual restart.
+
+### Security
+- **Password Hashing**: legacy bcrypt hashes are transparently upgraded to Argon2id on successful login.
+- Code-review remediation pass: CSP hardening, CSRF guard consolidation, and correctness fixes across uploads, permissions, and admin pages.
+
+### Changed
+- **Creator/Collection fields** (upload page): replaced the native, unthemed `<datalist>` dropdown with a custom combobox matching the app's dark theme.
+
 ## [0.7.0] - 2026-07-09
 
 ### Added

@@ -108,9 +108,9 @@ function formatModelForApi($model)
         'license' => $model['license'],
         'print_type' => $model['print_type'],
         'dimensions' => [
-            'x' => $model['dim_x'] ? (float)$model['dim_x'] : null,
-            'y' => $model['dim_y'] ? (float)$model['dim_y'] : null,
-            'z' => $model['dim_z'] ? (float)$model['dim_z'] : null,
+            'x' => (isset($model['dim_x']) && $model['dim_x'] !== '') ? (float)$model['dim_x'] : null,
+            'y' => (isset($model['dim_y']) && $model['dim_y'] !== '') ? (float)$model['dim_y'] : null,
+            'z' => (isset($model['dim_z']) && $model['dim_z'] !== '') ? (float)$model['dim_z'] : null,
             'unit' => $model['dim_unit'] ?? 'mm'
         ],
         'download_count' => (int)($model['download_count'] ?? 0),

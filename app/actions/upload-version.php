@@ -46,6 +46,20 @@ if (!in_array($ext, $allowedTypes)) {
     jsonError('Invalid file type. Only STL, 3MF, and GCODE allowed.');
 }
 
+// Plugin hook: before_upload gate (quota, malware-scan plugins). Fails closed.
+if (class_exists('PluginManager')) {
+    $allowed = PluginManager::applyGate('before_upload', true, [
+        'type' => 'version',
+        'filename' => $file['name'],
+        'path' => $file['tmp_name'],
+        'size' => (int)$file['size'],
+        'model_id' => $modelId,
+    ]);
+    if ($allowed !== true) {
+        jsonError(is_string($allowed) ? $allowed : 'Upload blocked by plugin');
+    }
+}
+
 // Calculate hash. The uploaded temp file has no extension, so calculateContentHash()
 // (which derives the type from the path) would hash a 3MF as a raw ZIP. Branch on the
 // real extension so 3MF versions are content-hashed like the other upload paths.
@@ -91,7 +105,10 @@ try {
         $currentPath = getAbsoluteFilePath($model);
         if ($currentPath && is_file($currentPath)) {
             $currentHash = calculateContentHash($currentPath, $model['file_type']);
-            $archivePath = 'versions/' . $modelId . '/v0_' . basename($model['file_path']);
+            // Store the canonical 'assets/'-prefixed path so getAbsoluteFilePath()
+            // resolves it to storage/assets/versions/<id>/... The physical write
+            // dir ($versionDir) is unchanged.
+            $archivePath = 'assets/versions/' . $modelId . '/v0_' . basename($model['file_path']);
 
             // Copy current file to versions
             copy($currentPath, $versionDir . '/v0_' . basename($model['file_path']));
@@ -113,7 +130,10 @@ try {
     // same version number cannot overwrite each other's vN_<name> file.
     $uniqueToken = bin2hex(random_bytes(4));
     $versionFilename = 'v' . $nextVersion . '_' . $uniqueToken . '_' . $safeFileName;
-    $versionPath = 'versions/' . $modelId . '/' . $versionFilename;
+    // Canonical 'assets/'-prefixed path (stored in both model_versions.file_path
+    // via addModelVersion and models.file_path via the UPDATE below) so
+    // getAbsoluteFilePath() resolves it. Physical write path ($fullPath) unchanged.
+    $versionPath = 'assets/versions/' . $modelId . '/' . $versionFilename;
     $fullPath = $versionDir . '/' . $versionFilename;
 
     if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
@@ -157,6 +177,16 @@ try {
 }
 
 logActivity('upload_version', 'model', $modelId, $model['name'] . ' v' . $result);
+
+// Plugin hook: version uploads are uploads too (virus scan, indexing, notifications)
+if (class_exists('PluginManager')) {
+    PluginManager::doAction('after_upload', $modelId, [
+        'name' => $model['name'],
+        'file_type' => $ext,
+        'user_id' => $user['id'] ?? null,
+        'version' => $result,
+    ]);
+}
 
 jsonSuccess([
     'version' => $result,

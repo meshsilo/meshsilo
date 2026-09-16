@@ -45,17 +45,11 @@
                         return;
                     }
 
-                    // Format sizes for display
-                    const formatBytes = (bytes) => {
-                        if (bytes < 1024) return bytes + ' B';
-                        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-                        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-                    };
-
+                    // Sizes formatted with the shared formatFileSize (ui-common.js)
                     const confirmed = await showConfirm(
-                        'Convert to 3MF? Current size: ' + formatBytes(estimate.original_size) +
-                        ', Estimated new size: ' + formatBytes(estimate.estimated_size) +
-                        ', Estimated savings: ' + formatBytes(estimate.estimated_savings) + ' (' + estimate.estimated_savings_percent + '%). This will replace the STL file with a 3MF file.'
+                        'Convert to 3MF? Current size: ' + formatFileSize(estimate.original_size) +
+                        ', Estimated new size: ' + formatFileSize(estimate.estimated_size) +
+                        ', Estimated savings: ' + formatFileSize(estimate.estimated_savings) + ' (' + estimate.estimated_savings_percent + '%). This will replace the STL file with a 3MF file.'
                     );
 
                     if (!confirmed) {
@@ -192,18 +186,6 @@
                     anyDropdownOpen = true;
                     this.setAttribute('aria-expanded', 'true');
                     positionDropdownMenu(dropdown);
-
-                    // Restore calculated data for part dropdowns
-                    if (dropdown.classList.contains('part-actions-dropdown')) {
-                        const partItem = dropdown.closest('.part-item');
-                        if (partItem) {
-                            const partId = partItem.querySelector('.part-checkbox')?.value ||
-                                          partItem.dataset.partId;
-                            if (partId) {
-                                restorePartCalculatedData(partId, dropdown);
-                            }
-                        }
-                    }
                 }
             });
         });
@@ -331,31 +313,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── Event delegation for dynamically-generated and loop-rendered elements ──
 
     document.addEventListener('click', function(e) {
-        // Tag remove button
-        if (e.target.matches('.model-tag-remove')) {
+        // Tag remove button (closest(): the click usually lands on the <i> icon
+        // inside the button, which matches() alone would miss)
+        const tagRemoveBtn = e.target.closest('.model-tag-remove');
+        if (tagRemoveBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const tagId = parseInt(e.target.dataset.tagId);
-            removeTag(ModelPageConfig.modelId, tagId, e.target.parentElement);
+            const tagId = parseInt(tagRemoveBtn.dataset.tagId);
+            removeTag(ModelPageConfig.modelId, tagId, tagRemoveBtn.parentElement);
             return;
         }
 
-        // Model link delete button
-        if (e.target.matches('.model-link-delete')) {
+        // Model link delete button (closest(): clicks often land on the
+        // FontAwesome <i> inside the button, which matches() alone misses)
+        if (e.target.closest('.model-link-delete')) {
             const linkId = parseInt(e.target.closest('.model-link-item')?.dataset.linkId);
             if (linkId) deleteModelLink(linkId);
             return;
         }
 
         // Attachment set as thumbnail
-        if (e.target.matches('.attachment-set-thumb')) {
+        if (e.target.closest('.attachment-set-thumb')) {
             const attachmentId = parseInt(e.target.closest('[data-attachment-id]')?.dataset.attachmentId);
             if (attachmentId) setAttachmentAsThumbnail(attachmentId);
             return;
         }
 
         // Attachment delete
-        if (e.target.matches('.attachment-delete')) {
+        if (e.target.closest('.attachment-delete')) {
             const attachmentId = parseInt(e.target.closest('[data-attachment-id]')?.dataset.attachmentId);
             if (attachmentId) deleteAttachment(attachmentId);
             return;
@@ -411,18 +396,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Rename folder button
-        if (e.target.matches('.rename-folder-btn')) {
-            renameFolder(e.target.dataset.folder);
-            return;
-        }
-
-        // Delete folder button
-        if (e.target.matches('.delete-folder-btn')) {
-            deleteFolder(e.target.dataset.folder);
-            return;
-        }
-
         // Calculate dimensions
         if (e.target.matches('.calc-dimensions-btn')) {
             calculatePartDimensions(parseInt(e.target.dataset.partId), e.target);
@@ -473,6 +446,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.matches('.parts-group-header')) {
                 e.preventDefault();
                 toggleFolder(e.target.parentElement);
+                return;
+            }
+            // Collapsible section header keyboard activation (mirrors the
+            // click handler above)
+            if (e.target.matches('.collapsible-header')) {
+                e.preventDefault();
+                const section = e.target.closest('.collapsible-section');
+                section.classList.toggle('collapsed');
+                e.target.setAttribute('aria-expanded', !section.classList.contains('collapsed'));
                 return;
             }
         }

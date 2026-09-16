@@ -124,7 +124,7 @@ if ($modelId) {
         jsonError('Model not found');
     }
 
-    if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
+    if (!userCanModifyModel($model, $user)) {
         jsonError('You do not own this model', 403);
     }
 }
@@ -249,7 +249,7 @@ switch ($action) {
             if (!$part) continue;
 
             // Verify ownership of the parent model
-            if ($part['user_id'] != $user['id'] && !$user['is_admin']) {
+            if (!userCanModifyModel($part, $user)) {
                 continue; // Skip parts the user doesn't own
             }
 

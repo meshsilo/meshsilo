@@ -136,7 +136,7 @@ if ($stmt->execute()) {
 
     // Plugin hook: notify plugins after successful model metadata update
     if (class_exists('PluginManager')) {
-        PluginManager::applyFilter('after_model_update', null, $modelId, $logDetails);
+        PluginManager::doAction('after_model_update', $modelId, $logDetails);
     }
 
     jsonSuccess();

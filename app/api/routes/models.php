@@ -228,9 +228,11 @@ function getModelParts($id, $apiUser) {
             'notes' => $row['notes'],
             'is_printed' => (bool)$row['is_printed'],
             'dimensions' => [
-                'x' => $row['dim_x'] ? (float)$row['dim_x'] : null,
-                'y' => $row['dim_y'] ? (float)$row['dim_y'] : null,
-                'z' => $row['dim_z'] ? (float)$row['dim_z'] : null,
+                // Null-check, not truthiness: a legitimate 0.0 dimension must
+                // survive rather than being coerced to null.
+                'x' => (isset($row['dim_x']) && $row['dim_x'] !== '') ? (float)$row['dim_x'] : null,
+                'y' => (isset($row['dim_y']) && $row['dim_y'] !== '') ? (float)$row['dim_y'] : null,
+                'z' => (isset($row['dim_z']) && $row['dim_z'] !== '') ? (float)$row['dim_z'] : null,
                 'unit' => $row['dim_unit'] ?? 'mm'
             ]
         ];
@@ -254,13 +256,16 @@ function downloadModel($id, $apiUser) {
         apiError('Model not found', 404);
     }
 
-    // Verify ownership - must own the model or be admin (same gate as updateModel/deleteModel)
-    if (empty($apiUser['is_admin']) && !empty($model['user_id']) && (int)$model['user_id'] !== (int)$apiUser['user_id']) {
-        apiError('Model not found', 404);
-    }
+    // Models are shared: a read-scoped key may download any model, consistent
+    // with listModels/getModel (which already return all models) and the web
+    // download path. Downloads are not owner-gated.
 
-    $filePath = UPLOAD_PATH . $model['file_path'];
-    if (!file_exists($filePath)) {
+    // Resolve through the dedup layer: once the dedup job relocates a file,
+    // file_path alone no longer exists on disk (the web download already
+    // resolves via getAbsoluteFilePath; the API must match).
+    require_once __DIR__ . '/../../../includes/dedup.php';
+    $filePath = getAbsoluteFilePath($model);
+    if (!$filePath || !file_exists($filePath)) {
         apiError('File not found', 404);
     }
 
@@ -285,6 +290,35 @@ function downloadModel($id, $apiUser) {
         readfile($filePath);
     }
     exit;
+}
+
+/**
+ * Only allow http/https or relative source URLs to be stored - blocks
+ * javascript:, data:, and other dangerous schemes from being persisted and
+ * later rendered as a link. Mirrors tusSanitizeSourceUrl() in actions/tus.php
+ * so every write path (browser and REST) applies the same allow-list.
+ * Anything with a non-http(s) scheme becomes ''.
+ */
+if (!function_exists('apiSanitizeSourceUrl')) {
+    function apiSanitizeSourceUrl($url): string {
+        $url = trim((string)$url);
+        if ($url === '') {
+            return '';
+        }
+        // Reject control-character obfuscation (e.g. "java\tscript:"): browsers
+        // strip these before resolving the scheme, so they'd sneak past the
+        // check below as a "relative" URL.
+        if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+            return '';
+        }
+        // Has an explicit scheme? Only http/https are permitted.
+        if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*:#', $url)) {
+            $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+            return in_array($scheme, ['http', 'https'], true) ? $url : '';
+        }
+        // No scheme -> relative URL, allowed as-is.
+        return $url;
+    }
 }
 
 /**
@@ -323,7 +357,9 @@ function createModel($apiUser) {
     $description = $_POST['description'] ?? '';
     $creator = $_POST['creator'] ?? '';
     $collection = $_POST['collection'] ?? '';
-    $sourceUrl = $_POST['source_url'] ?? '';
+    // Reject non-http(s) schemes (javascript:, data:, ...) to close a stored-XSS
+    // gap; matches the browser upload paths.
+    $sourceUrl = apiSanitizeSourceUrl($_POST['source_url'] ?? '');
     $license = $_POST['license'] ?? '';
     $printType = $_POST['print_type'] ?? '';
     $categoryIds = isset($_POST['category_ids']) ? explode(',', $_POST['category_ids']) : [];
@@ -350,51 +386,81 @@ function createModel($apiUser) {
     // Calculate file hash
     $fileHash = hash_file('sha256', $destPath);
 
-    // Insert into database
+    // Insert into database. The file has already been moved into place, so wrap
+    // the insert plus the category/tag writes in a transaction and, on any DB
+    // failure, roll back AND remove the moved file and its folder - otherwise a
+    // failed insert would leak an orphaned upload on disk.
     $db = getDB();
-    $stmt = $db->prepare('
-        INSERT INTO models (name, filename, file_path, file_size, file_type, description,
-                           creator, collection, source_url, license, print_type, file_hash,
-                           original_size, user_id, created_at, updated_at)
-        VALUES (:name, :filename, :file_path, :file_size, :file_type, :description,
-                :creator, :collection, :source_url, :license, :print_type, :file_hash,
-                :original_size, :user_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    ');
-    $stmt->execute([
-        ':name' => $name,
-        ':filename' => $filename,
-        ':file_path' => $folderId . '/' . $filename,
-        ':file_size' => $file['size'],
-        ':file_type' => $extension,
-        ':description' => $description,
-        ':creator' => $creator,
-        ':collection' => $collection,
-        ':source_url' => $sourceUrl,
-        ':license' => $license,
-        ':print_type' => $printType,
-        ':file_hash' => $fileHash,
-        ':original_size' => $file['size'],
-        ':user_id' => $apiUser['user_id']
-    ]);
+    $pdo = $db->getPDO();
+    $inTransaction = false;
+    try {
+        $pdo->beginTransaction();
+        $inTransaction = true;
 
-    $modelId = $db->lastInsertId();
+        $stmt = $db->prepare('
+            INSERT INTO models (name, filename, file_path, file_size, file_type, description,
+                               creator, collection, source_url, license, print_type, file_hash,
+                               original_size, user_id, created_at, updated_at)
+            VALUES (:name, :filename, :file_path, :file_size, :file_type, :description,
+                    :creator, :collection, :source_url, :license, :print_type, :file_hash,
+                    :original_size, :user_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ');
+        $stmt->execute([
+            ':name' => $name,
+            ':filename' => $filename,
+            // Canonical convention: file_path carries the 'assets/' prefix
+            // (matches UploadProcessor and getAbsoluteFilePath resolution)
+            ':file_path' => 'assets/' . $folderId . '/' . $filename,
+            ':file_size' => $file['size'],
+            ':file_type' => $extension,
+            ':description' => $description,
+            ':creator' => $creator,
+            ':collection' => $collection,
+            ':source_url' => $sourceUrl,
+            ':license' => $license,
+            ':print_type' => $printType,
+            ':file_hash' => $fileHash,
+            ':original_size' => $file['size'],
+            ':user_id' => $apiUser['user_id']
+        ]);
 
-    // Add categories
-    foreach ($categoryIds as $categoryId) {
-        $categoryId = trim($categoryId);
-        if (is_numeric($categoryId)) {
-            $stmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
-            $stmt->execute([':model_id' => $modelId, ':category_id' => $categoryId]);
+        $modelId = $db->lastInsertId();
+
+        // Add categories
+        foreach ($categoryIds as $categoryId) {
+            $categoryId = trim($categoryId);
+            if (is_numeric($categoryId)) {
+                $stmt = $db->prepare('INSERT OR IGNORE INTO model_categories (model_id, category_id) VALUES (:model_id, :category_id)');
+                $stmt->execute([':model_id' => $modelId, ':category_id' => $categoryId]);
+            }
         }
-    }
 
-    // Add tags
-    foreach ($tagNames as $tagName) {
-        $tagName = trim($tagName);
-        if (!empty($tagName)) {
-            $tagId = getOrCreateTag($tagName);
-            addTagToModel($modelId, $tagId);
+        // Add tags
+        foreach ($tagNames as $tagName) {
+            $tagName = trim($tagName);
+            if (!empty($tagName)) {
+                $tagId = getOrCreateTag($tagName);
+                addTagToModel($modelId, $tagId);
+            }
         }
+
+        $pdo->commit();
+        $inTransaction = false;
+    } catch (Throwable $e) {
+        if ($inTransaction) {
+            $pdo->rollBack();
+        }
+        // Clean up the moved file and folder so a DB failure leaves nothing behind.
+        if (is_file($destPath)) {
+            unlink($destPath);
+        }
+        if (is_dir($folderPath)) {
+            @rmdir($folderPath);
+        }
+        if (function_exists('logException')) {
+            logException($e, ['action' => 'api_create_model']);
+        }
+        apiError('Failed to create model', 500);
     }
 
     // Log activity
@@ -449,8 +515,14 @@ function updateModel($id, $apiUser) {
 
     foreach ($allowedFields as $field) {
         if (isset($data[$field])) {
+            $value = $data[$field];
+            // Reject non-http(s) schemes on source_url (stored-XSS guard), same
+            // as the browser write paths and createModel.
+            if ($field === 'source_url') {
+                $value = apiSanitizeSourceUrl($value);
+            }
             $updates[] = "$field = :$field";
-            $params[":$field"] = $data[$field];
+            $params[":$field"] = $value;
         }
     }
 
@@ -531,53 +603,80 @@ function deleteModel($id, $apiUser) {
         apiError('Not authorized to delete this model', 403);
     }
 
-    // Get child part files before deleting
-    $childStmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = :parent_id');
+    // Resolve model files through the same shared cleanup helpers the web delete
+    // page uses (includes/helpers/model-delete.php) so files, thumbnails, version
+    // files, attachments, and deduplicated files are all removed correctly.
+    // (The old UPLOAD_PATH . file_path build doubled the assets/ prefix and never
+    // deleted anything, orphaning files on disk.)
+    require_once __DIR__ . '/../../../includes/dedup.php';
+
+    $filesToDelete = [];
+    $dedupFilesToCheck = [];
+    $thumbnailsToDelete = [];
+
+    // The model's own thumbnail
+    if (!empty($model['thumbnail_path'])) {
+        $thumbnailsToDelete[] = $model['thumbnail_path'];
+    }
+
+    // Collect child part files, thumbnails, and version files before deletion
+    $childStmt = $db->prepare('SELECT id, file_path, dedup_path, thumbnail_path FROM models WHERE parent_id = :parent_id');
     $childStmt->bindValue(':parent_id', $id, PDO::PARAM_INT);
     $childStmt->execute();
-    $childFiles = [];
-    $childDedupPaths = [];
+    $childIds = [];
     while ($row = $childStmt->fetch(PDO::FETCH_ASSOC)) {
-        if (!empty($row['file_path'])) {
-            $childFiles[] = $row['file_path'];
+        $childIds[] = (int)$row['id'];
+        if (!empty($row['thumbnail_path'])) {
+            $thumbnailsToDelete[] = $row['thumbnail_path'];
         }
         if (!empty($row['dedup_path'])) {
-            $childDedupPaths[] = $row['dedup_path'];
+            $dedupFilesToCheck[$row['dedup_path']] = true;
+        } elseif (!empty($row['file_path'])) {
+            $filesToDelete[] = getAbsoluteFilePath($row);
         }
     }
 
-    // Delete the file
-    $filePath = UPLOAD_PATH . $model['file_path'];
-    if (file_exists($filePath)) {
-        unlink($filePath);
-        // Try to remove the folder if empty
-        $folder = dirname($filePath);
-        if (is_dir($folder) && count(scandir($folder)) === 2) {
-            rmdir($folder);
-        }
+    // Collect the model's own file
+    if (!empty($model['dedup_path'])) {
+        $dedupFilesToCheck[$model['dedup_path']] = true;
+    } elseif (!empty($model['file_path'])) {
+        $filesToDelete[] = getAbsoluteFilePath($model);
     }
 
-    // Delete from database (cascades to model_categories, model_tags, etc.)
+    // Delete physical version files for the model and each part while the
+    // model_versions rows still exist (cascade removes the rows on delete).
+    deleteModelVersionFiles($db, $id);
+    foreach ($childIds as $childId) {
+        deleteModelVersionFiles($db, $childId);
+    }
+
+    // Delete attachment files (images/PDFs) and their rows
+    try {
+        $attStmt = $db->prepare('SELECT file_path FROM model_attachments WHERE model_id = :model_id');
+        $attStmt->bindValue(':model_id', $id, PDO::PARAM_INT);
+        $attStmt->execute();
+        while ($att = $attStmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!empty($att['file_path'])) {
+                safeUnlinkAssetFile($att['file_path']);
+            }
+        }
+        $delAtt = $db->prepare('DELETE FROM model_attachments WHERE model_id = :model_id');
+        $delAtt->bindValue(':model_id', $id, PDO::PARAM_INT);
+        $delAtt->execute();
+    } catch (Throwable $e) {
+        // model_attachments table may not exist yet - continue with deletion
+    }
+
+    // Delete from database (cascades to model_categories, model_tags, model_versions, etc.)
     $stmt = $db->prepare('DELETE FROM models WHERE id = :id1 OR parent_id = :id2');
     $stmt->execute([':id1' => $id, ':id2' => $id]);
 
-    // Delete child part files
-    foreach ($childFiles as $childFilePath) {
-        $fullChildPath = UPLOAD_PATH . $childFilePath;
-        if (file_exists($fullChildPath)) {
-            unlink($fullChildPath);
-            $childFolder = dirname($fullChildPath);
-            if (is_dir($childFolder) && count(scandir($childFolder)) === 2) {
-                rmdir($childFolder);
-            }
-        }
-    }
+    // Remove the collected model/part files and empty folders
+    cleanupModelFiles($filesToDelete, $dedupFilesToCheck);
 
-    // Clean up dedup files for child parts
-    if (function_exists('deleteIfOrphaned')) {
-        foreach ($childDedupPaths as $dedupPath) {
-            deleteIfOrphaned($dedupPath);
-        }
+    // Remove thumbnail files (never deduplicated)
+    foreach ($thumbnailsToDelete as $thumbPath) {
+        safeUnlinkAssetFile($thumbPath);
     }
 
     // Log activity

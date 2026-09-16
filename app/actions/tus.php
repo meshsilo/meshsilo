@@ -74,7 +74,19 @@ switch ($method) {
 
         // If upload is complete, dispatch background processing
         if (!empty($response['complete'])) {
-            dispatchProcessing($server, $response['upload_id']);
+            $dispatch = dispatchProcessing($server, $response['upload_id']);
+            if (!($dispatch['ok'] ?? true)) {
+                // Processing could not be dispatched (parent model missing,
+                // permission denied, or a bad staged upload). Discard the staged
+                // upload and return a real error instead of a 204 with
+                // {"model_id": null} that the client would treat as success.
+                $server->cleanup($response['upload_id']);
+                $response = [
+                    'status'  => $dispatch['status'] ?? 422,
+                    'headers' => ['Content-Type' => 'application/json'],
+                    'body'    => json_encode(['error' => $dispatch['error'] ?? 'Upload could not be processed']),
+                ];
+            }
         }
         break;
 
@@ -148,10 +160,12 @@ function tusSanitizeSourceUrl(string $url): string
  * This function is defined here rather than in TusServer to keep TusServer
  * dependency-free (no DB, no Queue).
  */
-function dispatchProcessing(TusServer $server, string $uploadId): void
+function dispatchProcessing(TusServer $server, string $uploadId): array
 {
     $info = $server->getUploadInfo($uploadId);
-    if (!$info) return;
+    if (!$info) {
+        return ['ok' => false, 'status' => 404, 'error' => 'Upload data not found'];
+    }
 
     $metadata = $info['metadata'] ?? [];
     $filename = isset($metadata['filename']) ? base64_decode($metadata['filename']) : 'unknown';
@@ -161,8 +175,7 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
     // Check if this is an "add part" upload (has parent_id metadata)
     $parentId = isset($metadata['parent_id']) ? (int)base64_decode($metadata['parent_id']) : 0;
     if ($parentId > 0) {
-        dispatchAddPart($server, $uploadId, $parentId, $info, $metadata);
-        return;
+        return dispatchAddPart($server, $uploadId, $parentId, $info, $metadata);
     }
 
     // Decode metadata
@@ -278,12 +291,17 @@ function dispatchProcessing(TusServer $server, string $uploadId): void
 
     // Store model_id in response for the frontend redirect
     $GLOBALS['_tus_model_id'] = $modelId;
+
+    return ['ok' => true];
 }
 
 /**
  * Dispatch processing for adding a part to an existing model via TUS.
+ *
+ * @return array ['ok' => true] on success, or
+ *               ['ok' => false, 'status' => int, 'error' => string] on failure.
  */
-function dispatchAddPart(TusServer $server, string $uploadId, int $parentId, array $info, array $metadata): void
+function dispatchAddPart(TusServer $server, string $uploadId, int $parentId, array $info, array $metadata): array
 {
     $filename = isset($metadata['filename']) ? base64_decode($metadata['filename']) : 'unknown';
     $folder = isset($metadata['folder']) ? base64_decode($metadata['folder']) : '';
@@ -298,14 +316,14 @@ function dispatchAddPart(TusServer $server, string $uploadId, int $parentId, arr
 
     if (!$parent) {
         logWarning('TUS add-part: parent model not found', ['parent_id' => $parentId]);
-        return;
+        return ['ok' => false, 'status' => 404, 'error' => 'Parent model not found'];
     }
 
     // Verify ownership
     $user = getCurrentUser();
     if ($parent['user_id'] && (int)$parent['user_id'] !== (int)$user['id'] && !($user['is_admin'] ?? false)) {
         logWarning('TUS add-part: permission denied', ['parent_id' => $parentId, 'user_id' => $user['id']]);
-        return;
+        return ['ok' => false, 'status' => 403, 'error' => 'You do not have permission to add parts to this model'];
     }
 
     // Queue the processing job with parent_id so ProcessUpload handles it as a part
@@ -330,4 +348,6 @@ function dispatchAddPart(TusServer $server, string $uploadId, int $parentId, arr
     ]);
 
     $GLOBALS['_tus_model_id'] = $parentId;
+
+    return ['ok' => true];
 }

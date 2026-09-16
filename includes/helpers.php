@@ -359,6 +359,33 @@ if (!function_exists('csrf_field')) {
     }
 }
 
+if (!function_exists('csp_nonce')) {
+    /**
+     * This request's CSP nonce (empty string when security headers are absent,
+     * e.g. CLI), so callers can build their own script tags.
+     */
+    function csp_nonce(): string
+    {
+        return class_exists('SecurityHeaders') ? SecurityHeaders::nonce() : '';
+    }
+}
+
+if (!function_exists('csp_nonce_attr')) {
+    /**
+     * Renders the nonce attribute for an inline <script>.
+     *
+     * REQUIRED on every inline script the app emits: script-src does not allow
+     * 'unsafe-inline', so an unnonced inline script is blocked by the browser.
+     *
+     *     <script<?= csp_nonce_attr() ?>>...</script>
+     */
+    function csp_nonce_attr(): string
+    {
+        $nonce = csp_nonce();
+        return $nonce === '' ? '' : ' nonce="' . e($nonce) . '"';
+    }
+}
+
 // ========================================
 // Misc Helpers
 // ========================================
@@ -492,5 +519,151 @@ function requireCsrfJson(): void
 {
     if (!Csrf::check()) {
         jsonError('Invalid request token', 403);
+    }
+}
+
+// ============================================================================
+// CLIENT IP RESOLUTION (reverse-proxy aware)
+// ============================================================================
+
+if (!function_exists('trusted_proxies')) {
+    /**
+     * Configured reverse proxies, as a list of IPs and/or CIDR ranges.
+     *
+     * Accepts either shape so both historical spellings keep working:
+     *   define('TRUSTED_PROXIES', ['172.16.0.0/12', '10.0.0.1']);
+     *   define('TRUSTED_PROXIES', '172.16.0.0/12,10.0.0.1');
+     * or the TRUSTED_PROXIES environment variable (comma-separated), which is
+     * the convenient form for Docker.
+     *
+     * '*' trusts any peer. Only use it when the app is genuinely unreachable
+     * except through your proxy - it lets any direct caller forge its own IP.
+     */
+    function trusted_proxies(): array
+    {
+        $configured = defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : (getenv('TRUSTED_PROXIES') ?: '');
+
+        if (is_string($configured)) {
+            $configured = $configured === '' ? [] : explode(',', $configured);
+        }
+        if (!is_array($configured)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', $configured), 'strlen'));
+    }
+}
+
+if (!function_exists('ip_in_range')) {
+    /**
+     * Is $ip inside $range? $range is a bare address or CIDR ("10.0.0.0/8",
+     * "2001:db8::/32"). Comparison is done on packed bytes so IPv4 and IPv6
+     * both work and shortened IPv6 forms still match.
+     */
+    function ip_in_range(string $ip, string $range): bool
+    {
+        if ($range === '*') {
+            return true;
+        }
+        if (strpos($range, '/') === false) {
+            $a = @inet_pton($ip);
+            $b = @inet_pton($range);
+            return $a !== false && $b !== false && $a === $b;
+        }
+
+        [$subnet, $bits] = explode('/', $range, 2);
+        $ipPacked = @inet_pton($ip);
+        $subnetPacked = @inet_pton($subnet);
+        if ($ipPacked === false || $subnetPacked === false) {
+            return false;
+        }
+        // A v4 address is never inside a v6 range (and vice versa).
+        if (strlen($ipPacked) !== strlen($subnetPacked)) {
+            return false;
+        }
+
+        $bits = (int)$bits;
+        $maxBits = strlen($ipPacked) * 8;
+        if ($bits < 0 || $bits > $maxBits) {
+            return false;
+        }
+
+        $wholeBytes = intdiv($bits, 8);
+        $remainder = $bits % 8;
+
+        if ($wholeBytes > 0 && strncmp($ipPacked, $subnetPacked, $wholeBytes) !== 0) {
+            return false;
+        }
+        if ($remainder === 0) {
+            return true;
+        }
+
+        $mask = chr(0xFF << (8 - $remainder) & 0xFF);
+        return (($ipPacked[$wholeBytes] & $mask) === ($subnetPacked[$wholeBytes] & $mask));
+    }
+}
+
+if (!function_exists('is_trusted_proxy')) {
+    /** Is this address one of the configured reverse proxies? */
+    function is_trusted_proxy(string $ip): bool
+    {
+        foreach (trusted_proxies() as $range) {
+            if (ip_in_range($ip, $range)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+if (!function_exists('client_ip')) {
+    /**
+     * The real client address, honouring reverse proxies.
+     *
+     * Use this instead of $_SERVER['REMOTE_ADDR'] everywhere an IP is logged,
+     * rate-limited or allow-listed: behind a proxy REMOTE_ADDR is the proxy,
+     * so every visitor shares one address and per-IP limits become global.
+     *
+     * X-Forwarded-For is only consulted when the immediate peer is a configured
+     * trusted proxy, and the chain is walked RIGHT-TO-LEFT, discarding trusted
+     * hops and returning the first address that is not one of ours. Taking the
+     * leftmost entry instead would be trivially spoofable - any client can send
+     * "X-Forwarded-For: 1.2.3.4" and choose what lands in the audit log.
+     */
+    function client_ip(): string
+    {
+        $remote = $_SERVER['REMOTE_ADDR'] ?? '';
+
+        if ($remote === '' || !is_trusted_proxy($remote)) {
+            return $remote;
+        }
+
+        $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+        if ($forwarded === '') {
+            // Single-value headers carry no chain, so there is nothing to walk.
+            $real = $_SERVER['HTTP_X_REAL_IP'] ?? '';
+            $real = trim($real);
+            return ($real !== '' && @inet_pton($real) !== false) ? $real : $remote;
+        }
+
+        $hops = array_values(array_filter(array_map('trim', explode(',', $forwarded)), 'strlen'));
+        for ($i = count($hops) - 1; $i >= 0; $i--) {
+            $hop = $hops[$i];
+            // Strip an optional :port from IPv4, and [..]:port from IPv6.
+            if (preg_match('/^\[(.+)\](?::\d+)?$/', $hop, $m)) {
+                $hop = $m[1];
+            } elseif (substr_count($hop, ':') === 1 && strpos($hop, '.') !== false) {
+                $hop = explode(':', $hop)[0];
+            }
+            if (@inet_pton($hop) === false) {
+                continue; // Not an address - a client can put anything here.
+            }
+            if (!is_trusted_proxy($hop)) {
+                return $hop;
+            }
+        }
+
+        // Every hop was a proxy of ours; the leftmost is the closest to the client.
+        return $hops[0] ?? $remote;
     }
 }

@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Rate limit login attempts using RateLimiter
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip = client_ip() ?: 'unknown';
     $rateResult = RateLimiter::check($ip, 'anonymous', 'login');
     if (!$rateResult['allowed']) {
         $error = 'Too many login attempts. Please try again in a few minutes.';
@@ -47,6 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = getUserByLogin($username);
 
         if ($user && verifyPassword($password, $user['password'])) {
+            // Transparently upgrade legacy (pre-Argon2id) hashes while the
+            // plaintext is available; runs before the 2FA branch since the
+            // password itself has been verified either way
+            upgradePasswordHashIfNeeded((int)$user['id'], $password, $user['password']);
+
             // Regenerate session ID to prevent session fixation attacks
             session_regenerate_id(true);
 
@@ -112,6 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'reason' => $user ? 'invalid_password' : 'user_not_found',
                 'method' => 'password'
             ]);
+            // Plugin hook: failed logins (fail2ban-style blocking, alerting)
+            if (class_exists('PluginManager')) {
+                PluginManager::doAction('login_failed', [
+                    'username' => $username,
+                    'ip' => $ip,
+                    'reason' => $user ? 'invalid_password' : 'user_not_found',
+                ]);
+            }
         }
     }
     } // end if (!$error) rate limit check

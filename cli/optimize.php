@@ -89,13 +89,6 @@ function clearOptimizations(): void {
         $cleared++;
     }
 
-    // Clear route cache
-    $routeCache = dirname(__DIR__) . '/storage/cache/routes.php';
-    if (file_exists($routeCache) && unlink($routeCache)) {
-        echo "✓ Route cache cleared\n";
-        $cleared++;
-    }
-
     // Clear asset manifest
     $assetManifest = dirname(__DIR__) . '/storage/cache/assets/manifest.json';
     if (file_exists($assetManifest) && unlink($assetManifest)) {

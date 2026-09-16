@@ -22,6 +22,12 @@ if ($allowUserTheme && isset($_COOKIE['meshsilo_theme'])) {
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="<?= htmlspecialchars($metaDescription ?? getSetting('site_description', 'Digital Asset Manager for 3D print files')) ?>">
+<?php
+// Plugin hook: page_title - modify the page title (also used for OG tags below)
+if (class_exists('PluginManager')) {
+    $pageTitle = PluginManager::applyFilter('page_title', $pageTitle ?? null);
+}
+?>
     <title><?= htmlspecialchars($pageTitle ?? SITE_NAME) ?> - <?= htmlspecialchars(SITE_NAME) ?></title>
 <?php
 // Build absolute base URL for OG tags
@@ -51,9 +57,11 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
 <?php endif; ?>
     <link rel="manifest" href="<?= basePath('manifest.json') ?>">
     <link rel="icon" type="image/svg+xml" href="<?= basePath('images/icon.svg') ?>">
-    <link rel="icon" type="image/png" sizes="32x32" href="<?= basePath('images/favicon-32.png') ?>">
-    <link rel="icon" type="image/png" sizes="16x16" href="<?= basePath('images/favicon-16.png') ?>">
-    <link rel="apple-touch-icon" href="<?= basePath('images/icon-192.png') ?>">
+    <?php /* Only icon.svg ships (public/images/); the PNG favicons were never
+       generated, so referencing favicon-16/32.png / icon-192.png 404s on a fresh
+       deploy. The SVG icon above covers modern browsers; apple-touch-icon points
+       at it too (Safari ignores an unsupported apple-touch icon rather than 404). */ ?>
+    <link rel="apple-touch-icon" href="<?= basePath('images/icon.svg') ?>">
     <link rel="stylesheet" href="<?= basePath('vendor/fontawesome/css/all.min.css') ?>?v=<?= filemtime(__DIR__ . '/../public/vendor/fontawesome/css/all.min.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/base.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/base.css') ?>">
     <link rel="stylesheet" href="<?= basePath('css/layout.css') ?>?v=<?= filemtime(__DIR__ . '/../public/css/layout.css') ?>">
@@ -98,7 +106,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <script src="<?= basePath('js/admin-pages.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/admin-pages.js') ?>" defer></script>
     <?php endif; ?>
     <script src="<?= basePath('js/main.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/main.js') ?>" defer></script>
-    <script>
+    <script<?= csp_nonce_attr() ?>>
     window.SiloConfig = {
         modelBase: '<?= htmlspecialchars(rtrim(route('model.show', ['id' => 0]), '0'), ENT_QUOTES) ?>',
         swVersion: '<?= defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '0' ?>'
@@ -108,7 +116,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
     <?php if (isLoggedIn()) : ?>
         <?= Csrf::metaTag() ?>
         <?= Csrf::ajaxSetupScript() ?>
-        <script>
+        <script<?= csp_nonce_attr() ?>>
             document.addEventListener('DOMContentLoaded', function() {
                 refreshQueueStatus();
                 setInterval(refreshQueueStatus, 15000);
@@ -134,7 +142,19 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
 <?php endif; ?>
     <script src="<?= basePath('js/header-search.js') ?>?v=<?= filemtime(__DIR__ . '/../public/js/header-search.js') ?>" defer></script>
 </head>
-<body<?= !empty($bodyClass) ? ' class="' . htmlspecialchars($bodyClass) . '"' : '' ?>>
+<?php
+// Body classes: any page-supplied $bodyClass, plus a per-admin-page scope class
+// (admin-page-<slug>) so each admin page's rules in public/css/admin.css stay
+// scoped to that page instead of bleeding across the admin section.
+$bodyClasses = [];
+if (!empty($bodyClass)) {
+    $bodyClasses[] = $bodyClass;
+}
+if (!empty($adminPage)) {
+    $bodyClasses[] = 'admin-page-' . preg_replace('/[^a-z0-9-]/', '-', strtolower((string)$adminPage));
+}
+?>
+<body<?= $bodyClasses ? ' class="' . htmlspecialchars(implode(' ', $bodyClasses)) . '"' : '' ?>>
 <?php if (empty($minimalHeader)): ?>
     <a href="#main-content" class="skip-to-content">Skip to content</a>
     <header class="site-header">
@@ -145,7 +165,7 @@ $_ogImageAbsolute = isset($ogImage) ? $_ogBase . $ogImage : null;
                 <?php endif; ?>
                 <span class="logo-text"><?= htmlspecialchars(SITE_NAME) ?></span>
             </a>
-            <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false">
+            <button type="button" class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-label="Toggle menu" aria-expanded="false">
                 <span class="hamburger-icon"></span>
             </button>
             <nav class="main-nav" aria-label="Main navigation">
@@ -199,7 +219,7 @@ endif; ?>
                     </div>
                 </div>
                 <?php if (isFeatureEnabled('dark_theme') && $allowUserTheme) : ?>
-                <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+                <button type="button" class="theme-toggle" data-action="toggle-theme" title="Toggle theme" aria-label="Toggle light/dark theme">
                     <span id="theme-icon" aria-hidden="true"><?= $currentTheme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>' ?></span>
                 </button>
                 <?php endif; ?>
@@ -209,7 +229,7 @@ endif; ?>
                     <a href="<?= route('favorites') ?>" class="btn btn-secondary" title="My Favorites" aria-label="My favorites"><i class="fa-solid fa-heart" aria-hidden="true"></i></a>
                     <?php endif; ?>
                     <div class="queue-indicator" id="queue-indicator">
-                        <button type="button" class="btn btn-secondary queue-btn" onclick="toggleQueueDropdown()" aria-label="Background tasks" aria-haspopup="true" aria-expanded="false" aria-controls="queue-dropdown">
+                        <button type="button" class="btn btn-secondary queue-btn" data-action="toggle-queue-dropdown" aria-label="Background tasks" aria-haspopup="true" aria-expanded="false" aria-controls="queue-dropdown">
                             <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="queue-badge" id="queue-badge" style="display:none;">0</span>
                         </button>
                         <div class="queue-dropdown" id="queue-dropdown">

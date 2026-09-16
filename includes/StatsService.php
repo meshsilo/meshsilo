@@ -61,8 +61,13 @@ class StatsService
 
             while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
                 $hasRows = true;
-                // Skip parent models (ZIP containers) - they don't have actual files
-                if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
+                // Skip parent models (container rows) - they don't have actual
+                // files. UploadProcessor always persists these as file_type =
+                // 'parent' (never 'zip'), matching the check elsewhere in this
+                // class (see the coreStats query and the missing-files scan
+                // below); the stale 'zip' comparison here never matched, so
+                // every parent row with real children was flagged as missing.
+                if ($row['file_type'] === 'parent' && $row['part_count'] > 0) {
                     continue;
                 }
                 $filePath = getAbsoluteFilePath($row);
@@ -434,42 +439,65 @@ class StatsService
             $largestModels[] = $row;
         }
 
-        // Check for missing files (files in DB but not on disk)
-        // Limit to first 100 to avoid memory issues on large databases
-        $result = $db->query('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT 100');
+        // Check for missing files (files in DB but not on disk).
+        // Paginate through ALL models: a flat `LIMIT 100` limited the SCAN, not
+        // the results, so on a large library any file missing past the first 100
+        // rows was never detected and the page reported "clean". Scan every row
+        // in batches, and stop only once we have collected enough missing
+        // entries to display (bounding memory without hiding rows).
         $missingFiles = [];
-        while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-            // Skip parent models (ZIP containers) - they don't have actual files
-            if ($row['file_type'] === 'zip' && $row['part_count'] > 0) {
-                continue;
+        $missingDisplayCap = 500;
+        $missingBatch = 500;
+        $missingOffset = 0;
+        while (true) {
+            $stmt = $db->prepare('SELECT id, name, filename, file_path, dedup_path, file_type, part_count FROM models WHERE file_path IS NOT NULL LIMIT :limit OFFSET :offset');
+            $stmt->bindValue(':limit', $missingBatch, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $missingOffset, PDO::PARAM_INT);
+            $result = $stmt->execute();
+            $rowsInBatch = 0;
+            while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                $rowsInBatch++;
+                // Skip parent models (container rows) - see the matching comment
+                // in deleteAllMissing() above for why this checks 'parent', not 'zip'.
+                if ($row['file_type'] === 'parent' && $row['part_count'] > 0) {
+                    continue;
+                }
+                $filePath = getAbsoluteFilePath($row);
+                if (!file_exists($filePath) || !is_file($filePath)) {
+                    $missingFiles[] = $row;
+                    if (count($missingFiles) >= $missingDisplayCap) {
+                        break 2;
+                    }
+                }
             }
-            $filePath = getAbsoluteFilePath($row);
-            if (!file_exists($filePath) || !is_file($filePath)) {
-                $missingFiles[] = $row;
+            if ($rowsInBatch < $missingBatch) {
+                break; // Reached the last page
             }
+            $missingOffset += $missingBatch;
         }
 
-        // Check for orphaned files (files on disk but not in DB)
-        // Limit to first 100 to avoid memory issues
+        // Check for orphaned files (files on disk but not in DB).
+        // Load the set of known filenames ONCE and diff against disk, instead of
+        // issuing one COUNT query per file (an N+1 that scaled with the folder).
         $orphanedFiles = [];
         if ($assetsPath && is_dir($assetsPath)) {
+            $knownFiles = [];
+            $knownStmt = $db->query('SELECT DISTINCT filename FROM models WHERE filename IS NOT NULL');
+            while ($knownRow = $knownStmt->fetchArray(PDO::FETCH_ASSOC)) {
+                $knownFiles[$knownRow['filename']] = true;
+            }
+
             $iterator = new DirectoryIterator($assetsPath);
             $count = 0;
             foreach ($iterator as $file) {
                 if ($file->isFile() && $file->getFilename() !== '.gitkeep') {
-                    // Check if file exists in database
-                    $stmt = $db->prepare('SELECT COUNT(*) as count FROM models WHERE filename = :filename');
-                    $stmt->bindValue(':filename', $file->getFilename(), PDO::PARAM_STR);
-                    $result = $stmt->execute();
-                    $row = $result->fetchArray(PDO::FETCH_ASSOC);
-
-                    if ($row['count'] == 0) {
+                    if (!isset($knownFiles[$file->getFilename()])) {
                         $orphanedFiles[] = [
                             'filename' => $file->getFilename(),
                             'size' => $file->getSize()
                         ];
                         $count++;
-                        if ($count >= 100) break; // Limit to 100 orphaned files
+                        if ($count >= 100) break; // Limit to 100 orphaned files for display
                     }
                 }
             }
@@ -478,8 +506,11 @@ class StatsService
         // Get deduplication statistics
         $dedupStats = getDeduplicationStats();
 
-        // Count files without hashes
-        $result = $db->query('SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = "") AND file_path IS NOT NULL');
+        // Count files without hashes. Must stay in sync with the WHERE clause in
+        // calculateMissingHashes() (includes/dedup.php) - parent/container rows
+        // (file_type='parent') point at a folder, not a file, and can never be
+        // hashed, so counting them here would keep this stat above zero forever.
+        $result = $db->query("SELECT COUNT(*) as count FROM models WHERE (file_hash IS NULL OR file_hash = '') AND file_path IS NOT NULL AND file_type != 'parent'");
         $filesWithoutHash = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
 
         // Image Optimization (WebP) counts

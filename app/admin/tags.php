@@ -4,11 +4,7 @@ require_once __DIR__ . '/../../includes/features.php';
 
 requireFeature('tags');
 
-if (!isLoggedIn() || !isAdmin()) {
-    $_SESSION['error'] = 'You do not have permission to manage tags.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('isAdmin', 'You do not have permission to manage tags.');
 
 $pageTitle = 'Manage Tags';
 $activePage = '';
@@ -19,8 +15,8 @@ $db = getDB();
 $message = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_tag'])) {
         $name = trim($_POST['tag_name'] ?? '');
@@ -31,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 $stmt->bindValue(':name', $name, PDO::PARAM_STR);
                 $stmt->bindValue(':color', $color, PDO::PARAM_STR);
                 $stmt->execute();
+                // The all_tags cache has a 5 minute TTL; without this the tag
+                // pickers keep serving the pre-insert list.
+                invalidateTagsCache();
                 header('Location: ' . route('admin.tags', [], ['success' => '1']));
                 exit;
             } catch (Exception $e) {
@@ -41,10 +40,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         }
     } elseif (isset($_POST['delete_tag'])) {
         $id = (int)$_POST['tag_id'];
-        $db->prepare('DELETE FROM model_tags WHERE tag_id = :id')->bindValue(':id', $id, PDO::PARAM_INT)->execute();
+        // DatabaseStatement::bindValue() returns bool, not $this, so the old
+        // chained ->bindValue(...)->execute() fataled on every delete.
+        $stmt = $db->prepare('DELETE FROM model_tags WHERE tag_id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
         $stmt = $db->prepare('DELETE FROM tags WHERE id = :id');
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
+        invalidateTagsCache();
         header('Location: ' . route('admin.tags', [], ['deleted' => '1']));
         exit;
     }
@@ -60,6 +65,14 @@ $result = $db->query('SELECT * FROM tags ORDER BY name');
 $tags = [];
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $tags[] = $row;
+}
+
+// Model counts for every tag in one grouped query, instead of a COUNT per row
+// inside the render loop below.
+$tagCounts = [];
+$countResult = $db->query('SELECT tag_id, COUNT(*) AS model_count FROM model_tags GROUP BY tag_id');
+while ($row = $countResult->fetchArray(PDO::FETCH_ASSOC)) {
+    $tagCounts[$row['tag_id']] = (int)$row['model_count'];
 }
 
 require_once __DIR__ . '/../../includes/header.php';
@@ -114,15 +127,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                     <tr>
                                         <td><span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:<?= htmlspecialchars($tag['color']) ?>;"></span></td>
                                         <td><?= htmlspecialchars($tag['name']) ?></td>
-                                        <td>
-                                            <?php
-                                            $stmt = $db->prepare('SELECT COUNT(*) as count FROM model_tags WHERE tag_id = :id');
-                                            $stmt->bindValue(':id', $tag['id'], PDO::PARAM_INT);
-                                            $execResult = $stmt->execute();
-                                            $count = $execResult ? ($execResult->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-                                            echo $count;
-                                            ?>
-                                        </td>
+                                        <td><?= $tagCounts[$tag['id']] ?? 0 ?></td>
                                         <td>
                                             <form method="post" style="display:inline;" data-confirm="Delete this tag? It will be removed from all models.">
                                                 <?= csrf_field() ?>

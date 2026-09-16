@@ -14,6 +14,9 @@ class Csrf
     const TOKEN_LENGTH = 32;
     const TOKEN_LIFETIME = 3600; // 1 hour for per-request tokens
 
+    /** Canonical user-facing message when a form POST fails CSRF validation. */
+    public const ERROR_MESSAGE = 'Invalid request. Please refresh the page and try again.';
+
     /**
      * Get or generate the session CSRF token
      */
@@ -115,7 +118,7 @@ class Csrf
         if (!self::validate($token)) {
             if (function_exists('logWarning')) {
                 logWarning('CSRF validation failed', [
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                    'ip' => client_ip() ?: 'unknown',
                     'uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
                     'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown'
                 ]);
@@ -234,13 +237,26 @@ class Csrf
     }
 
     /**
+     * Page-form CSRF guard. Returns the canonical error message when the current
+     * request is an unsafe method (POST/PUT/DELETE) carrying an invalid or missing
+     * token, or null when it is safe to proceed (safe methods always return null).
+     * Lets a controller do: `if (($e = Csrf::postError()) !== null) { $error = $e; }`
+     */
+    public static function postError(): ?string
+    {
+        return self::check() ? null : self::ERROR_MESSAGE;
+    }
+
+    /**
      * Get JavaScript code for AJAX setup
      */
     public static function ajaxSetupScript(): string
     {
         $token = self::getToken();
+        // Nonce required: script-src does not allow 'unsafe-inline'.
+        $nonce = function_exists('csp_nonce_attr') ? csp_nonce_attr() : '';
         return <<<JS
-<script>
+<script{$nonce}>
 (function() {
     const csrfToken = '{$token}';
 

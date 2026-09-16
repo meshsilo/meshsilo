@@ -64,28 +64,13 @@ $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $result = $stmt->execute();
 
 $models = [];
-$multiPartIds = [];
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    if ($row['part_count'] > 0) {
-        $multiPartIds[] = $row['id']; // previews resolved in one batched query below
-    } else {
-        $row['preview_path'] = '/preview?id=' . $row['id'];
-        $row['preview_type'] = $row['file_type'];
-    }
     $models[] = $row;
 }
 
-// Batch-load the first part of every multi-part model (eliminates the per-model N+1 query)
-if (!empty($multiPartIds)) {
-    $firstParts = getFirstPartsForModels($multiPartIds);
-    foreach ($models as &$m) {
-        if ($m['part_count'] > 0 && isset($firstParts[$m['id']])) {
-            $m['preview_path'] = '/preview?id=' . $firstParts[$m['id']]['id'];
-            $m['preview_type'] = $firstParts[$m['id']]['file_type'];
-        }
-    }
-    unset($m);
-}
+// Resolve viewer previews (a multi-part model previews its first part); the
+// helper batches every multi-part lookup into one query.
+attachPreviewData($models);
 
 // Per-page meta description
 $metaDescription = mb_substr($category['name'] . ' — ' . $totalModels . ' 3D models in this category on ' . SITE_NAME, 0, 160);
@@ -113,30 +98,10 @@ require_once 'includes/header.php';
                 <?php endif; ?>
             </div>
 
-            <?php if ($totalPages > 1): ?>
-            <nav class="pagination" aria-label="Pagination">
-                <?php if ($page > 1): ?>
-                <a href="<?= htmlspecialchars($paginationBaseUrl) ?>?page=<?= $page - 1 ?>" class="pagination-btn" aria-label="Previous page">&laquo; Prev</a>
-                <?php endif; ?>
-                <?php
-                $startPage = max(1, $page - 2);
-                $endPage = min($totalPages, $page + 2);
-                if ($startPage > 1): ?>
-                <a href="<?= htmlspecialchars($paginationBaseUrl) ?>?page=1" class="pagination-btn" aria-label="Page 1">1</a>
-                <?php if ($startPage > 2): ?><span class="pagination-ellipsis">...</span><?php endif; ?>
-                <?php endif; ?>
-                <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
-                <a href="<?= htmlspecialchars($paginationBaseUrl) ?>?page=<?= $i ?>" class="pagination-btn <?= $i === $page ? 'active' : '' ?>" aria-label="Page <?= $i ?>"<?= $i === $page ? ' aria-current="page"' : '' ?>><?= $i ?></a>
-                <?php endfor; ?>
-                <?php if ($endPage < $totalPages): ?>
-                <?php if ($endPage < $totalPages - 1): ?><span class="pagination-ellipsis">...</span><?php endif; ?>
-                <a href="<?= htmlspecialchars($paginationBaseUrl) ?>?page=<?= $totalPages ?>" class="pagination-btn" aria-label="Page <?= $totalPages ?>"><?= $totalPages ?></a>
-                <?php endif; ?>
-                <?php if ($page < $totalPages): ?>
-                <a href="<?= htmlspecialchars($paginationBaseUrl) ?>?page=<?= $page + 1 ?>" class="pagination-btn" aria-label="Next page">Next &raquo;</a>
-                <?php endif; ?>
-            </nav>
-            <?php endif; ?>
+            <?php
+            $paginationUrl = fn (int $p): string => htmlspecialchars($paginationBaseUrl) . '?page=' . $p;
+            include __DIR__ . '/../../includes/partials/pagination.php';
+            ?>
         </div>
 
 <?php require_once 'includes/footer.php'; ?>

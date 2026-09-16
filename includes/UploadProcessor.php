@@ -31,6 +31,17 @@ class UploadProcessor
      */
     public static function processSingleFile(string $filePath, string $originalName, array $metadata, ?int $existingParentId = null, ?string $existingFolderId = null): array
     {
+        $gateError = self::checkBeforeUploadGate([
+            'type' => 'file',
+            'filename' => $originalName,
+            'path' => $filePath,
+            'size' => @filesize($filePath) ?: 0,
+            'metadata' => $metadata,
+        ]);
+        if ($gateError !== null) {
+            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => $gateError];
+        }
+
         $db = getDB();
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
@@ -82,6 +93,17 @@ class UploadProcessor
      */
     public static function processZip(string $zipPath, array $metadata, ?int $existingParentId = null, ?string $existingFolderId = null): array
     {
+        $gateError = self::checkBeforeUploadGate([
+            'type' => 'zip',
+            'filename' => basename($zipPath),
+            'path' => $zipPath,
+            'size' => @filesize($zipPath) ?: 0,
+            'metadata' => $metadata,
+        ]);
+        if ($gateError !== null) {
+            return ['success' => false, 'parent_id' => 0, 'part_count' => 0, 'error' => $gateError];
+        }
+
         $db = getDB();
 
         // Open once to validate + count entries for diagnostics
@@ -229,6 +251,17 @@ class UploadProcessor
      */
     public static function addPartsFromZip(string $zipPath, int $parentModelId): array
     {
+        $gateError = self::checkBeforeUploadGate([
+            'type' => 'add-parts',
+            'filename' => basename($zipPath),
+            'path' => $zipPath,
+            'size' => @filesize($zipPath) ?: 0,
+            'parent_id' => $parentModelId,
+        ]);
+        if ($gateError !== null) {
+            return ['success' => false, 'parent_id' => $parentModelId, 'part_count' => 0, 'error' => $gateError];
+        }
+
         $db = getDB();
 
         // Look up parent
@@ -313,6 +346,8 @@ class UploadProcessor
             logInfo('Added parts from ZIP', ['parent_id' => $parentModelId, 'added' => $addedCount]);
         }
 
+        self::fireAfterUploadHook($parentModelId, '', 'zip');
+
         return ['success' => true, 'parent_id' => $parentModelId, 'part_count' => $addedCount, 'error' => ''];
     }
 
@@ -371,6 +406,25 @@ class UploadProcessor
             mkdir($folderPath, 0755, true);
         }
 
+        // Collision guard: two distinct original names can sanitize to the same
+        // target (e.g. "part one.stl" and "part_one.stl" both -> "part_one.stl").
+        // Without this, the second rename() overwrites the first file while both
+        // DB rows point at one physical path. If the destination already exists,
+        // insert a short unique token before the extension so each stored file is
+        // distinct. $filename is reused for both the DB filename and file_path
+        // binds below, so the canonical "assets/..." path stays consistent.
+        if (file_exists($filePath)) {
+            $collisionExt = pathinfo($filename, PATHINFO_EXTENSION);
+            $collisionBase = pathinfo($filename, PATHINFO_FILENAME);
+            do {
+                $token = bin2hex(random_bytes(4));
+                $filename = $collisionExt !== ''
+                    ? $collisionBase . '_' . $token . '.' . $collisionExt
+                    : $collisionBase . '_' . $token;
+                $filePath = $folderPath . $filename;
+            } while (file_exists($filePath));
+        }
+
         // Containment assertion: the resolved destination directory must stay
         // under UPLOAD_PATH before we write anything (defense-in-depth).
         $destDirReal = realpath(dirname($filePath));
@@ -406,7 +460,7 @@ class UploadProcessor
             $stmt->bindValue(':file_size', $fileSize, PDO::PARAM_INT);
             $stmt->bindValue(':file_type', $extension, PDO::PARAM_STR);
             $stmt->bindValue(':file_hash', $fileHash, PDO::PARAM_STR);
-            $stmt->bindValue(':description', $parentId ? '' : '', PDO::PARAM_STR);
+            $stmt->bindValue(':description', '', PDO::PARAM_STR);
             $stmt->bindValue(':creator', '', PDO::PARAM_STR);
             $stmt->bindValue(':collection', '', PDO::PARAM_STR);
             $stmt->bindValue(':source_url', '', PDO::PARAM_STR);
@@ -815,10 +869,27 @@ class UploadProcessor
         }
     }
 
+    /**
+     * Run the before_upload gate (quota, malware-scan, content-policy
+     * plugins). Returns null when allowed, or a user-facing error string
+     * when a plugin blocked the upload. A crashing plugin denies.
+     */
+    private static function checkBeforeUploadGate(array $context): ?string
+    {
+        if (!class_exists('PluginManager')) {
+            return null;
+        }
+        $allowed = PluginManager::applyGate('before_upload', true, $context);
+        if ($allowed === true) {
+            return null;
+        }
+        return is_string($allowed) ? $allowed : 'Upload blocked by plugin';
+    }
+
     private static function fireAfterUploadHook(int $parentId, string $name, string $fileType): void
     {
         if (class_exists('PluginManager')) {
-            PluginManager::applyFilter('after_upload', null, $parentId, [
+            PluginManager::doAction('after_upload', $parentId, [
                 'name' => $name,
                 'file_type' => $fileType,
                 'user_id' => function_exists('isLoggedIn') && isLoggedIn() ? (getCurrentUser()['id'] ?? null) : null,

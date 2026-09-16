@@ -4,31 +4,9 @@
  * Loaded on the model detail page before model-page.js.
  */
 
-        // Favorite toggle
-        async function toggleFavorite(modelId, btn) {
-            try {
-                const response = await fetch('/actions/favorite', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'model_id=' + modelId
-                });
-                const data = await response.json();
-                if (data.success) {
-                    btn.classList.toggle('favorited', data.favorited);
-                    btn.innerHTML = data.favorited ? '<i class="fa-solid fa-heart" aria-hidden="true"></i>' : '<i class="fa-regular fa-heart" aria-hidden="true"></i>';
-                    var favLabel = data.favorited ? 'Remove from favorites' : 'Add to favorites';
-                    btn.title = favLabel;
-                    btn.setAttribute('aria-label', favLabel);
-                    btn.setAttribute('aria-pressed', data.favorited ? 'true' : 'false');
-                }
-            } catch (err) {
-                console.error('Failed to toggle favorite:', err);
-            }
-        }
+        // Favorite toggle lives in public/js/ui-common.js as window.toggleFavorite,
+        // shared with the favorites listing page. model-page.js calls it by name.
 
-
-        // Storage for calculated part data (persists during page session)
-        const partCalculatedData = {};
 
         // Per-part actions
         async function calculatePartDimensions(partId, linkEl) {
@@ -40,9 +18,6 @@
                 const response = await fetch('/actions/calculate-dimensions', { method: 'POST', body: formData });
                 const data = await response.json();
                 if (data.success && data.formatted) {
-                    // Store the calculated value
-                    if (!partCalculatedData[partId]) partCalculatedData[partId] = {};
-                    partCalculatedData[partId].dimensions = data.formatted;
                     linkEl.textContent = 'Dimensions: ' + data.formatted;
                 } else {
                     showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
@@ -58,26 +33,6 @@
         async function calculatePartVolume(partId, linkEl) {
             // Volume calculation is not yet available
             showToast('This feature is not yet available', 'info');
-        }
-
-        // Restore calculated data when dropdown opens
-        function restorePartCalculatedData(partId, dropdown) {
-            const data = partCalculatedData[partId];
-            if (!data) return;
-
-            const dimsLink = dropdown.querySelector('[onclick*="calculatePartDimensions"]');
-            const volLink = dropdown.querySelector('[onclick*="calculatePartVolume"]');
-
-            if (dimsLink && data.dimensions) {
-                dimsLink.textContent = 'Dimensions: ' + data.dimensions;
-            }
-            if (volLink && data.volume) {
-                let volumeText = 'Volume: ' + data.volume.toFixed(1) + ' cm\u00B3';
-                if (data.costEstimate) {
-                    volumeText += ' (~$' + data.costEstimate.estimated_cost.toFixed(2) + ')';
-                }
-                volLink.textContent = volumeText;
-            }
         }
 
         async function analyzePartMesh(partId, linkEl) {
@@ -252,7 +207,7 @@
                     item.innerHTML =
                         '<span class="model-link-type type-' + escapeHtml(link.link_type) + '">' + escapeHtml(link.link_type) + '</span>' +
                         '<a href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener noreferrer" class="model-link-title">' + escapeHtml(link.title) + '</a>' +
-                        '<button type="button" class="model-link-delete" aria-label="Remove link" onclick="deleteModelLink(' + link.id + ')" title="Remove link"><i class="fa-solid fa-xmark"></i></button>';
+                        '<button type="button" class="model-link-delete" aria-label="Remove link" title="Remove link"><i class="fa-solid fa-xmark"></i></button>';
                     list.appendChild(item);
 
                     toggleAddLinkForm();

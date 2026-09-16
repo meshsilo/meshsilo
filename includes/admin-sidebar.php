@@ -14,6 +14,7 @@ if (!function_exists('isFeatureEnabled')) {
                         </button>
                         <div class="nav-links">
                             <a href="<?= route('admin.health') ?>" <?= ($adminPage ?? '') === 'health' ? 'class="active" aria-current="page"' : '' ?>>System Health</a>
+                            <a href="<?= route('admin.stats') ?>" <?= ($adminPage ?? '') === 'stats' ? 'class="active" aria-current="page"' : '' ?>>Statistics</a>
                             <a href="<?= route('admin.settings') ?>" <?= ($adminPage ?? '') === 'settings' ? 'class="active" aria-current="page"' : '' ?>>Site Settings</a>
                             <a href="<?= route('admin.features') ?>" <?= ($adminPage ?? '') === 'features' ? 'class="active" aria-current="page"' : '' ?>>Features</a>
                             <a href="<?= route('admin.storage') ?>" <?= ($adminPage ?? '') === 'storage' ? 'class="active" aria-current="page"' : '' ?>>Storage</a>
@@ -76,8 +77,6 @@ if (!function_exists('isFeatureEnabled')) {
                             <i class="fa-solid fa-chevron-down nav-toggle-icon" aria-hidden="true"></i>
                         </button>
                         <div class="nav-links">
-                            <a href="<?= route('admin.routes') ?>" <?= ($adminPage ?? '') === 'routes' ? 'class="active" aria-current="page"' : '' ?>>Routes</a>
-                            <a href="<?= route('admin.cli-tools') ?>" <?= ($adminPage ?? '') === 'cli-tools' ? 'class="active" aria-current="page"' : '' ?>>CLI Tools</a>
                             <a href="<?= route('admin.security-headers') ?>" <?= ($adminPage ?? '') === 'security-headers' ? 'class="active" aria-current="page"' : '' ?>>Security Headers</a>
                             <a href="<?= route('admin.sessions') ?>" <?= ($adminPage ?? '') === 'sessions' ? 'class="active" aria-current="page"' : '' ?>>Sessions</a>
                         </div>
@@ -106,7 +105,7 @@ if (class_exists('PluginManager')) {
                 </nav>
             </aside>
 
-            <script>
+            <script<?= csp_nonce_attr() ?>>
             (function() {
                 const STORAGE_KEY = 'silo_admin_sidebar_collapsed';
 

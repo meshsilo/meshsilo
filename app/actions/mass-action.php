@@ -70,28 +70,25 @@ try {
 
             // Delete the parts and their files
             foreach ($ids as $id) {
-                $stmt = $db->prepare('SELECT file_path, dedup_path, parent_id FROM models WHERE id = ?');
+                $stmt = $db->prepare('SELECT file_path, dedup_path, thumbnail_path, parent_id FROM models WHERE id = ?');
                 $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $result = $stmt->execute();
                 $part = $result->fetchArray(PDO::FETCH_ASSOC);
 
                 if ($part) {
+                    // Delete physical version files while the model_versions rows
+                    // still exist (cascade removes the rows on delete).
+                    deleteModelVersionFiles($db, (int)$id);
+
                     // Delete from database first
                     $stmt = $db->prepare('DELETE FROM models WHERE id = ?');
                     $stmt->bindValue(1, $id, PDO::PARAM_INT);
                     $stmt->execute();
 
-                    // Now delete the file
-                    if (!empty($part['dedup_path'])) {
-                        // Deduplicated file - atomically check reference count and delete
-                        deleteIfOrphaned($part['dedup_path']);
-                    } elseif ($part['file_path']) {
-                        // Regular file
-                        $absPath = getAbsoluteFilePath($part);
-                        if (file_exists($absPath)) {
-                            unlink($absPath);
-                        }
-                    }
+                    // Now delete the model file (regular or deduplicated) and thumbnail
+                    // via the shared helpers so cleanup matches the web delete page.
+                    deleteModelFile($part['file_path'], $part['dedup_path']);
+                    safeUnlinkAssetFile($part['thumbnail_path'] ?? null);
                 }
             }
 
@@ -120,7 +117,7 @@ try {
 
             foreach ($ids as $id) {
                 // Get model info
-                $stmt = $db->prepare('SELECT file_path, dedup_path, part_count FROM models WHERE id = ? AND parent_id IS NULL');
+                $stmt = $db->prepare('SELECT file_path, dedup_path, thumbnail_path, part_count FROM models WHERE id = ? AND parent_id IS NULL');
                 $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $result = $stmt->execute();
                 $model = $result->fetchArray(PDO::FETCH_ASSOC);
@@ -129,12 +126,23 @@ try {
 
                 $filesToDelete = [];
                 $dedupFilesToCheck = [];
+                $thumbnailsToDelete = [];
+                $childIds = [];
 
-                // Collect files to delete from child parts
-                $stmt = $db->prepare('SELECT file_path, dedup_path FROM models WHERE parent_id = ?');
+                // Model's own thumbnail
+                if (!empty($model['thumbnail_path'])) {
+                    $thumbnailsToDelete[] = $model['thumbnail_path'];
+                }
+
+                // Collect files, thumbnails, and ids from child parts
+                $stmt = $db->prepare('SELECT id, file_path, dedup_path, thumbnail_path FROM models WHERE parent_id = ?');
                 $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $result = $stmt->execute();
                 while ($part = $result->fetchArray(PDO::FETCH_ASSOC)) {
+                    $childIds[] = (int)$part['id'];
+                    if (!empty($part['thumbnail_path'])) {
+                        $thumbnailsToDelete[] = $part['thumbnail_path'];
+                    }
                     if (!empty($part['dedup_path'])) {
                         $dedupFilesToCheck[$part['dedup_path']] = true;
                     } elseif ($part['file_path']) {
@@ -149,6 +157,30 @@ try {
                     $filesToDelete[] = getAbsoluteFilePath($model);
                 }
 
+                // Delete physical version files (model + parts) while the
+                // model_versions rows still exist (cascade removes them on delete).
+                deleteModelVersionFiles($db, (int)$id);
+                foreach ($childIds as $childId) {
+                    deleteModelVersionFiles($db, $childId);
+                }
+
+                // Delete attachment files and their rows
+                try {
+                    $attStmt = $db->prepare('SELECT file_path FROM model_attachments WHERE model_id = ?');
+                    $attStmt->bindValue(1, $id, PDO::PARAM_INT);
+                    $attResult = $attStmt->execute();
+                    while ($att = $attResult->fetchArray(PDO::FETCH_ASSOC)) {
+                        if (!empty($att['file_path'])) {
+                            safeUnlinkAssetFile($att['file_path']);
+                        }
+                    }
+                    $delAtt = $db->prepare('DELETE FROM model_attachments WHERE model_id = ?');
+                    $delAtt->bindValue(1, $id, PDO::PARAM_INT);
+                    $delAtt->execute();
+                } catch (Throwable $e) {
+                    // model_attachments table may not exist yet - continue
+                }
+
                 // Delete from database (cascade will handle children)
                 $stmt = $db->prepare('DELETE FROM models WHERE id = ? OR parent_id = ?');
                 $stmt->bindValue(1, $id, PDO::PARAM_INT);
@@ -160,28 +192,12 @@ try {
                 $stmt->bindValue(1, $id, PDO::PARAM_INT);
                 $stmt->execute();
 
-                // Now delete regular files
-                $foldersToCheck = [];
-                foreach ($filesToDelete as $filePath) {
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                        $folder = dirname($filePath);
-                        if (!in_array($folder, $foldersToCheck)) {
-                            $foldersToCheck[] = $folder;
-                        }
-                    }
-                }
-
-                // Delete dedup files only if no other parts reference them (atomic check+delete)
-                foreach (array_keys($dedupFilesToCheck) as $dedupPath) {
-                    deleteIfOrphaned($dedupPath);
-                }
-
-                // Clean up empty folders
-                foreach ($foldersToCheck as $folder) {
-                    if (is_dir($folder) && count(scandir($folder)) === 2) {
-                        @rmdir($folder);
-                    }
+                // Remove the collected model/part files and empty folders,
+                // then thumbnails - via the shared helpers so cleanup matches
+                // the web delete page.
+                cleanupModelFiles($filesToDelete, $dedupFilesToCheck);
+                foreach ($thumbnailsToDelete as $thumbPath) {
+                    safeUnlinkAssetFile($thumbPath);
                 }
             }
 
@@ -203,6 +219,9 @@ try {
                 $stmt->bindValue($i + 2, $id, PDO::PARAM_INT);
             }
             $stmt->execute();
+            // Capture the affected count from the models UPDATE, before the
+            // collections INSERT below overwrites $db->changes().
+            $affected = $db->changes();
 
             // Add to collections table if new
             if ($collection) {
@@ -211,7 +230,6 @@ try {
                 $stmt->execute();
             }
 
-            $affected = $db->changes();
             logInfo('Mass set collection', ['count' => $affected, 'collection' => $collection]);
             jsonSuccess(['affected' => $affected, 'message' => "Updated $affected models"]);
             break;

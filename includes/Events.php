@@ -198,7 +198,7 @@ class Events
 
         // Allow plugins to handle event dispatching (e.g., webhooks)
         if (class_exists('PluginManager')) {
-            PluginManager::applyFilter('event_dispatched', null, $event, $data);
+            PluginManager::doAction('event_dispatched', $event, $data);
         }
 
         return $results;
@@ -263,7 +263,7 @@ class Events
             $stmt->bindValue(':event', $event, PDO::PARAM_STR);
             $stmt->bindValue(':data', json_encode($eventData), PDO::PARAM_STR);
             $stmt->bindValue(':user_id', $data['_user_id'], PDO::PARAM_INT);
-            $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? null, PDO::PARAM_STR);
+            $stmt->bindValue(':ip', client_ip() ?: null, PDO::PARAM_STR);
             $stmt->execute();
         } catch (Exception $e) {
             // Silently fail to avoid disrupting the application
@@ -294,7 +294,7 @@ class Events
             if (function_exists('logWarning')) {
                 logWarning('Failed login attempt', [
                     'username' => $data['username'] ?? 'unknown',
-                    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+                    'ip' => client_ip() ?: 'unknown'
                 ]);
             }
         });

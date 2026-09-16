@@ -50,9 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
     header('Content-Type: application/json');
 
     // CSRF validation
-    if (!Csrf::check()) {
-        jsonError('Invalid request token', 403);
-    }
+    requireCsrfJson();
 
     // Verify ownership - only owner or admin can add parts
     $user = getCurrentUser();
@@ -113,9 +111,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['part_file'])) {
         exit;
     }
 
-    // Create directory for model if it doesn't exist
-    $relativeDir = 'assets/' . substr(md5($model['name'] . $model['id']), 0, 12);
-    $modelDir = __DIR__ . '/../../' . $relativeDir;
+    // Create directory for model if it doesn't exist. The DB file_path keeps the
+    // canonical 'assets/...' prefix, but the physical directory is resolved via
+    // UPLOAD_PATH (real storage/assets) rather than the root 'assets' symlink,
+    // which is not materialized on checkouts without core.symlinks (Windows/WAMP).
+    $partFolder = substr(md5($model['name'] . $model['id']), 0, 12);
+    $relativeDir = 'assets/' . $partFolder;
+    $storageBase = defined('UPLOAD_PATH') ? rtrim(UPLOAD_PATH, '/') : __DIR__ . '/../../storage/assets';
+    $modelDir = $storageBase . '/' . $partFolder;
     if (!file_exists($modelDir)) {
         mkdir($modelDir, 0755, true);
     }

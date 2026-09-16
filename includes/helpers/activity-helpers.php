@@ -15,7 +15,7 @@ function logActivity($action, $entityType, $entityId = null, $entityName = null,
         $db = getDB();
         $user = getCurrentUser();
         $userId = $user ? $user['id'] : null;
-        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+        $ipAddress = client_ip() ?: null;
 
         $stmt = $db->prepare('
             INSERT INTO activity_log (user_id, action, entity_type, entity_id, entity_name, details, ip_address)

@@ -8,7 +8,8 @@
  *   - model-parts-folders.js   : folder CRUD, collapse/expand, nesting, move-to-folder
  *   - model-parts-upload.js    : add-parts TUS upload + progress
  * Shared helpers (escapeHtml, showToast, showConfirm, showPrompt, trapFocus,
- * releaseFocus) come from ui-common.js; window.ModelPageConfig is set inline by model.php.
+ * releaseFocus) come from ui-common.js, which also owns the global Escape-to-close
+ * handler for .modal-overlay modals; window.ModelPageConfig is set inline by model.php.
  */
 
         // Part preview modal
@@ -68,18 +69,8 @@
             }
         });
 
-        // Close any open modal on Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const modals = document.querySelectorAll('.modal-overlay');
-                modals.forEach(function(modal) {
-                    if (modal.style.display !== 'none' && modal.id !== 'confirm-modal' && modal.id !== 'prompt-modal') {
-                        const closeBtn = modal.querySelector('.modal-close');
-                        if (closeBtn) closeBtn.click();
-                    }
-                });
-            }
-        });
+        // Escape closes open .modal-overlay modals; wired globally in ui-common.js
+        // via wireEscapeToClose('.modal-overlay').
 
 
         // Drag and drop reordering

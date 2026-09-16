@@ -26,8 +26,8 @@ if (!$input) {
 
 $action = $input['action'] ?? '';
 
-if (in_array($action, ['add', 'delete', 'reorder']) && !Csrf::check()) {
-    jsonError('Security validation failed', 403);
+if (in_array($action, ['add', 'delete', 'reorder'])) {
+    requireCsrfJson();
 }
 
 $db = getDB();
@@ -54,8 +54,9 @@ function canManageLinks($db, $user, $modelId) {
 
     if (!$model) return false;
 
-    return (!empty($model['user_id']) && $model['user_id'] == $user['id'])
-        || !empty($user['is_admin']);
+    // Owner-or-admin, treating legacy NULL-owner models as modifiable so
+    // non-admins aren't locked out (consistent with userCanModifyModel).
+    return userCanModifyModel($model, $user);
 }
 
 function addLink($db, $user, $input) {

@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nestFolders = isset($_POST['nest_folders']) ? 1 : 0;
 
     if (!Csrf::validate()) {
-        $message = 'Security validation failed. Please try again.';
+        $message = Csrf::ERROR_MESSAGE;
         $messageType = 'error';
     } elseif (empty($name)) {
         $message = 'Name is required';
@@ -319,7 +319,7 @@ require_once 'includes/header.php';
             </form>
         </div>
 
-        <script>
+        <script<?= csp_nonce_attr() ?>>
         window.EditModelPageConfig = {
             allTags: <?= json_encode(getAllTags()) ?>,
             modelId: <?= $modelId ?>

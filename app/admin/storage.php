@@ -4,11 +4,7 @@ require_once __DIR__ . '/../../includes/storage.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
 // Require storage management permission
-if (!isLoggedIn() || !canManageStorage()) {
-    $_SESSION['error'] = 'You do not have permission to manage storage settings.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageStorage', 'You do not have permission to manage storage settings.');
 
 $pageTitle = 'Storage Settings';
 $activePage = '';
@@ -22,6 +18,8 @@ $storageType = getSetting('storage_type', 'local');
 // Calculate storage stats from DB (avoids slow filesystem scans)
 $dbPath = realpath(DB_PATH);
 $dbSize = file_exists($dbPath) ? filesize($dbPath) : 0;
+// Assets directory: shown under Paths, and scanned by the orphan cleanup below.
+$assetsPath = rtrim(UPLOAD_PATH, '/');
 
 $storageStats = $db->query("
     SELECT
@@ -60,13 +58,24 @@ $conversionPercent = ($conversionStats['original_total'] ?? 0) > 0
     ? round($conversionSaved / $conversionStats['original_total'] * 100)
     : 0;
 
+// Encryption-at-rest status. Reported here rather than only in the logs because
+// a key sourced from the database it protects is defeated by a single dump, and
+// nothing else in the UI tells an operator that is the case.
+$encryptionStatus = class_exists('Encryption') ? Encryption::getStatus() : null;
+$encryptionKeySourceLabels = [
+    'env' => 'Environment variable (SILO_ENCRYPTION_KEY)',
+    'file' => 'Key file (storage/.encryption_key)',
+    'database' => 'Database setting (encryption_master_key)',
+    'none' => 'Not configured',
+];
+
 // Handle actions
 $message = '';
 $error = '';
 
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['save_s3'])) {
         setSetting('storage_type', $_POST['storage_type'] ?? 'local');
@@ -355,13 +364,43 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </details>
 
+                    <?php if ($encryptionStatus !== null): ?>
+                    <details class="settings-section"<?= $encryptionStatus['key_source_warning'] ? ' open' : '' ?>>
+                        <summary><h2>Encryption at Rest</h2></summary>
+
+                        <?php if (!$encryptionStatus['key_source_secure'] && $encryptionStatus['key_source_warning']): ?>
+                        <div role="alert" class="alert alert-warning"><?= htmlspecialchars($encryptionStatus['key_source_warning']) ?></div>
+                        <?php endif; ?>
+
+                        <div class="form-group">
+                            <label>Status</label>
+                            <p class="form-hint">
+                                <?= $encryptionStatus['enabled'] ? 'Active' : 'Inactive' ?>
+                                <?php if (!$encryptionStatus['enabled'] && $encryptionStatus['key_configured'] && !$encryptionStatus['key_valid']): ?>
+                                    &mdash; the configured master key is not a valid 256-bit key
+                                <?php elseif (!$encryptionStatus['enabled']): ?>
+                                    &mdash; no master key configured
+                                <?php endif; ?>
+                            </p>
+                        </div>
+                        <div class="form-group">
+                            <label>Master Key Source</label>
+                            <p class="form-hint"><?= htmlspecialchars($encryptionKeySourceLabels[$encryptionStatus['key_source']] ?? $encryptionStatus['key_source']) ?></p>
+                        </div>
+                        <div class="form-group">
+                            <label>Cipher</label>
+                            <p class="form-hint"><?= htmlspecialchars($encryptionStatus['cipher']) ?> (<?= htmlspecialchars($encryptionStatus['openssl_version']) ?>)</p>
+                        </div>
+                    </details>
+                    <?php endif; ?>
+
                     <details class="settings-section" open>
                         <summary><h2>Storage Backend</h2></summary>
                         <form method="post">
                             <?= csrf_field() ?>
                             <div class="form-group">
                                 <label for="storage_type">Storage Type</label>
-                                <select name="storage_type" id="storage_type" class="form-input" onchange="toggleS3Settings()">
+                                <select name="storage_type" id="storage_type" class="form-input">
                                     <option value="local" <?= $storageType === 'local' ? 'selected' : '' ?>>Local Filesystem</option>
                                     <option value="s3" <?= $storageType === 's3' ? 'selected' : '' ?>>S3-Compatible Object Storage</option>
                                 </select>
@@ -440,7 +479,11 @@ require_once __DIR__ . '/../../includes/header.php';
                         <?php endif; ?>
                     </details>
 
-                    <script>
+                    <script<?= csp_nonce_attr() ?>>
+                    // Wired here rather than an inline onchange, which CSP blocks.
+                    document.getElementById('storage_type')
+                        .addEventListener('change', toggleS3Settings);
+
                     function toggleS3Settings() {
                         const type = document.getElementById('storage_type').value;
                         const s3Settings = document.getElementById('s3-settings');

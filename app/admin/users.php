@@ -2,11 +2,7 @@
 require_once __DIR__ . '/../../includes/config.php';
 
 // Require user management permission
-if (!isLoggedIn() || !canManageUsers()) {
-    $_SESSION['error'] = 'You do not have permission to manage users.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageUsers', 'You do not have permission to manage users.');
 
 $pageTitle = 'Manage Users';
 $activePage = '';
@@ -19,8 +15,8 @@ $message = '';
 $error = '';
 
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_user'])) {
         $username = trim($_POST['username'] ?? '');
@@ -58,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
                 }
 
                 if (class_exists('PluginManager')) {
-                    PluginManager::applyFilter('user_registered', null, $userId, [
+                    PluginManager::doAction('user_registered', $userId, [
                         'username' => $username,
                         'email' => $email,
                         'method' => 'admin'
@@ -141,19 +137,48 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
     $groups[$row['id']] = $row;
 }
 
-// Get users with their groups
-$result = $db->query('SELECT * FROM users ORDER BY username');
+// Pagination
+$page = max(1, (int)($_GET['page'] ?? 1));
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
+
+$totalUsers = (int)$db->querySingle('SELECT COUNT(*) FROM users');
+$totalPages = (int)ceil($totalUsers / $perPage);
+
+// Get this page of users
+$stmt = $db->prepare('SELECT * FROM users ORDER BY username LIMIT :limit OFFSET :offset');
+$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$result = $stmt->execute();
+
 $users = [];
 while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
-    // Get user's groups
-    $stmt = $db->prepare('SELECT group_id FROM user_groups WHERE user_id = :user_id');
-    $stmt->bindValue(':user_id', $row['id'], PDO::PARAM_INT);
-    $groupResult = $stmt->execute();
     $row['group_ids'] = [];
-    while ($g = $groupResult->fetchArray(PDO::FETCH_ASSOC)) {
-        $row['group_ids'][] = $g['group_id'];
-    }
     $users[] = $row;
+}
+
+// Fetch every user's group memberships in one query rather than one per user
+// (same batching shape as getFirstPartsForModels() in helpers/storage-helpers.php).
+$userIds = array_column($users, 'id');
+if (!empty($userIds)) {
+    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+    $stmt = $db->prepare("SELECT user_id, group_id FROM user_groups WHERE user_id IN ($placeholders)");
+
+    $index = 1;
+    foreach ($userIds as $id) {
+        $stmt->bindValue($index++, $id, PDO::PARAM_INT);
+    }
+    $stmt->execute();
+
+    $groupIdsByUser = [];
+    while ($row = $stmt->fetch()) {
+        $groupIdsByUser[$row['user_id']][] = $row['group_id'];
+    }
+
+    foreach ($users as &$user) {
+        $user['group_ids'] = $groupIdsByUser[$user['id']] ?? [];
+    }
+    unset($user);
 }
 
 require_once __DIR__ . '/../../includes/header.php';
@@ -246,8 +271,16 @@ require_once __DIR__ . '/../../includes/header.php';
                                                 </label>
                                                 <?php endforeach; ?>
                                             </div>
-                                            <?php if ($user['id'] === getCurrentUser()['id']): ?>
-                                            <input type="hidden" name="groups[]" value="<?= array_search('Admin', array_column($groups, 'name', 'id')) ?>">
+                                            <?php
+                                            // The current user's own Admin checkbox is rendered disabled (above) and so
+                                            // is never submitted. Re-add it via a hidden input ONLY when the user is
+                                            // ALREADY in the Admin group. Emitting it unconditionally let a non-admin
+                                            // with PERM_MANAGE_USERS grant themselves Admin by saving their own row,
+                                            // since is_admin is derived from the submitted groups[] (privilege escalation).
+                                            $adminGroupId = array_search('Admin', array_column($groups, 'name', 'id'));
+                                            if ($user['id'] === getCurrentUser()['id'] && $adminGroupId !== false && in_array($adminGroupId, $user['group_ids'])):
+                                            ?>
+                                            <input type="hidden" name="groups[]" value="<?= (int)$adminGroupId ?>">
                                             <?php endif; ?>
                                             <button type="submit" name="update_groups" class="btn btn-small btn-secondary">Save</button>
                                         </form>
@@ -267,6 +300,12 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+
+                        <?php
+                        $paginationUrl = fn (int $p): string => '?' . http_build_query(array_merge($_GET, ['page' => $p]));
+                        $paginationAttrs = 'style="margin-top: 1.5rem;"';
+                        include __DIR__ . '/../../includes/partials/pagination.php';
+                        ?>
                     </details>
                 </div>
             </div>

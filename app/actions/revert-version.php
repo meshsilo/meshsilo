@@ -68,9 +68,12 @@ if ($currentVersion == $versionNumber) {
     jsonError('Already at this version');
 }
 
-// Get source file path
-$sourceFilePath = __DIR__ . '/../../storage/assets/' . $targetVersion['file_path'];
-if (!is_file($sourceFilePath)) {
+// Get source file path. Resolve through the canonical resolver so the stored
+// 'assets/versions/...' path maps to storage/assets/versions/... (the same
+// resolution preview/download use). Building the path by hand would double the
+// 'assets/' prefix now that version paths carry it.
+$sourceFilePath = getAbsoluteFilePath(['file_path' => $targetVersion['file_path'], 'dedup_path' => null]);
+if (!$sourceFilePath || !is_file($sourceFilePath)) {
     jsonError('Version file not found');
 }
 
@@ -89,7 +92,10 @@ if (!is_dir($versionDir)) {
 // Copy the old version file to a new version
 $ext = pathinfo($targetVersion['file_path'], PATHINFO_EXTENSION);
 $newFilename = 'v' . $nextVersion . '_revert_from_v' . $versionNumber . '.' . $ext;
-$newFilePath = 'versions/' . $modelId . '/' . $newFilename;
+// Canonical 'assets/'-prefixed path (stored in both model_versions.file_path via
+// addModelVersion and models.file_path via the UPDATE below) so
+// getAbsoluteFilePath() resolves it. Physical write path ($fullNewPath) unchanged.
+$newFilePath = 'assets/versions/' . $modelId . '/' . $newFilename;
 $fullNewPath = $versionDir . '/' . $newFilename;
 
 // Persist the copied file, the new version row, and the model pointer atomically.

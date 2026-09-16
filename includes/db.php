@@ -500,3 +500,5 @@ require_once __DIR__ . '/helpers/activity-helpers.php';
 require_once __DIR__ . '/helpers/storage-helpers.php';
 require_once __DIR__ . '/helpers/model-helpers.php';
 require_once __DIR__ . '/helpers/batch-helpers.php';
+require_once __DIR__ . '/helpers/model-delete.php';
+require_once __DIR__ . '/helpers/migration-helpers.php';

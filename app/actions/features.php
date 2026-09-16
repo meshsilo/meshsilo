@@ -18,8 +18,8 @@ if (!isLoggedIn() || !isAdmin()) {
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    jsonError('Invalid CSRF token');
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireCsrfJson();
 }
 
 switch ($action) {

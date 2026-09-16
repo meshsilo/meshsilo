@@ -7,8 +7,10 @@
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
-// Require authentication
-if (!isLoggedIn()) {
+// Require authentication, unless anonymous browsing/downloads are enabled
+// (Issue #2). Router-level enforceAuthentication() already gates this route
+// the same way; this is defense in depth for a direct request.
+if (!isLoggedIn() && getSetting('require_login', '1') === '1') {
     http_response_code(401);
     exit('Not authenticated');
 }
@@ -31,28 +33,9 @@ if (!$part) {
     exit('File not found');
 }
 
-// Check ownership - user must own the model or be admin
-// Models with NULL user_id are accessible to all authenticated users (backward compatibility)
-$user = getCurrentUser();
-$ownerId = $part['user_id'] ?? null;
-
-// If this is a child part, check the parent model's ownership
-if ($part['parent_id']) {
-    $parentStmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
-    $parentStmt->bindValue(':id', $part['parent_id'], PDO::PARAM_INT);
-    $parentResult = $parentStmt->execute();
-    $parentModel = $parentResult->fetchArray(PDO::FETCH_ASSOC);
-    if ($parentModel) {
-        $ownerId = $parentModel['user_id'] ?? null;
-    }
-}
-
-// Deny access if model has an owner and current user is not the owner or admin
-// Cast to int to handle PDO returning strings depending on configuration
-if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
-    http_response_code(403);
-    exit('Access denied');
-}
+// Models are shared: any authenticated user may preview any model, consistent
+// with /browse and the /assets file route. Authentication is enforced upstream
+// by the router; previews are not owner-gated.
 
 // Get the real file path (handles deduplicated files)
 $filePath = getAbsoluteFilePath($part);

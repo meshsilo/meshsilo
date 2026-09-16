@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Rate limit 2FA attempts
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip = client_ip() ?: 'unknown';
     $rateResult = RateLimiter::check($ip, 'anonymous', '2fa_verify');
     if (!$rateResult['allowed']) {
         $error = 'Too many verification attempts. Please try again in a few minutes.';

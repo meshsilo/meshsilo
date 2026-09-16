@@ -12,6 +12,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set Docker environment flag for application
 ENV MESHSILO_DOCKER=true
 
+# Virtual display for headless OpenSCAD PNG export (Xvfb, started by
+# supervisord). Set image-wide so both the thumbnail queue worker and a
+# manual `docker exec ... cli/generate-thumbnails.php` see it.
+ENV DISPLAY=:99
+
 # Install nginx, PHP, and required extensions
 RUN apt-get update && apt-get install -y software-properties-common && apt update && add-apt-repository ppa:ondrej/php && apt-get install -y \
     nginx \
@@ -33,6 +38,25 @@ RUN apt-get update && apt-get install -y software-properties-common && apt updat
     unzip \
     ghostscript \
     qpdf \
+    admesh \
+    xvfb \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# OpenSCAD nightly, for STL/3MF thumbnail rendering (ThumbnailGenerator.php).
+# Nightly (not the stable release) so the Manifold geometry backend is
+# available — it's been non-experimental since 2024.09.28 and gives a large
+# speed improvement over the legacy CGAL backend for thumbnail rendering.
+# Official nightly packages: https://openscad.org/downloads.html#snapshots
+# (Debian/Ubuntu builds on the openSUSE Build Service, signed, updated from
+# the master branch). The package installs the `openscad-nightly` binary
+# rather than `openscad`, so it can coexist with a stable install; symlink it
+# to the plain `openscad` name the app already looks for on PATH.
+RUN curl -fsSL https://files.openscad.org/OBS-Repository-Key.pub -o /etc/apt/trusted.gpg.d/obs-openscad-nightly.asc \
+    && echo "deb https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_24.04/ ./" > /etc/apt/sources.list.d/openscad-nightly.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends openscad-nightly \
+    && ln -sf "$(command -v openscad-nightly)" /usr/local/bin/openscad \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

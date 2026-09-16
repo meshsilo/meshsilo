@@ -14,10 +14,8 @@ if (!isLoggedIn() || !isAdmin()) {
     jsonError('Permission denied', 403);
 }
 
-// CSRF check for POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    jsonError('Invalid CSRF token', 403);
-}
+// CSRF check for state-changing requests
+requireCsrfJson();
 
 $action = $_POST['action'] ?? '';
 $pluginManager = PluginManager::getInstance();
@@ -40,7 +38,7 @@ switch ($action) {
 
         $result = $pluginManager->enablePlugin($pluginId);
 
-        if ($result) {
+        if ($result['success']) {
             logInfo('Plugin enabled', [
                 'plugin_id' => $pluginId,
                 'by' => getCurrentUser()['username']
@@ -48,7 +46,7 @@ switch ($action) {
             jsonSuccess(['message' => 'Plugin enabled']);
         } else {
             http_response_code(400);
-            jsonError('Failed to enable plugin');
+            jsonError('Failed to enable plugin: ' . ($result['error'] ?? 'Unknown error'));
         }
         break;
 
@@ -61,7 +59,7 @@ switch ($action) {
 
         $result = $pluginManager->disablePlugin($pluginId);
 
-        if ($result) {
+        if ($result['success']) {
             logInfo('Plugin disabled', [
                 'plugin_id' => $pluginId,
                 'by' => getCurrentUser()['username']
@@ -69,7 +67,7 @@ switch ($action) {
             jsonSuccess(['message' => 'Plugin disabled']);
         } else {
             http_response_code(400);
-            jsonError('Failed to disable plugin');
+            jsonError('Failed to disable plugin: ' . ($result['error'] ?? 'Unknown error'));
         }
         break;
 
@@ -168,6 +166,7 @@ switch ($action) {
     case 'add-repo':
         $name = trim($_POST['name'] ?? '');
         $url = trim($_POST['url'] ?? '');
+        $token = trim($_POST['token'] ?? '');
 
         if (empty($name)) {
             jsonError('Repository name is required', 400);
@@ -177,7 +176,7 @@ switch ($action) {
             jsonError('A valid repository URL is required', 400);
         }
 
-        $result = $pluginManager->addRepository($name, $url);
+        $result = $pluginManager->addRepository($name, $url, $token);
 
         if ($result) {
             logInfo('Plugin repository added', [
@@ -215,17 +214,9 @@ switch ($action) {
 
     case 'refresh-repos':
         $repos = $pluginManager->getRepositories();
-        $fetched = 0;
-        $failed = 0;
-
-        foreach ($repos as $repo) {
-            $registry = $pluginManager->fetchRegistry($repo['url']);
-            if ($registry !== null) {
-                $fetched++;
-            } else {
-                $failed++;
-            }
-        }
+        $results = $pluginManager->fetchRegistries(array_column($repos, 'url'));
+        $fetched = count(array_filter($results, fn($r) => $r !== null));
+        $failed = count($results) - $fetched;
 
         logInfo('Plugin repositories refreshed', [
             'fetched' => $fetched,

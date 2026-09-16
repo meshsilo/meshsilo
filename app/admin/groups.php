@@ -2,11 +2,7 @@
 require_once __DIR__ . '/../../includes/config.php';
 
 // Require group management permission
-if (!isLoggedIn() || !canManageGroups()) {
-    $_SESSION['error'] = 'You do not have permission to manage groups.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageGroups', 'You do not have permission to manage groups.');
 
 $pageTitle = 'Manage Groups';
 $activePage = 'admin';
@@ -18,8 +14,8 @@ $error = '';
 
 // Handle form submissions
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 

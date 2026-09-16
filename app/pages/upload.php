@@ -64,10 +64,6 @@ require_once 'includes/header.php';
                                 Browse Files
                                 <input type="file" name="model_file" id="model_file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.zip,.lys,.ctb,.pwmo,.sl1" hidden aria-label="Browse model files">
                             </label>
-                            <label class="btn btn-secondary file-select-btn mobile-only">
-                                Take Photo
-                                <input type="file" name="photo_file" id="photo_file" accept="image/*" capture="environment" hidden aria-label="Take photo">
-                            </label>
                         </div>
                         <p class="dropzone-hint">Supported: 3D models, slicer files (.lys, .ctb, .sl1), and ZIP archives (Max <?= MAX_FILE_SIZE / 1024 / 1024 ?>MB)</p>
                         <p class="dropzone-hint">ZIP files will be unpacked — models imported as parts, images &amp; text files added as attachments</p>
@@ -105,22 +101,18 @@ require_once 'includes/header.php';
                     <div class="advanced-content">
                         <div class="form-group">
                             <label for="model-creator">Creator</label>
-                            <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" autocomplete="off" list="creators-list" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
-                            <datalist id="creators-list">
-                                <?php foreach ($creators as $c): ?>
-                                <option value="<?= htmlspecialchars($c) ?>">
-                                <?php endforeach; ?>
-                            </datalist>
+                            <div class="autocomplete">
+                                <input type="text" id="model-creator" name="creator" class="form-input" placeholder="Original creator of the model" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="creator-menu" value="<?= htmlspecialchars($_POST['creator'] ?? '') ?>">
+                                <ul class="autocomplete-menu" id="creator-menu" role="listbox" hidden></ul>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label for="model-collection">Collection</label>
-                            <input type="text" id="model-collection" name="collection" class="form-input" placeholder="Collection name (e.g., Gridfinity, Voron)" list="collections-list" value="<?= htmlspecialchars($_POST['collection'] ?? '') ?>">
-                            <datalist id="collections-list">
-                                <?php foreach ($collections as $col): ?>
-                                <option value="<?= htmlspecialchars($col) ?>">
-                                <?php endforeach; ?>
-                            </datalist>
+                            <div class="autocomplete">
+                                <input type="text" id="model-collection" name="collection" class="form-input" placeholder="Collection name (e.g., Gridfinity, Voron)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="collection-menu" value="<?= htmlspecialchars($_POST['collection'] ?? '') ?>">
+                                <ul class="autocomplete-menu" id="collection-menu" role="listbox" hidden></ul>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -158,9 +150,8 @@ require_once 'includes/header.php';
 
         </div>
 
-        <script>
+        <script<?= csp_nonce_attr() ?>>
         const fileInput = document.getElementById('model_file');
-        const photoInput = document.getElementById('photo_file');
         const dropzone = document.getElementById('dropzone');
         const display = document.getElementById('file-name-display');
         const uploadForm = document.getElementById('upload-form');
@@ -169,11 +160,97 @@ require_once 'includes/header.php';
         const progressFill = document.getElementById('progress-fill');
         const progressText = document.getElementById('progress-text');
 
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1048576).toFixed(1) + ' MB';
+        // formatFileSize comes from public/js/ui-common.js (loaded on every page).
+        // Every call below runs from an event handler, well after that deferred
+        // script has executed.
+
+        // Creator/Collection autocomplete. A native <datalist> popup can't be
+        // themed and renders as an unstyled light-mode list on top of the dark
+        // UI, so these fields get a small custom combobox instead.
+        var CREATOR_OPTIONS = <?= json_encode($creators, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        var COLLECTION_OPTIONS = <?= json_encode($collections, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+        function initAutocomplete(input, menu, options) {
+            var activeIndex = -1;
+
+            function render(list) {
+                menu.innerHTML = list.map(function(opt) {
+                    var li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.setAttribute('role', 'option');
+                    li.dataset.value = opt;
+                    li.textContent = opt;
+                    return li.outerHTML;
+                }).join('');
+                activeIndex = -1;
+            }
+
+            function open(list) {
+                if (!list.length) { close(); return; }
+                render(list);
+                menu.hidden = false;
+                input.setAttribute('aria-expanded', 'true');
+            }
+
+            function close() {
+                menu.hidden = true;
+                input.setAttribute('aria-expanded', 'false');
+                activeIndex = -1;
+            }
+
+            function filter() {
+                var q = input.value.trim().toLowerCase();
+                var list = q === ''
+                    ? options
+                    : options.filter(function(o) { return o.toLowerCase().indexOf(q) !== -1; });
+                open(list.slice(0, 50));
+            }
+
+            input.addEventListener('input', filter);
+            input.addEventListener('focus', filter);
+
+            input.addEventListener('keydown', function(e) {
+                var items = menu.querySelectorAll('.autocomplete-item');
+                if (menu.hidden || !items.length) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex + 1) % items.length;
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
+                } else if (e.key === 'Enter' && activeIndex >= 0) {
+                    e.preventDefault();
+                    input.value = items[activeIndex].dataset.value;
+                    close();
+                    return;
+                } else if (e.key === 'Escape') {
+                    close();
+                    return;
+                } else {
+                    return;
+                }
+                items.forEach(function(el, i) { el.classList.toggle('active', i === activeIndex); });
+                items[activeIndex].scrollIntoView({ block: 'nearest' });
+            });
+
+            // mousedown (not click) + preventDefault stops the input from
+            // blurring before the selection is read, matching the header
+            // search dropdown's click-outside pattern.
+            menu.addEventListener('mousedown', function(e) {
+                var item = e.target.closest('.autocomplete-item');
+                if (!item) return;
+                e.preventDefault();
+                input.value = item.dataset.value;
+                close();
+            });
+
+            document.addEventListener('click', function(e) {
+                if (e.target !== input && !menu.contains(e.target)) close();
+            });
         }
+
+        initAutocomplete(document.getElementById('model-creator'), document.getElementById('creator-menu'), CREATOR_OPTIONS);
+        initAutocomplete(document.getElementById('model-collection'), document.getElementById('collection-menu'), COLLECTION_OPTIONS);
 
         function getFileIcon(ext) {
             var icons = {
@@ -215,16 +292,6 @@ require_once 'includes/header.php';
                 display.textContent = '';
             }
         });
-
-        // Photo capture (mobile)
-        if (photoInput) {
-            photoInput.addEventListener('change', function(e) {
-                if (this.files.length > 0) {
-                    display.textContent = 'Photo captured: ' + this.files[0].name;
-                    display.style.color = 'var(--color-success)';
-                }
-            });
-        }
 
         // Drag and drop support
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {

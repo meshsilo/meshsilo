@@ -3,11 +3,7 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/dedup.php';
 
 // Require view stats permission
-if (!isLoggedIn() || !canViewStats()) {
-    $_SESSION['error'] = 'You do not have permission to view statistics.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canViewStats', 'You do not have permission to view statistics.');
 
 $pageTitle = 'Statistics';
 $activePage = 'admin';
@@ -20,8 +16,8 @@ $messageType = 'success';
 
 // Handle file cleanup actions (requires admin permission)
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $message = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $message = $csrfError;
     $messageType = 'error';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isAdmin()) {
     $action = $_POST['action'] ?? '';

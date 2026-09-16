@@ -7,7 +7,8 @@
  * uploadParts() is global and invoked by model-page.js (add-part-file change /
  * .trigger-add-parts click). Load order (set in includes/header.php): after
  * window.ModelPageConfig and the model-parts.js core, before model-page.js.
- * Relies on the global tus client (tus-js-client) and showToast from ui-common.js.
+ * Relies on the global tus client (tus-js-client) and on showToast / formatFileSize
+ * from ui-common.js.
  */
 
         // Upload parts function - uses TUS chunked resumable uploads
@@ -53,12 +54,6 @@
             var progressFill = progressContainer.querySelector('.progress-bar-fill');
             var progressText = progressContainer.querySelector('.add-parts-progress-text');
 
-            function formatSize(bytes) {
-                if (bytes < 1024) return bytes + ' B';
-                if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-                return (bytes / 1048576).toFixed(1) + ' MB';
-            }
-
             function updateOverallProgress(fileIndex, filePercent) {
                 var overall = Math.round(((fileIndex + filePercent / 100) / totalFiles) * 100);
                 progressFill.style.width = overall + '%';
@@ -85,7 +80,7 @@
                             onProgress: function(bytesUploaded, bytesTotal) {
                                 var percent = Math.round((bytesUploaded / bytesTotal) * 100);
                                 updateOverallProgress(i, percent);
-                                progressText.textContent = 'Uploading ' + (i + 1) + '/' + totalFiles + ': ' + file.name + ' — ' + percent + '% (' + formatSize(bytesUploaded) + ' / ' + formatSize(bytesTotal) + ')';
+                                progressText.textContent = 'Uploading ' + (i + 1) + '/' + totalFiles + ': ' + file.name + ' — ' + percent + '% (' + formatFileSize(bytesUploaded) + ' / ' + formatFileSize(bytesTotal) + ')';
                             },
                             onSuccess: function() {
                                 completedFiles++;

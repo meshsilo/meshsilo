@@ -6,11 +6,7 @@ require_once __DIR__ . '/../../includes/features.php';
 requireFeature('categories');
 
 // Require category management permission
-if (!isLoggedIn() || !canManageCategories()) {
-    $_SESSION['error'] = 'You do not have permission to manage categories.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageCategories', 'You do not have permission to manage categories.');
 
 $pageTitle = 'Manage Categories';
 $activePage = '';
@@ -29,8 +25,8 @@ $message = '';
 $error = '';
 
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_category'])) {
         $name = trim($_POST['category_name'] ?? '');

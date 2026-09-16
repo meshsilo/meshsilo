@@ -20,9 +20,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // CSRF validation for state-changing actions
 if (in_array($action, ['upload', 'delete', 'generate', 'set_from_attachment'])) {
-    if (!Csrf::check()) {
-        jsonError('Invalid request token', 403);
-    }
+    requireCsrfJson();
 }
 
 switch ($action) {
@@ -71,7 +69,7 @@ function uploadThumbnail() {
     }
 
     $ownerId = $model['user_id'] ?? null;
-    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
+    if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -107,7 +105,7 @@ function uploadThumbnail() {
     // Generate filename - derive extension from MIME type, not client filename
     $mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
     $ext = $mimeToExt[$mimeType] ?? 'jpg';
-    $filename = 'thumb_' . $modelId . '_' . time() . '.' . $ext;
+    $filename = 'thumb_' . $modelId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
     $filePath = $thumbDir . '/' . $filename;
     $relativePath = 'thumbnails/' . $filename;
 
@@ -125,7 +123,10 @@ function uploadThumbnail() {
     $stmt->execute([':id' => $modelId]);
     $model = $stmt->fetch();
 
-    if ($model && $model['thumbnail_path']) {
+    // Guard against unlinking the file we just wrote: the unique token in the
+    // new filename makes a collision practically impossible, but compare paths
+    // anyway so a stale thumbnail_path can never delete the fresh thumbnail.
+    if ($model && $model['thumbnail_path'] && $model['thumbnail_path'] !== $relativePath) {
         $oldPath = UPLOAD_PATH . $model['thumbnail_path'];
         if (file_exists($oldPath)) {
             unlink($oldPath);
@@ -176,7 +177,7 @@ function deleteThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? null;
-    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
+    if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -225,7 +226,7 @@ function generateThumbnail() {
 
     // Verify model ownership
     $ownerId = $model['user_id'] ?? null;
-    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
+    if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
         jsonError('Permission denied - not model owner');
         return;
     }
@@ -278,7 +279,7 @@ function setFromAttachment() {
     }
 
     $ownerId = $model['user_id'] ?? null;
-    if (!(userCanModifyModel(['user_id' => $ownerId], $user) || canEdit())) {
+    if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
         jsonError('Permission denied');
         return;
     }
@@ -316,7 +317,7 @@ function setFromAttachment() {
         $ext = 'jpg';
     }
 
-    $filename = 'thumb_' . $modelId . '_' . time() . '.' . $ext;
+    $filename = 'thumb_' . $modelId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
     $destPath = $thumbDir . '/' . $filename;
     $relativePath = 'thumbnails/' . $filename;
 
@@ -334,7 +335,7 @@ function setFromAttachment() {
     $stmt->execute([':id' => $modelId]);
     $existing = $stmt->fetch();
 
-    if ($existing && $existing['thumbnail_path']) {
+    if ($existing && $existing['thumbnail_path'] && $existing['thumbnail_path'] !== $relativePath) {
         $oldPath = UPLOAD_PATH . $existing['thumbnail_path'];
         if (file_exists($oldPath)) {
             @unlink($oldPath);

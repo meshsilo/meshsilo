@@ -22,6 +22,9 @@ require_once __DIR__ . '/plugin/PluginRepository.php';
  */
 class PluginManager
 {
+    /** Marker prefix for encrypted setting values stored in plugins.settings. */
+    private const ENC_PREFIX = 'enc:v1:';
+
     private static ?self $instance = null;
     private array $plugins = [];
     private array $activePlugins = [];
@@ -76,7 +79,10 @@ class PluginManager
         }
 
         foreach ($dirs as $entry) {
-            if ($entry === '.' || $entry === '..') {
+            // Skip hidden entries: '.', '..', and transient dirs like the
+            // '.backup-<id>-<ts>' folders created during upgrades, whose
+            // stale manifests must never shadow the live plugin.
+            if ($entry === '' || $entry[0] === '.') {
                 continue;
             }
 
@@ -92,6 +98,15 @@ class PluginManager
 
             $manifest = json_decode($json, true);
             if (!is_array($manifest) || empty($manifest['id']) || empty($manifest['name']) || empty($manifest['version'])) {
+                continue;
+            }
+
+            if (isset($this->plugins[$manifest['id']])) {
+                logWarning('Duplicate plugin ID found during discovery; keeping first', [
+                    'id' => $manifest['id'],
+                    'kept_dir' => $this->plugins[$manifest['id']]['_dir'],
+                    'skipped_dir' => $entry,
+                ]);
                 continue;
             }
 
@@ -122,8 +137,34 @@ class PluginManager
     public function loadActivePlugins(): void
     {
         foreach ($this->activePlugins as $id => $active) {
-            $this->bootPlugin($id);
+            $this->bootPluginWithDependencies($id, []);
         }
+    }
+
+    /**
+     * Boot a plugin after its active requires_plugins dependencies, so a
+     * dependent plugin can call into its dependency during boot regardless
+     * of activation order. Circular requirements fall back to registration
+     * order rather than recursing forever.
+     *
+     * @param list<string> $stack Plugin ids currently being resolved (cycle guard).
+     */
+    private function bootPluginWithDependencies(string $id, array $stack): void
+    {
+        if (isset($this->bootedPlugins[$id]) || in_array($id, $stack, true)) {
+            return;
+        }
+
+        $requires = $this->plugins[$id]['requires_plugins'] ?? [];
+        if (is_array($requires)) {
+            foreach ($requires as $dep) {
+                if (is_string($dep) && isset($this->activePlugins[$dep])) {
+                    $this->bootPluginWithDependencies($dep, [...$stack, $id]);
+                }
+            }
+        }
+
+        $this->bootPlugin($id);
     }
 
     public function bootPlugin(string $id): void
@@ -242,24 +283,31 @@ class PluginManager
     // Lifecycle Methods
     // ========================================================================
 
-    public function enablePlugin(string $id): bool
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function enablePlugin(string $id): array
     {
         if (!isset($this->plugins[$id])) {
-            return false;
+            return ['success' => false, 'error' => "Plugin not found: $id"];
         }
 
         $manifest = $this->plugins[$id];
 
         if (defined('MESHSILO_VERSION') && !empty($manifest['min_silo_version'])) {
             if (version_compare(MESHSILO_VERSION, $manifest['min_silo_version'], '<')) {
-                return false;
+                return [
+                    'success' => false,
+                    'error' => 'Requires MeshSilo ' . $manifest['min_silo_version']
+                        . ' or newer (current: ' . MESHSILO_VERSION . ')',
+                ];
             }
         }
 
         if (!empty($manifest['requires_plugins']) && is_array($manifest['requires_plugins'])) {
             foreach ($manifest['requires_plugins'] as $dep) {
                 if (!$this->isPluginActive($dep)) {
-                    return false;
+                    return ['success' => false, 'error' => "Requires plugin '$dep' to be active first"];
                 }
             }
         }
@@ -268,20 +316,28 @@ class PluginManager
             $db = getDB();
             $type = $db->getType();
 
+            // Insert the full manifest data: a plugin dropped (or symlinked)
+            // into plugins/ has no DB row yet, and the schema requires name.
             if ($type === 'mysql') {
                 $stmt = $db->prepare(
-                    'INSERT INTO plugins (id, is_active, installed_at, updated_at) '
-                    . 'VALUES (:id, 1, NOW(), NOW()) '
+                    'INSERT INTO plugins (id, name, version, description, author, is_active, installed_at, updated_at) '
+                    . 'VALUES (:id, :name, :version, :description, :author, 1, NOW(), NOW()) '
                     . 'ON DUPLICATE KEY UPDATE is_active = 1, updated_at = NOW()'
                 );
             } else {
                 $stmt = $db->prepare(
-                    'INSERT INTO plugins (id, is_active, installed_at, updated_at) '
-                    . 'VALUES (:id, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) '
+                    'INSERT INTO plugins (id, name, version, description, author, is_active, installed_at, updated_at) '
+                    . 'VALUES (:id, :name, :version, :description, :author, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) '
                     . 'ON CONFLICT(id) DO UPDATE SET is_active = 1, updated_at = CURRENT_TIMESTAMP'
                 );
             }
-            $stmt->execute([':id' => $id]);
+            $stmt->execute([
+                ':id' => $id,
+                ':name' => $manifest['name'] ?? $id,
+                ':version' => $manifest['version'] ?? '0.0.0',
+                ':description' => $manifest['description'] ?? '',
+                ':author' => $manifest['author'] ?? '',
+            ]);
 
             $this->activePlugins[$id] = true;
 
@@ -290,18 +346,21 @@ class PluginManager
                 $this->runPluginMigrations($id);
             }
 
-            Router::clearCache();
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin enabled: $id");
+            $this->hooks->doAction('plugin_enabled', $id);
 
-            return true;
+            return ['success' => true];
         } catch (\Exception $e) {
             logError("Failed to enable plugin: $id", ['error' => $e->getMessage()]);
-            return false;
+            return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
         }
     }
 
-    public function disablePlugin(string $id): bool
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function disablePlugin(string $id): array
     {
         try {
             // Check if other active plugins depend on this one
@@ -312,7 +371,7 @@ class PluginManager
                 $otherManifest = $this->plugins[$otherId] ?? [];
                 $requires = $otherManifest['requires_plugins'] ?? [];
                 if (is_array($requires) && in_array($id, $requires, true)) {
-                    return false;
+                    return ['success' => false, 'error' => "Cannot disable: active plugin '$otherId' depends on it"];
                 }
             }
 
@@ -328,14 +387,14 @@ class PluginManager
 
             unset($this->activePlugins[$id]);
 
-            Router::clearCache();
             @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
             logInfo("Plugin disabled: $id");
+            $this->hooks->doAction('plugin_disabled', $id);
 
-            return true;
+            return ['success' => true];
         } catch (\Exception $e) {
             logError("Failed to disable plugin: $id", ['error' => $e->getMessage()]);
-            return false;
+            return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
         }
     }
 
@@ -400,6 +459,23 @@ class PluginManager
         $targetDir = $this->pluginsDir . '/' . $pluginId;
         $backupDir = null;
 
+        // Advisory warnings: neither blocks the install, but the admin UI
+        // surfaces them. Enable-time enforcement of min_silo_version stays
+        // the hard gate.
+        $warnings = [];
+        if (defined('MESHSILO_VERSION') && !empty($manifest['min_silo_version'])
+            && version_compare(MESHSILO_VERSION, $manifest['min_silo_version'], '<')) {
+            $warnings[] = 'Requires MeshSilo ' . $manifest['min_silo_version']
+                . ' or newer (current: ' . MESHSILO_VERSION . '); it cannot be enabled until the app is upgraded';
+        }
+        if ($isUpgrade) {
+            $installedVersion = $this->plugins[$pluginId]['version'] ?? '0.0.0';
+            if (version_compare($manifest['version'], $installedVersion, '<')) {
+                $warnings[] = 'Downgrade: replacing version ' . $installedVersion
+                    . ' with older version ' . $manifest['version'];
+            }
+        }
+
         $tempDir = sys_get_temp_dir() . '/meshsilo_plugin_' . bin2hex(random_bytes(8));
         @mkdir($tempDir, 0755, true);
 
@@ -424,20 +500,34 @@ class PluginManager
         // If upgrading, backup existing plugin directory
         if ($isUpgrade && is_dir($targetDir)) {
             $backupDir = $this->pluginsDir . '/.backup-' . $pluginId . '-' . time();
-            if (!rename($targetDir, $backupDir)) {
+            if (!@rename($targetDir, $backupDir)) {
                 self::recursiveDelete($tempDir);
                 return ['success' => false, 'error' => 'Failed to backup existing plugin for upgrade'];
             }
         }
 
-        // Move new files into place
-        if (!rename($sourceDir, $targetDir)) {
-            // Restore backup on failure
-            if ($backupDir && is_dir($backupDir)) {
-                rename($backupDir, $targetDir);
+        // Move new files into place. rename() fails across filesystem
+        // boundaries (common in Docker), so fall back to recursive copy + delete
+        // (mirrors the registry-install path's swap-into-place logic below).
+        // @-suppressed: an unsuppressed rename() warning is converted into a
+        // thrown ErrorException by ErrorHandler::handleError(), which would
+        // abort this statement before it ever returns false - the try/catch
+        // fallback below would never run.
+        if (!@rename($sourceDir, $targetDir)) {
+            try {
+                self::recursiveCopy($sourceDir, $targetDir);
+            } catch (\RuntimeException $e) {
+                // Restore the previous install over any partial copy
+                if ($backupDir && is_dir($backupDir)) {
+                    if (is_dir($targetDir)) {
+                        self::recursiveDelete($targetDir);
+                    }
+                    @rename($backupDir, $targetDir);
+                }
+                self::recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Failed to move plugin to plugins directory: ' . $e->getMessage()];
             }
-            self::recursiveDelete($tempDir);
-            return ['success' => false, 'error' => 'Failed to move plugin to plugins directory'];
+            self::recursiveDelete($sourceDir);
         }
 
         // Clean up temp dir and backup
@@ -493,16 +583,41 @@ class PluginManager
         $this->plugins[$pluginId] = $manifest;
         $this->plugins[$pluginId]['_dir'] = $pluginId;
 
+        self::resetOpcodeCache();
         logInfo($isUpgrade ? "Plugin upgraded: $pluginId" : "Plugin installed: $pluginId");
 
-        return ['success' => true, 'plugin' => $manifest, 'upgraded' => $isUpgrade];
+        return [
+            'success' => true,
+            'plugin' => $manifest,
+            'upgraded' => $isUpgrade,
+            'warning' => $warnings !== [] ? implode('; ', $warnings) : null,
+        ];
     }
 
     public function uninstallPlugin(string $id): bool
     {
         if ($this->isPluginActive($id)) {
-            if (!$this->disablePlugin($id)) {
+            if (!$this->disablePlugin($id)['success']) {
                 return false;
+            }
+        }
+
+        $pluginDir = $this->pluginsDir . '/' . ($this->plugins[$id]['_dir'] ?? $id);
+
+        // Give the plugin a chance to clean up after itself (drop its tables,
+        // remove created files). Runs BEFORE the DB row is deleted so the
+        // script can still read its settings, and errors are isolated so a
+        // broken script cannot leave the plugin half-removed.
+        $uninstallFile = $pluginDir . '/uninstall.php';
+        if (is_file($uninstallFile)) {
+            try {
+                (function (string $_file, string $_pluginDir, array $_pluginMeta): void {
+                    $pluginDir = $_pluginDir;
+                    $pluginMeta = $_pluginMeta;
+                    require $_file;
+                })($uninstallFile, $pluginDir, $this->plugins[$id] ?? ['id' => $id]);
+            } catch (\Throwable $e) {
+                logError("Plugin uninstall script failed: $id", ['error' => $e->getMessage()]);
             }
         }
 
@@ -514,7 +629,6 @@ class PluginManager
             logError("Failed to delete plugin DB row: $id", ['error' => $e->getMessage()]);
         }
 
-        $pluginDir = $this->pluginsDir . '/' . ($this->plugins[$id]['_dir'] ?? $id);
         if (is_dir($pluginDir)) {
             self::recursiveDelete($pluginDir);
         }
@@ -522,11 +636,27 @@ class PluginManager
         unset($this->plugins[$id]);
         unset($this->activePlugins[$id]);
 
-        Router::clearCache();
         @unlink(dirname(__DIR__) . '/storage/cache/classmap.php');
+        self::resetOpcodeCache();
         logInfo("Plugin uninstalled: $id");
+        $this->hooks->doAction('plugin_uninstalled', $id);
 
         return true;
+    }
+
+    /**
+     * Reset the opcode cache after plugin FILES change on disk. Production
+     * runs opcache.validate_timestamps=0, so without this an updated
+     * plugin's PHP keeps executing from the previously compiled code until
+     * php-fpm restarts - installs/updates appear to "not take effect".
+     * Preload covers only core includes, so a reset fully refreshes plugin
+     * code. No-op when opcache is absent or disabled.
+     */
+    private static function resetOpcodeCache(): void
+    {
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
     }
 
     // ========================================================================
@@ -570,14 +700,19 @@ class PluginManager
         $this->scripts[] = ['plugin' => $pluginId, 'path' => $relativePath];
     }
 
+    /**
+     * Register a filter hook. Higher priority runs first (note: the reverse
+     * of WordPress, where lower priority runs first).
+     */
     public function addFilter(string $hook, callable $callback, int $priority = 10): void
     {
         $this->hooks->addFilter($hook, $callback, $priority, $this->currentPluginId);
     }
 
     /**
-     * Register an action hook (event listener).
-     * Unlike filters, actions don't return/modify a value — they just execute.
+     * Register an action hook (event listener). Higher priority runs first
+     * (the reverse of WordPress, where lower priority runs first).
+     * Unlike filters, actions don't return/modify a value - they just execute.
      */
     public function addAction(string $event, callable $callback, int $priority = 10): void
     {
@@ -585,7 +720,57 @@ class PluginManager
     }
 
     /**
-     * Fire an action event. All registered listeners are called.
+     * Unregister a previously added filter callback.
+     */
+    public function removeFilter(string $hook, callable $callback): bool
+    {
+        return $this->hooks->removeFilter($hook, $callback);
+    }
+
+    /**
+     * Unregister a previously added action callback.
+     */
+    public function removeAction(string $event, callable $callback): bool
+    {
+        return $this->hooks->removeAction($event, $callback);
+    }
+
+    public function hasFilter(string $hook): bool
+    {
+        return $this->hooks->hasFilter($hook);
+    }
+
+    public function hasAction(string $event): bool
+    {
+        return $this->hooks->hasAction($event);
+    }
+
+    /**
+     * All registered filter listeners, keyed by hook name (introspection,
+     * e.g. the admin Hooks page).
+     *
+     * @return array<string, list<array{callback: callable, priority: int, plugin: string}>>
+     */
+    public function getRegisteredFilters(): array
+    {
+        return $this->hooks->getFilters();
+    }
+
+    /**
+     * All registered action listeners, keyed by event name (introspection).
+     *
+     * @return array<string, list<array{callback: callable, priority: int, plugin: string}>>
+     */
+    public function getRegisteredActions(): array
+    {
+        return $this->hooks->getActions();
+    }
+
+    /**
+     * Fire an action event. All registered listeners are called - both
+     * addAction listeners and legacy addFilter registrations under the same
+     * name (called as ($value=null, ...$args), matching the historical
+     * applyFilter($event, null, ...) dispatch of event-shaped hooks).
      */
     public static function doAction(string $event, mixed ...$args): void
     {
@@ -593,11 +778,12 @@ class PluginManager
     }
 
     /**
-     * Get a plugin setting value.
+     * Get a plugin setting value. Encrypted values (password-type fields
+     * saved while encryption is configured) are decrypted transparently.
      */
     public function getSetting(string $pluginId, string $key, mixed $default = null): mixed
     {
-        return $this->settingsStore->get($pluginId, $key, $default);
+        return $this->decryptSettingValue($this->settingsStore->get($pluginId, $key, $default), $default);
     }
 
     /**
@@ -609,11 +795,43 @@ class PluginManager
     }
 
     /**
-     * Get all settings for a plugin.
+     * Get all settings for a plugin. Encrypted values are decrypted.
      */
     public function getSettings(string $pluginId): array
     {
-        return $this->settingsStore->getAll($pluginId);
+        return array_map(
+            fn(mixed $value): mixed => $this->decryptSettingValue($value, ''),
+            $this->settingsStore->getAll($pluginId)
+        );
+    }
+
+    /**
+     * Decrypt a setting value written by savePluginSettings for a
+     * password-type field. Non-encrypted values pass through untouched;
+     * an undecryptable value (missing/rotated key) yields $default so
+     * ciphertext never leaks to callers or forms.
+     */
+    private function decryptSettingValue(mixed $value, mixed $default): mixed
+    {
+        if (!is_string($value) || !str_starts_with($value, self::ENC_PREFIX)) {
+            return $value;
+        }
+
+        if (!class_exists('Encryption') || !Encryption::isEnabled()) {
+            logWarning('Cannot decrypt plugin setting: encryption not configured');
+            return $default;
+        }
+
+        try {
+            $raw = base64_decode(substr($value, strlen(self::ENC_PREFIX)), true);
+            if ($raw === false) {
+                return $default;
+            }
+            return Encryption::decrypt($raw, 'plugin-settings');
+        } catch (\Throwable $e) {
+            logWarning('Failed to decrypt plugin setting', ['error' => $e->getMessage()]);
+            return $default;
+        }
     }
 
     /**
@@ -654,6 +872,9 @@ class PluginManager
             $default = $field['default'] ?? '';
             $description = htmlspecialchars($field['description'] ?? '');
             $value = $savedSettings[$key] ?? $default;
+            // Tolerate non-scalar values written before save-side validation
+            // existed; htmlspecialchars() would TypeError on them.
+            $value = is_scalar($value) ? (string)$value : '';
             $inputName = 'plugin_settings[' . htmlspecialchars($key) . ']';
 
             $html .= '<div class="form-group">';
@@ -705,21 +926,55 @@ class PluginManager
 
     /**
      * Save plugin settings from form POST data.
+     *
+     * Only fields declared in the manifest are saved (prevents arbitrary key
+     * injection), values are coerced to scalars by declared type (a crafted
+     * plugin_settings[key][] POST would otherwise store an array and crash
+     * the settings form render), and password-type values are encrypted at
+     * rest when encryption is configured.
      */
     public function savePluginSettings(string $pluginId, array $postData): bool
     {
         $manifest = $this->plugins[$pluginId] ?? [];
         $fields = $manifest['settings'] ?? [];
-        if (empty($fields)) {
+        if (empty($fields) || !is_array($fields)) {
             return false;
         }
 
-        // Only save declared fields (prevent arbitrary key injection)
-        $allowedKeys = array_column($fields, 'key');
-        foreach ($allowedKeys as $key) {
-            if (array_key_exists($key, $postData)) {
-                $this->setSetting($pluginId, $key, $postData[$key]);
+        foreach ($fields as $field) {
+            $key = $field['key'] ?? '';
+            if ($key === '' || !array_key_exists($key, $postData)) {
+                continue;
             }
+
+            $value = $postData[$key];
+            if (!is_scalar($value) && $value !== null) {
+                logWarning('Ignored non-scalar plugin setting value', ['plugin' => $pluginId, 'key' => $key]);
+                continue;
+            }
+            $value = (string)($value ?? '');
+
+            $type = $field['type'] ?? 'text';
+            if ($type === 'checkbox') {
+                $value = $value === '1' ? '1' : '0';
+            } elseif ($type === 'number' && $value !== '' && !is_numeric($value)) {
+                logWarning('Ignored non-numeric plugin setting value', ['plugin' => $pluginId, 'key' => $key]);
+                continue;
+            }
+
+            if ($type === 'password' && $value !== '' && class_exists('Encryption') && Encryption::isEnabled()) {
+                try {
+                    $value = self::ENC_PREFIX . base64_encode(Encryption::encrypt($value, 'plugin-settings'));
+                } catch (\Throwable $e) {
+                    logWarning('Failed to encrypt plugin setting; storing as plaintext', [
+                        'plugin' => $pluginId,
+                        'key' => $key,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $this->setSetting($pluginId, $key, $value);
         }
 
         return true;
@@ -770,6 +1025,11 @@ class PluginManager
         return $html;
     }
 
+    /**
+     * Plugin scripts are external files under /plugin-assets/, which script-src
+     * already covers via 'self' - no CSP nonce needed here. Inline scripts a
+     * plugin injects through a hook DO need one; see docs/PLUGINS.md.
+     */
     public function renderScripts(): string
     {
         $html = '';
@@ -812,6 +1072,20 @@ class PluginManager
         return self::getInstance()->hooks->applyFilter($hook, $value, ...$args);
     }
 
+    /**
+     * Run an allow/deny gate (e.g. before_download, before_delete) through
+     * the filter chain. Allowed only when the result is exactly true; a
+     * listener may return false or a string denial reason. Unlike
+     * applyFilter, a listener that throws DENIES the operation - security
+     * gates fail closed.
+     *
+     * @return mixed true to allow; false or a string denial reason otherwise
+     */
+    public static function applyGate(string $hook, mixed $default, mixed ...$args): mixed
+    {
+        return self::getInstance()->hooks->applyGate($hook, $default, ...$args);
+    }
+
     // ========================================================================
     // Repository Methods
     // ========================================================================
@@ -821,9 +1095,9 @@ class PluginManager
         return $this->repository->getRepositories();
     }
 
-    public function addRepository(string $name, string $url): bool
+    public function addRepository(string $name, string $url, string $token = ''): bool
     {
-        return $this->repository->addRepository($name, $url);
+        return $this->repository->addRepository($name, $url, $token);
     }
 
     public function removeRepository(int $id): bool
@@ -834,6 +1108,17 @@ class PluginManager
     public function fetchRegistry(string $repoUrl): ?array
     {
         return $this->repository->fetchRegistry($repoUrl);
+    }
+
+    /**
+     * Fetch several registries concurrently.
+     *
+     * @param  list<string> $urls
+     * @return array<string, array|null> url => registry (null on failure)
+     */
+    public function fetchRegistries(array $urls): array
+    {
+        return $this->repository->fetchRegistries($urls);
     }
 
     public function getAvailablePlugins(): array
@@ -860,6 +1145,9 @@ class PluginManager
                 }
                 $plugin['_installed'] = isset($this->plugins[$plugin['id']]);
                 $plugin['_repo'] = $repo['name'] ?? $repo['url'];
+                // Which repository advertises this plugin - used server-side
+                // to look up that repository's access token at install time
+                $plugin['_repo_url'] = $repo['url'];
 
                 // Version comparison
                 if ($plugin['_installed']) {
@@ -887,18 +1175,13 @@ class PluginManager
     public function installFromRepo(string $pluginId, array $source): array
     {
         $type = $source['type'] ?? 'github';
-        $repo = $source['repo'] ?? '';
-        $branch = $source['branch'] ?? 'main';
-        $path = $source['path'] ?? '';
 
-        if ($type !== 'github' || empty($repo) || empty($path)) {
-            return ['success' => false, 'error' => 'Invalid source configuration'];
-        }
-
-        // Validate repo format (owner/name)
-        if (!preg_match('/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/', $repo)) {
-            return ['success' => false, 'error' => 'Invalid repository format'];
-        }
+        // Resolve the advertising repository's access token server-side (the
+        // token never round-trips through the browser). Also reused below for
+        // checksum verification.
+        $registryEntry = $this->getAvailablePlugins()[$pluginId] ?? [];
+        $repoUrl = $registryEntry['_repo_url'] ?? '';
+        $token = $repoUrl !== '' ? $this->repository->getTokenForUrl($repoUrl) : null;
 
         $pluginsDir = dirname(__DIR__) . '/plugins';
         if (!is_dir($pluginsDir)) {
@@ -911,11 +1194,37 @@ class PluginManager
         $tempDir = sys_get_temp_dir() . '/meshsilo-plugin-' . $pluginId . '-' . uniqid();
         mkdir($tempDir, 0755, true);
 
-        try {
-            $this->downloadGitHubDirectory($repo, $branch, $path, $tempDir);
-        } catch (\Exception $e) {
+        if ($type === 'github') {
+            $repo = $source['repo'] ?? '';
+            $branch = $source['branch'] ?? 'main';
+            $path = $source['path'] ?? '';
+
+            if (empty($repo) || empty($path)) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Invalid source configuration'];
+            }
+
+            // Validate repo format (owner/name)
+            if (!preg_match('/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/', $repo)) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Invalid repository format'];
+            }
+
+            try {
+                $this->downloadGitHubDirectory($repo, $branch, $path, $tempDir, $token);
+            } catch (\Exception $e) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Failed to download plugin: ' . $e->getMessage()];
+            }
+        } elseif ($type === 'zip' || $type === 'archive') {
+            $archiveError = $this->acquireArchiveToDir($source, $tempDir, $token);
+            if ($archiveError !== null) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => $archiveError];
+            }
+        } else {
             $this->recursiveDelete($tempDir);
-            return ['success' => false, 'error' => 'Failed to download plugin: ' . $e->getMessage()];
+            return ['success' => false, 'error' => 'Unsupported source type: ' . $type];
         }
 
         // Validate the downloaded plugin has a manifest
@@ -931,9 +1240,37 @@ class PluginManager
             return ['success' => false, 'error' => 'Invalid plugin.json in downloaded plugin'];
         }
 
-        // All files downloaded and validated — swap into place
+        // Integrity: when the registry entry carries a per-file sha256
+        // checksum map, every listed file must match or the install aborts.
+        // ($registryEntry resolved above, before acquisition.)
+        $checksums = $registryEntry['checksums'] ?? null;
+        if (is_array($checksums) && $checksums !== []) {
+            $checksumError = self::verifyChecksums($tempDir, $checksums);
+            if ($checksumError !== null) {
+                $this->recursiveDelete($tempDir);
+                logWarning('Plugin checksum verification failed', ['plugin' => $pluginId, 'error' => $checksumError]);
+                return ['success' => false, 'error' => 'Checksum verification failed: ' . $checksumError];
+            }
+        }
+
+        $warnings = [];
+        if (defined('MESHSILO_VERSION') && !empty($manifest['min_silo_version'])
+            && version_compare(MESHSILO_VERSION, $manifest['min_silo_version'], '<')) {
+            $warnings[] = 'Requires MeshSilo ' . $manifest['min_silo_version']
+                . ' or newer (current: ' . MESHSILO_VERSION . '); it cannot be enabled until the app is upgraded';
+        }
+
+        // All files downloaded and validated - swap into place. Move any
+        // existing install aside first so a failed swap can be rolled back
+        // instead of leaving the plugin destroyed (mirrors installPlugin's
+        // zip upgrade path).
+        $backupDir = null;
         if (is_dir($destDir)) {
-            $this->recursiveDelete($destDir);
+            $backupDir = $pluginsDir . '/.backup-' . $pluginId . '-' . time();
+            if (!@rename($destDir, $backupDir)) {
+                $this->recursiveDelete($tempDir);
+                return ['success' => false, 'error' => 'Failed to back up existing plugin for upgrade'];
+            }
         }
         // rename() fails across filesystem boundaries (common in Docker),
         // so fall back to recursive copy + delete
@@ -942,6 +1279,13 @@ class PluginManager
                 $this->recursiveCopy($tempDir, $destDir);
             } catch (\RuntimeException $e) {
                 $this->recursiveDelete($tempDir);
+                // Restore the previous install over any partial copy
+                if ($backupDir !== null) {
+                    if (is_dir($destDir)) {
+                        $this->recursiveDelete($destDir);
+                    }
+                    @rename($backupDir, $destDir);
+                }
                 logWarning('Plugin install failed during file copy', [
                     'plugin' => $pluginId,
                     'error' => $e->getMessage(),
@@ -953,6 +1297,9 @@ class PluginManager
                 ];
             }
             $this->recursiveDelete($tempDir);
+        }
+        if ($backupDir !== null && is_dir($backupDir)) {
+            $this->recursiveDelete($backupDir);
         }
 
         // Register in database
@@ -989,25 +1336,146 @@ class PluginManager
 
         // Re-discover plugins
         $this->discoverPlugins();
+        self::resetOpcodeCache();
 
         return [
             'success' => true,
             'plugin' => $manifest,
+            'warning' => $warnings !== [] ? implode('; ', $warnings) : null,
         ];
     }
 
     /**
-     * Recursively download a directory from a GitHub repository using the Contents API.
+     * Verify a directory's files against a per-file sha256 checksum map
+     * (relative path => hex digest) from a plugin registry entry.
+     * Returns a human-readable error, or null when everything matches.
      */
-    private function downloadGitHubDirectory(string $repo, string $branch, string $path, string $destDir): void
+    private static function verifyChecksums(string $dir, array $checksums): ?string
+    {
+        foreach ($checksums as $relPath => $expected) {
+            if (!is_string($relPath) || !is_string($expected) || $expected === '') {
+                return 'malformed checksum entry';
+            }
+            if (str_contains($relPath, '..') || str_starts_with($relPath, '/')) {
+                return 'unsafe path in checksum manifest: ' . $relPath;
+            }
+            $file = $dir . '/' . $relPath;
+            if (!is_file($file)) {
+                return 'file listed in checksum manifest is missing: ' . $relPath;
+            }
+            $actual = hash_file('sha256', $file);
+            if ($actual === false || !hash_equals(strtolower($expected), $actual)) {
+                return 'hash mismatch for ' . $relPath;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Stage a plugin from a zip archive URL (source type "zip"/"archive") into
+     * $tempDir. Works with any forge's HTTP archive endpoint (GitLab
+     * /-/archive/, Gitea /archive/, GitHub /archive/), authenticated via the
+     * repository's token when configured. The optional source "path" selects
+     * a subdirectory inside the archive (multi-plugin repos); a single
+     * archive root folder (repo-branch/) is looked through automatically.
+     * Returns a user-facing error string, or null on success.
+     */
+    private function acquireArchiveToDir(array $source, string $tempDir, ?string $token): ?string
+    {
+        $url = $source['url'] ?? '';
+        if (!is_string($url) || $url === '') {
+            return 'Archive source requires a url';
+        }
+        $path = trim((string)($source['path'] ?? ''), '/');
+        if (str_contains($path, '..')) {
+            return 'Unsafe path in archive source';
+        }
+        if (!class_exists('ZipArchive')) {
+            return 'ZipArchive extension not available';
+        }
+
+        $zipPath = $tempDir . '.zip';
+        if (!$this->repository->fetchToFile($url, $zipPath, $token)) {
+            return 'Failed to download archive (check the URL, access token, and private-host setting)';
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            @unlink($zipPath);
+            return 'Downloaded archive is not a readable zip';
+        }
+
+        // Validate entries for path traversal before extraction
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if ($entryName === false) {
+                continue;
+            }
+            if (str_contains($entryName, '..') || str_starts_with($entryName, '/') || str_starts_with($entryName, '\\')) {
+                $zip->close();
+                @unlink($zipPath);
+                return 'Archive contains unsafe paths';
+            }
+        }
+
+        $extractDir = $tempDir . '-extract';
+        @mkdir($extractDir, 0755, true);
+        $zip->extractTo($extractDir);
+        $zip->close();
+        @unlink($zipPath);
+
+        // Locate the plugin directory: as given, or under the single root
+        // folder forges prepend (e.g. myrepo-main/)
+        $roots = [$extractDir];
+        $entries = array_values(array_diff(scandir($extractDir) ?: [], ['.', '..']));
+        if (count($entries) === 1 && is_dir($extractDir . '/' . $entries[0])) {
+            $roots[] = $extractDir . '/' . $entries[0];
+        }
+
+        $sourceDir = null;
+        foreach ($roots as $root) {
+            $candidate = $path !== '' ? $root . '/' . $path : $root;
+            if (is_file($candidate . '/plugin.json')) {
+                $sourceDir = $candidate;
+                break;
+            }
+        }
+
+        if ($sourceDir === null) {
+            self::recursiveDelete($extractDir);
+            return 'plugin.json not found in archive' . ($path !== '' ? " under '$path'" : '');
+        }
+
+        try {
+            self::recursiveCopy($sourceDir, $tempDir);
+        } catch (\RuntimeException $e) {
+            self::recursiveDelete($extractDir);
+            return 'Failed to stage archive contents: ' . $e->getMessage();
+        }
+        self::recursiveDelete($extractDir);
+
+        return null;
+    }
+
+    /**
+     * Recursively download a directory from a GitHub repository using the
+     * Contents API. A repository access token enables private repos and
+     * raises the API rate limit.
+     */
+    private function downloadGitHubDirectory(string $repo, string $branch, string $path, string $destDir, ?string $token = null): void
     {
         $apiUrl = 'https://api.github.com/repos/' . $repo . '/contents/' . ltrim($path, '/') . '?ref=' . urlencode($branch);
+
+        $header = "User-Agent: MeshSilo/" . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0') . "\r\n"
+                . "Accept: application/vnd.github.v3+json\r\n";
+        if ($token !== null && $token !== '') {
+            $header .= 'Authorization: Bearer ' . $token . "\r\n";
+        }
 
         $context = stream_context_create([
             'http' => [
                 'timeout' => 30,
-                'header' => "User-Agent: MeshSilo/" . (defined('MESHSILO_VERSION') ? MESHSILO_VERSION : '1.0.0') . "\r\n"
-                           . "Accept: application/vnd.github.v3+json\r\n",
+                'header' => $header,
             ],
         ]);
 
@@ -1021,7 +1489,7 @@ class PluginManager
             throw new \RuntimeException('Invalid response from GitHub API');
         }
 
-        // GitHub API errors return {"message": "..."} — detect and throw
+        // GitHub API errors return {"message": "..."} - detect and throw
         if (isset($items['message'])) {
             throw new \RuntimeException('GitHub API error: ' . $items['message']);
         }
@@ -1068,7 +1536,7 @@ class PluginManager
                 if (!is_dir($subDir)) {
                     mkdir($subDir, 0755, true);
                 }
-                $this->downloadGitHubDirectory($repo, $branch, $path . '/' . $name, $subDir);
+                $this->downloadGitHubDirectory($repo, $branch, $path . '/' . $name, $subDir, $token);
             }
         }
     }
@@ -1247,7 +1715,7 @@ class PluginManager
 
             // Remove stale destination file first. copy() cannot overwrite a
             // file the web server user doesn't own, but unlink() works as long
-            // as the parent directory is writable — this handles the common
+            // as the parent directory is writable - this handles the common
             // case of a previous partial install leaving read-only files.
             if (file_exists($dstPath) || is_link($dstPath)) {
                 @unlink($dstPath);

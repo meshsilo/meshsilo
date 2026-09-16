@@ -10,12 +10,15 @@ require_once __DIR__ . '/../../includes/dedup.php';
 function downloadError(int $code, string $message): never {
     http_response_code($code);
     header('Content-Type: application/json');
-    echo json_encode(['error' => $message]);
+    // Matches the action-surface envelope used by jsonError().
+    echo json_encode(['success' => false, 'error' => $message]);
     exit;
 }
 
-// Require authentication
-if (!isLoggedIn()) {
+// Require authentication, unless anonymous browsing/downloads are enabled
+// (Issue #2). Router-level enforceAuthentication() already gates this route
+// the same way; this is defense in depth for a direct request.
+if (!isLoggedIn() && getSetting('require_login', '1') === '1') {
     downloadError(401, 'Authentication required');
 }
 
@@ -35,31 +38,15 @@ if (!$part) {
     downloadError(404, 'File not found');
 }
 
-// Check ownership - user must own the model or be admin
-// Models with NULL user_id are accessible to all authenticated users (backward compatibility)
-$user = getCurrentUser();
-$ownerId = $part['user_id'] ?? null;
+// Models are shared: any authenticated user may download any model, consistent
+// with /browse and the /assets file route. Authentication is enforced upstream
+// by the router; downloads are not owner-gated. A plugin may still restrict a
+// download via the before_download gate below.
 
-// If this is a child part, check the parent model's ownership
-if ($part['parent_id']) {
-    $parentStmt = $db->prepare('SELECT user_id FROM models WHERE id = :id');
-    $parentStmt->bindValue(':id', $part['parent_id'], PDO::PARAM_INT);
-    $parentResult = $parentStmt->execute();
-    $parentModel = $parentResult->fetchArray(PDO::FETCH_ASSOC);
-    if ($parentModel) {
-        $ownerId = $parentModel['user_id'] ?? null;
-    }
-}
-
-// Deny access if model has an owner and current user is not the owner or admin
-// Cast to int to handle PDO returning strings depending on configuration
-if (!userCanModifyModel(['user_id' => $ownerId], $user)) {
-    downloadError(403, 'Access denied');
-}
-
-// Plugin hook: before_download - access control, quota checks, download analytics
+// Plugin hook: before_download - access control, quota checks, download analytics.
+// applyGate fails closed: a crashing plugin denies the download.
 if (class_exists('PluginManager')) {
-    $allowed = PluginManager::applyFilter('before_download', true, $part, getCurrentUser());
+    $allowed = PluginManager::applyGate('before_download', true, $part, getCurrentUser());
     if ($allowed !== true) {
         http_response_code(403);
         echo is_string($allowed) ? $allowed : 'Download blocked';

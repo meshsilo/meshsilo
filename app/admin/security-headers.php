@@ -18,8 +18,8 @@ $error = '';
 
 // Handle form submission
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'save';
 
@@ -89,6 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         ];
 
         SecurityHeaders::saveConfig($config);
+
+        // CORS settings for the REST API (read by CorsMiddleware)
+        setSetting('cors_allowed_origins', trim($_POST['cors_allowed_origins'] ?? ''));
+        setSetting('cors_allow_credentials', isset($_POST['cors_allow_credentials']) ? '1' : '0');
+
         AuditLogger::logSecurity('security_headers_updated', ['resource_type' => 'security_config']);
         $success = 'Security headers configuration saved.';
     }
@@ -389,6 +394,30 @@ include __DIR__ . '/../../includes/header.php';
                 </div>
             </div>
 
+            <!-- API CORS -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>API Cross-Origin Access (CORS)</h2>
+                    <p class="text-muted">Controls which web origins may call the REST API from a browser</p>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="cors_allowed_origins">Allowed Origins</label>
+                        <input type="text" name="cors_allowed_origins" id="cors_allowed_origins" class="form-control"
+                               value="<?= htmlspecialchars(getSetting('cors_allowed_origins', '')) ?>"
+                               placeholder="https://app.example.com, https://*.example.com">
+                        <p class="help-text">Comma-separated list. Leave empty to allow any origin (*) for the API. Wildcards match a single subdomain label (*.example.com).</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="cors_allow_credentials" <?= getSetting('cors_allow_credentials', '0') === '1' ? 'checked' : '' ?>>
+                            Allow Credentials
+                        </label>
+                        <p class="help-text">When enabled, the wildcard is ignored and origins must be listed explicitly.</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Save Configuration</button>
             </div>
@@ -418,114 +447,7 @@ include __DIR__ . '/../../includes/header.php';
     </div>
 </div>
 
-<style>
-.security-score-display {
-    display: flex;
-    gap: 2rem;
-    align-items: flex-start;
-}
-
-.score-circle {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.score-circle.grade-a { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-.score-circle.grade-b { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
-.score-circle.grade-c { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
-.score-circle.grade-d { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
-.score-circle.grade-f { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
-
-.score-circle .grade {
-    font-size: 2rem;
-    font-weight: bold;
-}
-
-.score-circle .score {
-    font-size: 0.9rem;
-    opacity: 0.9;
-}
-
-.score-details {
-    flex: 1;
-}
-
-.findings-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.finding {
-    padding: 0.75rem;
-    margin-bottom: 0.5rem;
-    border-radius: 4px;
-    border-left: 4px solid;
-}
-
-.finding-high {
-    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
-    border-color: var(--color-danger);
-}
-
-.finding-medium {
-    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
-    border-color: var(--color-warning);
-}
-
-.finding-low {
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-    border-color: var(--color-primary);
-}
-
-.tabs {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.tab-btn {
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-.tab-btn.active {
-    background: var(--color-primary);
-    color: white;
-    border-color: var(--color-primary);
-}
-
-.code-block {
-    background: var(--color-surface-hover);
-    padding: 1rem;
-    border-radius: var(--radius);
-    overflow-x: auto;
-    font-family: monospace;
-    font-size: 0.85rem;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
-
-.form-row {
-    display: flex;
-    gap: 1rem;
-}
-
-.form-row .form-group {
-    flex: 1;
-}
-</style>
-
-<script>
+<script<?= csp_nonce_attr() ?>>
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

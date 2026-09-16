@@ -67,8 +67,8 @@ $message = '';
 $error = '';
 
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $taskName = $_POST['task'] ?? '';
@@ -78,7 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         if ($result['status'] === 'success') {
             $message = "Task '{$taskName}' completed in {$result['duration_ms']}ms";
             if (!empty($result['output'])) {
-                $message .= ": " . htmlspecialchars($result['output']);
+                // Store raw output; it is escaped once at render (line ~172).
+                $message .= ": " . $result['output'];
             }
         } else {
             $error = "Task '{$taskName}' failed: " . ($result['error'] ?? $result['reason'] ?? 'Unknown error');
@@ -133,7 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         $message = "Cleared entire queue ($count job(s) removed)";
     } elseif ($action === 'queue_retry_failed') {
         $db = getDB();
-        $db->exec("UPDATE jobs SET status = 'pending', attempts = 0, reserved_at = NULL, available_at = datetime('now'), error_message = NULL WHERE status = 'failed'");
+        // datetime('now') is SQLite-only and throws on MySQL; bind a PHP-computed
+        // timestamp instead (matches Queue::retryFailed()).
+        $stmt = $db->prepare("UPDATE jobs SET status = 'pending', attempts = 0, reserved_at = NULL, available_at = :now, error_message = NULL WHERE status = 'failed'");
+        $stmt->bindValue(':now', date('Y-m-d H:i:s'), PDO::PARAM_STR);
+        $stmt->execute();
         $count = $db->changes();
         $message = "Requeued $count failed job(s) for retry";
     }
@@ -536,93 +541,5 @@ include __DIR__ . '/../../includes/header.php';
         </details>
     </div>
 </div>
-
-<style>
-.code-block {
-    background: var(--color-surface-hover);
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius);
-    font-family: monospace;
-    font-size: 0.85rem;
-    overflow-x: auto;
-}
-
-.task-output {
-    cursor: help;
-    border-bottom: 1px dotted var(--color-text-muted);
-}
-
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border-radius: 4px;
-}
-
-.badge-success { background: var(--color-success); color: white; }
-.badge-danger { background: var(--color-danger); color: white; }
-.badge-warning { background: var(--color-warning); color: white; }
-.badge-secondary { background: var(--color-text-muted); color: white; }
-
-.ml-2 { margin-left: 0.5rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-3 { margin-top: 1rem; }
-.cursor-pointer { cursor: pointer; }
-
-details summary {
-    padding: 0.5rem;
-    background: var(--color-surface-hover);
-    border-radius: var(--radius);
-}
-details[open] summary {
-    margin-bottom: 0.5rem;
-}
-
-.dedup-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-}
-
-.stat-box {
-    background: var(--color-surface-hover);
-    padding: 1rem;
-    border-radius: var(--radius);
-    text-align: center;
-}
-
-.stat-box.stat-warning {
-    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
-}
-
-.stat-box.stat-info {
-    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
-
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--color-text);
-}
-
-.stat-label {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    margin-top: 0.25rem;
-}
-
-.d-flex { display: flex; }
-.justify-between { justify-content: space-between; }
-.align-center { align-items: center; }
-
-.dedup-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-</style>
 
 <?php include __DIR__ . '/../../includes/footer.php'; ?>

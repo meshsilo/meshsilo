@@ -88,7 +88,6 @@ function initializeDefaultSettings($db)
 
         // Routing and performance
         'seo_redirects' => '1',
-        'route_caching' => '0',
         'route_profiling' => '0',
 
         'currency' => 'USD',

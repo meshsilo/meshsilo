@@ -21,14 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
     if (!Csrf::validate()) {
-        $error = 'Security validation failed. Please try again.';
+        $error = Csrf::ERROR_MESSAGE;
     } elseif (empty($email)) {
         $error = 'Please enter your email address.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
     } else {
         // Rate limit reset requests per IP and per email to prevent abuse and email bombing
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $ip = client_ip() ?: 'unknown';
         $ipRate = RateLimiter::check($ip, 'anonymous', 'password_reset_email');
         $emailRate = RateLimiter::check(strtolower($email), 'anonymous', 'password_reset_email');
         $rateLimited = !$ipRate['allowed'] || !$emailRate['allowed'];
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Log attempt for non-existent email (potential enumeration attempt)
             logSecurityWarning('Password reset requested for non-existent email', [
                 'email' => $email,
-                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+                'ip' => client_ip() ?: 'unknown'
             ]);
         }
     }

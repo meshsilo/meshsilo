@@ -11,9 +11,10 @@ ob_end_clean();
 
 header('Content-Type: application/json');
 
-// On login-required installs, return empty for unauthenticated users to avoid
-// leaking model names. On open installs, serve suggestions to everyone.
-if (!isLoggedIn() && getSetting('require_login', '0')) {
+// On login-required installs (the default), return empty for unauthenticated
+// users to avoid leaking model names. On open installs, serve suggestions to
+// everyone. Default matches enforceAuthentication()'s (includes/auth.php).
+if (!isLoggedIn() && getSetting('require_login', '1') === '1') {
     echo json_encode(['suggestions' => []]);
     exit;
 }

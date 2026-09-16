@@ -5,6 +5,31 @@
  * Provides AES-256-GCM encryption for files and data
  */
 
+// EncryptedStorage (below) implements StorageInterface, so autoloading this
+// file outside the web bootstrap (CLI, plugin flows) fatals unless the
+// interface is loaded first. Definitions only - no side effects.
+require_once __DIR__ . '/storage.php';
+
+/**
+ * Master key configuration (in the order init() resolves them):
+ *
+ *   1. SILO_ENCRYPTION_KEY environment variable  - RECOMMENDED
+ *      Set it in the web server / container environment (docker-compose
+ *      `environment:`, systemd `Environment=`, php-fpm pool `env[]`). The key
+ *      never touches the application's own storage.
+ *
+ *   2. storage/.encryption_key file (0600, written by setMasterKey())
+ *      Acceptable when the environment cannot carry secrets. Keep it outside
+ *      any database backup and out of version control (it is gitignored).
+ *
+ *   3. settings.encryption_master_key in the database  - INSECURE, LEGACY
+ *      Kept only so existing installs stay readable. The key then lives in the
+ *      same database as the ciphertext it protects, so a single DB dump yields
+ *      both and encryption-at-rest provides no protection. getStatus() reports
+ *      this case as insecure and init() logs a warning. To migrate: put the
+ *      same key value into SILO_ENCRYPTION_KEY (or storage/.encryption_key),
+ *      confirm files still decrypt, then delete the database setting.
+ */
 class Encryption
 {
     private const CIPHER = 'aes-256-gcm';
@@ -12,7 +37,14 @@ class Encryption
     private const IV_LENGTH = 12;  // 96 bits for GCM
     private const TAG_LENGTH = 16; // 128 bits for GCM auth tag
 
+    // Where the master key currently in use came from (see getStatus()).
+    public const KEY_SOURCE_ENV = 'env';
+    public const KEY_SOURCE_FILE = 'file';
+    public const KEY_SOURCE_DATABASE = 'database';
+    public const KEY_SOURCE_NONE = 'none';
+
     private static ?string $masterKey = null;
+    private static ?string $keySource = null;
 
     /**
      * Initialize encryption with master key
@@ -27,19 +59,31 @@ class Encryption
         // over the database, so the master key is not sourced from
         // application-managed storage when a stronger source is available.
         $key = getenv('SILO_ENCRYPTION_KEY');
+        $source = $key ? self::KEY_SOURCE_ENV : self::KEY_SOURCE_NONE;
 
         if (!$key) {
             // Check for key file (created with 0600 permissions by setMasterKey)
             $keyFile = __DIR__ . '/../storage/.encryption_key';
             if (file_exists($keyFile)) {
                 $key = trim(file_get_contents($keyFile));
+                if ($key) {
+                    $source = self::KEY_SOURCE_FILE;
+                }
             }
         }
 
-        // Backward-compatible fallback for installs that only store the key in the DB
+        // Backward-compatible fallback for installs that only store the key in the DB.
+        // Insecure (key and ciphertext share one dump) but load-bearing: removing it
+        // would make those installs' data unreadable. Flag it instead of dropping it.
         if (!$key && function_exists('getSetting')) {
             $key = getSetting('encryption_master_key', '');
+            if ($key) {
+                $source = self::KEY_SOURCE_DATABASE;
+                self::warnDatabaseKeySource();
+            }
         }
+
+        self::$keySource = $source;
 
         if ($key) {
             // Decode if base64
@@ -47,6 +91,29 @@ class Encryption
                 $key = base64_decode($key);
             }
             self::$masterKey = $key;
+        }
+    }
+
+    /**
+     * Warn (once per request) that the master key is being read from the same
+     * database it protects. Silence would let an install believe it has
+     * encryption at rest when a single DB dump defeats it.
+     */
+    private static function warnDatabaseKeySource(): void
+    {
+        static $warned = false;
+        if ($warned) {
+            return;
+        }
+        $warned = true;
+
+        if (function_exists('logWarning')) {
+            logWarning(
+                'Encryption master key is being read from the database (settings.encryption_master_key). '
+                . 'The key and the data it protects are then in the same dump, so encryption at rest '
+                . 'provides no protection. Move the key to the SILO_ENCRYPTION_KEY environment variable '
+                . 'or to storage/.encryption_key, then delete the database setting.'
+            );
         }
     }
 
@@ -96,6 +163,7 @@ class Encryption
 
         file_put_contents($keyFile, base64_encode($key));
         chmod($keyFile, 0600);
+        self::$keySource = self::KEY_SOURCE_FILE;
 
         return true;
     }
@@ -395,15 +463,87 @@ class Encryption
             return false;
         }
 
+        $size = filesize($path);
+        if ($size === false || $size < 1) {
+            return false;
+        }
+
         $handle = fopen($path, 'rb');
         if (!$handle) {
             return false;
         }
 
-        $header = fread($handle, 1);
-        fclose($handle);
+        try {
+            $first = fread($handle, 1);
+            if ($first === false || $first === '') {
+                return false;
+            }
+            $version = ord($first);
 
-        return $header === chr(1) || $header === chr(2);
+            // A single leading 0x01/0x02 byte is far too weak: real model files
+            // (STL/3MF/etc.) routinely begin with those bytes, so the old check
+            // misclassified plaintext as encrypted -- encryptAllFiles() then
+            // silently skipped it, leaving it in the clear. Validate the actual
+            // container layout instead of just the version byte.
+
+            if ($version === 2) {
+                // v2 GCM chunked container (Encryption::encryptFile):
+                //   version(1) + chunkCount(4, big-endian)
+                //   + [ iv(12) + tag(16) + ctLen(4, big-endian) + ct(ctLen) ] * chunkCount
+                // Walk the declared chunk table; a genuine container consumes the
+                // file EXACTLY. Random binary that merely starts with 0x02 will
+                // essentially never have a self-consistent table that ends at EOF.
+                $countData = fread($handle, 4);
+                if (strlen($countData) !== 4) {
+                    return false;
+                }
+                $chunkCount = unpack('N', $countData)[1];
+
+                // Encrypted empty source: version + count only, no chunks.
+                if ($chunkCount === 0) {
+                    return $size === 5;
+                }
+                if ($chunkCount > 1000000) {
+                    return false; // implausible; treat as not-a-container
+                }
+
+                $offset = 5; // version(1) + chunkCount(4) already consumed
+                $metaLen = self::IV_LENGTH + self::TAG_LENGTH + 4;
+                for ($i = 0; $i < $chunkCount; $i++) {
+                    $meta = fread($handle, $metaLen);
+                    if (strlen($meta) !== $metaLen) {
+                        return false;
+                    }
+                    $ctLen = unpack('N', substr($meta, self::IV_LENGTH + self::TAG_LENGTH, 4))[1];
+                    // Each plaintext chunk is at most 1MB; GCM ciphertext is the
+                    // same length. Reject implausible lengths early.
+                    if ($ctLen < 1 || $ctLen > 1024 * 1024 + 1024) {
+                        return false;
+                    }
+                    $offset += $metaLen + $ctLen;
+                    if ($offset > $size) {
+                        return false;
+                    }
+                    if (fseek($handle, $offset) !== 0) {
+                        return false;
+                    }
+                }
+                // A valid container ends exactly at EOF.
+                return $offset === $size;
+            }
+
+            if ($version === 1) {
+                // v1 single-block GCM (Encryption::encrypt) OR legacy CBC+HMAC
+                // file: version(1) + iv(12) + tag(16) + ciphertext(>=1). There is
+                // no length constraint on GCM ciphertext, so require at least the
+                // fixed header plus one byte of ciphertext.
+                return $size >= 1 + self::IV_LENGTH + self::TAG_LENGTH + 1;
+            }
+
+            return false;
+        } finally {
+            fclose($handle);
+        }
     }
 
     /**
@@ -584,16 +724,32 @@ class Encryption
 
     /**
      * Get encryption status for admin panel
+     *
+     * 'key_source' names where the master key came from and
+     * 'key_source_secure' is false when it came from the database it protects
+     * (see the class docblock); 'key_source_warning' carries operator-facing
+     * text for that case, or null.
      */
     public static function getStatus(): array
     {
         self::init();
+
+        $source = self::$keySource ?? self::KEY_SOURCE_NONE;
+        $insecure = ($source === self::KEY_SOURCE_DATABASE);
 
         return [
             'enabled' => self::isEnabled(),
             'cipher' => self::CIPHER,
             'key_configured' => self::$masterKey !== null,
             'key_valid' => self::$masterKey !== null && strlen(self::$masterKey) === self::KEY_LENGTH,
+            'key_source' => $source,
+            'key_source_secure' => ($source === self::KEY_SOURCE_ENV || $source === self::KEY_SOURCE_FILE),
+            'key_source_warning' => $insecure
+                ? 'INSECURE: the master key is stored in the same database as the encrypted data, '
+                    . 'so a single database dump exposes both. Move it to the SILO_ENCRYPTION_KEY '
+                    . 'environment variable or to storage/.encryption_key, then delete the '
+                    . 'encryption_master_key setting.'
+                : null,
             'openssl_version' => OPENSSL_VERSION_TEXT,
         ];
     }

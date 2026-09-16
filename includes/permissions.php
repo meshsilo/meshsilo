@@ -617,3 +617,26 @@ function getPermissionsByCategory()
     }
     return $categories;
 }
+
+/**
+ * Gate an admin/management page: require a login plus a permission check,
+ * otherwise flash an error and send the visitor home.
+ *
+ * The check is passed as a callable so it is only evaluated once the visitor is
+ * known to be logged in (several can*() helpers assume a current user).
+ *
+ * Replaces the copy of this guard that each admin page previously carried.
+ *
+ * @param callable $check   Permission predicate, e.g. 'isAdmin' or 'canManageUsers'.
+ * @param string   $message Flash message shown when access is denied.
+ */
+function requireAdminPage(callable $check, string $message): void
+{
+    if (isLoggedIn() && $check()) {
+        return;
+    }
+
+    $_SESSION['error'] = $message;
+    header('Location: ' . route('home'));
+    exit;
+}

@@ -86,7 +86,9 @@ class MaintenanceMiddleware implements MiddlewareInterface
         // Check IP whitelist
         $whitelistedIps = $this->getWhitelistedIps();
         if (!empty($whitelistedIps)) {
-            $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+            // Matches this class's function_exists() style for every global it
+            // calls, so the allow-list still works if it is used standalone.
+            $clientIp = function_exists('client_ip') ? client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '');
             if (in_array($clientIp, $whitelistedIps)) {
                 return true;
             }

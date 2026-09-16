@@ -59,7 +59,15 @@ class AuditLogger
         }
 
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $sessionId = session_id();
+            // Store a non-reversible digest, never the live session id. Audit
+            // rows are readable by every admin, exportable to CSV/JSON, and
+            // present in any DB dump; a raw session id there is a ready-to-use
+            // hijacking token. The digest is deterministic, so rows from the
+            // same session still correlate with each other.
+            $rawSessionId = session_id();
+            $sessionId = ($rawSessionId !== '' && $rawSessionId !== false)
+                ? hash('sha256', $rawSessionId)
+                : null;
         }
 
         $stmt = $db->prepare('
@@ -78,7 +86,7 @@ class AuditLogger
         $stmt->bindValue(':event_name', $eventName, PDO::PARAM_STR);
         $stmt->bindValue(':severity', $severity, PDO::PARAM_STR);
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? null, PDO::PARAM_STR);
+        $stmt->bindValue(':ip', client_ip() ?: null, PDO::PARAM_STR);
         $stmt->bindValue(':user_agent', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500), PDO::PARAM_STR);
         $stmt->bindValue(':resource_type', $data['resource_type'] ?? null, PDO::PARAM_STR);
         $stmt->bindValue(':resource_id', $data['resource_id'] ?? null, PDO::PARAM_INT);

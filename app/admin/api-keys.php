@@ -7,11 +7,7 @@ require_once __DIR__ . '/../../includes/features.php';
 requireFeature('api_keys');
 
 // Require API keys management permission
-if (!isLoggedIn() || !canManageApiKeys()) {
-    $_SESSION['error'] = 'You do not have permission to manage API keys.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageApiKeys', 'You do not have permission to manage API keys.');
 
 $user = getCurrentUser();
 $error = '';
@@ -20,8 +16,8 @@ $pageTitle = 'API Keys';
 $adminPage = 'api-keys';
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Security validation failed. Please try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -139,7 +135,7 @@ include __DIR__ . '/../../includes/header.php';
                             </label>
                             <label>
                                 <input type="checkbox" name="permissions[]" value="admin">
-                                Admin (manage webhooks, categories)
+                                Admin (manage categories, collections)
                             </label>
                         </div>
                     </fieldset>
@@ -263,7 +259,6 @@ include __DIR__ . '/../../includes/header.php';
                         <tr><td><code>GET</code></td><td><code>/api/tags</code></td><td>List tags</td><td><span class="perm-badge perm-read">read</span></td></tr>
                         <tr><td><code>GET</code></td><td><code>/api/collections</code></td><td>List collections</td><td><span class="perm-badge perm-read">read</span></td></tr>
                         <tr><td><code>GET</code></td><td><code>/api/stats</code></td><td>Get statistics</td><td><span class="perm-badge perm-read">read</span></td></tr>
-                        <tr><td><code>GET</code></td><td><code>/api/webhooks</code></td><td>List webhooks</td><td><span class="perm-badge perm-admin">admin</span></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -271,237 +266,7 @@ include __DIR__ . '/../../includes/header.php';
     </div>
 </div>
 
-<style>
-/* New key display */
-.api-key-created {
-    background: var(--color-surface);
-    border: 2px solid var(--color-success);
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.api-key-created h3 {
-    margin: 0 0 0.5rem;
-    font-size: 1rem;
-}
-
-.api-key-value-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 0.75rem 0;
-}
-
-.api-key-full {
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 1.15rem;
-    line-height: 1.5;
-    background: var(--color-surface-hover);
-    color: var(--color-text);
-    border: 2px solid var(--color-border);
-    padding: 1rem 1.25rem;
-    border-radius: 6px;
-    letter-spacing: 0.04em;
-    cursor: text;
-}
-
-.api-key-full:focus {
-    outline: none;
-    border-color: var(--color-primary);
-}
-
-.api-key-warning {
-    color: var(--color-warning);
-    font-size: 0.85rem;
-    margin: 0.5rem 0 0;
-}
-
-/* Key list */
-.api-keys-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.api-key-item {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-}
-
-.api-key-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-}
-
-.api-key-info {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-}
-
-.api-key-name {
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--color-text);
-}
-
-.api-key-user {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-}
-
-.api-key-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.api-key-prefix-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.api-key-prefix {
-    font-family: monospace;
-    font-size: 0.9rem;
-    background: var(--color-surface-hover);
-    padding: 0.4rem 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-    user-select: all;
-    letter-spacing: 0.03em;
-    transition: background 0.15s;
-}
-
-.api-key-prefix:hover {
-    background: var(--color-primary);
-    color: white;
-}
-
-.api-key-prefix.copied {
-    background: var(--color-success);
-    color: white;
-}
-
-.api-key-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    min-width: 80px;
-}
-
-.api-key-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-}
-
-.api-key-meta-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-}
-
-.api-key-perms {
-    display: flex;
-    gap: 0.3rem;
-    flex-wrap: wrap;
-}
-
-.api-key-actions {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
-}
-
-/* Permission badges */
-.perm-badge {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.perm-read { background: var(--color-primary); color: white; }
-.perm-write { background: var(--color-success); color: white; }
-.perm-delete { background: var(--color-warning); color: black; }
-.perm-admin { background: var(--color-danger); color: white; }
-
-/* Status badges */
-.badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.badge-active { background: var(--color-success); color: white; }
-.badge-expired { background: var(--color-danger); color: white; }
-
-/* Form */
-.checkbox-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-}
-
-/* Code block */
-.api-code-block {
-    background: var(--color-surface-hover);
-    padding: 0.75rem 1rem;
-    border-radius: 6px;
-    overflow-x: auto;
-    font-size: 0.85rem;
-}
-
-.mb-4 { margin-bottom: 1.5rem; }
-
-/* Responsive */
-@media (max-width: 768px) {
-    .api-key-value-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .api-key-meta {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .api-key-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-
-    .checkbox-group {
-        flex-direction: column;
-    }
-}
-</style>
-
-<script>
+<script<?= csp_nonce_attr() ?>>
 function copyFullKey(btn) {
     var el = document.getElementById('newKeyValue');
     if (!el) return;

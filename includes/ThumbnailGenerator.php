@@ -18,6 +18,11 @@ class ThumbnailGenerator
     const SIZE_MEDIUM = 256;
     const SIZE_LARGE = 512;
 
+    // After this many failed generation attempts a model is skipped by
+    // batchGenerate() so a handful of permanently-failing models cannot starve
+    // every other model out of each run.
+    const MAX_THUMBNAIL_ATTEMPTS = 3;
+
     /**
      * Generate thumbnail for a model
      *
@@ -146,9 +151,12 @@ class ThumbnailGenerator
         );
         file_put_contents($tempScad, $scadContent);
 
-        // Render with OpenSCAD
+        // Render with OpenSCAD. --backend=manifold selects the Manifold
+        // geometry engine (non-experimental since nightly 2024.09.28) instead
+        // of the legacy CGAL backend - a large rendering speedup, and the
+        // reason this image installs the nightly build rather than stable.
         $command = sprintf(
-            'openscad -o %s --imgsize=%d,%d --camera=0,0,0,55,0,25,500 --colorscheme=Tomorrow %s 2>&1',
+            'openscad -o %s --backend=manifold --imgsize=%d,%d --camera=0,0,0,55,0,25,500 --colorscheme=Tomorrow %s 2>&1',
             escapeshellarg($outputPath),
             $size,
             $size,
@@ -297,6 +305,29 @@ class ThumbnailGenerator
     }
 
     /**
+     * Ensure the thumbnail_attempts column exists (failed-generation counter).
+     */
+    private static function ensureThumbnailAttemptsColumn($db)
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+
+        try {
+            if ($db->getType() === 'mysql') {
+                $db->exec('ALTER TABLE models ADD COLUMN thumbnail_attempts INT DEFAULT 0');
+            } else {
+                $db->exec('ALTER TABLE models ADD COLUMN thumbnail_attempts INTEGER DEFAULT 0');
+            }
+        } catch (Exception $e) {
+            // Column probably already exists
+        }
+
+        $checked = true;
+    }
+
+    /**
      * Get thumbnail URL for a model
      *
      * @param array $model Model record
@@ -334,19 +365,25 @@ class ThumbnailGenerator
     {
         $db = getDB();
 
-        // Ensure column exists
+        // Ensure columns exist
         self::ensureThumbnailColumn($db);
+        self::ensureThumbnailAttemptsColumn($db);
 
-        // Get models without thumbnails, prefer 3MF files
+        // Get models without thumbnails, prefer 3MF files. Skip models that have
+        // already failed MAX_THUMBNAIL_ATTEMPTS times so a few permanently-failing
+        // models (corrupt files, unsupported geometry) don't reprocess on every
+        // run and starve the rest of the batch.
         $stmt = $db->prepare("
             SELECT id, name, file_path, file_type
             FROM models
             WHERE (thumbnail_path IS NULL OR thumbnail_path = '')
+            AND (thumbnail_attempts IS NULL OR thumbnail_attempts < :maxAttempts)
             AND parent_id IS NULL
             AND file_type IN ('3mf', 'stl')
             ORDER BY CASE WHEN file_type = '3mf' THEN 0 ELSE 1 END, id DESC
             LIMIT :limit
         ");
+        $stmt->bindValue(':maxAttempts', self::MAX_THUMBNAIL_ATTEMPTS, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $result = $stmt->execute();
 
@@ -366,6 +403,10 @@ class ThumbnailGenerator
                 $results['success']++;
             } else {
                 $results['failed']++;
+                // Record the failed attempt so repeated failures back off.
+                $upd = $db->prepare('UPDATE models SET thumbnail_attempts = COALESCE(thumbnail_attempts, 0) + 1 WHERE id = :id');
+                $upd->bindValue(':id', $model['id'], PDO::PARAM_INT);
+                $upd->execute();
             }
         }
 

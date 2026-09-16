@@ -16,23 +16,20 @@ declare(strict_types=1);
 class PluginSettingsStore
 {
     /**
+     * Per-request memoization of decoded settings, keyed by plugin id.
+     * Plugins commonly call getSetting() repeatedly in hot paths; without
+     * this every call is a DB round-trip. Writes invalidate the entry.
+     *
+     * @var array<string, array>
+     */
+    private array $cache = [];
+
+    /**
      * Get a single plugin setting value, or $default when unset/unavailable.
      */
     public function get(string $pluginId, string $key, mixed $default = null): mixed
     {
-        try {
-            $db = getDB();
-            $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
-            $stmt->execute([':id' => $pluginId]);
-            $row = $stmt->fetch();
-            if (!$row || empty($row['settings'])) {
-                return $default;
-            }
-            $settings = json_decode($row['settings'], true);
-            return $settings[$key] ?? $default;
-        } catch (\Exception $e) {
-            return $default;
-        }
+        return $this->getAll($pluginId)[$key] ?? $default;
     }
 
     /**
@@ -56,6 +53,7 @@ class PluginSettingsStore
                 $stmt = $db->prepare('UPDATE plugins SET settings = :settings, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
             }
             $stmt->execute([':settings' => json_encode($settings), ':id' => $pluginId]);
+            unset($this->cache[$pluginId]);
             return true;
         } catch (\Exception $e) {
             logError("Failed to save plugin setting", ['plugin' => $pluginId, 'key' => $key, 'error' => $e->getMessage()]);
@@ -68,17 +66,23 @@ class PluginSettingsStore
      */
     public function getAll(string $pluginId): array
     {
+        if (array_key_exists($pluginId, $this->cache)) {
+            return $this->cache[$pluginId];
+        }
+
         try {
             $db = getDB();
             $stmt = $db->prepare('SELECT settings FROM plugins WHERE id = :id');
             $stmt->execute([':id' => $pluginId]);
             $row = $stmt->fetch();
             if (!$row || empty($row['settings'])) {
-                return [];
+                return $this->cache[$pluginId] = [];
             }
             $settings = json_decode($row['settings'], true);
-            return is_array($settings) ? $settings : [];
+            return $this->cache[$pluginId] = (is_array($settings) ? $settings : []);
         } catch (\Exception $e) {
+            // Not cached: the plugins table may simply not exist yet
+            // (mid-install); a later call in the same request may succeed.
             return [];
         }
     }

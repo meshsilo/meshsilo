@@ -3,11 +3,7 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/UpdateChecker.php';
 
 // Require settings management permission
-if (!isLoggedIn() || !canManageSettings()) {
-    $_SESSION['error'] = 'You do not have permission to manage settings.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageSettings', 'You do not have permission to manage settings.');
 
 $pageTitle = 'Admin Settings';
 $activePage = '';
@@ -16,15 +12,17 @@ $adminPage = 'settings';
 $message = '';
 $error = '';
 
-// CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
+// CSRF protection for all POST requests. $csrfOk gates every save block below so
+// a failed token check shows the error banner WITHOUT also running the save.
+$csrfOk = $_SERVER['REQUEST_METHOD'] !== 'POST' || Csrf::check();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$csrfOk) {
     if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
         header('Content-Type: application/json');
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
         exit;
     }
-    $error = 'Invalid request. Please refresh the page and try again.';
+    $error = Csrf::ERROR_MESSAGE;
 }
 
 // Handle force update check
@@ -76,7 +74,7 @@ if (empty($error) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test
 }
 
 // Handle php.ini save request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_phpini'])) {
     $isDocker = getenv('MESHSILO_DOCKER') === 'true';
     $content = $_POST['phpini_content'] ?? '';
 
@@ -169,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_plugin_settings'
 }
 
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email']) && !isset($_POST['save_plugin_settings'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !isset($_POST['test_email']) && !isset($_POST['save_plugin_settings'])) {
     $autoConvert = isset($_POST['auto_convert_stl']) ? '1' : '0';
     $autoDedup = isset($_POST['auto_deduplication']) ? '1' : '0';
     $convertImagesWebp = isset($_POST['convert_images_webp']) ? '1' : '0';
@@ -182,6 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     }
     $allowRegistration = isset($_POST['allow_registration']) ? '1' : '0';
     $requireApproval = isset($_POST['require_approval']) ? '1' : '0';
+    $requireLogin = isset($_POST['require_login']) ? '1' : '0';
 
     // Handle file formats - ensure at least one is selected and always include zip
     $formats = isset($_POST['formats']) ? array_map('strtolower', $_POST['formats']) : ['stl', '3mf'];
@@ -211,9 +210,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
     setSetting('compress_pdfs_mode', $compressPdfsMode);
     setSetting('allow_registration', $allowRegistration);
     setSetting('require_approval', $requireApproval);
+    setSetting('require_login', $requireLogin);
     setSetting('allowed_extensions', $allowedExtensions);
     setSetting('show_advanced_admin', $showAdvancedAdmin);
-    setSetting('models_per_page', (int)($_POST['models_per_page'] ?? 20));
+    // Clamp to >= 1: an empty input saves 0, which fatals /browse via ceil($total / 0).
+    setSetting('models_per_page', max(1, (int)($_POST['models_per_page'] ?? 20)));
 
     // Max file size (convert MB to bytes)
     $maxFileSize = (int)($_POST['max_file_size'] ?? 100);
@@ -253,6 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
         'compress_pdfs_mode' => $compressPdfsMode,
         'allow_registration' => $allowRegistration,
         'require_approval' => $requireApproval,
+        'require_login' => $requireLogin,
         'allowed_extensions' => $allowedExtensions
     ]);
 
@@ -262,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_phpini']) && !i
 
     // Plugin hook: admin_settings_saved - plugins save their own settings from the same form
     if (class_exists('PluginManager')) {
-        PluginManager::applyFilter('admin_settings_saved', null, $_POST);
+        PluginManager::doAction('admin_settings_saved', $_POST);
     }
 }
 
@@ -480,6 +482,19 @@ require_once __DIR__ . '/../../includes/header.php';
                     </details>
 
                     <details class="settings-section">
+                        <summary><h2>Access</h2></summary>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" name="require_login" <?= ($settings['require_login'] ?? '1') === '1' ? 'checked' : '' ?>>
+                                <span class="toggle-switch"></span>
+                                <span>Require login to browse and download models</span>
+                            </label>
+                            <p class="form-help">When off, anyone can browse, search, and download models without an account. Uploading, editing, favorites, and admin pages still require login regardless of this setting.</p>
+                        </div>
+                    </details>
+
+                    <details class="settings-section">
                         <summary><h2>Registration</h2></summary>
 
                         <div class="form-group">
@@ -508,7 +523,7 @@ require_once __DIR__ . '/../../includes/header.php';
                                 <span class="toggle-switch"></span>
                                 <span>Show advanced admin pages</span>
                             </label>
-                            <p class="form-help">Show Routes, CLI Tools, Security Headers, and Sessions in the admin sidebar.</p>
+                            <p class="form-help">Show Security Headers and Sessions in the admin sidebar. Routes, Hooks, and CLI Tools moved to the Developer Tools plugin.</p>
                         </div>
                     </details>
 
@@ -699,7 +714,7 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
         </div>
 
-<script>
+<script<?= csp_nonce_attr() ?>>
 // Email driver toggle - show/hide SMTP settings
 const mailDriverSelect = document.getElementById('mail_driver');
 if (mailDriverSelect) {

@@ -82,6 +82,9 @@ ModelViewer.prototype.load3MF = async function(url) {
 };
 
 ModelViewer.prototype.startAnimation = function() {
+    // A late load callback can land after the viewer was disposed (LRU eviction
+    // or the 15s thumbnail timeout). Bail so we never animate a freed renderer.
+    if (this.disposed) return;
     if (!this.isReady) {
         this.isReady = true;
         this.animate();
@@ -497,8 +500,13 @@ ModelViewer.prototype.loadCAD = async function(url, fileType) {
     });
 };
 
-ModelViewer.prototype.loadOpenCascade = async function() {
-    return new Promise((resolve, reject) => {
+ModelViewer.prototype.loadOpenCascade = function() {
+    // Share one in-flight load across concurrent callers so the CDN <script> is
+    // injected only once. Two CAD thumbnails loading at the same time would
+    // otherwise both see window.occtImportJS undefined and append it twice.
+    if (ModelViewer._occtLoadPromise) return ModelViewer._occtLoadPromise;
+
+    ModelViewer._occtLoadPromise = new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js';
         script.integrity = 'sha384-aVztxQSjf255XBq24hbQrvW7xTn+NRcot+BKchvpuSJQ+Frxa6C5UKH94/EBBOmc';
@@ -517,6 +525,11 @@ ModelViewer.prototype.loadOpenCascade = async function() {
         script.onerror = () => reject(new Error('Failed to load OpenCascade script'));
         document.head.appendChild(script);
     });
+
+    // On failure, clear the cached promise so a later attempt can retry the load.
+    ModelViewer._occtLoadPromise.catch(() => { ModelViewer._occtLoadPromise = null; });
+
+    return ModelViewer._occtLoadPromise;
 };
 
 ModelViewer.prototype.convertOCCTToThree = function(result) {
@@ -695,6 +708,11 @@ ModelViewer.prototype.onResize = function() {
 };
 
 ModelViewer.prototype.animate = function() {
+    // Bail permanently once disposed - the renderer/scene are freed.
+    if (this.disposed) {
+        this.animationId = null;
+        return;
+    }
     // Stop animation loop when scrolled off-screen
     if (!this.isVisible) {
         this.animationId = null;
@@ -723,6 +741,9 @@ ModelViewer.prototype.animate = function() {
 };
 
 ModelViewer.prototype.dispose = function() {
+    // Late load callbacks check this and bail instead of animating a freed renderer.
+    this.disposed = true;
+
     if (this.animationId) {
         cancelAnimationFrame(this.animationId);
     }

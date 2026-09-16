@@ -214,12 +214,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
 function checkRequirements() {
     $requirements = [];
 
-    // PHP Version
+    // PHP Version - the codebase uses match expressions, str_starts_with(),
+    // and PASSWORD_ARGON2ID, all of which require PHP 8.0+. 8.1 is the
+    // supported baseline (see CLAUDE.md).
     $requirements['php_version'] = [
         'name' => 'PHP Version',
-        'required' => '7.4+',
+        'required' => '8.1+',
         'current' => PHP_VERSION,
-        'passed' => version_compare(PHP_VERSION, '7.4.0', '>=')
+        'passed' => version_compare(PHP_VERSION, '8.1.0', '>=')
+    ];
+
+    // Argon2id password hashing - the installer hashes the admin password with
+    // PASSWORD_ARGON2ID, which is only available when PHP was built with libargon2.
+    $requirements['argon2id'] = [
+        'name' => 'Argon2id password hashing',
+        'required' => 'Available',
+        'current' => defined('PASSWORD_ARGON2ID') ? 'Available' : 'Missing',
+        'passed' => defined('PASSWORD_ARGON2ID')
     ];
 
     // Required extensions
@@ -331,14 +342,19 @@ function performInstallation($config) {
             return $result;
         }
 
-        // Run migrations to ensure all tables and columns are up to date
+        // Run migrations to ensure all tables and columns are up to date.
+        // A migration failure leaves the schema incomplete, so surface it as a
+        // real installation failure instead of reporting success and letting the
+        // user into a half-migrated app. Remove the config file so the install
+        // is treated as not-complete and can be retried.
         try {
             require_once __DIR__ . '/includes/config.php';
             $db = getDB();
             runAllMigrations($db);
         } catch (Throwable $e) {
-            // Log but don't fail - migrations can be run manually
-            error_log('Post-install migrations warning: ' . $e->getMessage());
+            error_log('Post-install migrations failed: ' . $e->getMessage());
+            @unlink($configPath);
+            return 'Database migrations failed during installation: ' . $e->getMessage();
         }
 
         return true;

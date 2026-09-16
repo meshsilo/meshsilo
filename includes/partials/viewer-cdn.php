@@ -1,5 +1,5 @@
 <!-- Three.js r183 via ES modules with import map -->
-<script type="importmap">
+<script type="importmap"<?= csp_nonce_attr() ?>>
 {
     "imports": {
         "three": "https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.min.js",
@@ -7,7 +7,7 @@
     }
 }
 </script>
-<script type="module">
+<script type="module"<?= csp_nonce_attr() ?>>
 import * as THREE_MODULE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';

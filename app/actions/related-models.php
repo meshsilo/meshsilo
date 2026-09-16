@@ -16,8 +16,8 @@ if ($input) {
 $action = $_POST['action'] ?? '';
 
 // CSRF validation for state-changing actions
-if (in_array($action, ['add', 'remove', 'set_remix_source', 'clear_remix_source']) && !Csrf::check()) {
-    jsonError('Invalid CSRF token');
+if (in_array($action, ['add', 'remove', 'set_remix_source', 'clear_remix_source'])) {
+    requireCsrfJson();
 }
 
 $modelId = isset($_POST['model_id']) ? (int)$_POST['model_id'] : 0;
@@ -136,7 +136,7 @@ switch ($action) {
             jsonError('Model not found');
         }
 
-        if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
+        if (!userCanModifyModel($model, $user)) {
             jsonError('Permission denied', 403);
         }
 
@@ -222,7 +222,7 @@ switch ($action) {
             jsonError('Model not found');
         }
 
-        if ($model['user_id'] != $user['id'] && !$user['is_admin']) {
+        if (!userCanModifyModel($model, $user)) {
             jsonError('Permission denied', 403);
         }
 

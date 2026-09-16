@@ -23,8 +23,8 @@ $message = '';
 $error = '';
 
 // Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Security validation failed. Please try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -377,127 +377,5 @@ function parseUserAgent($ua) {
     return "$browser on $os";
 }
 ?>
-
-<style>
-.admin-grid {
-    display: grid;
-    gap: 1.5rem;
-}
-
-.admin-section {
-    background: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: 8px;
-}
-
-.admin-section h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.stat-card {
-    background: var(--card-bg);
-    padding: 1rem;
-    border-radius: 8px;
-    text-align: center;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: bold;
-    color: var(--color-primary);
-}
-
-.stat-label {
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
-}
-
-.ip-address, .timestamp {
-    font-family: monospace;
-    font-size: 0.85rem;
-}
-
-.user-agent {
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.badge {
-    display: inline-block;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    margin-left: 0.25rem;
-}
-
-.badge-admin {
-    background: color-mix(in srgb, var(--color-danger) 20%, transparent);
-    color: var(--color-danger);
-}
-
-.badge-current {
-    background: color-mix(in srgb, var(--color-success) 20%, transparent);
-    color: var(--color-success);
-}
-
-.current-session {
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-}
-
-.settings-form {
-    max-width: 500px;
-}
-
-.form-group {
-    margin-bottom: 1rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.25rem;
-    font-weight: 500;
-}
-
-.form-control {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    background: var(--color-bg);
-    color: var(--color-text);
-}
-
-.form-help {
-    display: block;
-    margin-top: 0.25rem;
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-.empty-row {
-    text-align: center;
-    color: var(--color-text-muted);
-    padding: 2rem;
-}
-
-</style>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

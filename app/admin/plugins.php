@@ -2,11 +2,7 @@
 require_once __DIR__ . '/../../includes/config.php';
 
 // Require admin permission
-if (!isLoggedIn() || !isAdmin()) {
-    $_SESSION['error'] = 'You do not have permission to manage plugins.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('isAdmin', 'You do not have permission to manage plugins.');
 
 $pageTitle = 'Plugin Management';
 $activePage = '';
@@ -25,8 +21,8 @@ if (!in_array($activeTab, $validTabs)) {
 }
 
 // Handle POST actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -63,14 +59,20 @@ $availablePlugins = [];
 $repositories = [];
 $updates = [];
 
-// Auto-refresh stale registries (older than 1 hour or never fetched)
+// Auto-refresh stale registries (older than 1 hour or never fetched).
+// Fetched concurrently: this runs during page load, so wall time is the
+// slowest single registry rather than the sum of all of them.
 $repos = $pluginManager->getRepositories();
+$staleUrls = [];
 foreach ($repos as $repo) {
     $lastFetched = $repo['last_fetched'] ?? null;
     $isStale = empty($lastFetched) || strtotime($lastFetched) < time() - 3600;
     if (empty($repo['registry_cache']) || $isStale) {
-        $pluginManager->fetchRegistry($repo['url']);
+        $staleUrls[] = $repo['url'];
     }
+}
+if ($staleUrls !== []) {
+    $pluginManager->fetchRegistries($staleUrls);
 }
 
 // Always load available plugins for source info (needed for update/reinstall buttons)
@@ -399,8 +401,32 @@ require_once __DIR__ . '/../../includes/header.php';
                             <input type="url" id="repo-url" name="repo_url" class="form-input" placeholder="https://example.com/plugins/registry.json" required>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label for="repo-token">Access Token <span class="text-muted">(optional, for private repositories)</span></label>
+                        <input type="password" id="repo-token" name="repo_token" class="form-input" autocomplete="off"
+                               placeholder="GitHub PAT, GitLab/Gitea token...">
+                        <p class="form-help">Sent as an Authorization: Bearer header when fetching this registry and downloading its plugins. Encrypted at rest when encryption is configured. To change a token, remove and re-add the repository.</p>
+                    </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">Add Repository</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="add-repo-section">
+                <h3>Private Network Hosts</h3>
+                <form method="post" action="<?= route('admin.plugins') . '?tab=' . urlencode($activeTab) ?>">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="repos-private-hosts">
+                    <div class="form-group">
+                        <label class="toggle-label">
+                            <input type="checkbox" name="allow_private_hosts" value="1" <?= getSetting('plugin_repos_allow_private_hosts', '0') === '1' ? 'checked' : '' ?>>
+                            <span>Allow repositories on private/LAN hosts (self-hosted Gitea, GitLab, etc.)</span>
+                        </label>
+                        <p class="form-help">By default, repository URLs must resolve to public addresses (SSRF protection). Enable this only if your plugin repositories live on your local network.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-secondary">Save</button>
                     </div>
                 </form>
             </div>
@@ -410,417 +436,5 @@ require_once __DIR__ . '/../../includes/header.php';
         </div>
     </div>
 </div>
-
-<style>
-/* Tab navigation */
-.plugin-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 2px solid var(--color-border);
-    margin-bottom: 1.5rem;
-}
-
-.plugin-tab {
-    padding: 0.75rem 1.25rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    text-decoration: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: color 0.2s, border-color 0.2s;
-}
-
-.plugin-tab:hover {
-    color: var(--color-text);
-}
-
-.plugin-tab.active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
-    font-weight: 600;
-}
-
-/* Tab content */
-.plugin-tab-content {
-    min-height: 200px;
-}
-
-.plugin-tab-content h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: var(--color-text);
-}
-
-.installed-plugins-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.installed-plugins-header h3 {
-    margin: 0;
-}
-
-.installed-plugins-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-/* Upload section */
-.plugin-upload-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.plugin-upload-section h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    color: var(--color-text);
-}
-
-.upload-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.upload-input {
-    max-width: 400px;
-}
-
-/* Plugin card list */
-.plugin-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.plugin-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    transition: border-color 0.2s ease;
-}
-
-.plugin-card.active {
-    border-left: 3px solid var(--color-success);
-}
-
-.plugin-card.inactive {
-    border-left: 3px solid var(--color-text-muted);
-    opacity: 0.85;
-}
-
-.plugin-card:hover {
-    border-color: var(--color-primary);
-}
-
-.plugin-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.plugin-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.plugin-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.25rem;
-}
-
-.plugin-name {
-    font-weight: 600;
-    color: var(--color-text);
-    font-size: 1rem;
-}
-
-.plugin-version {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    background: var(--color-surface-hover);
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-}
-
-.plugin-author {
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-}
-
-.plugin-description {
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-    margin: 0.5rem 0;
-    line-height: 1.4;
-}
-
-.plugin-dependencies {
-    font-size: 0.75rem;
-    color: var(--color-warning);
-    margin: 0.25rem 0 0.5rem;
-    padding: 0.25rem 0.5rem;
-    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
-    border-radius: 4px;
-    display: inline-block;
-}
-
-.plugin-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
-}
-
-/* Status badges */
-.plugin-status-badge {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.5rem;
-    border-radius: 10px;
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-
-.badge-active {
-    background: var(--color-success);
-    color: white;
-}
-
-.badge-inactive {
-    background: var(--color-surface-hover);
-    color: var(--color-text-muted);
-}
-
-.badge-update {
-    background: var(--color-warning);
-    color: white;
-}
-
-.badge-installed {
-    background: var(--color-success);
-    color: white;
-}
-
-/* Inline forms */
-.inline-form {
-    display: inline-block;
-}
-
-.btn-sm {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.85rem;
-}
-
-/* Browse tab */
-.browse-header {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 1.5rem;
-}
-
-.plugin-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-}
-
-.plugin-browse-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    transition: border-color 0.2s ease;
-}
-
-.plugin-browse-card:hover {
-    border-color: var(--color-primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.plugin-browse-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.plugin-browse-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: auto;
-    padding-top: 0.75rem;
-}
-
-.plugin-meta-item {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    background: var(--color-surface-hover);
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
-}
-
-.plugin-browse-actions {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
-}
-
-/* Repositories tab */
-.repo-url {
-    font-size: 0.8rem;
-    word-break: break-all;
-}
-
-.text-muted {
-    color: var(--color-text-muted);
-}
-
-.add-repo-section {
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-border);
-}
-
-.add-repo-section h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: var(--color-text);
-}
-
-.add-repo-form .form-row {
-    display: flex;
-    gap: 1rem;
-}
-
-.add-repo-form .form-row .form-group {
-    flex: 1;
-}
-
-/* Empty state */
-.empty-state {
-    text-align: center;
-    padding: 2rem;
-    color: var(--color-text-muted);
-}
-
-.empty-state a {
-    color: var(--color-primary);
-    text-decoration: underline;
-}
-
-/* Form help text */
-.form-help {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    margin-top: 0.35rem;
-}
-
-/* Data table (repos) */
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.data-table th,
-.data-table td {
-    padding: 0.75rem 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.data-table th {
-    font-weight: 600;
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    background: var(--color-surface-hover);
-}
-
-.data-table tbody tr:hover {
-    background: var(--color-surface-hover);
-}
-
-.data-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .plugin-tabs {
-        overflow-x: auto;
-    }
-
-    .plugin-tab {
-        white-space: nowrap;
-        padding: 0.6rem 1rem;
-    }
-
-    .plugin-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .upload-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .upload-input {
-        max-width: none;
-    }
-
-    .plugin-title-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
-    }
-
-    .plugin-actions {
-        flex-direction: column;
-    }
-
-    .plugin-actions .inline-form {
-        display: block;
-    }
-
-    .plugin-actions .btn-sm {
-        width: 100%;
-    }
-
-    .add-repo-form .form-row {
-        flex-direction: column;
-        gap: 0;
-    }
-}
-</style>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

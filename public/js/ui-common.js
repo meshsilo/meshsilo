@@ -53,6 +53,59 @@ window.escapeHtml = function(text) {
     return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 
+// =====================
+// File size formatting (canonical). Replaces the per-file copies previously
+// named formatBytes (model-page.js), formatFileSize (model-attachments.js) and
+// formatSize (model-parts-upload.js).
+// =====================
+window.formatFileSize = function(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+};
+
+// =====================
+// Model detail URL for a model id. Reads window.SiloConfig.modelBase (set inline
+// in header.php) and falls back to the historically hardcoded '/model/' prefix.
+// =====================
+window.modelUrl = function(modelId) {
+    return ((window.SiloConfig && window.SiloConfig.modelBase) || '/model/') + modelId;
+};
+
+// =====================
+// Sync a "select all" master checkbox against the group it controls: checked
+// when every item is selected, indeterminate on a partial selection. Callers
+// keep their own side effects (counts, action bars) around this call.
+// =====================
+window.syncSelectAllCheckbox = function(master, total, checkedCount) {
+    if (!master) return;
+    master.checked = total > 0 && checkedCount === total;
+    master.indeterminate = checkedCount > 0 && checkedCount < total;
+};
+
+// =====================
+// Escape-to-close for modals. Closes every currently visible modal matching
+// `selector` by clicking its own .modal-close control, so whatever cleanup that
+// control is wired to (viewer teardown, focus release, form reset) still runs -
+// never a blind display:none.
+//
+// #confirm-modal / #prompt-modal are always skipped: showConfirm/showPrompt own
+// their Escape handling so the awaited promise resolves (cancel) instead of the
+// overlay being hidden with the promise left pending forever.
+// =====================
+window.wireEscapeToClose = function(selector) {
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll(selector).forEach(function(modal) {
+            if (modal.id === 'confirm-modal' || modal.id === 'prompt-modal') return;
+            var display = modal.style.display;
+            if (!display || display === 'none') return;
+            var closeBtn = modal.querySelector('.modal-close');
+            if (closeBtn) closeBtn.click();
+        });
+    });
+};
+
 // Confirm dialog replacement (returns Promise)
 function showConfirm(message) {
     return new Promise(function(resolve) {
@@ -78,9 +131,20 @@ function showConfirm(message) {
         document.body.appendChild(overlay);
         overlay.querySelector('#confirm-cancel').focus();
         trapFocus(overlay);
-        overlay.querySelector('#confirm-ok').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(true); };
-        overlay.querySelector('#confirm-cancel').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(false); };
-        overlay.addEventListener('click', function(e) { if (e.target === overlay) { releaseFocus(overlay); overlay.remove(); resolve(false); } });
+        function finish(result) {
+            releaseFocus(overlay);
+            overlay.remove();
+            document.removeEventListener('keydown', onKey);
+            resolve(result);
+        }
+        // Escape resolves the awaited promise (as cancel). The global Escape
+        // handler intentionally skips confirm/prompt so it can never hide this
+        // overlay while leaving the promise pending forever.
+        function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); finish(false); } }
+        document.addEventListener('keydown', onKey);
+        overlay.querySelector('#confirm-ok').onclick = function() { finish(true); };
+        overlay.querySelector('#confirm-cancel').onclick = function() { finish(false); };
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) finish(false); });
     });
 }
 
@@ -115,11 +179,20 @@ function showPrompt(message, defaultValue) {
         trapFocus(overlay);
         input.focus();
         input.select();
-        function submit() { var v = input.value; releaseFocus(overlay); overlay.remove(); resolve(v); }
-        overlay.querySelector('#prompt-ok').onclick = submit;
-        overlay.querySelector('#prompt-cancel').onclick = function() { releaseFocus(overlay); overlay.remove(); resolve(null); };
-        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { releaseFocus(overlay); overlay.remove(); resolve(null); } });
-        overlay.addEventListener('click', function(e) { if (e.target === overlay) { releaseFocus(overlay); overlay.remove(); resolve(null); } });
+        function finish(value) {
+            releaseFocus(overlay);
+            overlay.remove();
+            document.removeEventListener('keydown', onKey);
+            resolve(value);
+        }
+        // Escape resolves the awaited promise (as cancel/null) so a prompt flow
+        // can never be left pending; the global Escape handler skips this modal.
+        function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); finish(null); } }
+        document.addEventListener('keydown', onKey);
+        overlay.querySelector('#prompt-ok').onclick = function() { finish(input.value); };
+        overlay.querySelector('#prompt-cancel').onclick = function() { finish(null); };
+        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') finish(input.value); });
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) finish(null); });
     });
 }
 
@@ -155,7 +228,9 @@ document.addEventListener('click', function(e) {
 function formatRelativeTime(dateStr) {
     if (!dateStr) return '';
     var now = new Date();
-    var then = new Date(dateStr.replace(' ', 'T'));
+    // Server timestamps are UTC - treat them as such (mirrors timeAgo, which
+    // appends 'Z'). Without this, formatRelativeTime parsed them as local time.
+    var then = new Date(dateStr.replace(' ', 'T') + 'Z');
     if (isNaN(then)) return dateStr;
     var diff = Math.floor((now - then) / 1000);
     if (diff < 60) return 'just now';
@@ -177,12 +252,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Global Escape key: close any open modal overlay
-document.addEventListener('keydown', function(e) {
-    if (e.key !== 'Escape') return;
-    var modals = document.querySelectorAll('.modal-overlay[style*="flex"], .modal-overlay[style*="block"]');
-    modals.forEach(function(m) { m.style.display = 'none'; });
-});
+// Global Escape key: close any open modal overlay. Page-specific modals that are
+// not .modal-overlay register their own scope via wireEscapeToClose().
+wireEscapeToClose('.modal-overlay');
 
 // Copy current page URL to clipboard
 function copyPageUrl() {
@@ -240,6 +312,101 @@ function toggleQueueDropdown() {
         if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     }
 }
+
+// =====================
+// Favorite toggle (canonical). Replaces the per-page copies previously defined
+// in model-actions.js and inline in app/pages/favorites.php. Lives here because
+// the delegated .model-card-favorite handler below needs it on any page that
+// renders a favorite button, not only the model detail page.
+//
+// Updates the button in place, then fires a cancellable-free `favorite:toggled`
+// event on document so a page can add its own reaction (the favorites list
+// removes the card) without re-implementing the request.
+// =====================
+window.toggleFavorite = async function(modelId, btn) {
+    try {
+        const response = await fetch('/actions/favorite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'model_id=' + modelId
+        });
+        const data = await response.json();
+        if (data.success) {
+            btn.classList.toggle('favorited', data.favorited);
+            btn.innerHTML = data.favorited ? '<i class="fa-solid fa-heart" aria-hidden="true"></i>' : '<i class="fa-regular fa-heart" aria-hidden="true"></i>';
+            var favLabel = data.favorited ? 'Remove from favorites' : 'Add to favorites';
+            btn.title = favLabel;
+            btn.setAttribute('aria-label', favLabel);
+            btn.setAttribute('aria-pressed', data.favorited ? 'true' : 'false');
+            document.dispatchEvent(new CustomEvent('favorite:toggled', {
+                detail: { modelId: modelId, favorited: data.favorited, button: btn }
+            }));
+        }
+    } catch (err) {
+        console.error('Failed to toggle favorite:', err);
+    }
+};
+
+// Model-card behaviour, delegated because CSP no longer permits the inline
+// onclick/onchange/onkeydown attributes the card partial used to render.
+// A card only navigates when it carries data-card-url; browse.php omits it and
+// drives its own selection behaviour instead.
+document.addEventListener('click', function (e) {
+    var favBtn = e.target.closest('.model-card-favorite[data-favorite-id]');
+    if (favBtn) {
+        // Was: onclick="event.stopPropagation(); toggleFavorite(id, this)"
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof toggleFavorite === 'function') {
+            toggleFavorite(parseInt(favBtn.dataset.favoriteId, 10), favBtn);
+        }
+        return;
+    }
+
+    var card = e.target.closest('.model-card[data-card-url]');
+    if (!card) return;
+
+    // The checkbox label used to stopPropagation so selecting never navigated.
+    if (e.target.closest('.model-select-checkbox, a, button, input, label')) return;
+
+    window.location = card.dataset.cardUrl;
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var card = e.target.closest('.model-card[data-card-url]');
+    // Only the card itself is focusable; ignore Enter aimed at inner controls.
+    if (!card || e.target !== card) return;
+    window.location = card.dataset.cardUrl;
+});
+
+document.addEventListener('change', function (e) {
+    if (!e.target.closest('.model-checkbox')) return;
+    if (typeof updateBatchSelection === 'function') {
+        updateBatchSelection();
+    }
+});
+
+// Header control dispatch. These buttons used inline onclick="" attributes,
+// which CSP blocks now that script-src is nonce-based (a nonce authorises a
+// <script> element, never an event-handler attribute), so the header markup
+// carries data-action and the mapping lives here.
+document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-action]');
+    if (!trigger) return;
+
+    var actions = {
+        'toggle-theme': toggleTheme,
+        'toggle-mobile-menu': toggleMobileMenu,
+        'toggle-queue-dropdown': toggleQueueDropdown
+    };
+
+    var handler = actions[trigger.dataset.action];
+    if (handler) {
+        e.preventDefault();
+        handler();
+    }
+});
 
 var _lastConversionRemaining = -1;
 var _lastQueueHtml = null;
@@ -300,7 +467,7 @@ function refreshQueueStatus() {
 
         // Detect conversion completion: was converting, now done
         if (_lastConversionRemaining > 0 && convRemaining === 0) {
-            showConversionToast('All conversions completed');
+            showToast('All conversions completed', 'success', 3000);
             // Auto-reload model pages so file types update
             if (document.querySelector('.parts-section')) {
                 setTimeout(function() { location.reload(); }, 1500);
@@ -335,17 +502,6 @@ function updateConvertingIndicators(modelIds, partIds) {
             if (nameEl) nameEl.classList.remove('part-converting');
         }
     });
-}
-
-function showConversionToast(message) {
-    var toast = document.createElement('div');
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-    toast.textContent = message;
-    toast.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--color-success,#22c55e);color:#fff;padding:0.75rem 1.5rem;border-radius:var(--radius,0.5rem);z-index:9999;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.5s;';
-    document.body.appendChild(toast);
-    setTimeout(function() { toast.style.opacity = '0'; }, 2500);
-    setTimeout(function() { toast.remove(); }, 3000);
 }
 
 function timeAgo(dateStr) {

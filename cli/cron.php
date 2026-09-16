@@ -72,12 +72,11 @@ Task Names:
   cleanup:cache        Clean expired cache (every 6 hours)
   cleanup:rate_limits  Clean rate limit data (every 15 min)
   cleanup:activity     Clean old activity logs (daily 4am)
+  cleanup:api-log      Clean old API request logs (daily 3:30am)
+  cleanup:tus_uploads  Clean abandoned resumable uploads (hourly)
   queue:process        Process background jobs (every minute)
-  retention:apply      Apply retention policies (daily 2am)
   thumbnails:generate  Generate thumbnails (every 5 min)
-  dedup:scan           Scan for duplicates (daily 1am)
-  mesh:analyze         Analyze mesh files (every 10 min)
-  demo:reset           Reset demo data (hourly, if enabled)
+  dedup:scan           Scan for duplicates (hourly)
   maintenance:optimize Database optimization (weekly Sunday 5am)
 
 Cron Setup:

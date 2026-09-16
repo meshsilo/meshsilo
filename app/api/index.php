@@ -29,6 +29,10 @@ if (!$cors->handle([])) {
 
 // Load configuration without triggering auth redirect
 require_once __DIR__ . '/../../includes/logger.php';
+// helpers.php is pure function definitions; needed here for client_ip(),
+// because this entry point deliberately skips config.php (which normally
+// loads it) to avoid the auth redirect.
+require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/api-auth.php';
 require_once __DIR__ . '/../../includes/api-helpers.php';
@@ -51,9 +55,11 @@ $apiVersion->addDeprecationHeaders();
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = $_SERVER['REQUEST_URI'];
 
-// Remove query string and base path
+// Remove query string and base path. The (?:/|$) alternative handles a bare
+// "/api" (no trailing slash), which otherwise left the literal string "api"
+// as the resource and returned 404 instead of the API status payload.
 $uri = parse_url($uri, PHP_URL_PATH);
-$uri = preg_replace('#^.*/api/#', '', $uri);
+$uri = preg_replace('#^.*/api(?:/|$)#', '', $uri, 1);
 // Strip version prefix if present (e.g., v1/)
 $uri = ApiVersion::stripVersionFromUri('/' . $uri);
 $uri = trim($uri, '/');
@@ -71,19 +77,20 @@ if (!$apiUser) {
     // for free. Only failed attempts are counted here, so valid requests are never
     // double-charged against this bucket.
     $authThrottle = RateLimiter::check(
-        'api-auth:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
+        'api-auth:' . (client_ip() ?: 'unknown'),
         'anonymous',
         'api:auth'
     );
     RateLimiter::setHeaders($authThrottle);
     if (!$authThrottle['allowed']) {
-        http_response_code(429);
-        echo json_encode([
-            'error' => 'Rate limit exceeded',
+        // Same envelope as apiError() so a client can branch on `error === true`
+        // for every API failure, 429 included.
+        apiResponse([
+            'error' => true,
+            'message' => 'Rate limit exceeded',
             'retry_after' => $authThrottle['reset'] - time(),
             'tier' => $authThrottle['tier']
-        ]);
-        exit;
+        ], 429);
     }
     apiError('Unauthorized. Provide a valid API key via X-API-Key header or api_key parameter.', 401);
 }
@@ -92,20 +99,21 @@ if (!$apiUser) {
 $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
 $tier = RateLimiter::getTierForUser($apiUser['user_id'] ?? null, $apiKey);
 $rateLimitResult = RateLimiter::check(
-    $apiKey ?: ($apiUser['id'] ?? $_SERVER['REMOTE_ADDR']),
+    $apiKey ?: ($apiUser['id'] ?? client_ip()),
     $tier,
     'api:' . $resource
 );
 RateLimiter::setHeaders($rateLimitResult);
 
 if (!$rateLimitResult['allowed']) {
-    http_response_code(429);
-    echo json_encode([
-        'error' => 'Rate limit exceeded',
+    // Same envelope as apiError() so a client can branch on `error === true`
+    // for every API failure, 429 included.
+    apiResponse([
+        'error' => true,
+        'message' => 'Rate limit exceeded',
         'retry_after' => $rateLimitResult['reset'] - time(),
         'tier' => $rateLimitResult['tier']
-    ]);
-    exit;
+    ], 429);
 }
 
 // Log API request

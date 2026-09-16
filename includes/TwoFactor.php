@@ -445,13 +445,21 @@ class TwoFactor
     /**
      * Replay guard for TOTP. Returns true if this time-step counter has already
      * been consumed by the user (caller must then reject the code); otherwise
-     * records it as consumed and returns false. Degrades gracefully to "not a
-     * replay" if the two_factor_last_used column has not been migrated yet, so
-     * login never breaks on a pre-migration deploy.
+     * records it as consumed and returns false.
+     *
+     * The two_factor_last_used column is created on fresh installs (getSchema()
+     * in Schema.php) and added to upgraded installs by ensureColumns() in
+     * SchemaMigrations.php, which runs from `php cli/migrate.php`. Web requests
+     * never run migrations, so a deploy where the code landed but the migration
+     * has not been run yet has no column. That case degrades to "not a replay"
+     * so login keeps working, but it is logged loudly rather than skipped
+     * silently: until the migration runs, an intercepted TOTP code stays
+     * replayable for the rest of its ~90s window.
      */
     private static function isTotpReplay($db, int $userId, int $counter): bool
     {
         if (!self::replayColumnAvailable($db)) {
+            self::warnReplayProtectionUnavailable();
             return false;
         }
 
@@ -470,6 +478,28 @@ class TwoFactor
         $upd->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $upd->execute();
         return false;
+    }
+
+    /**
+     * Warn (once per request) that TOTP replay protection is inactive because
+     * the backing column is missing. Silence here would hide a live 2FA
+     * weakness behind an apparently healthy login.
+     */
+    private static function warnReplayProtectionUnavailable(): void
+    {
+        static $warned = false;
+        if ($warned) {
+            return;
+        }
+        $warned = true;
+
+        if (function_exists('logWarning')) {
+            logWarning(
+                'TOTP replay protection is INACTIVE: the users.two_factor_last_used column is missing, '
+                . 'so an intercepted 2FA code can be reused within its validity window. '
+                . 'Run "php cli/migrate.php" to apply pending migrations.'
+            );
+        }
     }
 
     /**

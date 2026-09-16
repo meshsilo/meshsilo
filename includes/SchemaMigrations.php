@@ -141,6 +141,18 @@ function ensureColumns($db)
             $db->exec("ALTER TABLE model_attachments ADD COLUMN $column $dataType");
         }
     }
+
+    // Plugin repositories: access token for private registries/forges
+    // (encrypted at rest when encryption is configured)
+    $repoColumns = [
+        'auth_token' => 'TEXT',
+    ];
+
+    foreach ($repoColumns as $column => $dataType) {
+        if (tableExists($db, 'plugin_repositories') && !columnExists($db, 'plugin_repositories', $column)) {
+            $db->exec("ALTER TABLE plugin_repositories ADD COLUMN $column $dataType");
+        }
+    }
 }
 
 // =====================

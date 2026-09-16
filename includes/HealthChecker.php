@@ -311,25 +311,6 @@ class HealthChecker
             ];
         }
 
-        // Check webhooks (only if table exists)
-        try {
-            $db = getDB();
-            if ($db && tableExists($db, 'webhooks')) {
-                $result = $db->query("SELECT COUNT(*) as count FROM webhooks WHERE is_active = 1");
-                $webhookCount = $result ? ($result->fetchArray(PDO::FETCH_ASSOC)['count'] ?? 0) : 0;
-
-                if ($webhookCount > 0) {
-                    $services['webhooks'] = [
-                        'name' => 'Webhooks',
-                        'status' => 'healthy',
-                        'message' => "$webhookCount active webhook(s)"
-                    ];
-                }
-            }
-        } catch (Exception $e) {
-            // Safe to ignore
-        }
-
         return $services;
     }
 

@@ -34,7 +34,7 @@ function handleModelCardClick(event, modelId) {
         }
     } else {
         // Normal mode, navigate to model
-        window.location = '/model/' + modelId;
+        window.location = modelUrl(modelId);
     }
 }
 
@@ -86,12 +86,11 @@ function updateBatchSelection() {
     }
 
     // Update select all checkbox state
-    const allCheckboxes = document.querySelectorAll('.model-checkbox');
-    const selectAllCheckbox = document.getElementById('select-all-models');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.checked = checked.length === allCheckboxes.length && allCheckboxes.length > 0;
-        selectAllCheckbox.indeterminate = checked.length > 0 && checked.length < allCheckboxes.length;
-    }
+    syncSelectAllCheckbox(
+        document.getElementById('select-all-models'),
+        document.querySelectorAll('.model-checkbox').length,
+        checked.length
+    );
 }
 
 function getSelectedModelIds() {

@@ -49,6 +49,7 @@ class ErrorHandler
             if (function_exists('logWarning')) {
                 logWarning("Deprecation: $message", ['file' => $file, 'line' => $line]);
             }
+            self::notify('deprecated', $message, $file, $line, null);
             return true;
         }
 
@@ -139,6 +140,8 @@ class ErrorHandler
      */
     private static function logError(\Throwable $e): void
     {
+        self::notify(get_class($e), $e->getMessage(), $e->getFile(), $e->getLine(), $e->getTraceAsString());
+
         if (function_exists('logException')) {
             logException($e);
             return;
@@ -157,6 +160,34 @@ class ErrorHandler
         );
 
         @file_put_contents($logFile, $message, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Notify plugins that an error/exception was captured, via the (until now
+     * unused) Events::SYSTEM_ERROR event. Plugins that want to observe errors
+     * should use Events::on(Events::SYSTEM_ERROR, ...) rather than
+     * set_error_handler()/set_exception_handler(): those are a single global
+     * slot that self::init() below re-claims after plugins boot (plugins load
+     * before setupErrorHandler() runs, see config.php), so a plugin-registered
+     * handler would otherwise be silently discarded. Events::on() is
+     * multi-listener and order-independent.
+     */
+    private static function notify(string $level, string $message, string $file, int $line, ?string $trace): void
+    {
+        if (!class_exists('Events')) {
+            return;
+        }
+        try {
+            Events::emit(Events::SYSTEM_ERROR, [
+                'level' => $level,
+                'message' => $message,
+                'file' => $file,
+                'line' => $line,
+                'trace' => $trace,
+            ]);
+        } catch (\Throwable $ignored) {
+            // Never let error notification break error handling itself.
+        }
     }
 
     /**
@@ -197,14 +228,6 @@ class ErrorHandler
         $message = self::$debug ? $e->getMessage() : self::getFriendlyMessage($code);
         $showDetails = self::$debug;
 
-        // Check for custom error page
-        $customPage = dirname(__DIR__) . "/pages/errors/{$code}.php";
-        if (file_exists($customPage)) {
-            include $customPage;
-            return;
-        }
-
-        // Default error page
         self::renderDefaultErrorPage($e, $code, $title, $message, $showDetails);
     }
 
@@ -316,8 +339,15 @@ class ErrorHandler
 
         <div class="error-actions">
             <a href="/" class="btn btn-primary">Go Home</a>
-            <button type="button" onclick="history.back()" class="btn btn-secondary">Go Back</button>
+            <button type="button" id="error-go-back" class="btn btn-secondary">Go Back</button>
         </div>
+        <?php // Standalone page: no shared JS is loaded here, so the handler for
+              // the button lives inline. It must carry the CSP nonce. ?>
+        <script<?= function_exists('csp_nonce_attr') ? csp_nonce_attr() : '' ?>>
+            document.getElementById('error-go-back').addEventListener('click', function () {
+                history.back();
+            });
+        </script>
 
         <?php if ($showDetails) : ?>
         <div class="error-details">

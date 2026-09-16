@@ -6,11 +6,7 @@ require_once __DIR__ . '/../../includes/features.php';
 requireFeature('collections');
 
 // Require collection management permission
-if (!isLoggedIn() || !canManageCollections()) {
-    $_SESSION['error'] = 'You do not have permission to manage collections.';
-    header('Location: ' . route('home'));
-    exit;
-}
+requireAdminPage('canManageCollections', 'You do not have permission to manage collections.');
 
 $pageTitle = 'Manage Collections';
 $activePage = '';
@@ -23,8 +19,8 @@ $message = '';
 $error = '';
 
 // CSRF protection for all POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
-    $error = 'Invalid request. Please refresh the page and try again.';
+if (($csrfError = Csrf::postError()) !== null) {
+    $error = $csrfError;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_collection'])) {
         $name = trim($_POST['collection_name'] ?? '');

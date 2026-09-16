@@ -506,7 +506,6 @@ function getFeatureIcon(string $icon): string
     $icons = [
         'users' => 'fa-users',
         'key' => 'fa-key',
-        'webhook' => 'fa-plug',
         'archive' => 'fa-box-archive',
         'file-text' => 'fa-file-lines',
         'printer' => 'fa-print',

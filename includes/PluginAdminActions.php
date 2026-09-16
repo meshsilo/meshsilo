@@ -42,21 +42,27 @@ class PluginAdminActions
         switch ($action) {
             case 'enable':
                 $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($post['plugin_id'] ?? ''));
-                if ($pluginId !== '' && $pluginManager->enablePlugin($pluginId)) {
+                $result = $pluginId !== ''
+                    ? $pluginManager->enablePlugin($pluginId)
+                    : ['success' => false, 'error' => 'Invalid plugin ID'];
+                if ($result['success']) {
                     $message = 'Plugin enabled successfully.';
                     logInfo('Plugin enabled', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Failed to enable plugin. Check that all dependencies are met and the minimum version requirement is satisfied.';
+                    $error = 'Failed to enable plugin: ' . ($result['error'] ?? 'Unknown error');
                 }
                 break;
 
             case 'disable':
                 $pluginId = preg_replace('/[^a-z0-9\-]/', '', strtolower($post['plugin_id'] ?? ''));
-                if ($pluginId !== '' && $pluginManager->disablePlugin($pluginId)) {
+                $result = $pluginId !== ''
+                    ? $pluginManager->disablePlugin($pluginId)
+                    : ['success' => false, 'error' => 'Invalid plugin ID'];
+                if ($result['success']) {
                     $message = 'Plugin disabled successfully.';
                     logInfo('Plugin disabled', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Failed to disable plugin. Another active plugin may depend on it.';
+                    $error = 'Failed to disable plugin: ' . ($result['error'] ?? 'Unknown error');
                 }
                 break;
 
@@ -87,6 +93,9 @@ class PluginAdminActions
                     if ($result['success']) {
                         $pluginName = htmlspecialchars($result['plugin']['name'] ?? 'Unknown');
                         $message = "Plugin \"$pluginName\" installed successfully.";
+                        if (!empty($result['warning'])) {
+                            $message .= ' Warning: ' . htmlspecialchars($result['warning']);
+                        }
                         logInfo('Plugin installed from upload', ['plugin' => $result['plugin']['id'] ?? 'unknown', 'by' => getCurrentUser()['username']]);
                     } else {
                         $error = 'Installation failed: ' . ($result['error'] ?? 'Unknown error');
@@ -109,6 +118,9 @@ class PluginAdminActions
                     $result = $pluginManager->installFromRepo($pluginId, $source);
                     if ($result['success']) {
                         $message = 'Plugin installed from repository successfully.';
+                        if (!empty($result['warning'])) {
+                            $message .= ' Warning: ' . htmlspecialchars($result['warning']);
+                        }
                         logInfo('Plugin installed from repo', ['plugin' => $pluginId, 'by' => getCurrentUser()['username']]);
                     } else {
                         $error = 'Installation failed: ' . ($result['error'] ?? 'Unknown error');
@@ -154,14 +166,24 @@ class PluginAdminActions
             case 'add-repo':
                 $repoName = trim($post['repo_name'] ?? '');
                 $repoUrl = trim($post['repo_url'] ?? '');
+                $repoToken = trim($post['repo_token'] ?? '');
                 if ($repoName === '' || $repoUrl === '') {
                     $error = 'Repository name and URL are required.';
-                } elseif ($pluginManager->addRepository($repoName, $repoUrl)) {
+                } elseif ($pluginManager->addRepository($repoName, $repoUrl, $repoToken)) {
                     $message = 'Repository added successfully.';
-                    logInfo('Plugin repository added', ['name' => $repoName, 'url' => $repoUrl, 'by' => getCurrentUser()['username']]);
+                    logInfo('Plugin repository added', ['name' => $repoName, 'url' => $repoUrl, 'has_token' => $repoToken !== '', 'by' => getCurrentUser()['username']]);
                 } else {
-                    $error = 'Failed to add repository. Please check the URL is valid.';
+                    $error = 'Failed to add repository. Check the URL is valid and, for private/LAN hosts, that private hosts are allowed below.';
                 }
+                break;
+
+            case 'repos-private-hosts':
+                $allow = isset($post['allow_private_hosts']) ? '1' : '0';
+                setSetting('plugin_repos_allow_private_hosts', $allow);
+                $message = $allow === '1'
+                    ? 'Private/LAN repository hosts are now allowed.'
+                    : 'Private/LAN repository hosts are now blocked.';
+                logInfo('Plugin repository private-host setting changed', ['allowed' => $allow, 'by' => getCurrentUser()['username']]);
                 break;
 
             case 'remove-repo':
@@ -176,13 +198,8 @@ class PluginAdminActions
 
             case 'refresh-repos':
                 $repos = $pluginManager->getRepositories();
-                $refreshed = 0;
-                foreach ($repos as $repo) {
-                    $result = $pluginManager->fetchRegistry($repo['url']);
-                    if ($result !== null) {
-                        $refreshed++;
-                    }
-                }
+                $results = $pluginManager->fetchRegistries(array_column($repos, 'url'));
+                $refreshed = count(array_filter($results, fn($r) => $r !== null));
                 $message = "Refreshed $refreshed of " . count($repos) . " repositories.";
                 logInfo('Plugin repositories refreshed', ['refreshed' => $refreshed, 'total' => count($repos), 'by' => getCurrentUser()['username']]);
                 break;

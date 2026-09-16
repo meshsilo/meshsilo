@@ -289,9 +289,21 @@ class Logger
         $this->log(self::WARNING, "Permission denied: {$permission} for user {$userId}", $context, self::CHANNEL_SECURITY);
     }
 
+    /**
+     * The visitor's address, resolved through any trusted reverse proxy.
+     *
+     * Guarded because logger.php is required before helpers.php during
+     * bootstrap (and by entry points that skip helpers entirely), so a log
+     * written that early has to degrade to the raw peer rather than fatal.
+     */
+    private function clientAddress(): string
+    {
+        return function_exists('client_ip') ? client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '');
+    }
+
     private function addSecurityContext($context)
     {
-        $context['ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $context['ip'] = $this->clientAddress() ?: 'unknown';
         $context['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
         if (isset($_SESSION['user_id'])) {
@@ -312,7 +324,7 @@ class Logger
     {
         $context['method'] = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';
         $context['uri'] = $_SERVER['REQUEST_URI'] ?? '/';
-        $context['ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $context['ip'] = $this->clientAddress() ?: 'unknown';
         $context['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
         if (isset($_SESSION['user_id'])) {
@@ -335,7 +347,7 @@ class Logger
         $context['duration_ms'] = round($duration, 2);
         $context['method'] = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';
         $context['uri'] = $_SERVER['REQUEST_URI'] ?? '/';
-        $context['ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $context['ip'] = $this->clientAddress() ?: 'unknown';
 
         if (isset($_SESSION['user_id'])) {
             $context['user_id'] = $_SESSION['user_id'];

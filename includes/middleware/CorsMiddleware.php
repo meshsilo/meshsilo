@@ -33,34 +33,48 @@ class CorsMiddleware implements MiddlewareInterface
     {
         $this->options = array_merge(self::DEFAULTS, $options);
 
-        // Load settings from database if available
+        // Load settings from database only for keys the caller did NOT pass
+        // explicitly. Explicit options must win: strict()/api()/authenticatedApi()
+        // pass allowed_origins deliberately, and unconditionally overwriting them
+        // from cors_allowed_origins turned same-origin-only middleware into
+        // cross-origin once that setting was configured.
         if (function_exists('getSetting')) {
-            $this->loadSettingsFromDatabase();
+            $this->loadSettingsFromDatabase(array_keys($options));
         }
     }
 
     /**
-     * Load CORS settings from database
+     * Load CORS settings from database, skipping any key the caller set explicitly.
+     *
+     * @param array $explicitKeys Option keys passed to the constructor (never overridden)
      */
-    private function loadSettingsFromDatabase(): void
+    private function loadSettingsFromDatabase(array $explicitKeys = []): void
     {
-        $origins = getSetting('cors_allowed_origins', '');
-        if (!empty($origins)) {
-            $this->options['allowed_origins'] = array_map('trim', explode(',', $origins));
+        if (!in_array('allowed_origins', $explicitKeys, true)) {
+            $origins = getSetting('cors_allowed_origins', '');
+            if (!empty($origins)) {
+                $this->options['allowed_origins'] = array_map('trim', explode(',', $origins));
+            }
         }
 
-        $methods = getSetting('cors_allowed_methods', '');
-        if (!empty($methods)) {
-            $this->options['allowed_methods'] = array_map('trim', explode(',', $methods));
+        if (!in_array('allowed_methods', $explicitKeys, true)) {
+            $methods = getSetting('cors_allowed_methods', '');
+            if (!empty($methods)) {
+                $this->options['allowed_methods'] = array_map('trim', explode(',', $methods));
+            }
         }
 
-        $headers = getSetting('cors_allowed_headers', '');
-        if (!empty($headers)) {
-            $this->options['allowed_headers'] = array_map('trim', explode(',', $headers));
+        if (!in_array('allowed_headers', $explicitKeys, true)) {
+            $headers = getSetting('cors_allowed_headers', '');
+            if (!empty($headers)) {
+                $this->options['allowed_headers'] = array_map('trim', explode(',', $headers));
+            }
         }
 
-        $credentials = getSetting('cors_allow_credentials', '0');
-        $this->options['allow_credentials'] = $credentials === '1';
+        if (!in_array('allow_credentials', $explicitKeys, true)) {
+            $credentials = getSetting('cors_allow_credentials', '0');
+            $this->options['allow_credentials'] = $credentials === '1';
+        }
     }
 
     /**

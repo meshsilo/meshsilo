@@ -127,14 +127,18 @@ if (!defined('SITE_NAME') || !defined('SITE_DESCRIPTION') || !defined('SITE_URL'
     }
 }
 
-// Include authentication, permissions, and core helpers (required on every request)
+// Core helpers first: they are pure function definitions with no load-time
+// dependencies, and auth.php needs client_ip()/is_trusted_proxy() while it is
+// deciding the session cookie's secure flag behind a reverse proxy.
+require_once __DIR__ . '/helpers.php';
+
+// Include authentication, permissions (required on every request)
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/permissions.php';
-// Include router and helpers (if not already loaded by front controller)
+// Include router (if not already loaded by front controller)
 if (!class_exists('Router')) {
     require_once __DIR__ . '/Router.php';
 }
-require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/features.php';
 
 // Load middleware interface before classes that implement it
