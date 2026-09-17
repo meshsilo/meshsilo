@@ -249,14 +249,14 @@ class PluginManager
         }
         foreach ($this->hooks->getFilters() as $hook => $callbacks) {
             foreach ($callbacks as $cb) {
-                if (($cb['plugin'] ?? '') === $id) {
+                if ($cb['plugin'] === $id) {
                     $features[] = 'Filter: ' . $hook;
                 }
             }
         }
         foreach ($this->hooks->getActions() as $event => $callbacks) {
             foreach ($callbacks as $cb) {
-                if (($cb['plugin'] ?? '') === $id) {
+                if ($cb['plugin'] === $id) {
                     $features[] = 'Action: ' . $event;
                 }
             }
@@ -519,6 +519,11 @@ class PluginManager
             } catch (\RuntimeException $e) {
                 // Restore the previous install over any partial copy
                 if ($backupDir && is_dir($backupDir)) {
+                    // PHPStan narrows $targetDir as still a dir from the is_dir()
+                    // check that gated the earlier rename to $backupDir above; it
+                    // doesn't model rename() as removing the directory, so the
+                    // narrowing is stale - $targetDir may genuinely not exist here.
+                    // @phpstan-ignore if.alwaysTrue
                     if (is_dir($targetDir)) {
                         self::recursiveDelete($targetDir);
                     }
@@ -886,7 +891,9 @@ class PluginManager
                     break;
 
                 case 'checkbox':
-                    $checked = ($value === '1' || $value === true) ? ' checked' : '';
+                    // $value is always a string by this point (cast above), so a
+                    // stored boolean true would already read back as '1'.
+                    $checked = $value === '1' ? ' checked' : '';
                     $html .= '<input type="hidden" name="' . $inputName . '" value="0">';
                     $html .= '<label class="toggle-label"><input type="checkbox" id="plugin-' . htmlspecialchars($pluginId) . '-' . htmlspecialchars($key) . '" name="' . $inputName . '" value="1"' . $checked . '><span class="toggle-switch"></span><span>' . $label . '</span></label>';
                     break;
@@ -1281,6 +1288,11 @@ class PluginManager
                 $this->recursiveDelete($tempDir);
                 // Restore the previous install over any partial copy
                 if ($backupDir !== null) {
+                    // PHPStan narrows $destDir as still a dir from the is_dir()
+                    // check that gated the earlier rename to $backupDir above; it
+                    // doesn't model rename() as removing the directory, so the
+                    // narrowing is stale - $destDir may genuinely not exist here.
+                    // @phpstan-ignore if.alwaysTrue
                     if (is_dir($destDir)) {
                         $this->recursiveDelete($destDir);
                     }

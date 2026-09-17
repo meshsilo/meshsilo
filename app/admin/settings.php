@@ -683,6 +683,10 @@ require_once __DIR__ . '/../../includes/header.php';
                         </div>
                     </details>
 
+                    <?php if (class_exists('PluginManager')): ?>
+                    <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
+                    <?php endif; ?>
+
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">Save Settings</button>
                     </div>
@@ -708,7 +712,6 @@ require_once __DIR__ . '/../../includes/header.php';
                     </details>
                 </form>
                 <?php endforeach; ?>
-                <?= PluginManager::applyFilter('admin_settings_sections', '') ?>
                 <?php endif; ?>
 
             </div>

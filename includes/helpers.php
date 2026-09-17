@@ -550,7 +550,7 @@ if (!function_exists('trusted_proxies')) {
             return [];
         }
 
-        return array_values(array_filter(array_map('trim', $configured), 'strlen'));
+        return array_values(array_filter(array_map('trim', $configured), fn($s) => $s !== ''));
     }
 }
 
@@ -646,7 +646,7 @@ if (!function_exists('client_ip')) {
             return ($real !== '' && @inet_pton($real) !== false) ? $real : $remote;
         }
 
-        $hops = array_values(array_filter(array_map('trim', explode(',', $forwarded)), 'strlen'));
+        $hops = array_values(array_filter(array_map('trim', explode(',', $forwarded)), fn($s) => $s !== ''));
         for ($i = count($hops) - 1; $i >= 0; $i--) {
             $hop = $hops[$i];
             // Strip an optional :port from IPv4, and [..]:port from IPv6.

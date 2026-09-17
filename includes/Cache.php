@@ -407,7 +407,7 @@ class Cache
                     $this->memory[$prefixedKey] = ['value' => $new, 'expires' => 0];
                     return $new;
                 }
-                break;
+                break; // @phpstan-ignore deadCode.unreachable (PHPStan's bundled apcu_inc stub omits the real int|false return type, so it treats the false branch as unreachable)
         }
 
         // File/memory drivers have no atomic primitive: fall back to

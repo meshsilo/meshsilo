@@ -10,6 +10,11 @@ require_once 'includes/ModelPageData.php';
 
 $db = getDB();
 
+// Add-part file input accepts every model extension plus zip, built from
+// getModelExtensions() so it can't drift from the server-side allowed set
+// (matches the same fix in app/pages/upload.php).
+$modelFileAccept = '.' . implode(',.', array_merge(getModelExtensions(), ['zip']));
+
 // Get model ID from URL
 $modelId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -520,7 +525,7 @@ require_once 'includes/header.php';
                         <a href="<?= route('actions.download.all', [], ['id' => $model['id']]) ?>" class="btn btn-primary">Download All Parts</a>
                         <?php if (canUpload()): ?>
                         <button type="button" class="btn btn-secondary trigger-add-parts">Add Parts</button>
-                        <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1,.zip" multiple hidden aria-label="Add model parts (individual files or ZIP archive)">
+                        <input type="file" id="add-part-file" accept="<?= htmlspecialchars($modelFileAccept) ?>" multiple hidden aria-label="Add model parts (individual files or ZIP archive)">
                         <?php endif; ?>
                     </div>
                 </div>
@@ -528,7 +533,7 @@ require_once 'includes/header.php';
                 <div class="model-download">
                     <a href="<?= route('actions.download', [], ['id' => $model['id']]) ?>" class="btn btn-primary btn-large">Download Model</a>
                     <button type="button" class="btn btn-secondary trigger-add-parts">Add Parts</button>
-                    <input type="file" id="add-part-file" accept=".stl,.3mf,.obj,.ply,.amf,.gcode,.glb,.gltf,.fbx,.dae,.blend,.step,.stp,.iges,.igs,.3ds,.dxf,.off,.x3d,.lys,.ctb,.pwmo,.sl1,.zip" multiple hidden aria-label="Add model parts (individual files or ZIP archive)">
+                    <input type="file" id="add-part-file" accept="<?= htmlspecialchars($modelFileAccept) ?>" multiple hidden aria-label="Add model parts (individual files or ZIP archive)">
                 </div>
                 <?php else: ?>
                 <div class="model-download">
