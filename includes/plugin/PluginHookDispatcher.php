@@ -107,7 +107,7 @@ class PluginHookDispatcher
                 $value = ($filter['callback'])($value, ...$args);
             } catch (\Throwable $e) {
                 logError("Plugin filter error on '{$hook}'", [
-                    'plugin' => $filter['plugin'] ?? 'unknown',
+                    'plugin' => $filter['plugin'],
                     'error' => $e->getMessage(),
                 ]);
                 // Continue with unmodified value -- don't let one broken plugin crash the page
@@ -141,7 +141,7 @@ class PluginHookDispatcher
                 $allowed = ($filter['callback'])($allowed, ...$args);
             } catch (\Throwable $e) {
                 logError("Plugin gate error on '{$hook}' - denying", [
-                    'plugin' => $filter['plugin'] ?? 'unknown',
+                    'plugin' => $filter['plugin'],
                     'error' => $e->getMessage(),
                 ]);
                 return false;
@@ -167,7 +167,7 @@ class PluginHookDispatcher
                 ($action['callback'])(...$args);
             } catch (\Throwable $e) {
                 logError("Plugin action error on '{$event}'", [
-                    'plugin' => $action['plugin'] ?? 'unknown',
+                    'plugin' => $action['plugin'],
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -178,7 +178,7 @@ class PluginHookDispatcher
                 ($filter['callback'])(null, ...$args);
             } catch (\Throwable $e) {
                 logError("Plugin action error on '{$event}'", [
-                    'plugin' => $filter['plugin'] ?? 'unknown',
+                    'plugin' => $filter['plugin'],
                     'error' => $e->getMessage(),
                 ]);
             }

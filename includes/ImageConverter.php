@@ -116,7 +116,7 @@ class ImageConverter
                 return null;
         }
 
-        if ($source === false || $source === null) {
+        if ($source === false) {
             return null;
         }
 

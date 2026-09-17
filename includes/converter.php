@@ -118,9 +118,13 @@ class STLConverter
         $dbPath = $this->tempDbPath;
         $triPath = $this->triangleTempPath;
         register_shutdown_function(function () use ($dbPath, $triPath) {
-            if ($dbPath && is_file($dbPath)) @unlink($dbPath);
-            if ($dbPath && is_file($dbPath . '-wal')) @unlink($dbPath . '-wal');
-            if ($dbPath && is_file($dbPath . '-shm')) @unlink($dbPath . '-shm');
+            // $dbPath is captured by value from a '.db'-suffixed concatenation
+            // above, so it's always a non-empty string here regardless of
+            // what happens to $this->tempDbPath afterward - only $triPath can
+            // be falsy (tempnam() returns false on failure).
+            if (is_file($dbPath)) @unlink($dbPath);
+            if (is_file($dbPath . '-wal')) @unlink($dbPath . '-wal');
+            if (is_file($dbPath . '-shm')) @unlink($dbPath . '-shm');
             if ($triPath && is_file($triPath)) @unlink($triPath);
         });
     }

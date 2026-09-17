@@ -110,9 +110,6 @@ class ErrorHandler
         if ($e instanceof CsrfException) {
             return 403;
         }
-        if ($e instanceof ValidationException) {
-            return 422;
-        }
 
         // Use exception code if it's a valid HTTP code
         if ($code >= 400 && $code < 600) {
@@ -210,10 +207,6 @@ class ErrorHandler
                 'line' => $e->getLine(),
                 'trace' => explode("\n", $e->getTraceAsString())
             ];
-        }
-
-        if ($e instanceof ValidationException) {
-            $response['errors'] = $e->errors();
         }
 
         echo json_encode($response, JSON_PRETTY_PRINT);

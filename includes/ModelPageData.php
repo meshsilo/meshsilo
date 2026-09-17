@@ -229,24 +229,24 @@ class ModelPageData
             foreach ($realDirs as $d) {
                 $pathSegments[] = explode('/', $d);
             }
+            // $pathSegments has exactly one entry per $realDirs, which the
+            // outer `count($realDirs) > 0` already guarantees is non-empty.
             $baseParts = [];
-            if (count($pathSegments) > 0) {
-                $lengths = array_map('count', $pathSegments);
-                $minLen = min($lengths);
-                for ($i = 0; $i < $minLen; $i++) {
-                    $segment = $pathSegments[0][$i];
-                    $allMatch = true;
-                    foreach ($pathSegments as $ps) {
-                        if ($ps[$i] !== $segment) {
-                            $allMatch = false;
-                            break;
-                        }
-                    }
-                    if ($allMatch) {
-                        $baseParts[] = $segment;
-                    } else {
+            $lengths = array_map('count', $pathSegments);
+            $minLen = min($lengths);
+            for ($i = 0; $i < $minLen; $i++) {
+                $segment = $pathSegments[0][$i];
+                $allMatch = true;
+                foreach ($pathSegments as $ps) {
+                    if ($ps[$i] !== $segment) {
+                        $allMatch = false;
                         break;
                     }
+                }
+                if ($allMatch) {
+                    $baseParts[] = $segment;
+                } else {
+                    break;
                 }
             }
             $basePath = implode('/', $baseParts);

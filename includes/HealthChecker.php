@@ -33,7 +33,7 @@ class HealthChecker
             'peak' => $memoryPeak,
             'limit' => $memoryLimitBytes,
             'unlimited' => $memoryUnlimited,
-            'percent' => (!$memoryUnlimited && $memoryLimitBytes > 0) ? round(($memoryUsed / $memoryLimitBytes) * 100, 1) : 0
+            'percent' => !$memoryUnlimited ? round(($memoryUsed / $memoryLimitBytes) * 100, 1) : 0
         ];
 
         // Disk usage
