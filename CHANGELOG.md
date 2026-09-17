@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-16
+
+### Fixed
+- **Plugin Settings**: plugin-contributed sections rendered outside the Site Settings `<form>`, so any fields a plugin added there were silently discarded on "Save Settings" regardless of styling. Found and fixed alongside a Slicer Integration styling issue in the printing plugin.
+- **File Picker Filters**: the upload page and "Add Parts" file inputs no longer hardcode their accepted-extension list, so it can't drift from the real server-side allowed-extensions setting - this previously left `.scad` out of the browser's file picker even though uploads of it were already allowed server-side.
+- **Static Analysis**: fixed all 21 PHPStan errors flagged by CI's `analyse` job, which had been failing silently (the job allows failure at the workflow level). Included one real dead-code bug (an `instanceof` check against a class deleted in an earlier cleanup pass) and several redundant conditions; the rest were verified false positives, suppressed with justification.
+
 ## [0.8.0] - 2026-09-16
 
 ### Added
